@@ -443,3 +443,80 @@ def icons_browser():
     from icons import icon_names
     names = icon_names()
     return render_template('admin/icons_browser.html', names=names, total=len(names))
+
+
+# ════════════════════════════════════════════════════════════
+# 🔄 بروزرسانی خودکار نرم‌افزار از گیت
+# ════════════════════════════════════════════════════════════
+@admin_bp.route('/update')
+@admin_required
+def update_page():
+    """صفحه بروزرسانی — دکمه + وضعیت + آدرس گیت قابل تنظیم"""
+    from updater import get_repo_url
+    repo = get_repo_url()
+    if not repo:
+        import subprocess as _sp
+        try:
+            r = _sp.run(['git', 'remote', 'get-url', 'origin'], capture_output=True,
+                        text=True, timeout=10)
+            if r.returncode == 0:
+                repo = r.stdout.strip()
+        except Exception:
+            pass
+    return render_template('admin/update.html', repo_url=repo,
+                           is_super=g.user.role in ('super_admin', 'admin'))
+
+
+@admin_bp.route('/update/save-repo', methods=['POST'])
+@admin_required
+def update_save_repo():
+    """ذخیره آدرس مخزن گیت در تنظیمات"""
+    from models import Setting as _S
+    url = (request.form.get('repo_url') or '').strip()
+    st = db.session.get(_S, 'git_repo_url')
+    if st:
+        st.value = url
+    else:
+        db.session.add(_S(key='git_repo_url', value=url))
+    db.session.commit()
+    flash('آدرس مخزن گیت ذخیره شد ✅', 'success')
+    return redirect(url_for('admin.update_page'))
+
+
+@admin_bp.route('/update/run', methods=['POST'])
+@admin_required
+def update_run():
+    """شروع بروزرسانی در پس‌زمینه — فقط super_admin"""
+    if g.user.role not in ('super_admin', 'admin'):
+        return jsonify(ok=False, msg='فقط مدیر کل می‌تواند بروزرسانی کند.'), 403
+    from updater import start_update
+    started, msg = start_update()
+    if not started:
+        return jsonify(ok=False, msg=msg), 400
+    return jsonify(ok=True, msg=msg)
+
+
+@admin_bp.route('/update/status')
+@admin_required
+def update_status():
+    """وضعیت بروزرسانی (polling)"""
+    from updater import update_progress
+    p = update_progress()
+    return jsonify(**p)
+
+
+@admin_bp.route('/update/log')
+@admin_required
+def update_log():
+    """گزارش آخرین بروزرسانی‌ها"""
+    import os as _os
+    logf = _os.path.join(_os.path.dirname(_os.path.dirname(__file__)),
+                         'instance', 'update_history.json')
+    rows = []
+    try:
+        with open(logf, encoding='utf-8') as f:
+            rows = json.load(f)
+    except Exception:
+        rows = []
+    return render_template('admin/update.html', repo_url='', is_super=True,
+                           history=rows, view='log')

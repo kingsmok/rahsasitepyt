@@ -43,6 +43,7 @@
   <a class="ss-tab {{ 'active' if tab=='sms' }}" href="?tab=sms">📲 پیامک و ایمیل</a>
   <a class="ss-tab {{ 'active' if tab=='market' }}" href="?tab=market">🏪 مارکت‌پلیس و سرویس‌ها</a>
   <a class="ss-tab {{ 'active' if tab=='security' }}" href="?tab=security">🛡 امنیت و نگهداری</a>
+  <a class="ss-tab {{ 'active' if tab=='update' }}" href="?tab=update">🔄 بروزرسانی</a>
 </div>
 
 <form method="post" enctype="multipart/form-data">
@@ -343,6 +344,21 @@ SECRET_KEY=...        ← کلید امنیتی سشن
   <p class="ss-hint">برای دانلود بکاپ فوری دیتابیس از دکمه زیر استفاده کنید. بکاپ‌های خودکار روزانه در پوشه instance/backups ذخیره می‌شوند.</p>
   <a class="btn btn-primary" href="{{ url_for('admin.backup') }}">⬇ دانلود بکاپ دیتابیس</a>
   <a class="btn btn-ghost" href="{{ url_for('admin.backup_list') }}">📋 فهرست بکاپ‌ها</a>
+</div>
+{% endif %}
+
+{% if tab == 'update' %}
+<div class="ss-card">
+  <h3>🔄 بروزرسانی نرم‌افزار از گیت</h3>
+  <p class="ss-hint">آخرین نسخه کد را از مخزن گیت دریافت و جایگزین می‌کند + مایگریشن دیتابیس (جدول‌ها و ستون‌های جدید به‌صورت خودکار ساخته می‌شوند). فایل‌های محلی (.env، آپلودها، بکاپ‌ها) دست نمی‌خورند.</p>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:6px">
+    <button class="btn btn-primary btn-lg" type="button" onclick="location.href='{{ url_for('admin.update_page') }}'">🔄 بروزرسانی از گیت</button>
+    <a class="btn btn-ghost" href="{{ url_for('admin.update_log') }}">📜 تاریخچه</a>
+    <a class="btn btn-ghost" href="{{ url_for('admin.update_page') }}">⚙️ تنظیم مخزن</a>
+  </div>
+  <div style="margin-top:14px;background:var(--bg-2);border-radius:10px;padding:10px 14px;font-size:12px;color:var(--text-2)">
+    💡 آدرس مخزن از صفحه «تنظیم مخزن» قابل تغییر است. بعد از بروزرسانی، ری‌استارت سرور پیشنهاد می‌شود.
+  </div>
 </div>
 {% endif %}
 

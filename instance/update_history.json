@@ -1,0 +1,12 @@
+[
+ {
+  "at": "2026-08-10T06:24:06.200454+00:00",
+  "repo": "/tmp/test_remote",
+  "migration": "(خطا در مایگریشن: Working outside of application context.\n\nThis typically means that you attempted to use functionality that needed\nthe current application. To solve th)"
+ },
+ {
+  "at": "2026-08-10T06:19:44.968634+00:00",
+  "repo": "/tmp/test_remote",
+  "migration": "(خطا در مایگریشن: Working outside of application context.\n\nThis typically means that you attempted to use functionality that needed\nthe current application. To solve th)"
+ }
+]

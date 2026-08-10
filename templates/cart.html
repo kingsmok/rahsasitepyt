@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+{% block title %}سبد خرید — {{ site.site_name or 'آکادمی آنلاین' }}{% endblock %}
+{% block content %}
+<section class="section" style="padding-top:36px">
+  <div class="container" style="max-width:900px">
+    <nav class="breadcrumb" aria-label="مسیر صفحه">
+      <a href="{{ url_for('site.index') }}">خانه</a><span class="sep">/</span>
+      <span>سبد خرید</span>
+    </nav>
+    <div class="dash-head">
+      <div>
+        <h1>🛒 سبد خرید</h1>
+        <p>{{ fa(items|length) }} آیتم در سبد شما</p>
+      </div>
+    </div>
+
+    {% if items %}
+    <div class="card" style="padding:8px 22px">
+      {% for kind, obj in items %}
+      <div class="cart-row" style="display:flex;gap:14px;align-items:center;padding:14px 0;border-bottom:1px solid var(--border)">
+        {% if kind == 'course' %}
+        <img class="c-thumb" src="/static/img/{{ obj.image }}" alt="{{ obj.title }}" style="width:84px;height:56px;border-radius:10px;object-fit:cover">
+        <div style="flex:1">
+          <h4 style="font-size:14.5px"><a href="{{ url_for('site.course_detail', slug=obj.slug) }}">{{ obj.title }}</a></h4>
+          <small class="text-3">🎓 دوره — {{ obj.level }} — {{ fa(obj.duration_hours) }} ساعت</small>
+        </div>
+        {% else %}
+        <img class="c-thumb" src="{{ obj.image if obj.image.startswith('http') else '/static/img/' + obj.image }}" alt="{{ obj.title }}" style="width:84px;height:56px;border-radius:10px;object-fit:cover">
+        <div style="flex:1">
+          <h4 style="font-size:14.5px"><a href="{{ url_for('products.product_detail', slug=obj.slug) }}">{{ obj.title }}</a></h4>
+          <small class="text-3">🛍 محصول — {{ obj.category or '' }}{% if obj.sku %} · {{ obj.sku }}{% endif %}</small>
+        </div>
+        {% endif %}
+        <span class="price" style="font-weight:800">{{ fa('{:,.0f}'.format(obj.final_price)) }} <small class="text-3">تومان</small></span>
+        <button class="btn btn-sm btn-danger" data-remove-item="{{ kind }}" data-id="{{ obj.id }}">🗑</button>
+      </div>
+      {% endfor %}
+      <div style="padding:16px 0;display:flex;justify-content:space-between;align-items:center">
+        <div class="s-row total"><span>جمع کل</span><span class="price" style="font-size:20px;font-weight:900;color:var(--primary)">{{ fa('{:,.0f}'.format(total)) }} <small class="text-3" style="font-size:12px">تومان</small></span></div>
+        <a class="btn btn-primary btn-lg" href="{{ url_for('shop.checkout') }}">تسویه حساب ←</a>
+      </div>
+    </div>
+    <div class="flex" style="justify-content:center;gap:10px;margin-top:14px">
+      <a class="btn btn-ghost" href="{{ url_for('site.courses') }}">ادامه خرید دوره‌ها</a>
+      <a class="btn btn-ghost" href="{{ url_for('products.product_list') }}">ادامه خرید از فروشگاه</a>
+    </div>
+    {% else %}
+    <div class="card" style="padding:60px;text-align:center">
+      <div style="font-size:46px">🛒</div>
+      <h3 style="margin:12px 0 6px">سبد خرید شما خالی است</h3>
+      <p class="text-2" style="margin-bottom:18px">دوره‌ها یا محصولات مورد علاقه‌تان را اضافه کنید.</p>
+      <div class="flex" style="justify-content:center;gap:10px">
+        <a class="btn btn-primary" href="{{ url_for('site.courses') }}">مشاهده دوره‌ها</a>
+        <a class="btn btn-ghost" href="{{ url_for('products.product_list') }}">مشاهده فروشگاه</a>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelectorAll('[data-remove-item]').forEach(function (btn) {
+  btn.addEventListener('click', function () {
+    var kind = btn.dataset.removeItem;
+    var id = btn.dataset.id;
+    var url = kind === 'course' ? '/api/cart/remove' : '/api/product-cart/remove';
+    var payload = kind === 'course' ? { course_id: parseInt(id, 10) } : { product_id: parseInt(id, 10) };
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }).then(function (r) { return r.json(); }).then(function (d) {
+      if (d.ok) { location.reload(); }
+    });
+  });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,115 @@
+{% extends 'base.html' %}
+{% block title %}{{ seo.title or "تسویه حساب" }}{% endblock %}
+
+{% block content %}
+<section class="section" style="padding-top:36px">
+  <div class="container" style="max-width:960px">
+    <nav class="breadcrumb" aria-label="مسیر صفحه">
+      <a href="{{ url_for('site.index') }}">خانه</a><span class="sep">/</span>
+      <a href="{{ url_for('shop.cart') }}">سبد خرید</a><span class="sep">/</span>
+      <span>تسویه حساب</span>
+    </nav>
+    <div class="dash-head">
+      <div>
+        <h1>🧾 تسویه حساب</h1>
+        <p>مرور سفارش و پرداخت امن</p>
+      </div>
+    </div>
+
+    <div class="grid" style="grid-template-columns:1fr 340px;gap:24px;align-items:start">
+      <div>
+        <!-- آیتم‌ها -->
+        <div class="card mb-3">
+          <div style="padding:18px 22px;border-bottom:1px solid var(--border);font-weight:800">آیتم‌های انتخابی شما ({{ fa(items|length) }})</div>
+          {% for kind, obj in items %}
+          <div class="cart-row">
+            {% if kind == 'course' %}
+            <img class="c-thumb" src="/static/img/{{ obj.image }}" alt="">
+            <div class="c-info">
+              <h4>{{ obj.title }}</h4>
+              <small>🎓 دوره — {{ obj.level }} — {{ fa(obj.duration_hours) }} ساعت</small>
+            </div>
+            {% else %}
+            <img class="c-thumb" src="{{ obj.image if obj.image.startswith('http') else '/static/img/' + obj.image }}" alt="">
+            <div class="c-info">
+              <h4>{{ obj.title }}</h4>
+              <small>🛍 محصول — {{ obj.category or '' }}{% if obj.sku %} · {{ obj.sku }}{% endif %}</small>
+            </div>
+            {% endif %}
+            <span class="price">{{ fa('{:,.0f}'.format(obj.final_price)) }} <small class="text-3">تومان</small></span>
+          </div>
+          {% endfor %}
+        </div>
+
+        <!-- کوپن -->
+        <div class="card mb-3" style="padding:22px">
+          <h4 style="font-size:15px;margin-bottom:12px">🎟️ کد تخفیف</h4>
+          {% if coupon %}
+          <div class="flex between">
+            <span class="badge badge-success">کد {{ coupon.code }} اعمال شد — {{ fa(coupon.value) }}{{ '٪' if coupon.type == 'percent' else ' تومان' }} تخفیف</span>
+            <form method="post">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+<input type="hidden" name="action" value="remove_coupon"><button class="btn btn-danger btn-sm">حذف</button></form>
+          </div>
+          {% else %}
+          <form method="post" class="input-group">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+            <input class="form-control" name="coupon" placeholder="مثلا WELCOME20">
+            <button class="btn btn-outline" type="submit">اعمال کد</button>
+          </form>
+          {% endif %}
+        </div>
+
+        <!-- اطلاعات پرداخت -->
+        <div class="card" style="padding:22px">
+          <h4 style="font-size:15px;margin-bottom:14px">👤 اطلاعات شما</h4>
+          <div class="grid" style="grid-template-columns:1fr 1fr;gap:14px">
+            <div class="form-group" style="margin-bottom:0">
+              <label for="co_name">نام و نام خانوادگی</label>
+              <input id="co_name" class="form-control" value="{{ cur_user.name }}" readonly>
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label for="co_email">ایمیل</label>
+              <input id="co_email" class="form-control" value="{{ cur_user.email }}" readonly dir="ltr">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- خلاصه -->
+      <div class="card" style="padding:16px 20px;margin-bottom:14px">
+        <h3 style="font-size:14px;margin-bottom:10px">💳 پرداخت اقساطی</h3>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <label class="quiz-opt" style="padding:8px 14px"><input type="radio" name="installment_count" value="0" {{ 'checked' if not installment_count }}> پرداخت یکجا</label>
+          {% if final >= 300000 %}
+          <label class="quiz-opt" style="padding:8px 14px"><input type="radio" name="installment_count" value="2" {{ 'checked' if installment_count == 2 }}> ۲ قسط (۳۰٪ + ۷۰٪)</label>
+          <label class="quiz-opt" style="padding:8px 14px"><input type="radio" name="installment_count" value="3" {{ 'checked' if installment_count == 3 }}> ۳ قسط ماهانه</label>
+          <label class="quiz-opt" style="padding:8px 14px"><input type="radio" name="installment_count" value="4" {{ 'checked' if installment_count == 4 }}> ۴ قسط ماهانه</label>
+          {% else %}
+          <small class="text-3" style="font-size:12px">(برای سفارش‌های بالای ۳۰۰٬۰۰۰ تومان فعال می‌شود)</small>
+          {% endif %}
+        </div>
+      </div>
+      <div class="summary-box" style="position:sticky;top:96px">
+        <h3 class="mb-2">خلاصه سفارش</h3>
+        <div class="s-row"><span>جمع دوره‌ها</span><span>{{ fa('{:,.0f}'.format(subtotal)) }} تومان</span></div>
+        {% if discount %}
+        <div class="s-row" style="color:var(--success)"><span>تخفیف کوپن</span><span>− {{ fa('{:,.0f}'.format(discount)) }} تومان</span></div>
+        {% endif %}
+        {% if loyalty_discount %}
+        <div class="s-row" style="color:var(--success)"><span>🎖 تخفیف دانشجوی قدیمی (۵٪)</span><span>− {{ fa('{:,.0f}'.format(loyalty_discount)) }} تومان</span></div>
+        {% endif %}
+        <div class="s-row total"><span>قابل پرداخت</span><span class="price">{{ fa('{:,.0f}'.format(final)) }} <small class="text-3" style="font-size:12px">تومان</small></span></div>
+        <form method="post" style="margin-top:16px">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+          <input type="hidden" name="action" value="create_order">
+          <button class="btn btn-primary btn-lg btn-block" type="submit">ادامه و انتخاب درگاه پرداخت ←</button>
+        </form>
+        <p class="text-center mt-2" style="font-size:11.5px;color:var(--text-3)">با ادامه، شرایط استفاده را می‌پذیرید</p>
+        <div class="secure">🛡️ پرداخت امن با رمزنگاری SSL</div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

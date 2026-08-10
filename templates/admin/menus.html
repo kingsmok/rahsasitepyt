@@ -1,0 +1,62 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}منوساز{% endblock %}
+{% block acontent %}
+<div class="dash-head">
+  <div><h1>🧭 منوساز حرفه‌ای</h1><p>چند منو بسازید — هر آیتم آیکون، لینک و نقش مجاز دارد</p></div>
+</div>
+<div class="grid" style="grid-template-columns:1fr 2fr;gap:18px;align-items:start">
+  <div class="card" style="padding:22px">
+    <h2 style="font-size:14px;margin-bottom:12px">+ منوی جدید</h2>
+    <form method="post" action="{{ url_for('admin.menu_new') }}">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+      <div class="form-group"><label>عنوان منو</label><input class="form-control" name="title" required placeholder="مثلاً: منوی اصلی جدید"></div>
+      <div class="form-group"><label>موقعیت</label>
+        <select class="form-control" name="location">
+          <option value="main">هدر (اصلی)</option><option value="footer">فوتر</option>
+          <option value="mobile">موبایل</option><option value="user">پنل کاربری</option>
+        </select>
+      </div>
+      <button class="btn btn-primary btn-block" type="submit">➕ ساخت منو</button>
+    </form>
+    <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:12px">
+      <h3 style="font-size:13px;margin-bottom:8px">منوهای موجود</h3>
+      {% for m in menus %}
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
+        <div>
+          <strong style="font-size:13px">{{ m.title }}</strong>
+          <small class="text-3" style="display:block;font-size:11px">{{ m.location }} — {{ fa(m.items|length) }} آیتم</small>
+        </div>
+        <div style="display:flex;gap:6px">
+          <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.menu_edit', mid=m.id) }}">✏️</a>
+          <form method="post" action="{{ url_for('admin.menu_toggle', mid=m.id) }}">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+            <button class="btn btn-ghost btn-sm">{{ '⏸' if m.is_active else '▶️' }}</button>
+          </form>
+          <form method="post" action="{{ url_for('admin.menu_delete', mid=m.id) }}">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+            <button class="btn btn-danger btn-sm" onclick="return confirm('حذف منو؟')">🗑</button>
+          </form>
+        </div>
+      </div>
+      {% else %}
+      <p class="text-3" style="font-size:12.5px">منویی ساخته نشده.</p>
+      {% endfor %}
+    </div>
+  </div>
+  <div class="card" style="padding:22px">
+    <h2 style="font-size:14px;margin-bottom:8px">📖 راهنمای آیتم‌های منو</h2>
+    <p class="text-3" style="font-size:12px;margin-bottom:12px">هر خط یک آیتم با فرمت:<br>
+      <code dir="ltr">برچسب | آدرس | آیکون | نقش‌ها</code><br>
+      نقش‌ها خالی = برای همه · یا: <code dir="ltr">student,teacher,admin</code></p>
+    <p class="form-hint">مثال: مدیریت دوره‌ها | /admin/courses | 📚 | admin,teacher — این آیتم فقط برای مدیر و استاد نمایش داده می‌شود.</p>
+    <div class="form-group" style="margin-top:10px">
+      <label>نمونه آیتم‌ها</label>
+      <textarea class="form-control" dir="rtl" rows="8" readonly>خانه | / | 🏠 |
+دوره‌ها | /courses | 📚 |
+دوره‌های من | /dashboard/my-courses | 📖 | student
+پنل مدیریت | /admin/ | ⚙️ | admin
+مدرس شو | /become-teacher | 👨‍🏫 |</textarea>
+    </div>
+  </div>
+</div>
+{% endblock %}

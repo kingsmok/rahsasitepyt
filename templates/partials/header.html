@@ -1,0 +1,138 @@
+<!-- هدر دیجی‌کالایی — نسخه پیش‌فرض (با صفحه‌ساز هم قابل ویرایش است) -->
+<header class="site-header dk-header">
+  <!-- نوار بالا -->
+  <div class="dk-topbar container" style="padding-top:8px;padding-bottom:8px;font-size:12px">
+    <div class="dk-topbar-right">
+      <button class="dk-mega-trigger" type="button" data-dk-mega style="background:none;box-shadow:none;color:var(--primary);padding:6px 10px">{{ icon('menu-2', 15) }} دسته‌بندی دوره‌ها</button>
+      <a href="{{ url_for('products.product_list') }}">{{ icon('package', 15) }} فروشگاه محصولات</a>
+      <a href="{{ url_for('site.faq') }}">راهنمای خرید</a>
+    </div>
+    <div class="dk-topbar-left">
+      <span>{{ icon('shield-check', 15) }} ۷ روز ضمانت بازگشت وجه</span>
+      <span>{{ icon('credit-card', 15) }} پرداخت امن شتاب</span>
+      <a href="tel:{{ site.phone or '02191001234' }}">{{ icon('phone', 15) }} {{ fa(site.phone or '۰۲۱-۹۱۰۰۱۲۳۴') }}</a>
+      {% if cur_user %}
+      <a href="{{ url_for('student.dashboard') }}">{{ icon('user', 15) }} {{ cur_user.name.split()[0] }}</a>
+      {% else %}
+      <a href="{{ url_for('auth.login') }}">ورود</a>
+      <span>|</span>
+      <a href="{{ url_for('auth.register') }}">ثبت‌نام</a>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ردیف اصلی -->
+  <div class="container">
+    <div class="dk-main">
+      <a class="dk-logo" href="{{ url_for('site.index') }}">
+        <span class="dk-logo-ic">{{ icon('school', 22) }}</span>
+        <span><b>{{ site.site_name or 'آکادمی آنلاین' }}</b><small>مرجع آموزش آنلاین فارسی</small></span>
+      </a>
+
+      <form class="dk-search" action="{{ url_for('site.courses') }}" method="get">
+        <select class="dk-search-cat" name="cat" aria-label="انتخاب دسته دوره‌ها">
+          <option value="">همه دسته‌ها</option>
+          {% for c in site_categories %}<option value="{{ c.slug }}" {{ 'selected' if request.args.get('cat') == c.slug }}>{{ c.name }}</option>{% endfor %}
+        </select>
+        <input type="text" name="q" placeholder="جستجو در همه دوره‌ها..." value="{{ request.args.get('q', '') }}" aria-label="جستجو در دوره‌ها">
+        <button type="submit">{{ icon('search', 17) }}</button>
+      </form>
+
+      <div class="dk-actions">
+        <a class="dk-icon-link" href="{{ url_for('student.favorites') }}" title="علاقه‌مندی‌ها">
+          <span class="dk-icon">{{ icon('heart', 21) }}</span><small>علاقه‌مندی</small>
+        </a>
+        <a class="dk-icon-link" href="{{ url_for('shop.cart') }}" title="سبد خرید">
+          <span class="dk-icon">{{ icon('shopping-cart', 21) }}<i class="dk-badge cart-count" style="{{ 'display:none' if not cart_count }}">{{ fa(cart_count) }}</i></span>
+          <small>سبد خرید</small>
+        </a>
+        {% if cur_user %}
+        <div class="dk-user">
+          <div class="dk-user-chip">
+            {% if cur_user.avatar %}<img class="avatar" src="{{ cur_user.avatar_url }}" alt="">{% else %}<span class="avatar" style="background:{{ cur_user.avatar_color }}">{{ cur_user.initials() }}</span>{% endif %}
+            <span class="dk-user-name">{{ cur_user.name.split()[0] }} {{ icon('chevron-down', 12) }}</span>
+          </div>
+          <div class="dk-user-dd">
+            <a href="{{ url_for('student.dashboard') }}">{{ icon('dashboard', 16) }} داشبورد</a>
+            <a href="{{ url_for('student.my_courses') }}">{{ icon('book', 16) }} دوره‌های من</a>
+            <a href="{{ url_for('student.favorites') }}">{{ icon('heart', 16) }} علاقه‌مندی‌ها</a>
+            <a href="{{ url_for('student.orders') }}">{{ icon('receipt', 16) }} سفارش‌ها</a>
+            <a href="{{ url_for('student.tickets') }}">{{ icon('ticket', 16) }} تیکت‌ها</a>
+            {% if cur_user.is_admin %}<a href="{{ url_for('admin.overview') }}">{{ icon('settings', 16) }} پنل مدیریت</a>{% endif %}
+            <a class="dk-user-exit" href="{{ url_for('auth.logout') }}">{{ icon('logout', 16) }} خروج</a>
+          </div>
+        </div>
+        {% else %}
+        <div class="dk-auth"><a href="{{ url_for('auth.login') }}">ورود</a><span>|</span><a href="{{ url_for('auth.register') }}">ثبت‌نام</a></div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- نوار دسته‌ها + منوی مگا -->
+  <div class="container">
+    <div class="dk-navrow">
+      <div class="dk-mega" id="dk-mega">
+        <button class="dk-mega-trigger" type="button">{{ icon('menu-2', 16) }} دسته‌بندی دوره‌ها</button>
+        <div class="dk-mega-panel dk-mega-with-account">
+          <div class="dk-mega-cats" style="grid-template-columns:repeat(3,1fr)">
+          {% for c in site_categories %}
+          <div class="dk-mega-col">
+            <a class="dk-mega-head" href="{{ url_for('site.courses', cat=c.slug) }}"><span class="ic" style="background:{{ c.color }}">{{ c.icon }}</span>{{ c.name }}</a>
+            {% for cs in c.courses[:4] %}
+            <a class="dk-mega-link" href="{{ url_for('site.course_detail', slug=cs.slug) }}">{{ cs.title }}</a>
+            {% endfor %}
+            <a class="dk-mega-all" href="{{ url_for('site.courses', cat=c.slug) }}">مشاهده همه ←</a>
+          </div>
+          {% endfor %}
+          </div>
+          <aside class="dk-mega-account">
+            {% if cur_user %}
+            <div class="dk-acc-head">
+              {% if cur_user.avatar %}<img class="dk-acc-avatar" src="{{ cur_user.avatar_url }}" alt="">{% else %}<span class="avatar" style="background:{{ cur_user.avatar_color }}">{{ cur_user.initials() }}</span>{% endif %}
+              <strong>{{ cur_user.name }}</strong>
+              <small>کد ملی: {{ cur_user.masked_national_code }}</small>
+              <small dir="ltr">{{ cur_user.phone or '' }}</small>
+            </div>
+            <div class="dk-acc-links">
+              <a href="{{ url_for('student.dashboard') }}">{{ icon('dashboard', 16) }} داشبورد</a>
+              <a href="{{ url_for('student.my_courses') }}">{{ icon('book', 16) }} دوره‌های من</a>
+              <a href="{{ url_for('student.favorites') }}">{{ icon('heart', 16) }} علاقه‌مندی‌ها</a>
+              <a href="{{ url_for('student.orders') }}">{{ icon('receipt', 16) }} سفارش‌ها</a>
+              <a href="{{ url_for('student.tickets') }}">{{ icon('ticket', 16) }} تیکت‌ها</a>
+              {% if cur_user.is_admin %}<a href="{{ url_for('admin.overview') }}">{{ icon('settings', 16) }} پنل مدیریت</a>{% endif %}
+              <a class="dk-user-exit" href="{{ url_for('auth.logout') }}">{{ icon('logout', 16) }} خروج</a>
+            </div>
+            {% else %}
+            <h5 style="font-size:13px;font-weight:800;margin-bottom:10px">{{ icon('lock', 16) }} ورود به حساب</h5>
+            <form class="dk-acc-form" action="{{ url_for('auth.phone_send') }}" method="post">
+<input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+              <input type="text" name="phone" placeholder="شماره موبایل 09..." dir="ltr" pattern="09[0-9]{9}" required>
+              <button type="submit">{{ icon('device-mobile', 16) }} ورود با شماره تماس</button>
+            </form>
+            <div class="dk-acc-alt">
+              <a href="{{ url_for('auth.register') }}">{{ icon('sparkles', 16) }} ثبت‌نام (کد ملی + موبایل)</a>
+              <a href="{{ url_for('auth.login') }}">{{ icon('mail', 16) }} ورود با ایمیل</a>
+            </div>
+            {% endif %}
+          </aside>
+        </div>
+      </div>
+      <div class="dk-strip">
+        <a class="dk-strip-all" href="{{ url_for('site.courses') }}">همه دوره‌ها</a>
+        {% for c in site_categories[:9] %}
+        <a href="{{ url_for('site.courses', cat=c.slug) }}">{{ c.icon }} {{ c.name }}</a>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- مگا منو موبایل -->
+<div class="dk-mega-panel dk-mega-mobile" id="dk-mega-mobile" style="grid-template-columns:repeat(2,1fr)">
+  {% for c in site_categories %}
+  <div class="dk-mega-col">
+    <a class="dk-mega-head" href="{{ url_for('site.courses', cat=c.slug) }}"><span class="ic" style="background:{{ c.color }}">{{ c.icon }}</span>{{ c.name }}</a>
+  </div>
+  {% endfor %}
+</div>

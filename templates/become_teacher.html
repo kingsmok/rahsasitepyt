@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+{% block title %}{{ seo.title or "مدرس شو — آکادمی آنلاین" }}{% endblock %}
+{% block description %}{{ seo.description or 'اگر در حوزه تخصصی خودتان مهارت دارید و عاشق آموزش هستید، با آکادمی آنلاین همکاری کنید. ثبت درخواست تدریس — ساده و سریع.' }}{% endblock %}
+
+{% block content %}
+<section class="section">
+  <div class="container" style="max-width:860px">
+    <nav class="breadcrumb" aria-label="مسیر صفحه">
+      <a href="{{ url_for('site.index') }}">خانه</a><span class="sep">/</span>
+      <span>مدرس شو</span>
+    </nav>
+    <div class="card" style="padding:40px;border-radius:20px">
+      <div class="section-head" style="margin-bottom:30px">
+        <span class="tag">👨‍🏫 همکاری با آکادمی</span>
+        <h1 style="font-size:clamp(22px,3vw,30px)">مدرس شو؛ دانشت را به درآمد و اثر تبدیل کن</h1>
+        <p>اگر در برنامه‌نویسی، طراحی، هوش مصنوعی یا هر مهارت دیگری تخصص داری و عاشق آموزش هستی، فرم زیر را پر کن تا تیم ما با تو تماس بگیرد.</p>
+      </div>
+
+      <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:34px">
+        <div class="card" style="padding:18px;text-align:center"><div style="font-size:26px">🎥</div><strong>تولید حرفه‌ای</strong><small class="text-3" style="display:block">ضبط استودیویی با تیم ما</small></div>
+        <div class="card" style="padding:18px;text-align:center"><div style="font-size:26px">📣</div><strong>مارکتینگ</strong><small class="text-3" style="display:block">معرفی دوره به هزاران دانشجو</small></div>
+        <div class="card" style="padding:18px;text-align:center"><div style="font-size:26px">💰</div><strong>درآمد منصفانه</strong><small class="text-3" style="display:block">اشتراک درآمد شفاف و منظم</small></div>
+        <div class="card" style="padding:18px;text-align:center"><div style="font-size:26px">🎓</div><strong>برند شخصی</strong><small class="text-3" style="display:block">ساخت اعتبار به‌عنوان مدرس</small></div>
+      </div>
+
+      <form method="post" class="grid" style="grid-template-columns:1fr 1fr;gap:16px">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+        <div class="form-group">
+          <label for="f_name_1">نام و نام خانوادگی *</label>
+          <input id="f_name_1" class="form-control" name="name" required placeholder="مثلاً: سارا محمدی">
+        </div>
+        <div class="form-group">
+          <label for="f_email_1">ایمیل</label>
+          <input id="f_email_1" class="form-control" name="email" type="email" dir="ltr" placeholder="you@example.com">
+        </div>
+        <div class="form-group">
+          <label for="f_phone_1">شماره تماس</label>
+          <input id="f_phone_1" class="form-control" name="phone" dir="ltr" placeholder="0912..." pattern="09[0-9]{9}">
+        </div>
+        <div class="form-group">
+          <label for="f_expertise_1">تخصص / موضوع تدریس *</label>
+          <input id="f_expertise_1" class="form-control" name="expertise" required placeholder="مثلاً: پایتون، طراحی UI/UX، هوش مصنوعی">
+        </div>
+        <div class="form-group" style="grid-column:1/-1">
+          <label for="f_sample_1">لینک نمونه‌کار (اختیاری)</label>
+          <input id="f_sample_1" class="form-control" name="sample" dir="ltr" placeholder="https://github.com/... یا لینک دوره/پروژه شما">
+        </div>
+        <div class="form-group" style="grid-column:1/-1">
+          <label for="f_message_1">توضیحات (سابقه تدریس، تجربه کاری)</label>
+          <textarea id="f_message_1" class="form-control" name="message" rows="5" placeholder="کمی درباره سابقه کاری و تدریس خود بنویسید..."></textarea>
+        </div>
+        <div style="grid-column:1/-1">{{ captcha_box() }}</div>
+        <div style="grid-column:1/-1">
+          <button class="btn btn-primary btn-lg btn-block" type="submit">🚀 ارسال درخواست همکاری</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</section>
+{% endblock %}

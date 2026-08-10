@@ -1,0 +1,52 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}فیش‌های واریزی{% endblock %}
+{% block acontent %}
+<div class="dash-head">
+  <div><h1>🧾 فیش‌های کارت‌به‌کارت</h1><p>ثبت‌شده‌ها و وضعیت تایید</p></div>
+  <div class="flex gap-1">
+    <a class="btn btn-sm {{ 'btn-primary' if not status else 'btn-ghost' }}" href="{{ url_for('admin.proofs') }}">همه</a>
+    <a class="btn btn-sm {{ 'btn-primary' if status == 'pending' else 'btn-ghost' }}" href="{{ url_for('admin.proofs', status='pending') }}">در انتظار</a>
+    <a class="btn btn-sm {{ 'btn-primary' if status == 'approved' else 'btn-ghost' }}" href="{{ url_for('admin.proofs', status='approved') }}">تایید شده</a>
+    <a class="btn btn-sm {{ 'btn-primary' if status == 'rejected' else 'btn-ghost' }}" href="{{ url_for('admin.proofs', status='rejected') }}">رد شده</a>
+  </div>
+</div>
+
+{% if proofs %}
+<div class="card" style="padding:22px">
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>سفارش</th><th>واریزکننده</th><th>شماره پیگیری</th><th>مبلغ</th><th>تاریخ</th><th>وضعیت</th><th>عملیات</th></tr></thead>
+      <tbody>
+        {% for pr in proofs %}
+        <tr>
+          <td><a href="{{ url_for('admin.order_detail', oid=pr.order_id) }}" dir="ltr">{{ pr.order.code }}</a></td>
+          <td>{{ pr.payer_name }}</td>
+          <td dir="ltr">{{ pr.ref_number }}</td>
+          <td>{{ fa('{:,.0f}'.format(pr.amount)) }}</td>
+          <td>{{ pr.created_at|jdatetime }}</td>
+          <td>{% if pr.status == 'approved' %}<span class="badge badge-success">✅ تایید</span>{% elif pr.status == 'rejected' %}<span class="badge badge-danger">❌ رد</span>{% else %}<span class="badge badge-accent">⏳ در انتظار</span>{% endif %}</td>
+          <td style="white-space:nowrap">
+            {% if pr.file %}<a class="btn btn-ghost btn-sm" href="/uploads/proofs/{{ pr.file }}" target="_blank">👁 فیش</a>{% endif %}
+            {% if pr.status == 'pending' %}
+            <form method="post" action="{{ url_for('admin.proof_verify', pid=pr.id) }}" style="display:inline">
+              <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+              <input type="hidden" name="action" value="approve">
+              <button class="btn btn-success btn-sm">✓ تایید</button>
+            </form>
+            <form method="post" action="{{ url_for('admin.proof_verify', pid=pr.id) }}" style="display:inline">
+              <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+              <input type="hidden" name="action" value="reject">
+              <button class="btn btn-danger btn-sm">✕</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<div class="card text-center" style="padding:50px"><p class="text-3">فیشی یافت نشد.</p></div>
+{% endif %}
+{% endblock %}

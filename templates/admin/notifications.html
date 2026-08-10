@@ -1,0 +1,93 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}اعلان گروهی{% endblock %}
+{% block acontent %}
+<div class="dash-head"><div><h1>🔔 اعلان‌های گروهی</h1><p>ارسال اعلان داخل‌سایتی به همه کاربران، یک نقش یا دانشجویان یک دوره</p></div></div>
+<div class="grid" style="grid-template-columns:1fr 1fr;gap:18px;align-items:start">
+  <div class="card" style="padding:22px">
+    <h2 style="font-size:14px;margin-bottom:14px">📣 اعلان جدید</h2>
+    <form method="post">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+      <div class="form-group">
+        <label>عنوان</label>
+        <input class="form-control" name="title" required placeholder="مثلاً: تخفیف ویژه پایان هفته 🎉">
+      </div>
+      <div class="form-group">
+        <label>متن</label>
+        <textarea class="form-control" name="body" rows="3" placeholder="توضیح کوتاه اعلان..."></textarea>
+      </div>
+      <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px">
+        <div class="form-group">
+          <label>آیکون</label>
+          <select class="form-control" name="icon">
+            <option value="🔔">🔔 زنگوله</option>
+            <option value="🎁">🎁 هدیه</option>
+            <option value="🔥">🔥 ویژه</option>
+            <option value="📚">📚 آموزشی</option>
+            <option value="💳">💳 پرداخت</option>
+            <option value="🏆">🏆 مسابقه</option>
+            <option value="📢">📢 اطلاعیه</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>لینک (اختیاری)</label>
+          <input class="form-control" name="link" dir="ltr" placeholder="/courses">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>مخاطب</label>
+        <select class="form-control" name="audience" id="audience-select" onchange="toggleAudience()">
+          <option value="all">همه کاربران</option>
+          <option value="role">یک نقش خاص</option>
+          <option value="course">دانشجویان یک دوره</option>
+        </select>
+      </div>
+      <div class="form-group" id="role-box" style="display:none">
+        <label>نقش</label>
+        <select class="form-control" name="role">
+          <option value="student">دانشجو</option>
+          <option value="teacher">مدرس</option>
+          <option value="admin">ادمین</option>
+          <option value="secretary">منشی</option>
+          <option value="support">پشتیبان</option>
+          <option value="operator">اپراتور</option>
+        </select>
+      </div>
+      <div class="form-group" id="course-box" style="display:none">
+        <label>دوره</label>
+        <select class="form-control" name="course_id">
+          {% for c in courses %}
+          <option value="{{ c.id }}">{{ c.title }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button class="btn btn-primary" type="submit">📨 ارسال اعلان</button>
+    </form>
+    <script>
+    function toggleAudience(){
+      var v = document.getElementById('audience-select').value;
+      document.getElementById('role-box').style.display = v === 'role' ? '' : 'none';
+      document.getElementById('course-box').style.display = v === 'course' ? '' : 'none';
+    }
+    </script>
+  </div>
+  <div class="card" style="padding:22px">
+    <h2 style="font-size:14px;margin-bottom:12px">🕘 آخرین اعلان‌ها</h2>
+    <div style="max-height:520px;overflow:auto">
+      {% for n in recent %}
+      <div style="padding:12px 0;border-bottom:1px solid var(--border)">
+        <div class="flex between" style="align-items:center;gap:8px">
+          <strong style="font-size:13px">{{ n.icon }} {{ n.title }}</strong>
+          <small class="text-3" style="font-size:10.5px">{{ n.created_at|jdatetime }}</small>
+        </div>
+        <p class="text-2" style="font-size:12px;margin:4px 0 0">{{ n.body[:120] }}</p>
+        {% if n.user %}
+        <small class="text-3" style="font-size:10.5px">برای: {{ n.user.name }}</small>
+        {% endif %}
+      </div>
+      {% else %}
+      <p class="text-3" style="font-size:13px">هنوز اعلانی ارسال نشده است.</p>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

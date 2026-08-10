@@ -1,0 +1,52 @@
+{% macro course_card(course) %}
+{% set cu = bc_cur_user() %}
+{% set fids = bc_fav_ids() %}
+<article class="card course-card card-hover">
+  <div class="thumb">
+    <a href="{{ url_for('site.course_detail', slug=course.slug) }}">
+      <img src="/static/img/{{ course.image }}" alt="دوره {{ course.title }} — {{ bc_site().get('site_name') or 'آکادمی آنلاین' }}" loading="lazy" decoding="async" width="640" height="360">
+    </a>
+    <div class="badges">
+      {% if course.has_discount %}<span class="discount-flag">٪{{ fa(course.discount_percent) }} تخفیف</span>{% endif %}
+      {% if course.is_free() %}<span class="badge badge-success">رایگان</span>{% endif %}
+      {% if course.featured %}<span class="badge badge-accent">ویژه</span>{% endif %}
+    </div>
+    <button class="fav-btn {{ 'active' if cu and (cu.id, course.id) in fids }}" data-fav="{{ course.id }}" title="علاقه‌مندی">
+      {{ '❤️' if cu and (cu.id, course.id) in fids else '🤍' }}
+    </button>
+  </div>
+  <div class="body">
+    <span class="cat">{{ course.category.name if course.category else 'دوره' }}</span>
+    <h3><a href="{{ url_for('site.course_detail', slug=course.slug) }}">{{ course.title }}</a></h3>
+    <div class="meta">
+      <span>⭐ {{ fa(course.rating) if course.rating else '—' }} ({{ fa(course.reviews|length) }})</span>
+      <span>👥 {{ fa(course.students_count) }} دانشجو</span>
+      <span>⏱ {{ fa(course.duration_hours) }} ساعت</span>
+    </div>
+    <div class="teacher">
+      {% if course.teacher %}
+      <span class="avatar" style="background:{{ course.teacher.avatar_color }}">{{ course.teacher.initials() }}</span>
+      <small>{{ course.teacher.name }}</small>
+      {% endif %}
+    </div>
+      <div class="foot">
+      <div>
+        {% if course.has_discount %}
+        <span class="price-old">{{ fa('{:,.0f}'.format(course.price)) }}</span>
+        {% endif %}
+        {% if course.is_free() %}
+        <span class="price free">رایگان</span>
+        {% else %}
+        <span class="price">{{ fa('{:,.0f}'.format(course.final_price)) }} <small style="font-size:11px;color:var(--text-3)">تومان</small></span>
+        {% endif %}
+      </div>
+      <div class="flex gap-1">
+        {% if not (cu and course.id in cu_enrolled_ids) %}
+        <button type="button" class="btn btn-outline-primary btn-sm card-add-btn" data-add-cart="{{ course.id }}" title="افزودن به سبد خرید">🛒</button>
+        {% endif %}
+        <a class="btn btn-primary btn-sm" href="{{ url_for('site.course_detail', slug=course.slug) }}">مشاهده دوره</a>
+      </div>
+    </div>
+  </div>
+</article>
+{% endmacro %}

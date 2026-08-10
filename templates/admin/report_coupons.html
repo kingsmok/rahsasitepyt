@@ -1,0 +1,26 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}گزارش تخفیف‌ها{% endblock %}
+{% block acontent %}
+<div class="dash-head"><div><h1>🎟 گزارش مصرف کدهای تخفیف</h1><p>کدام کوپن‌ها واقعاً استفاده شده‌اند و چقدر فروش ساخته‌اند</p></div></div>
+<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:18px">
+  <div class="card" style="padding:18px;text-align:center"><div style="font-size:26px">🎟</div><strong>{{ fa(rows|length) }}</strong><small class="text-3" style="display:block">کوپن</small></div>
+  <div class="card" style="padding:18px;text-align:center"><div style="font-size:26px">🛒</div><strong>{{ fa(rows|sum(attribute='used')) }}</strong><small class="text-3" style="display:block">مصرف کل</small></div>
+  <div class="card" style="padding:18px;text-align:center"><div style="font-size:26px">💸</div><strong>{{ fa('{:,.0f}'.format(total_saved)) }}</strong><small class="text-3" style="display:block">تخفیف داده‌شده (تومان)</small></div>
+</div>
+<div class="card" style="padding:22px">
+  <div class="table-wrap"><table class="table" style="width:100%;font-size:13px">
+    <thead><tr><th>کد</th><th>نوع</th><th>مصرف</th><th>تخفیف داده‌شده</th><th>فروش ایجادشده</th></tr></thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td><code dir="ltr">{{ r.coupon.code }}</code></td>
+        <td>{{ 'درصدی' if r.coupon.percent else 'مبلغی' }} ({{ r.coupon.percent or r.coupon.amount }})</td>
+        <td><span class="badge" style="background:{{ '#dcfce7;color:#15803d' if r.used else '#f1f5f9;color:#64748b' }}">{{ fa(r.used) }} بار</span></td>
+        <td>{{ fa('{:,.0f}'.format(r.saved)) }} تومان</td>
+        <td>{{ fa('{:,.0f}'.format(r.revenue)) }} تومان</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+</div>
+{% endblock %}

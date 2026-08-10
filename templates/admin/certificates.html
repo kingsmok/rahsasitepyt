@@ -1,0 +1,28 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}گواهی‌ها{% endblock %}
+{% block acontent %}
+<div class="dash-head"><div><h1>🏅 گواهی‌های صادرشده</h1><p>{{ fa(certs|length) }} گواهی — استعلام عمومی در /verify-certificate</p></div></div>
+<div class="card" style="padding:20px">
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>دانشجو</th><th>دوره</th><th>تاریخ صدور</th><th>کد رهگیری</th><th>عملیات</th></tr></thead>
+    <tbody>
+      {% for c in certs %}
+      <tr>
+        <td><strong>{{ c.user }}</strong></td>
+        <td>{{ c.course[:40] }}</td>
+        <td>{{ c.date|jdate }}</td>
+        <td dir="ltr" style="font-size:12px">{{ c.code }}</td>
+        <td>
+          <form method="post" action="{{ url_for('admin.certificate_revoke', eid=c.id) }}">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+            <button class="btn btn-danger btn-sm" onclick="return confirm('گواهی لغو شود؟')">⚠️ لغو</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" class="text-center text-3">گواهی صادر نشده.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+</div>
+{% endblock %}

@@ -1,0 +1,23 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}تاریخچه نسخه‌ها{% endblock %}
+{% block acontent %}
+<div class="dash-head"><div><h1>🕘 تاریخچه نسخه‌های «{{ page.title }}»</h1><p>بازگردانی با یک کلیک — نسخه فعلی قبل از بازگردانی خودکار ذخیره می‌شود</p></div><a class="btn btn-ghost" href="{{ url_for('admin.pages') }}">← صفحات</a></div>
+<div class="card" style="padding:22px">
+  {% if revs %}
+  {% for r in revs %}
+  <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border)">
+    <div>
+      <strong style="font-size:13.5px">{{ r.note or 'ویرایش' }}</strong>
+      <small class="text-3" style="display:block;font-size:11.5px">{{ r.created_at|jdatetime }} — توسط {{ r.author.name if r.author else 'سیستم' }}</small>
+    </div>
+    <form method="post" action="{{ url_for('admin.page_revision_restore', rid=r.id) }}">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+      <button class="btn btn-primary btn-sm" onclick="return confirm('این نسخه بازیابی شود؟ نسخه فعلی ذخیره خواهد شد.')">↩️ بازیابی</button>
+    </form>
+  </div>
+  {% endfor %}
+  {% else %}
+  <p class="text-3 text-center" style="padding:30px">هنوز نسخه‌ای ثبت نشده — با هر ویرایش در صفحه‌ساز، نسخه قبلی اینجا ذخیره می‌شود.</p>
+  {% endif %}
+</div>
+{% endblock %}

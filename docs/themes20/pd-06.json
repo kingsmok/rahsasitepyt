@@ -1,0 +1,215 @@
+{
+  "theme_id": "pd-06",
+  "theme_name": "ترمه یزدی",
+  "category": "لوکس - مدیریتی",
+  "colors": {
+    "primary": "#5B3E8F",
+    "secondary": "#E8B4C8",
+    "accent": "#C9A227",
+    "background": "#FAF7F4",
+    "text": "#2C2340"
+  },
+  "layout_components": {
+    "homepage": "<section dir=\"rtl\" style=\"font-family:Vazirmatn,Tahoma,sans-serif;background:#FAF7F4;color:#2C2340;padding:40px 20px;line-height:1.9\">\n  <div style=\"max-width:1100px;margin:0 auto;text-align:center\">\n    <span style=\"display:inline-block;background:#C9A22722;color:#C9A227;font-weight:800;border-radius:99px;padding:6px 18px;font-size:13px\">ترمه یزدی</span>\n    <h1 style=\"font-size:clamp(26px,4.5vw,44px);font-weight:900;margin:18px 0 12px;color:#2C2340\">مدیریت، هنر بافت ترمه</h1>\n    <p style=\"max-width:620px;margin:0 auto 26px;color:#2C234099;font-size:15px\">دوره‌های مدیریتی و MBA با ظرافت ترمه‌های یزد — فاخر و ماندگار.</p>\n    <div style=\"display:flex;gap:12px;justify-content:center;flex-wrap:wrap\">\n      <a href=\"/courses\" style=\"background:#5B3E8F;color:#fff;text-decoration:none;font-weight:800;padding:13px 30px;border-radius:14px;box-shadow:0 10px 24px #5B3E8F44\">💎 دوره‌های مدیریت</a>\n      <a href=\"/about\" style=\"border:2px solid #C9A227;color:#C9A227;text-decoration:none;font-weight:800;padding:12px 30px;border-radius:14px\">درباره ما</a>\n    </div>\n    <div style=\"display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-top:34px\">\n      <div style=\"background:#fff;border-radius:16px;padding:18px;border:1px solid #5B3E8F22\"><b style=\"font-size:22px;color:#5B3E8F\">۱۵۰+</b><div style=\"font-size:12.5px;color:#2C234088\">دوره آموزشی</div></div>\n      <div style=\"background:#fff;border-radius:16px;padding:18px;border:1px solid #5B3E8F22\"><b style=\"font-size:22px;color:#5B3E8F\">۵۰,۰۰۰+</b><div style=\"font-size:12.5px;color:#2C234088\">دانشجوی فعال</div></div>\n      <div style=\"background:#fff;border-radius:16px;padding:18px;border:1px solid #5B3E8F22\"><b style=\"font-size:22px;color:#5B3E8F\">۲,۰۰۰+</b><div style=\"font-size:12.5px;color:#2C234088\">ساعت آموزش</div></div>\n      <div style=\"background:#fff;border-radius:16px;padding:18px;border:1px solid #5B3E8F22\"><b style=\"font-size:22px;color:#5B3E8F\">٪۹۸</b><div style=\"font-size:12.5px;color:#2C234088\">رضایت</div></div>\n    </div>\n  </div></section>",
+    "course_card": "<section dir=\"rtl\" style=\"font-family:Vazirmatn,Tahoma,sans-serif;background:#FAF7F4;color:#2C2340;padding:40px 20px;line-height:1.9\">\n  <div style=\"max-width:380px;margin:0 auto;background:#fff;border-radius:20px;overflow:hidden;border:1px solid #5B3E8F22;box-shadow:0 14px 34px #2C234012\">\n    <div style=\"height:170px;background:linear-gradient(135deg,#5B3E8F,#E8B4C8)\"></div>\n    <div style=\"padding:20px\">\n      <span style=\"font-size:11px;color:#5B3E8F;font-weight:800;background:#5B3E8F14;padding:4px 12px;border-radius:99px\">دوره جامع</span>\n      <h3 style=\"font-size:17px;font-weight:900;margin:12px 0 8px;color:#2C2340\">عنوان دوره نمونه — ترمه یزدی</h3>\n      <p style=\"font-size:12.5px;color:#2C234088;margin-bottom:14px\">توضیح کوتاه درباره سرفصل‌ها و دستاوردهای این دوره آموزشی…</p>\n      <div style=\"display:flex;align-items:center;justify-content:space-between;border-top:1px dashed #5B3E8F33;padding-top:14px\">\n        <div><b style=\"font-size:18px;color:#5B3E8F\">۱,۲۵۰,۰۰۰</b> <small style=\"color:#2C234077\">تومان</small></div>\n        <a href=\"/courses\" style=\"background:#5B3E8F;color:#fff;text-decoration:none;font-weight:800;padding:10px 22px;border-radius:12px\">خرید سریع 🛒</a>\n      </div>\n    </div>\n  </div></section>",
+    "video_player": "<section dir=\"rtl\" style=\"font-family:Vazirmatn,Tahoma,sans-serif;background:#FAF7F4;color:#2C2340;padding:40px 20px;line-height:1.9\">\n  <div style=\"max-width:900px;margin:0 auto;display:grid;grid-template-columns:1fr 280px;gap:16px\" class=\"resp\">\n    <div style=\"border-radius:18px;overflow:hidden;background:#000;aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;color:#fff;font-size:52px\">▶</div>\n    <div style=\"background:#fff;border:1px solid #5B3E8F22;border-radius:18px;padding:14px\">\n      <h4 style=\"font-size:14px;font-weight:900;margin-bottom:10px;color:#2C2340\">🎬 لیست پخش</h4>\n      <div style=\"display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;background:#5B3E8F0d;margin-bottom:6px;font-size:12.5px\"><b style=\"color:#5B3E8F\">1</b> قسمت 1 — عنوان درس</div><div style=\"display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;background:#5B3E8F0d;margin-bottom:6px;font-size:12.5px\"><b style=\"color:#5B3E8F\">2</b> قسمت 2 — عنوان درس</div><div style=\"display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;background:#5B3E8F0d;margin-bottom:6px;font-size:12.5px\"><b style=\"color:#5B3E8F\">3</b> قسمت 3 — عنوان درس</div><div style=\"display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;background:#5B3E8F0d;margin-bottom:6px;font-size:12.5px\"><b style=\"color:#5B3E8F\">4</b> قسمت 4 — عنوان درس</div>\n      <div style=\"margin-top:12px;padding:10px;background:#C9A22714;border-radius:12px;font-size:12px;color:#C9A227;font-weight:700\">📝 یادداشت‌برداری و فایل ضمیمه این قسمت</div>\n    </div>\n  </div></section>",
+    "about_us": "<section dir=\"rtl\" style=\"font-family:Vazirmatn,Tahoma,sans-serif;background:#FAF7F4;color:#2C2340;padding:40px 20px;line-height:1.9\">\n  <div style=\"max-width:1000px;margin:0 auto\">\n    <h2 style=\"font-size:26px;font-weight:900;text-align:center;margin-bottom:8px;color:#2C2340\">داستان ترمه یزدی</h2>\n    <p style=\"text-align:center;color:#2C234088;max-width:640px;margin:0 auto 30px;font-size:14px\">ما با عشق به فرهنگ ایرانی و باور به آموزش باکیفیت، این آکادمی را بنا کردیم.</p>\n    <div style=\"display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px\">\n      <div style=\"background:#fff;border-radius:18px;padding:20px;border-top:4px solid #5B3E8F\"><b style=\"color:#5B3E8F\">🎯 مأموریت</b><p style=\"font-size:12.5px;color:#2C234088;margin-top:8px\">آموزش مهارت‌های واقعی به زبان ساده برای همه ایرانیان.</p></div>\n      <div style=\"background:#fff;border-radius:18px;padding:20px;border-top:4px solid #C9A227\"><b style=\"color:#C9A227\">👁 چشم‌انداز</b><p style=\"font-size:12.5px;color:#2C234088;margin-top:8px\">مرجع اول آموزش آنلاین با هویت ایرانی در منطقه.</p></div>\n      <div style=\"background:#fff;border-radius:18px;padding:20px;border-top:4px solid #5B3E8F\"><b style=\"color:#5B3E8F\">🏆 افتخارات</b><p style=\"font-size:12.5px;color:#2C234088;margin-top:8px\">بیش از ۵۰ هزار دانشجو و ۶ سال حضور مستمر.</p></div>\n    </div>\n  </div></section>",
+    "contact_us": "<section dir=\"rtl\" style=\"font-family:Vazirmatn,Tahoma,sans-serif;background:#FAF7F4;color:#2C2340;padding:40px 20px;line-height:1.9\">\n  <div style=\"max-width:1000px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:18px\" class=\"resp\">\n    <form style=\"background:#fff;border-radius:18px;padding:22px;border:1px solid #5B3E8F22\">\n      <h3 style=\"font-weight:900;margin-bottom:14px;color:#2C2340\">📨 فرم تماس</h3>\n      <input placeholder=\"نام و نام خانوادگی\" style=\"width:100%;padding:11px 14px;border:1.5px solid #5B3E8F33;border-radius:11px;margin-bottom:10px\">\n      <input placeholder=\"ایمیل\" style=\"width:100%;padding:11px 14px;border:1.5px solid #5B3E8F33;border-radius:11px;margin-bottom:10px\">\n      <textarea placeholder=\"پیام شما…\" rows=\"4\" style=\"width:100%;padding:11px 14px;border:1.5px solid #5B3E8F33;border-radius:11px;margin-bottom:12px\"></textarea>\n      <button style=\"background:#5B3E8F;color:#fff;border:none;font-weight:800;padding:12px 30px;border-radius:12px;cursor:pointer\">ارسال پیام</button>\n    </form>\n    <div style=\"background:#fff;border-radius:18px;padding:22px;border:1px solid #5B3E8F22;font-size:13px;color:#2C234088\">\n      <h3 style=\"font-weight:900;margin-bottom:14px;color:#2C2340\">📍 اطلاعات دسترسی</h3>\n      <div style=\"margin-bottom:10px\">🏢 تهران، خیابان آزادی، پلاک ۱۲۳</div>\n      <div style=\"margin-bottom:10px\">📞 ۰۲۱-۱۲۳۴۵۶۷۸</div>\n      <div style=\"margin-bottom:10px\">✉️ info@academy.ir</div>\n      <div style=\"height:140px;border-radius:14px;background:linear-gradient(135deg,#E8B4C8,#5B3E8F22);display:flex;align-items:center;justify-content:center;color:#5B3E8F;font-weight:800;margin-top:12px\">🗺 نقشه — شبکه سراسری پشتیبانی</div>\n    </div>\n  </div></section>"
+  },
+  "homepage_rows": [
+    {
+      "id": "sld",
+      "settings": {
+        "gap": 0,
+        "py": 0
+      },
+      "cols": [
+        [
+          {
+            "id": "w_sl",
+            "type": "slider",
+            "data": {
+              "height": "430",
+              "autoplay": true,
+              "interval": "5",
+              "dots": true,
+              "arrows": true,
+              "swipe": true,
+              "slides": [
+                {
+                  "img": "hero.webp",
+                  "title": "مدیریت، هنر بافت ترمه",
+                  "sub": "دوره‌های مدیریتی و MBA با ظرافت ترمه‌های یزد — فاخر و ماندگار.",
+                  "btn_text": "💎 دوره‌های مدیریت",
+                  "btn_url": "/courses",
+                  "align": "right"
+                },
+                {
+                  "img": "cover-marketing.webp",
+                  "title": "رهبری با وقار",
+                  "sub": "مهارت‌های رهبری، مذاکره و برندسازی شخصی.",
+                  "btn_text": "شروع",
+                  "btn_url": "/courses",
+                  "align": "center"
+                }
+              ]
+            }
+          }
+        ]
+      ]
+    },
+    {
+      "id": "stt",
+      "settings": {
+        "gap": 0,
+        "py": 50
+      },
+      "cols": [
+        [
+          {
+            "id": "w_st",
+            "type": "stats",
+            "data": {
+              "columns": "4",
+              "items": [
+                {
+                  "value": "۱۵۰+",
+                  "label": "دوره آموزشی"
+                },
+                {
+                  "value": "۵۰,۰۰۰+",
+                  "label": "دانشجوی فعال"
+                },
+                {
+                  "value": "۲,۰۰۰+",
+                  "label": "ساعت آموزش"
+                },
+                {
+                  "value": "٪۹۸",
+                  "label": "رضایت دانشجویان"
+                }
+              ]
+            }
+          }
+        ]
+      ]
+    },
+    {
+      "id": "ftr",
+      "settings": {
+        "gap": 22,
+        "py": 60
+      },
+      "cols": [
+        [
+          {
+            "id": "w_ft",
+            "type": "feature",
+            "data": {
+              "columns": "3",
+              "items": [
+                {
+                  "icon": "👔",
+                  "title": "مدیریت نوین",
+                  "text": "آخرین متدهای رهبری"
+                },
+                {
+                  "icon": "💎",
+                  "title": "محتوا فاخر",
+                  "text": "کیفیت در سطح بین‌المللی"
+                },
+                {
+                  "icon": "📊",
+                  "title": "تحلیل کسب‌وکار",
+                  "text": "مطالعه موردی واقعی"
+                },
+                {
+                  "icon": "🗣",
+                  "title": "مذاکره حرفه‌ای",
+                  "text": "تمرین عملی مذاکره"
+                },
+                {
+                  "icon": "🌐",
+                  "title": "شبکه مدیران",
+                  "text": "ارتباط با مدیران ارشد"
+                },
+                {
+                  "icon": "📜",
+                  "title": "گواهی MBA",
+                  "text": "مدرک معتبر مدیریتی"
+                }
+              ]
+            }
+          }
+        ]
+      ]
+    },
+    {
+      "id": "crs",
+      "settings": {
+        "gap": 24,
+        "py": 60
+      },
+      "cols": [
+        [
+          {
+            "id": "w_cr",
+            "type": "courses",
+            "data": {
+              "title": "💼 آکادمی مدیریت و رهبری",
+              "subtitle": "به سبک ترمه‌های یزد",
+              "limit": "8",
+              "columns": "4",
+              "sort": "popular"
+            }
+          }
+        ]
+      ]
+    },
+    {
+      "id": "tst",
+      "settings": {
+        "gap": 22,
+        "py": 60,
+        "bg": "#ffffff",
+        "radius": 24
+      },
+      "cols": [
+        [
+          {
+            "id": "w_ts",
+            "type": "reviews",
+            "data": {
+              "title": "⭐ نظرات واقعی دانشجویان",
+              "limit": "6"
+            }
+          }
+        ]
+      ]
+    },
+    {
+      "id": "cta",
+      "settings": {
+        "gap": 0,
+        "py": 30
+      },
+      "cols": [
+        [
+          {
+            "id": "w_ct",
+            "type": "cta",
+            "data": {
+              "title": "مدیر فردا، امروز ساخته می‌شود",
+              "text": "رزرو جلسه معرفی رایگان",
+              "btn_text": "رزرو جلسه",
+              "btn_url": "/consultation"
+            }
+          }
+        ]
+      ]
+    }
+  ],
+  "dark": false,
+  "container": "1240",
+  "radius": "20"
+}

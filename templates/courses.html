@@ -1,0 +1,129 @@
+{% extends 'base.html' %}
+{% from 'partials/course_card.html' import course_card %}
+{% block title %}{{ seo.title or "دوره‌های آموزشی" }}{% endblock %}
+
+{% block content %}
+<section class="section" style="padding-top:36px">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="مسیر صفحه">
+      <a href="{{ url_for('site.index') }}">خانه</a><span class="sep">/</span>
+      <span>دوره‌ها</span>
+    </nav>
+    {% if cat_obj %}
+    <div class="card" style="padding:18px 24px;margin-bottom:20px;background:linear-gradient(135deg, var(--primary-soft), transparent);border:none">
+      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+        <span class="ic" style="width:52px;height:52px;border-radius:14px;background:{{ cat_obj.color }};display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">{{ cat_obj.icon }}</span>
+        <div style="flex:1;min-width:240px">
+          <h1 style="font-size:19px;margin:0">دوره‌های {{ cat_obj.name }}</h1>
+          <p class="text-2" style="font-size:13px;margin:4px 0 0">دوره‌های پروژه‌محور {{ cat_obj.name }} با مدرسان حرفه‌ای — گواهینامه معتبر، دسترسی مادام‌العمر و پشتیبانی واقعی.</p>
+        </div>
+        <span class="badge badge-primary">{{ fa(total) }} دوره</span>
+      </div>
+    </div>
+    {% endif %}
+    <div class="dash-head">
+      <div>
+        <h1>🎓 همه دوره‌های آموزشی</h1>
+        <p>{{ fa(total) }} دوره پیدا شد</p>
+      </div>
+      <form class="search-box" action="{{ url_for('site.courses') }}" method="get">
+        {% if cat %}<input type="hidden" name="cat" value="{{ cat }}">{% endif %}
+        <input type="text" name="q" placeholder="جستجو..." value="{{ q }}">
+        <button type="submit">🔍</button>
+      </form>
+    </div>
+
+    <div class="grid" style="grid-template-columns:250px 1fr;gap:26px;align-items:start">
+      <!-- فیلترها -->
+      <div class="filter-side">
+        <h2 style="font-size:16px">🔎 فیلترها</h2>
+        <form method="get" action="{{ url_for('site.courses') }}" id="filter-form">
+          {% if q %}<input type="hidden" name="q" value="{{ q }}">{% endif %}
+          <div class="filter-group">
+            <div class="fg-title">دسته‌بندی</div>
+            <label><input type="radio" name="cat" value="" {{ 'checked' if not cat }} onchange="document.getElementById('filter-form').submit()"> همه</label>
+            {% for c in categories %}
+            <label><input type="radio" name="cat" value="{{ c.slug }}" {{ 'checked' if cat == c.slug }} onchange="document.getElementById('filter-form').submit()"> {{ c.name }} ({{ fa(c.courses|length) }})</label>
+            {% endfor %}
+          </div>
+          <div class="filter-group">
+            <div class="fg-title">سطح دوره</div>
+            <label><input type="radio" name="level" value="" {{ 'checked' if not level }} onchange="document.getElementById('filter-form').submit()"> همه سطوح</label>
+            {% for lv in ['مقدماتی', 'متوسط', 'پیشرفته'] %}
+            <label><input type="radio" name="level" value="{{ lv }}" {{ 'checked' if level == lv }} onchange="document.getElementById('filter-form').submit()"> {{ lv }}</label>
+            {% endfor %}
+          </div>
+          <div class="filter-group">
+            <div class="fg-title">قیمت</div>
+            <label><input type="radio" name="price" value="" {{ 'checked' if not price }} onchange="document.getElementById('filter-form').submit()"> همه</label>
+            <label><input type="radio" name="price" value="free" {{ 'checked' if price == 'free' }} onchange="document.getElementById('filter-form').submit()"> رایگان</label>
+            <label><input type="radio" name="price" value="paid" {{ 'checked' if price == 'paid' }} onchange="document.getElementById('filter-form').submit()"> پولی</label>
+          </div>
+          <button class="btn btn-ghost btn-sm btn-block" type="button" onclick="location.href='{{ url_for('site.courses') }}'">↺ حذف فیلترها</button>
+        </form>
+      </div>
+
+      <!-- لیست دوره‌ها -->
+      <div>
+        <div class="sort-bar">
+          <span class="result-count">نمایش <b>{{ fa(courses|length) }}</b> دوره</span>
+          <form method="get" action="{{ url_for('site.courses') }}">
+            {% if q %}<input type="hidden" name="q" value="{{ q }}">{% endif %}
+            {% if cat %}<input type="hidden" name="cat" value="{{ cat }}">{% endif %}
+            {% if level %}<input type="hidden" name="level" value="{{ level }}">{% endif %}
+            {% if price %}<input type="hidden" name="price" value="{{ price }}">{% endif %}
+            <select class="form-control" name="sort" aria-label="مرتب‌سازی دوره‌ها" style="width:auto;padding:8px 12px" onchange="this.form.submit()">
+              <option value="newest" {{ 'selected' if sort == 'newest' }}>جدیدترین</option>
+              <option value="popular" {{ 'selected' if sort == 'popular' }}>پربازدیدترین</option>
+              <option value="cheap" {{ 'selected' if sort == 'cheap' }}>ارزان‌ترین</option>
+              <option value="expensive" {{ 'selected' if sort == 'expensive' }}>گران‌ترین</option>
+              <option value="oldest" {{ 'selected' if sort == 'oldest' }}>قدیمی‌ترین</option>
+            </select>
+          </form>
+        </div>
+
+        {% if courses %}
+        <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:24px" id="course-grid">
+          {% for c in courses %}{{ course_card(c) }}{% endfor %}
+        </div>
+        <template id="course-skeleton">
+          <div class="card skeleton-card" style="padding:0;overflow:hidden">
+            <div class="skeleton sk-img" style="border-radius:0"></div>
+            <div style="padding:16px;display:grid;gap:10px">
+              <div class="skeleton sk-line short"></div>
+              <div class="skeleton sk-line"></div>
+              <div class="skeleton sk-line" style="width:80%"></div>
+              <div style="display:flex;justify-content:space-between;margin-top:8px">
+                <div class="skeleton sk-line" style="width:70px"></div>
+                <div class="skeleton sk-line" style="width:80px;height:32px;border-radius:8px"></div>
+              </div>
+            </div>
+          </div>
+        </template>
+        {% else %}
+        <div class="card text-center" style="padding:70px 20px">
+          <div style="font-size:52px">😕</div>
+          <h3 style="margin:14px 0 6px">دوره‌ای پیدا نشد</h3>
+          <p class="text-2">فیلترها را تغییر دهید یا عبارت دیگری جستجو کنید.</p>
+          <a class="btn btn-primary mt-3" href="{{ url_for('site.courses') }}">مشاهده همه دوره‌ها</a>
+        </div>
+        {% endif %}
+
+        {% if pages > 1 %}
+        <nav class="pagination">
+          {% if page > 1 %}<a href="{{ url_for('site.courses', page=page-1, q=q, cat=cat, level=level, price=price, sort=sort) }}">→</a>{% endif %}
+          {% for p in range(1, pages + 1) %}
+            {% if p == page %}
+              <span class="active">{{ fa(p) }}</span>
+            {% elif p <= 3 or p > pages - 2 or (p > page - 2 and p < page + 2) %}
+              <a href="{{ url_for('site.courses', page=p, q=q, cat=cat, level=level, price=price, sort=sort) }}">{{ fa(p) }}</a>
+            {% endif %}
+          {% endfor %}
+          {% if page < pages %}<a href="{{ url_for('site.courses', page=page+1, q=q, cat=cat, level=level, price=price, sort=sort) }}">←</a>{% endif %}
+        </nav>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

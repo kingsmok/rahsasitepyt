@@ -1,0 +1,46 @@
+/* کاشی سنتی — سنتی - فرهنگی | تولیدشده از pd-11 */
+:root{
+--primary:#1D6E7A;--primary-2:#15555E;--primary-soft:#387f8a;
+--on-primary:#FFFFFF;--on-accent:#14202E;
+--accent:#F2C94C;--accent-2:#D4A72E;--accent-soft:#f4d165;
+--success:#15803d;--success-soft:#f0fdf4;--danger:#dc2626;--danger-soft:#fef2f2;--warning:#F2C94C;--info:#1D6E7A;
+--bg:#FAF7EE;--bg-2:#F1EDE0;--card:#FFFFFF;--card-2:#FFFFFF;
+--border:#444e53;--border-2:#5d6569;
+--text:#26323A;--text-2:#a9acaa;--text-3:#7f8586;
+--header-bg:rgba(255,255,255,.92);--header-border:#444e53;--header-text:#26323A;--header-text-2:#a9acaa;
+--hero-bg:linear-gradient(135deg,#1D6E7A 0%,#144F57 55%,#12434b 100%);--hero-text:#FFFFFF;--hero-text-2:rgba(255,255,255,.88);--hero-card:rgba(255,255,255,.12);
+--footer-bg:#123F46;--footer-text:#BFD5D8;--footer-text-2:#8AA8AC;--footer-head:#FFFFFF;
+--grad-brand:linear-gradient(135deg,#1D6E7A,#15555E);--grad-accent:linear-gradient(135deg,#F2C94C,#D4A72E);
+--radius-sm:8px;--radius-md:12px;--radius-lg:14px;
+--shadow-sm:rgba(38,50,58,.05);--shadow-md:rgba(38,50,58,.08);--shadow-lg:rgba(38,50,58,.12);
+}
+.builder-site-header .dk-logo-ic{background:linear-gradient(135deg,#1D6E7A,#15555E);border-radius:10px;box-shadow:0 6px 16px rgba(38,50,58,.08)}
+.builder-site-header .dk-search{border:2px solid #1D6E7A}
+.builder-site-header .dk-search:focus-within{box-shadow:0 0 0 4px #387f8a}
+.builder-site-header .dk-search button{background:#1D6E7A;color:#FFFFFF}
+.builder-site-header .dk-search button:hover{background:#15555E}
+.builder-site-header .dk-icon-link:hover{background:#387f8a;color:#1D6E7A}
+.builder-site-header .dk-badge{background:#1D6E7A}
+.builder-site-header .dk-auth a{background:#1D6E7A;color:#FFFFFF}
+.builder-site-header .dk-auth a:hover{background:#15555E}
+.builder-site-header .dk-user-dd{border-top:3px solid #1D6E7A}
+.builder-site-header .dk-mega-trigger{background:#1D6E7A;color:#FFFFFF;box-shadow:0 6px 16px rgba(38,50,58,.08)}
+.builder-site-header .dk-nav a:hover{color:#1D6E7A;background:#387f8a}
+.builder-site-header .dk-mega-panel{border-top:3px solid #1D6E7A}
+.builder-site-header .dk-mega-head:hover,.builder-site-header .dk-mega-link:hover{color:#1D6E7A;background:#387f8a}
+.builder-site-header .dk-mega-all{color:#1D6E7A}
+.builder-site-footer{background:radial-gradient(700px 300px at 90% -20%,#f4d165,transparent 60%),linear-gradient(180deg,#123F46 0%,#123F46 50%,#000000 100%);border-top:3px solid #1D6E7A}
+.builder-site-footer .pb-f-links h2::after,.builder-site-footer .pb-f-contact h2::after{background:#1D6E7A}
+.builder-site-footer .pb-f-links ul a::before{color:#1D6E7A}
+.builder-site-footer .pb-f-about .dk-logo-ic{background:linear-gradient(135deg,#1D6E7A,#15555E)}
+.builder-site-footer .pb-f-about .pb-f-socials a:hover{background:#1D6E7A;border-color:#1D6E7A}
+.builder-site-footer .pb-f-contact ul li span{color:#1D6E7A}
+.builder-site-footer .newsletter-box .btn{background:#1D6E7A;color:#FFFFFF}
+.builder-site-footer .pb-trust-badges a:hover{border-color:#1D6E7A}
+.pb-slide-overlay{background:linear-gradient(120deg,rgba(8,15,35,.88),#1D6E7A 75%)}
+.pb-slide-content h1,.pb-slide-content h2{color:#fff}
+.dk-topbar a:hover{color:#F2C94C}
+.btn-primary{color:#FFFFFF}
+.btn-accent{background:linear-gradient(135deg,#F2C94C,#D4A72E);color:#14202E}
+.pb-slide-arrow{color:#1D6E7A}
+.chart-bar span{background:linear-gradient(135deg,#1D6E7A,#15555E)}

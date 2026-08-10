@@ -1,0 +1,35 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}وبلاگ{% endblock %}
+{% block acontent %}
+<div class="dash-head">
+  <div><h1>📝 مدیریت وبلاگ</h1><p>{{ fa(posts|length) }} مطلب</p></div>
+  <a class="btn btn-primary" href="{{ url_for('admin.blog_new') }}">+ مطلب جدید</a>
+</div>
+<div class="table-wrap">
+  <table class="table">
+    <thead><tr><th>مطلب</th><th>دسته</th><th>بازدید</th><th>تاریخ</th><th>وضعیت</th><th>عملیات</th></tr></thead>
+    <tbody>
+      {% for p in posts %}
+      <tr>
+        <td><div class="flex gap-1"><img src="/static/img/{{ p.image }}" alt="" style="width:54px;height:36px;border-radius:8px;object-fit:cover"><strong style="font-size:13px">{{ p.title }}</strong></div></td>
+        <td>{{ p.category }}</td>
+        <td>{{ fa(p.views) }}</td>
+        <td>{{ p.created_at|jdate }}</td>
+        <td>{% if p.published %}<span class="badge badge-success">منتشر شده</span>{% else %}<span class="badge badge-gray">پیش‌نویس</span>{% endif %}</td>
+        <td>
+          <div class="actions-cell">
+            <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.blog_edit', pid=p.id) }}">✏️</a>
+            <form method="post" onsubmit="return confirm('حذف شود؟')">
+<input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+              <input type="hidden" name="action" value="delete">
+              <input type="hidden" name="pid" value="{{ p.id }}">
+              <button class="btn btn-danger btn-sm" type="submit">🗑</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -1,0 +1,37 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}گزارش رفتار دانشجو{% endblock %}
+{% block acontent %}
+<div class="dash-head"><div><h1>📊 گزارش رفتار دانشجویان</h1><p>نرخ تکمیل و افت یادگیری</p></div></div>
+<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:20px">
+  <div class="card stat-ic stat-ic-blue" style="padding:16px;text-align:center"><div class="num">{{ fa(total) }}</div><small>ثبت‌نام</small></div>
+  <div class="card stat-ic stat-ic-green" style="padding:16px;text-align:center"><div class="num">{{ fa(completed) }}</div><small>تکمیل‌شده</small></div>
+  <div class="card stat-ic stat-ic-orange" style="padding:16px;text-align:center"><div class="num">٪{{ fa(avg) }}</div><small>میانگین پیشرفت</small></div>
+  <div class="card stat-ic stat-ic-red" style="padding:16px;text-align:center"><div class="num">{{ fa(dropped|length) }}</div><small>در معرض افت (زیر ۴۰٪)</small></div>
+</div>
+<div class="grid" style="grid-template-columns:1.5fr 1fr;gap:18px;align-items:start">
+  <div class="card" style="padding:20px">
+    <h2 style="font-size:14px;margin-bottom:12px">همه ثبت‌نام‌ها</h2>
+    <div class="table-wrap"><table class="table">
+      <thead><tr><th>دانشجو</th><th>دوره</th><th>پیشرفت</th><th>وضعیت</th></tr></thead>
+      <tbody>
+        {% for r in rows %}
+        <tr>
+          <td>{{ r.user }}</td>
+          <td>{{ r.course[:35] }}</td>
+          <td><div style="display:flex;align-items:center;gap:6px"><div style="width:80px;height:6px;background:var(--bg-2);border-radius:99px;overflow:hidden"><div style="width:{{ r.percent }}%;height:100%;background:var(--grad-brand)"></div></div><small>{{ fa(r.percent) }}٪</small></div></td>
+          <td>{% if r.done %}<span class="badge badge-success">تکمیل</span>{% elif r.percent == 0 %}<span class="badge badge-gray">شروع نشده</span>{% else %}<span class="badge badge-accent">در حال یادگیری</span>{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table></div>
+  </div>
+  <div class="card" style="padding:20px">
+    <h2 style="font-size:14px;margin-bottom:12px">⚠️ در معرض افت (زیر ۴۰٪)</h2>
+    {% for d in dropped %}
+    <div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:12.5px">
+      <strong>{{ d.user }}</strong> — {{ d.course[:30] }} <span class="badge badge-danger">{{ fa(d.percent) }}٪</span>
+    </div>
+    {% else %}<p class="text-3" style="font-size:13px">موردی نیست. 🎉</p>{% endfor %}
+  </div>
+</div>
+{% endblock %}

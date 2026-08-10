@@ -1,0 +1,63 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}{{ 'ویرایش آزمون' if quiz else 'آزمون جدید' }}{% endblock %}
+{% block acontent %}
+<div class="dash-head">
+  <div><h1>{{ '✏️ ' ~ quiz.title if quiz else '📝 آزمون جدید' }}</h1></div>
+  <a class="btn btn-ghost" href="{{ url_for('admin.quizzes') }}">← آزمون‌ها</a>
+</div>
+<div class="card" style="padding:24px">
+  <form method="post">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+    <div class="grid" style="grid-template-columns:2fr 1fr 1fr;gap:14px">
+      <div class="form-group">
+        <label>عنوان آزمون *</label>
+        <input class="form-control" name="title" required value="{{ quiz.title if quiz else '' }}" placeholder="مثلاً: آزمون پایان فصل ۱">
+      </div>
+      <div class="form-group">
+        <label>دوره *</label>
+        <select class="form-control" name="course_id" required>
+          {% for c in courses %}
+          <option value="{{ c.id }}" {{ 'selected' if quiz and quiz.course_id == c.id }}>{{ c.title }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>درصد قبولی</label>
+        <input class="form-control" type="number" name="passing_score" value="{{ quiz.passing_score if quiz else 50 }}">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>توضیحات</label>
+      <input class="form-control" name="description" value="{{ quiz.description if quiz else '' }}" placeholder="توضیح کوتاه برای دانشجو">
+    </div>
+    <div class="form-group">
+      <label>محدودیت زمان (دقیقه — 0 = بدون محدودیت)</label>
+      <input class="form-control" type="number" name="time_limit" value="{{ quiz.time_limit if quiz else 0 }}">
+    </div>
+    <div class="form-check mb-2">
+      <label><input type="checkbox" name="is_placement" {{ 'checked' if quiz and quiz.is_placement }}> آزمون تعیین سطح سراسری</label>
+    </div>
+
+    <div class="form-group">
+      <label>سوالات — هر خط یک سوال با این فرمت:</label>
+      <textarea class="form-control" name="questions_raw" rows="10" dir="rtl"
+        placeholder="متن سوال | گزینه۱،گزینه۲،گزینه۳،گزینه۴ | شاخص_گزینه_درست(0-3) | توضیح(اختیاری)">{{ raw }}</textarea>
+      <p class="form-hint">مثال: متغیر در پایتون چیست؟ | عدد، متن، هر دو | 2 | هر دو نوع داده در پایتون متغیر هستند</p>
+    </div>
+    <button class="btn btn-primary" type="submit">💾 ذخیره آزمون</button>
+  </form>
+
+  {% if quiz and quiz.questions %}
+  <div style="margin-top:22px;border-top:1px solid var(--border);padding-top:16px">
+    <h3 style="font-size:14px;margin-bottom:10px">سوالات فعلی ({{ fa(quiz.questions|length) }})</h3>
+    {% for q in quiz.questions %}
+    <div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:13px">
+      <strong>{{ fa(loop.index) }}. {{ q.text }}</strong>
+      <small class="text-3" style="display:block">گزینه‌ها: {{ q.choices_list()|join(' — ') }} | پاسخ درست: {{ q.correct_index + 1 }}</small>
+    </div>
+    {% endfor %}
+    <p class="form-hint" style="margin-top:10px">با ذخیره‌کردن متن بالا، سوالات فعلی جایگزین می‌شوند.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

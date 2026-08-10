@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% block title %}{% if status == 'success' %}پرداخت موفق — {{ site.site_name or 'آکادمی آنلاین' }}{% elif status == 'canceled' %}انصراف از پرداخت — آکادمی آنلاین{% else %}وضعیت پرداخت — آکادمی آنلاین{% endif %}{% endblock %}
+
+{% block content %}
+<section class="section" style="padding-top:44px">
+  <div class="container" style="max-width:620px">
+    <div class="card" style="padding:44px 36px;border-radius:22px;text-align:center;position:relative;overflow:hidden">
+      {% if status == 'success' %}
+      <div style="width:92px;height:92px;border-radius:50%;background:var(--success-soft);color:var(--success);display:flex;align-items:center;justify-content:center;font-size:44px;margin:0 auto 20px;animation:scaleIn .4s ease">✓</div>
+      <h1 style="font-size:23px;margin-bottom:8px">پرداخت با موفقیت انجام شد! 🎉</h1>
+      <p class="text-2" style="font-size:14px;margin-bottom:22px">دوره(های) خریداری‌شده به حساب شما اضافه شد و از همین حالا قابل مشاهده است.</p>
+
+      <div class="card" style="background:var(--bg-2);border:none;padding:18px 22px;text-align:right;margin-bottom:22px;font-size:13.5px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px"><span class="text-2">کد سفارش</span><b dir="ltr">{{ order.code }}</b></div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px"><span class="text-2">مبلغ پرداخت‌شده</span><b>{{ fa('{:,.0f}'.format(order.final_total)) }} تومان</b></div>
+        <div style="display:flex;justify-content:space-between"><span class="text-2">درگاه</span><b>{{ {'zarinpal':'زرین‌پال','idpay':'آیدی پی','zibal':'زیبال','sandbox':'درگاه آزمایشی'}.get(order.gateway or '', order.gateway or '—') }}</b></div>
+      </div>
+
+      <div class="flex gap-2" style="justify-content:center;flex-wrap:wrap">
+        <a class="btn btn-primary btn-lg" href="{{ url_for('student.my_courses') }}">📚 شروع یادگیری</a>
+        <a class="btn btn-outline btn-lg" href="{{ url_for('student.invoice', code=order.code) }}">🧾 مشاهده فاکتور</a>
+        <a class="btn btn-ghost btn-lg" href="{{ url_for('site.courses') }}">ادامه خرید</a>
+      </div>
+
+      {% elif status == 'canceled' %}
+      <div style="width:92px;height:92px;border-radius:50%;background:var(--warning);color:#fff;display:flex;align-items:center;justify-content:center;font-size:40px;margin:0 auto 20px">✕</div>
+      <h1 style="font-size:23px;margin-bottom:8px">پرداخت لغو شد</h1>
+      <p class="text-2" style="font-size:14px;margin-bottom:22px">شما از پرداخت انصراف دادید. سفارش شما همچنان در انتظار پرداخت است و می‌توانید هر زمان آن را تکمیل کنید.</p>
+      <div class="flex gap-2" style="justify-content:center;flex-wrap:wrap">
+        <a class="btn btn-primary btn-lg" href="{{ url_for('shop.pay_start', code=order.code) }}">🔄 تلاش مجدد برای پرداخت</a>
+        <a class="btn btn-ghost btn-lg" href="{{ url_for('student.orders') }}">سفارش‌های من</a>
+      </div>
+
+      {% else %}
+      <div style="width:92px;height:92px;border-radius:50%;background:var(--danger-soft);color:var(--danger);display:flex;align-items:center;justify-content:center;font-size:40px;margin:0 auto 20px">!</div>
+      <h1 style="font-size:23px;margin-bottom:8px">وضعیت پرداخت نامشخص است</h1>
+      <p class="text-2" style="font-size:14px;margin-bottom:22px">اگر مبلغ از حساب شما کسر شده، دوره به‌زودی فعال می‌شود. در غیر این صورت با پشتیبانی در تماس باشید.</p>
+      <div class="flex gap-2" style="justify-content:center;flex-wrap:wrap">
+        <a class="btn btn-primary btn-lg" href="{{ url_for('shop.pay_start', code=order.code) }}">🔄 بررسی وضعیت سفارش</a>
+        <a class="btn btn-ghost btn-lg" href="{{ url_for('site.contact') }}">💬 تماس با پشتیبانی</a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>فاکتور {{ order.code }}</title>
+<style>
+  @page { size: A4; margin: 14mm; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: Tahoma, 'Segoe UI', sans-serif; color: #1a2a3a; font-size: 13px; line-height: 1.8; }
+  .inv { max-width: 720px; margin: 0 auto; border: 1.5px solid #e2e8f0; border-radius: 14px; padding: 30px; }
+  .head { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f2640c; padding-bottom: 18px; margin-bottom: 20px; }
+  .logo { display: flex; align-items: center; gap: 10px; font-weight: 900; font-size: 17px; }
+  .logo .ic { width: 38px; height: 38px; background: #f2640c; color: #fff; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 19px; }
+  .status { background: #dcfce7; color: #16a34a; padding: 5px 14px; border-radius: 99px; font-weight: 800; font-size: 12px; }
+  .row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed #e2e8f0; }
+  .row:last-child { border-bottom: none; }
+  .muted { color: #64748b; font-size: 12px; }
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; }
+  th { background: #f1f5f9; padding: 9px 12px; text-align: right; font-size: 12px; }
+  td { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; }
+  .total { background: #fff7ed; border-radius: 10px; padding: 12px 18px; display: flex; justify-content: space-between; font-weight: 900; font-size: 15px; color: #f2640c; }
+  .foot { text-align: center; color: #94a3b8; font-size: 11.5px; margin-top: 22px; }
+</style>
+</head>
+<body>
+<div class="inv">
+  <div class="head">
+    <div class="logo"><span class="ic">🎓</span>{{ site.site_name or 'آکادمی آنلاین' }}</div>
+    <div>
+      {% if order.status == 'paid' %}<span class="status">✓ پرداخت‌شده</span>{% else %}<span class="status" style="background:#fef3c7;color:#d97706">{{ order.status_fa }}</span>{% endif %}
+    </div>
+  </div>
+  <div class="row"><span class="muted">شماره فاکتور</span><strong dir="ltr">{{ order.code }}</strong></div>
+  <div class="row"><span class="muted">تاریخ</span><span>{{ order.created_at|jdatetime }}</span></div>
+  <div class="row"><span class="muted">خریدار</span><span>{{ order.user.name }} — <span dir="ltr">{{ order.user.phone or '' }}</span></span></div>
+  {% if order.ref_id %}<div class="row"><span class="muted">کد رهگیری پرداخت</span><strong dir="ltr">{{ order.ref_id }}</strong></div>{% endif %}
+
+  <table>
+    <thead><tr><th>دوره</th><th>مدرس</th><th>قیمت</th></tr></thead>
+    <tbody>
+      {% for item in order.items %}
+      <tr>
+        <td>{{ item.course.title }}</td>
+        <td>{{ item.course.teacher.name if item.course.teacher else '—' }}</td>
+        <td>{{ fa('{:,.0f}'.format(item.price)) }} تومان</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% if order.discount %}<div class="row"><span class="muted">تخفیف</span><span style="color:#16a34a">− {{ fa('{:,.0f}'.format(order.discount)) }} تومان</span></div>{% endif %}
+  <div class="total"><span>مبلغ نهایی قابل پرداخت</span><span>{{ fa('{:,.0f}'.format(order.final_total)) }} تومان</span></div>
+  <div class="foot">این فاکتور توسط {{ site.site_name or 'آکادمی آنلاین' }} صادر شده است — برای استعلام صحت، با پشتیبانی تماس بگیرید.</div>
+</div>
+<script>window.print();</script>
+</body>
+</html>

@@ -1,0 +1,112 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}صفحه‌ساز{% endblock %}
+{% block acontent %}
+<div class="dash-head">
+  <div>
+    <h1>🧩 صفحه‌ساز سایت</h1>
+    <p>ساخت و ویرایش تمام صفحات — شبیه المنتور با درگ‌انددراپ زنده</p>
+  </div>
+  <button class="btn btn-primary" onclick="document.getElementById('new-page-form').style.display='block';this.style.display='none'">+ صفحه جدید</button>
+</div>
+
+<div class="card" id="new-page-form" style="padding:22px;margin-bottom:22px;display:none;max-width:560px">
+  <h4 class="mb-2" style="font-size:15px">➕ ایجاد صفحه جدید</h4>
+  <form method="post" action="{{ url_for('builder.new_page') }}" class="flex gap-2 wrap">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+    <input class="form-control" name="title" placeholder="عنوان صفحه (مثلا: صفحه تخفیف‌ها)" required style="flex:1;min-width:200px">
+    <select class="form-control" name="ptype" style="width:auto">
+      <option value="page">صفحه معمولی</option>
+      <option value="post">قالب پست/مقاله</option>
+      <option value="404">صفحه خطای ۴۰۴</option>
+      <option value="home">صفحه اصلی</option>
+      <option value="header">هدر</option>
+      <option value="footer">فوتر</option>
+      <option value="mobile_menu">منوی موبایل</option>
+      <option value="footer_mobile">فوتر موبایل</option>
+    </select>
+    <select class="form-control" name="template" style="width:auto">
+      <option value="">— بدون قالب —</option>
+      <option value="landing">🚀 لندینگ کامل</option>
+      <option value="about_page">ℹ️ درباره ما</option>
+      <option value="contact_page">📨 تماس</option>
+      <option value="pricing_page">💎 قیمت‌گذاری</option>
+    </select>
+    <select class="form-control" name="design" style="width:auto">
+      <option value="">— بدون طرح آماده —</option>
+      {% for t in persian_themes %}
+      <option value="{{ t.id }}">🖼 {{ t.name }} ({{ t.category }})</option>
+      {% endfor %}
+    </select>
+    <button class="btn btn-primary" type="submit">ساخت</button>
+  </form>
+</div>
+
+<!-- گالری ۲۰ طرح آماده -->
+<div class="card" style="padding:20px 22px;margin-bottom:22px">
+  <h4 style="font-size:15px;margin-bottom:4px">🖼 طرح‌های آماده سایت (۲۰ طرح ایرانی)</h4>
+  <p style="font-size:12.5px;color:var(--text-3);margin-bottom:16px">انتخاب طرح در «پنل مدیریت ← طراحی‌های سایت» انجام می‌شود؛ از اینجا می‌توانید صفحه اصلی را با چیدمان هر طرح بسازید یا پیش‌نمایش بگیرید.</p>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px">
+    {% for t in persian_themes %}
+    {% set c = t.colors %}
+    <div class="card" style="overflow:hidden;display:flex;flex-direction:column">
+      <a href="/?site_design={{ t.id }}&preview=1" target="_blank" style="display:block;height:74px;background:linear-gradient(135deg,{{ c.primary }} 0%,{{ c.accent }} 70%,{{ c.secondary }} 100%)"></a>
+      <div style="padding:12px 14px;display:flex;flex-direction:column;gap:6px;flex:1">
+        <div class="flex between"><b style="font-size:13px">{{ t.name }}</b>{% if t.dark %}<span class="badge badge-gray">🌙</span>{% endif %}</div>
+        <span class="badge badge-primary" style="font-size:9.5px;align-self:flex-start">{{ t.category }}</span>
+        <div class="flex gap-1" style="margin-top:4px">
+          <form method="post" action="{{ url_for('builder.new_page') }}" style="margin:0;flex:1">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="title" value="صفحه {{ t.name }}">
+            <input type="hidden" name="design" value="{{ t.id }}">
+            <button class="btn btn-primary btn-sm btn-block" type="submit">+ ساخت صفحه</button>
+          </form>
+          <a class="btn btn-ghost btn-sm" href="/?site_design={{ t.id }}&preview=1" target="_blank">👁</a>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="table-wrap">
+  <table class="table">
+    <thead><tr><th>صفحه</th><th>نوع</th><th>آخرین ویرایش</th><th>وضعیت</th><th>عملیات</th></tr></thead>
+    <tbody>
+      {% for p in pages %}
+      <tr>
+        <td>
+          <div class="flex gap-1">
+            <span class="avatar" style="background:{{ {'home':'#2563eb','header':'#7c3aed','footer':'#059669','mobile_menu':'#db2777','page':'#64748b'}.get(p.ptype,'#64748b') }};border-radius:10px;width:34px;height:34px;font-size:15px">
+              {{ {'home':'🏠','header':'☰','footer':'🦶','mobile_menu':'📱','page':'📄'}.get(p.ptype,'📄') }}
+            </span>
+            <div><strong style="font-size:13.5px">{{ p.title }}</strong><br><small class="text-3" dir="ltr">/page/{{ p.slug }}</small></div>
+          </div>
+        </td>
+        <td>{{ types.get(p.ptype, p.ptype) }}</td>
+        <td>{{ p.updated_at|jdatetime }}</td>
+        <td>
+          {% if p.is_published %}<span class="badge badge-success">منتشر</span>
+          {% else %}<span class="badge badge-gray">پیش‌نویس</span>{% endif %}
+        </td>
+        <td>
+          <div class="actions-cell">
+            <a class="btn btn-primary btn-sm" href="{{ url_for('builder.editor', slug=p.slug) }}">🧩 ویرایش</a>
+            {% if p.ptype == 'page' %}<a class="btn btn-ghost btn-sm" href="{{ url_for('site.custom_page', slug=p.slug) }}" target="_blank">👁</a>{% endif %}
+            <form method="post" action="{{ url_for('builder.delete_page', slug=p.slug) }}" onsubmit="return confirm('صفحه حذف شود؟')">
+              <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+              <button class="btn btn-danger btn-sm" type="submit">🗑</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="card mt-3" style="padding:20px;font-size:13px;color:var(--text-2)">
+  💡 <b>راهنما:</b> «هدر سایت»، «فوتر سایت» و «منوی موبایل» هم با همین صفحه‌ساز قابل ویرایش هستند.
+  فوتر را می‌توانید به ۱ تا ۷ ستون تغییر دهید (دکمه «تعداد ستون‌ها» در تنظیمات ردیف) تا نماد اعتماد، لینک‌ها و ... را بچینید.
+  برای افزودن اسلایدر، ویجت «اسلایدر» را از پالت بکشید و روی بوم رها کنید.
+</div>
+{% endblock %}

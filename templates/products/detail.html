@@ -1,0 +1,133 @@
+{% extends 'base.html' %}
+{% block title %}{{ seo.title or p.title }}{% endblock %}
+{% block content %}
+<section class="section" style="padding-top:30px">
+  <div class="container" style="max-width:1100px">
+    <nav class="breadcrumb" aria-label="مسیر صفحه">
+      <a href="{{ url_for('site.index') }}">خانه</a><span class="sep">/</span>
+      <a href="{{ url_for('products.product_list') }}">فروشگاه</a>
+      {% if p.category %}<span class="sep">/</span><a href="{{ url_for('products.product_list', cat=p.category) }}">{{ p.category }}</a>{% endif %}
+      <span class="sep">/</span><span>{{ p.title[:30] }}</span>
+    </nav>
+
+    <div class="grid" style="grid-template-columns:1fr 1fr;gap:34px;align-items:start">
+      <!-- گالری تصویر -->
+      <div style="border-radius:20px;overflow:hidden;background:var(--bg-2);aspect-ratio:1/1;position:relative">
+        {% if p.image %}
+        <img id="main-img" src="{{ p.image if p.image.startswith('http') else '/static/img/' + p.image }}" alt="{{ p.title }}" style="width:100%;height:100%;object-fit:cover">
+        {% else %}
+        <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:80px">🛍</div>
+        {% endif %}
+      </div>
+
+      <!-- اطلاعات محصول -->
+      <div>
+        <div class="flex gap-1" style="gap:8px;margin-bottom:8px;flex-wrap:wrap">
+          {% if p.category %}<span class="badge badge-gray">📦 {{ p.category }}</span>{% endif %}
+          {% if p.sku %}<span class="badge badge-gray" dir="ltr">🆔 {{ p.sku }}</span>{% endif %}
+          {% if p.stock is not none and p.stock > 0 %}<span class="badge" style="background:#dcfce7;color:#15803d">✅ موجود — {{ fa(p.stock) }} عدد</span>
+          {% elif p.stock is not none %}<span class="badge" style="background:#fee2e2;color:#b91c1c">ناموجود</span>{% endif %}
+        </div>
+
+        <h1 style="font-size:24px;font-weight:900;line-height:1.7;margin-bottom:10px">{{ p.title }}</h1>
+        {% if p.description %}<p class="text-2" style="line-height:2">{{ p.description }}</p>{% endif %}
+
+        <!-- قیمت -->
+        <div class="card" style="padding:18px 20px;margin:18px 0;background:var(--bg-2);border:none;border-radius:14px">
+          {% if p.has_discount %}
+          <span style="display:inline-block;background:#dc2626;color:#fff;font-size:11.5px;font-weight:800;border-radius:99px;padding:4px 12px;margin-bottom:8px">{{ fa((p.price - p.final_price) * 100 // p.price) }}٪ تخفیف</span>
+          <div style="text-decoration:line-through;color:#9ca3af;font-size:14px">{{ fa('{:,.0f}'.format(p.price)) }} تومان</div>
+          {% endif %}
+          <div style="display:flex;align-items:baseline;gap:6px">
+            <span style="color:var(--primary);font-weight:900;font-size:28px">{{ fa('{:,.0f}'.format(p.final_price)) }}</span>
+            <small class="text-3">تومان</small>
+          </div>
+        </div>
+
+        <!-- دکمه‌ها -->
+        <div class="flex gap-1" style="gap:10px;margin-bottom:20px">
+          <button class="btn btn-primary btn-lg" style="flex:1" data-add-product="{{ p.id }}" {% if p.stock is not none and p.stock <= 0 %}disabled{% endif %}>
+            {% if p.stock is not none and p.stock <= 0 %}ناموجود{% else %}🛒 افزودن به سبد{% endif %}
+          </button>
+          <a class="btn btn-ghost btn-lg" href="{{ url_for('shop.cart') }}">مشاهده سبد</a>
+        </div>
+
+        <!-- اشتراک‌گذاری -->
+        <div class="flex" style="gap:8px;align-items:center;margin-bottom:22px">
+          <small class="text-3">اشتراک‌گذاری:</small>
+          <a class="soc soc-tg" href="https://t.me/share/url?url={{ request.url|urlencode }}" target="_blank" rel="noopener" title="تلگرام">📨</a>
+          <a class="soc soc-wa" href="https://wa.me/?text={{ request.url|urlencode }}" target="_blank" rel="noopener" title="واتساپ">💬</a>
+          <a class="soc" href="#" onclick="navigator.clipboard.writeText('{{ request.url }}');this.textContent='✅';setTimeout(()=>this.textContent='🔗',1200);return false;" title="کپی لینک">🔗</a>
+        </div>
+
+        <!-- مشخصات فنی -->
+        {% if p.dimensions or p.weight or p.material or p.features %}
+        <div class="card" style="padding:20px;border-radius:16px">
+          <h2 style="font-size:15px;font-weight:800;margin-bottom:14px">📋 مشخصات محصول</h2>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            {% if p.dimensions %}<div class="s-row" style="display:flex;justify-content:space-between;padding-bottom:8px;border-bottom:1px dashed var(--border)"><span class="text-2">ابعاد</span><strong>{{ p.dimensions }}</strong></div>{% endif %}
+            {% if p.weight %}<div class="s-row" style="display:flex;justify-content:space-between;padding-bottom:8px;border-bottom:1px dashed var(--border)"><span class="text-2">وزن</span><strong>{{ p.weight }}</strong></div>{% endif %}
+            {% if p.material %}<div class="s-row" style="display:flex;justify-content:space-between;padding-bottom:8px;border-bottom:1px dashed var(--border)"><span class="text-2">جنس</span><strong>{{ p.material }}</strong></div>{% endif %}
+          </div>
+          {% if p.features_list() %}
+          <ul style="margin-top:14px;display:flex;flex-direction:column;gap:8px">
+            {% for f in p.features_list() %}
+            <li style="display:flex;gap:8px;font-size:13.5px"><span style="color:var(--primary)">✓</span> {{ f }}</li>
+            {% endfor %}
+          </ul>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- محصولات مرتبط -->
+    {% if related %}
+    <div style="margin-top:44px">
+      <h2 style="font-size:18px;font-weight:900;margin-bottom:16px">🛍 محصولات مرتبط</h2>
+      <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px">
+        {% for r in related %}
+        <a class="card card-hover" href="{{ url_for('products.product_detail', slug=r.slug) }}" style="overflow:hidden;border-radius:14px;text-decoration:none;color:inherit">
+          <div style="aspect-ratio:1/1;background:var(--bg-2);overflow:hidden">
+            {% if r.image %}<img src="{{ r.image if r.image.startswith('http') else '/static/img/' + r.image }}" alt="{{ r.title }}" style="width:100%;height:100%;object-fit:cover" loading="lazy">{% endif %}
+          </div>
+          <div style="padding:12px">
+            <div style="font-size:13px;font-weight:700;line-height:1.5">{{ r.title }}</div>
+            <div style="color:var(--primary);font-weight:800;font-size:14px;margin-top:6px">{{ fa('{:,.0f}'.format(r.final_price)) }} <small style="font-size:10px">تومان</small></div>
+          </div>
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelectorAll('[data-add-product]').forEach(function (btn) {
+  btn.addEventListener('click', function () {
+    var id = btn.dataset.addProduct;
+    var orig = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>';
+    fetch('/api/product-cart/add', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ product_id: parseInt(id, 10) })
+    }).then(function (r) { return r.json(); }).then(function (d) {
+      btn.disabled = false;
+      btn.innerHTML = orig;
+      if (d.ok) {
+        if (window.updateCartBadge) updateCartBadge(d.count);
+        if (window.toast) toast(d.msg, 'success');
+        btn.innerHTML = '✓ اضافه شد';
+        setTimeout(function () { btn.innerHTML = orig; }, 1600);
+      } else if (d.login) { window.location = '/auth/login'; }
+      else if (window.toast) toast(d.msg, 'error');
+    }).catch(function () { btn.disabled = false; btn.innerHTML = orig; });
+  });
+});
+</script>
+{% endblock %}

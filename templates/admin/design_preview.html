@@ -1,0 +1,66 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}پیش‌نمایش واریانت — {{ variant.title }}{% endblock %}
+{% block acontent %}
+<link rel="stylesheet" href="/static/css/design_variants.css?v={{ asset_v() }}">
+<style>
+  .dp-section{margin-bottom:34px}
+  .dp-label{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;padding:8px 14px;background:var(--bg-2);border-radius:12px;font-size:13px;font-weight:800}
+  .dp-body{background:#fff;border:1px solid var(--border);border-radius:16px;padding:18px;overflow-x:auto}
+  .dp-body .dv-widget{max-width:1100px;margin:0 auto}
+  .dp-body .dv-widget:not(:last-child){margin-bottom:10px}
+  .dp-actions{display:flex;gap:8px;flex-wrap:wrap}
+  .dp-actions button{font-size:11.5px;padding:6px 14px}
+  pre.dp-json{display:none;background:#0f172a;color:#a5f3fc;direction:ltr;text-align:left;font-size:11px;border-radius:12px;padding:14px;max-height:360px;overflow:auto;white-space:pre-wrap}
+</style>
+
+<div class="dash-head">
+  <div>
+    <h1>👁 پیش‌نمایش واریانت — {{ variant.title }}</h1>
+    <p>تم: {{ variant.theme_name }} ({{ variant.category }}) · ۸ بخش UI/UX · کلاس‌های dv-* بدون نشت استایل</p>
+  </div>
+  <div class="dp-actions">
+    <a class="btn btn-ghost" href="{{ url_for('admin.designs') }}">← بازگشت</a>
+    <a class="btn btn-primary" href="/?site_design={{ variant.theme_id }}&preview=1" target="_blank">🌐 مشاهده طرح زنده</a>
+    <a class="btn btn-ghost" href="{{ url_for('admin.design_variant_json', did=variant.design_id) }}" target="_blank">⬇ JSON</a>
+  </div>
+</div>
+
+{% for key, label in [
+  ('desktop_header', '۱) منوی دسکتاپ (Desktop Header)'),
+  ('mobile_header', '۲) منوی موبایل (Mobile Drawer / Bottom Nav)'),
+  ('desktop_footer', '۳) فوتر دسکتاپ (Desktop Footer)'),
+  ('mobile_footer', '۴) فوتر موبایل (Mobile Footer)'),
+  ('course_card', '۵) کارت دوره (Course Card)'),
+  ('video_section', '۶) پلیر ویدیو (Video Player + Playlist)'),
+  ('about_section', '۷) درباره ما و اساتید (About & Instructors)'),
+  ('contact_section', '۸) تماس با ما (Contact Us)'),
+] %}
+<div class="dp-section">
+  <div class="dp-label">
+    <span>{{ label }}</span>
+    <span style="display:flex;gap:6px">
+      <button class="btn btn-sm btn-ghost" onclick="copyHtml('{{ key }}')">📋 کپی HTML</button>
+      <button class="btn btn-sm btn-ghost" onclick="toggleJson('{{ key }}')">👁 JSON</button>
+    </span>
+  </div>
+  <div class="dp-body" id="body-{{ key }}">{{ (variant.components[key] or '')|safe }}</div>
+  <pre class="dp-json" id="json-{{ key }}"></pre>
+</div>
+{% endfor %}
+
+<script>
+  var ALL = {{ variant.components|tojson }};
+  function copyHtml(key){
+    navigator.clipboard.writeText(ALL[key] || '').then(function(){
+      var b=document.querySelector('[onclick="copyHtml(\''+key+'\')"]');
+      if(b){var t=b.textContent;b.textContent='✓ کپی شد';setTimeout(function(){b.textContent=t;},1400);}
+    });
+  }
+  function toggleJson(key){
+    var pre=document.getElementById('json-'+key);
+    if(pre.style.display==='block'){pre.style.display='none';return;}
+    pre.textContent=JSON.stringify({component:key,html:ALL[key]||''},null,2);
+    pre.style.display='block';
+  }
+</script>
+{% endblock %}

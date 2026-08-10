@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% block title %}{{ seo.title or "استعلام گواهینامه" }}{% endblock %}
+{% block content %}
+<section class="section" style="padding-top:36px">
+  <div class="container" style="max-width:620px">
+    <nav class="breadcrumb" aria-label="مسیر صفحه">
+      <a href="{{ url_for('site.index') }}">خانه</a><span class="sep">/</span>
+      <span>استعلام گواهینامه</span>
+    </nav>
+    <div class="card" style="padding:34px;border-radius:20px;text-align:center">
+      <div style="font-size:44px">🛡️</div>
+      <h1 style="font-size:22px;margin:10px 0 6px">استعلام صحت گواهینامه</h1>
+      <p class="text-2" style="font-size:13.5px;margin-bottom:18px">کد رهگیری درج‌شده روی گواهینامه را وارد کنید (با یا بدون CRT-).</p>
+      <form method="post">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+        <div class="flex gap-1">
+          <input class="form-control" name="code" value="{{ code }}" dir="ltr" placeholder="CRT-XXXXXXXXXX" style="flex:1;text-align:center;letter-spacing:1px" required>
+          <button class="btn btn-primary">🔍 استعلام</button>
+        </div>
+      </form>
+      {% if result %}
+      <div class="card mt-3" style="padding:20px;{{ 'background:var(--success-soft);border-color:var(--success)' if result.valid else 'background:var(--danger-soft);border-color:var(--danger)' }}">
+        {% if result.valid %}
+        <div style="font-size:34px">✅</div>
+        <h2 style="font-size:17px;color:var(--success);margin:6px 0">این گواهینامه معتبر است</h2>
+        <div style="font-size:13.5px;margin-top:10px">
+          <div><b>دارنده:</b> {{ result.user }}</div>
+          <div><b>دوره:</b> {{ result.course }}</div>
+          <div><b>تاریخ صدور:</b> {{ result.date|jdate if result.date else '—' }}</div>
+          <div><b>کد رهگیری:</b> <span dir="ltr">{{ result.code }}</span></div>
+        </div>
+        {% else %}
+        <div style="font-size:34px">❌</div>
+        <h2 style="font-size:17px;color:var(--danger);margin:6px 0">گواهینامه‌ای با این کد یافت نشد</h2>
+        <p class="text-2" style="font-size:13px">کد را دوباره بررسی کنید یا با پشتیبانی تماس بگیرید.</p>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,49 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}ریدایرکت‌ها{% endblock %}
+{% block acontent %}
+<div class="dash-head">
+  <div><h1>🔁 ریدایرکت‌های 301</h1><p>مدیریت ریدایرکت‌ها برای حفظ اعتبار سئو بعد از تغییر آدرس</p></div>
+</div>
+<div class="card" style="padding:24px;margin-bottom:22px">
+  <h4 style="font-size:15px;margin-bottom:14px">➕ ریدایرکت جدید</h4>
+  <form method="post" class="grid" style="grid-template-columns:1fr 1fr 120px auto;gap:10px;align-items:end">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="action" value="add">
+    <div><label for="f_source_1" style="font-size:12px">مسیر قدیمی</label><input id="f_source_1" class="form-control" name="source" placeholder="/old-page" dir="ltr" required></div>
+    <div><label for="f_target_1" style="font-size:12px">مسیر جدید</label><input id="f_target_1" class="form-control" name="target" placeholder="/new-page" dir="ltr" required></div>
+    <div><label for="f_code_1" style="font-size:12px">کد</label>
+      <select id="f_code_1" class="form-control" name="code"><option value="301">301</option><option value="302">302</option></select>
+    </div>
+    <button class="btn btn-primary" type="submit">افزودن</button>
+  </form>
+</div>
+<div class="table-wrap">
+  <table class="table">
+    <thead><tr><th>مسیر قدیمی</th><th>مسیر جدید</th><th>کد</th><th>وضعیت</th><th></th></tr></thead>
+    <tbody>
+      {% for r in rules %}
+      <tr>
+        <td dir="ltr" style="font-weight:700">{{ r.source }}</td>
+        <td dir="ltr">{{ r.target }}</td>
+        <td><span class="badge badge-primary">{{ fa(r.code) }}</span></td>
+        <td>{% if r.is_active %}<span class="badge badge-success">فعال</span>{% else %}<span class="badge badge-gray">غیرفعال</span>{% endif %}</td>
+        <td>
+          <div class="actions-cell">
+            <form method="post"><input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+              <input type="hidden" name="action" value="toggle"><input type="hidden" name="rid" value="{{ r.id }}">
+              <button class="btn btn-ghost btn-sm" type="submit">{{ '🔒' if r.is_active else '🔓' }}</button>
+            </form>
+            <form method="post" onsubmit="return confirm('حذف؟')"><input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+              <input type="hidden" name="action" value="delete"><input type="hidden" name="rid" value="{{ r.id }}">
+              <button class="btn btn-danger btn-sm" type="submit">🗑</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" class="text-center text-3" style="padding:30px">ریدایرکتی ثبت نشده است</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

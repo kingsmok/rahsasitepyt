@@ -1,0 +1,36 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}گزارش شبیه‌ساز آزمون{% endblock %}
+{% block acontent %}
+<div class="dash-head"><div><h1>🎯 گزارش شبیه‌ساز آزمون</h1><p>عملکرد کاربران در آزمون‌های تمرینی بانک سوال</p></div></div>
+<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:18px">
+  <div class="card" style="padding:18px;text-align:center"><div style="font-size:26px">🧑‍🎓</div><strong>{{ fa(users) }}</strong><small class="text-3" style="display:block">شرکت‌کننده</small></div>
+  <div class="card" style="padding:18px;text-align:center"><div style="font-size:26px">📝</div><strong>{{ fa(attempts|length) }}</strong><small class="text-3" style="display:block">آزمون</small></div>
+  <div class="card" style="padding:18px;text-align:center"><div style="font-size:26px">✅</div><strong>{{ fa(correct) }}/{{ fa(total_q) }}</strong><small class="text-3" style="display:block">پاسخ درست</small></div>
+  <div class="card" style="padding:18px;text-align:center"><div style="font-size:26px">📈</div><strong>{{ fa(avg_pct) }}٪</strong><small class="text-3" style="display:block">میانگین درصد</small></div>
+</div>
+<div class="grid" style="grid-template-columns:1fr 1fr;gap:18px;align-items:start">
+  <div class="card" style="padding:22px">
+    <h2 style="font-size:14px;margin-bottom:12px">📊 عملکرد به تفکیک دسته</h2>
+    <div class="table-wrap"><table class="table" style="width:100%;font-size:13px">
+      <thead><tr><th>دسته</th><th>آزمون</th><th>میانگین درست</th></tr></thead>
+      <tbody>
+        {% for c in cat_rows %}
+        <tr><td>{{ c.cat }}</td><td>{{ fa(c.n) }}</td><td>{{ fa((c.score * 100 / c.n)|round|int) }}٪</td></tr>
+        {% endfor %}
+      </tbody>
+    </table></div>
+  </div>
+  <div class="card" style="padding:22px">
+    <h2 style="font-size:14px;margin-bottom:12px">🕘 آخرین آزمون‌ها</h2>
+    {% for a in attempts[:8] %}
+    <div style="padding:10px 0;border-bottom:1px solid var(--border)">
+      <div class="flex between"><strong style="font-size:12.5px">{{ a.user.name if a.user else '—' }}</strong>
+      <span class="badge" style="background:{{ '#dcfce7;color:#15803d' if a.total and a.score*100//a.total >= 70 else '#fef3c7;color:#b45309' }}">{{ fa(a.score) }}/{{ fa(a.total) }}</span></div>
+      <small class="text-3" style="font-size:11px">{{ a.category }} · {{ a.created_at|jdate }}</small>
+    </div>
+    {% else %}
+    <p class="text-3" style="font-size:13px">هنوز آزمونی برگزار نشده است.</p>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

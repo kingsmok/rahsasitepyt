@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block title %}{{ seo.title or "جدول برترین‌ها" }}{% endblock %}
+{% block content %}
+<section class="section" style="padding-top:36px">
+  <div class="container" style="max-width:720px">
+    <div class="section-head">
+      <span class="tag">🏆 رقابت سالم</span>
+      <h1 style="font-size:clamp(24px,3vw,32px)">جدول برترین‌های یادگیری</h1>
+      <p>با تکمیل جلسات، قبولی در آزمون‌ها و فعالیت، امتیاز بگیر و در صدر جدول باش!</p>
+    </div>
+    <div class="card" style="padding:22px">
+      {% for u in users %}
+      <div style="display:flex;align-items:center;gap:12px;padding:11px 6px;border-bottom:1px solid var(--border)">
+        <span style="width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;background:{{ ['#f59e0b','#94a3b8','#b45309'][loop.index0] if loop.index <= 3 else 'var(--bg-2)' }};color:{{ '#fff' if loop.index <= 3 else 'var(--text-2)' }}">{{ fa(loop.index) }}</span>
+        {% if u.avatar %}<img class="avatar" src="{{ u.avatar_url }}" alt="">{% else %}<span class="avatar" style="background:{{ u.avatar_color }}">{{ u.initials() }}</span>{% endif %}
+        <div style="flex:1">
+          <strong style="font-size:13.5px">{{ u.name }}</strong>
+          <small class="text-3" style="display:block;font-size:11px">🔥 استریک: {{ fa(u.streak or 0) }} روز</small>
+        </div>
+        <span class="badge badge-primary">{{ fa(u.points or 0) }} امتیاز</span>
+      </div>
+      {% else %}
+      <p class="text-3 text-center" style="padding:30px">هنوز رقابتی شروع نشده! اولین نفری باش که امتیاز می‌گیرد. 🚀</p>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}

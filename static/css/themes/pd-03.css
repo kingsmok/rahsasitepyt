@@ -1,0 +1,46 @@
+/* لاجوردی شیراز — آرامش - علوم انسانی | تولیدشده از pd-03 */
+:root{
+--primary:#2E4E8F;--primary-2:#223B6E;--primary-soft:#47639c;
+--on-primary:#FFFFFF;--on-accent:#14202E;
+--accent:#8FA3BF;--accent-2:#A8613A;--accent-soft:#9fb0c8;
+--success:#15803d;--success-soft:#f0fdf4;--danger:#dc2626;--danger-soft:#fef2f2;--warning:#8FA3BF;--info:#2E4E8F;
+--bg:#F6F7FA;--bg-2:#EAEDF4;--card:#FFFFFF;--card-2:#FFFFFF;
+--border:#414856;--border-2:#5a616d;
+--text:#232C3B;--text-2:#a6aab1;--text-3:#7c818b;
+--header-bg:rgba(255,255,255,.92);--header-border:#414856;--header-text:#232C3B;--header-text-2:#a6aab1;
+--hero-bg:linear-gradient(135deg,#2E4E8F 0%,#1B2A4A 55%,#182540 100%);--hero-text:#FFFFFF;--hero-text-2:rgba(255,255,255,.88);--hero-card:rgba(255,255,255,.12);
+--footer-bg:#1B2A4A;--footer-text:#C6CDE0;--footer-text-2:#8B97B5;--footer-head:#FFFFFF;
+--grad-brand:linear-gradient(135deg,#2E4E8F,#223B6E);--grad-accent:linear-gradient(135deg,#8FA3BF,#A8613A);
+--radius-sm:8px;--radius-md:12px;--radius-lg:14px;
+--shadow-sm:rgba(35,44,59,.05);--shadow-md:rgba(35,44,59,.08);--shadow-lg:rgba(35,44,59,.12);
+}
+.builder-site-header .dk-logo-ic{background:linear-gradient(135deg,#2E4E8F,#223B6E);border-radius:10px;box-shadow:0 6px 16px rgba(35,44,59,.08)}
+.builder-site-header .dk-search{border:2px solid #2E4E8F}
+.builder-site-header .dk-search:focus-within{box-shadow:0 0 0 4px #47639c}
+.builder-site-header .dk-search button{background:#2E4E8F;color:#FFFFFF}
+.builder-site-header .dk-search button:hover{background:#223B6E}
+.builder-site-header .dk-icon-link:hover{background:#47639c;color:#2E4E8F}
+.builder-site-header .dk-badge{background:#2E4E8F}
+.builder-site-header .dk-auth a{background:#2E4E8F;color:#FFFFFF}
+.builder-site-header .dk-auth a:hover{background:#223B6E}
+.builder-site-header .dk-user-dd{border-top:3px solid #2E4E8F}
+.builder-site-header .dk-mega-trigger{background:#2E4E8F;color:#FFFFFF;box-shadow:0 6px 16px rgba(35,44,59,.08)}
+.builder-site-header .dk-nav a:hover{color:#2E4E8F;background:#47639c}
+.builder-site-header .dk-mega-panel{border-top:3px solid #2E4E8F}
+.builder-site-header .dk-mega-head:hover,.builder-site-header .dk-mega-link:hover{color:#2E4E8F;background:#47639c}
+.builder-site-header .dk-mega-all{color:#2E4E8F}
+.builder-site-footer{background:radial-gradient(700px 300px at 90% -20%,#9fb0c8,transparent 60%),linear-gradient(180deg,#1B2A4A 0%,#1B2A4A 50%,#000000 100%);border-top:3px solid #2E4E8F}
+.builder-site-footer .pb-f-links h2::after,.builder-site-footer .pb-f-contact h2::after{background:#2E4E8F}
+.builder-site-footer .pb-f-links ul a::before{color:#2E4E8F}
+.builder-site-footer .pb-f-about .dk-logo-ic{background:linear-gradient(135deg,#2E4E8F,#223B6E)}
+.builder-site-footer .pb-f-about .pb-f-socials a:hover{background:#2E4E8F;border-color:#2E4E8F}
+.builder-site-footer .pb-f-contact ul li span{color:#2E4E8F}
+.builder-site-footer .newsletter-box .btn{background:#2E4E8F;color:#FFFFFF}
+.builder-site-footer .pb-trust-badges a:hover{border-color:#2E4E8F}
+.pb-slide-overlay{background:linear-gradient(120deg,rgba(8,15,35,.88),#2E4E8F 75%)}
+.pb-slide-content h1,.pb-slide-content h2{color:#fff}
+.dk-topbar a:hover{color:#8FA3BF}
+.btn-primary{color:#FFFFFF}
+.btn-accent{background:linear-gradient(135deg,#8FA3BF,#A8613A);color:#14202E}
+.pb-slide-arrow{color:#2E4E8F}
+.chart-bar span{background:linear-gradient(135deg,#2E4E8F,#223B6E)}

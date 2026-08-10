@@ -1,0 +1,101 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}مدیریت سئو{% endblock %}
+{% block acontent %}
+<div class="dash-head">
+  <div>
+    <h1>🔍 مدیریت سئو</h1>
+    <p>تنظیمات سراسری + متاهای اختصاصی هر صفحه + تولید خودکار</p>
+  </div>
+  <form method="post">
+<input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="action" value="auto_meta">
+    <button class="btn btn-primary" type="submit">⚡ تولید خودکار متاها</button>
+  </form>
+</div>
+
+<!-- تنظیمات سراسری -->
+<form method="post" class="card" style="padding:24px;margin-bottom:22px">
+<input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+  <input type="hidden" name="action" value="save_settings">
+  <h3 style="font-size:16px;margin-bottom:16px">⚙️ تنظیمات سراسری سئو</h3>
+  <div class="grid" style="grid-template-columns:1fr 1fr;gap:14px">
+    <div class="form-group"><label for="f_seo_title_1">عنوان پیش‌فرض (meta title)</label>
+      <input id="f_seo_title_1" class="form-control" name="seo_title" value="{{ site.seo_title or '' }}"></div>
+    <div class="form-group"><label for="f_seo_desc_1">توضیحات پیش‌فرض (meta description)</label>
+      <input id="f_seo_desc_1" class="form-control" name="seo_desc" value="{{ site.seo_desc or '' }}"></div>
+    <div class="form-group"><label for="f_seo_keywords_1">کلمات کلیدی</label>
+      <input id="f_seo_keywords_1" class="form-control" name="seo_keywords" value="{{ site.seo_keywords or '' }}" placeholder="با کاما جدا کنید"></div>
+    <div class="form-group"><label for="f_seo_author_1">نویسنده</label>
+      <input id="f_seo_author_1" class="form-control" name="seo_author" value="{{ site.seo_author or '' }}"></div>
+    <div class="form-group"><label for="f_seo_twitter_1">توییتر (Twitter handle)</label>
+      <input id="f_seo_twitter_1" class="form-control" name="seo_twitter" value="{{ site.seo_twitter or '' }}" dir="ltr"></div>
+    <div class="form-group"><label for="f_seo_og_image_1">تصویر اشتراک‌گذاری (og:image)</label>
+      <input id="f_seo_og_image_1" class="form-control" name="seo_og_image" value="{{ site.seo_og_image or 'hero.webp' }}"></div>
+    <div class="form-group"><label for="f_seo_robots_main_1">ربات‌ها (پیش‌فرض)</label>
+      <select id="f_seo_robots_main_1" class="form-control" name="seo_robots_main" style="max-width:220px">
+        <option value="index,follow" {{ 'selected' if (site.seo_robots_main or 'index,follow') == 'index,follow' }}>index, follow</option>
+        <option value="noindex,follow" {{ 'selected' if (site.seo_robots_main or '') == 'noindex,follow' }}>noindex, follow</option>
+      </select>
+    </div>
+    <div class="form-group"><label for="f_ga_code_1">کد Google Analytics (GA4)</label>
+      <input id="f_ga_code_1" class="form-control" name="ga_code" value="{{ site.ga_code or '' }}" placeholder="G-XXXXXXX" dir="ltr">
+      <p class="form-hint">اگر وارد شود، اسکریپت GA در همه صفحات لود می‌شود</p>
+    </div>
+  </div>
+  <button class="btn btn-primary btn-lg" type="submit">💾 ذخیره تنظیمات سئو</button>
+</form>
+
+<!-- افزودن متا اختصاصی -->
+<div class="card" style="padding:24px;margin-bottom:22px">
+  <h3 style="font-size:16px;margin-bottom:16px">➕ متای اختصاصی صفحه</h3>
+  <form method="post" class="grid" style="grid-template-columns:1fr 1fr;gap:12px">
+<input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="action" value="save_meta">
+    <div class="form-group" style="margin-bottom:0"><label for="f_path_1">آدرس (مسیر)</label>
+      <input id="f_path_1" class="form-control" name="path" placeholder="/course/slug-1" dir="ltr" required></div>
+    <div class="form-group" style="margin-bottom:0"><label for="f_title_1">عنوان سئو</label>
+      <input id="f_title_1" class="form-control" name="title" placeholder="عنوان متا"></div>
+    <div class="form-group" style="margin-bottom:0"><label for="f_description_1">توضیحات</label>
+      <input id="f_description_1" class="form-control" name="description" placeholder="توضیحات متا (حداکثر ۱۶۰ کاراکتر)"></div>
+    <div class="form-group" style="margin-bottom:0"><label for="f_keywords_1">کلمات کلیدی</label>
+      <input id="f_keywords_1" class="form-control" name="keywords" placeholder="با کاما"></div>
+    <div class="form-group" style="margin-bottom:0"><label for="f_canonical_1">Canonical (خالی = خودکار)</label>
+      <input id="f_canonical_1" class="form-control" name="canonical" placeholder="https://..." dir="ltr"></div>
+    <div class="form-group" style="margin-bottom:0"><label for="f_og_image_1">تصویر اشتراک‌گذاری</label>
+      <input id="f_og_image_1" class="form-control" name="og_image" placeholder="cover-python.webp"></div>
+    <div class="form-group" style="margin-bottom:0"><label class="form-check"><input type="checkbox" name="noindex"> عدم ایندکس (noindex)</label></div>
+    <div class="form-group" style="margin-bottom:0;align-self:end"><button class="btn btn-primary" type="submit">ذخیره متا</button></div>
+  </form>
+</div>
+
+<!-- لیست متاهای اختصاصی -->
+<div class="card" style="padding:24px">
+  <h3 style="font-size:16px;margin-bottom:14px">📋 متاهای اختصاصی ({{ fa(metas|length) }})</h3>
+  {% if metas %}
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>آدرس</th><th>عنوان</th><th>توضیحات</th><th>وضعیت</th><th></th></tr></thead>
+      <tbody>
+        {% for m in metas %}
+        <tr>
+          <td dir="ltr" style="font-size:12px">{{ m.path }}</td>
+          <td style="font-size:12.5px;max-width:240px">{{ m.title or '—' }}</td>
+          <td class="text-3" style="font-size:11.5px;max-width:280px">{{ m.description or '—' }}</td>
+          <td>{% if m.noindex %}<span class="badge badge-danger">noindex</span>{% else %}<span class="badge badge-success">index</span>{% endif %}</td>
+          <td>
+            <form method="post" onsubmit="return confirm('حذف شود؟')">
+<input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+              <input type="hidden" name="action" value="delete_meta"><input type="hidden" name="mid" value="{{ m.id }}">
+              <button class="btn btn-danger btn-sm" type="submit">🗑</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="text-3" style="padding:14px">هنوز متای اختصاصی‌ای ثبت نشده. از دکمه «تولید خودکار متاها» استفاده کنید.</p>
+  {% endif %}
+</div>
+{% endblock %}

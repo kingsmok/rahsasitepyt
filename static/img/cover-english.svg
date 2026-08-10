@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450">
+  <defs>
+    <linearGradient id="e1" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1e1b4b"/><stop offset="1" stop-color="#7c3aed"/>
+    </linearGradient>
+    <linearGradient id="e2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fbbf24"/><stop offset="1" stop-color="#f59e0b"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="450" fill="url(#e1)"/>
+  <circle cx="120" cy="80" r="150" fill="#ffffff" opacity="0.05"/>
+  <circle cx="720" cy="380" r="170" fill="#ffffff" opacity="0.05"/>
+  <g transform="translate(310,120)">
+    <rect x="0" y="0" width="180" height="130" rx="20" fill="#ffffff" opacity="0.12"/>
+    <circle cx="90" cy="65" r="42" fill="url(#e2)"/>
+    <path d="M66 65 l17 17 34-34" stroke="#ffffff" stroke-width="9" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <g fill="#ffffff" opacity="0.85" font-family="Vazirmatn, Tahoma, sans-serif">
+    <text x="400" y="330" font-size="26" text-anchor="middle" font-weight="bold">English — A B C</text>
+    <circle cx="330" cy="300" r="4"/><circle cx="360" cy="290" r="4"/><circle cx="390" cy="303" r="4"/>
+    <circle cx="420" cy="288" r="4"/><circle cx="450" cy="300" r="4"/><circle cx="480" cy="290" r="4"/>
+  </g>
+  <text x="400" y="405" font-family="Vazirmatn, Tahoma, sans-serif" font-size="15" fill="#ffffff" opacity="0.6" text-anchor="middle">Speak With Confidence</text>
+</svg>

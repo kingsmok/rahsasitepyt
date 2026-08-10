@@ -1,0 +1,26 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}گزارش پشتیبانی{% endblock %}
+{% block acontent %}
+<div class="dash-head"><div><h1>📊 گزارش عملکرد پشتیبانی</h1><p>میانگین زمان پاسخ‌گویی و عملکرد هر پشتیبان</p></div><a class="btn btn-ghost" href="{{ url_for('admin.tickets') }}">← تیکت‌ها</a></div>
+<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:20px">
+  <div class="card stat-ic stat-ic-blue" style="padding:16px;text-align:center"><div class="num">{{ fa(total) }}</div><small>کل تیکت‌ها</small></div>
+  <div class="card stat-ic stat-ic-orange" style="padding:16px;text-align:center"><div class="num">{{ fa(open_t) }}</div><small>باز/در انتظار</small></div>
+  <div class="card stat-ic stat-ic-green" style="padding:16px;text-align:center"><div class="num">{{ fa(avg_all) if avg_all else '—' }} ساعت</div><small>میانگین زمان پاسخ</small></div>
+</div>
+<div class="card" style="padding:20px">
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>پشتیبان</th><th>تیکت‌های ارجاعی</th><th>میانگین زمان پاسخ (ساعت)</th></tr></thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td><strong>{{ r.user }}</strong></td>
+        <td>{{ fa(r.answered) }}</td>
+        <td>{{ fa(r.avg_h) if r.avg_h is not none else '—' }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="3" class="text-center text-3">داده‌ای نیست.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+</div>
+{% endblock %}

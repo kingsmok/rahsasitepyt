@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% block body_class %}has-buy-bar{% endblock %}
+{% block content %}
+<section class="section" style="padding-top:26px">
+  <div class="container" style="max-width:1200px">
+    <div class="grid" style="grid-template-columns:230px 1fr;gap:24px;align-items:start">
+      <aside class="card" style="padding:16px">
+        <div style="text-align:center;padding:10px 0 16px;border-bottom:1px solid var(--border);margin-bottom:12px">
+          {% if cur_user.avatar %}<img class="avatar avatar-lg" src="{{ cur_user.avatar_url }}" alt="" style="width:64px;height:64px;margin:0 auto 8px;display:block;border-radius:20px">{% else %}<span class="avatar" style="background:{{ cur_user.avatar_color }};width:64px;height:64px;font-size:22px;margin:0 auto 8px">{{ cur_user.initials() }}</span>{% endif %}
+          <strong style="font-size:13.5px">{{ cur_user.name }}</strong>
+          <div class="badge badge-primary" style="margin-top:4px">👨‍🏫 استاد</div>
+        </div>
+        <nav style="display:flex;flex-direction:column;gap:2px">
+          <a class="dash-link {{ 'active' if request.endpoint == 'teacher.dashboard' }}" href="{{ url_for('teacher.dashboard') }}">📊 داشبورد</a>
+          <a class="dash-link {{ 'active' if request.endpoint == 'teacher.my_courses' }}" href="{{ url_for('teacher.my_courses') }}">📚 دوره‌های من</a>
+          <a class="dash-link {{ 'active' if request.endpoint == 'teacher.assignments' }}" href="{{ url_for('teacher.assignments') }}">📌 تکالیف</a>
+          <a class="dash-link {{ 'active' if request.endpoint == 'teacher.questions' }}" href="{{ url_for('teacher.questions') }}">💬 پرسش‌ها</a>
+          <a class="dash-link {{ 'active' if request.endpoint == 'teacher.revenue' }}" href="{{ url_for('teacher.revenue') }}">💰 درآمد من</a>
+        </nav>
+        <a class="btn btn-ghost btn-sm btn-block mt-3" href="{{ url_for('student.dashboard') }}">→ پنل دانشجو</a>
+      </aside>
+      <div>{% block tcontent %}{% endblock %}</div>
+    </div>
+  </div>
+</section>
+<style>
+.dash-link { display:flex; align-items:center; gap:8px; padding:9px 12px; border-radius:10px;
+  font-size:13px; font-weight:600; color:var(--text-2); transition:all .15s; }
+.dash-link:hover { background:var(--bg-2); color:var(--primary); }
+.dash-link.active { background:var(--primary-soft); color:var(--primary); font-weight:800; }
+</style>
+{% endblock %}

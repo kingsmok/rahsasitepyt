@@ -1,0 +1,5 @@
+{% for cat in ['success', 'error', 'info'] %}
+  {% for msg in get_flashed_messages(category_filter=[cat]) %}
+    <div class="flash-data" data-msg="{{ msg }}" data-type="{{ cat }}"></div>
+  {% endfor %}
+{% endfor %}

@@ -1,0 +1,28 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}نقش‌ها و دسترسی‌ها{% endblock %}
+{% block acontent %}
+<div class="dash-head"><div><h1>👥 نقش‌ها و دسترسی‌ها</h1><p>تعیین دسترسی هر نقش — سیستم Permission-Based</p></div></div>
+<form method="post">
+  <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px">
+    {% for rid, r in ROLES.items() %}
+    <div class="card" style="padding:18px">
+      <h2 style="font-size:14px;margin-bottom:4px">{{ r.fa }}</h2>
+      <small class="text-3" style="font-size:11px;display:block;margin-bottom:10px">{{ rid }}</small>
+      {% set checked = custom.get(rid) if custom.get(rid) is not none else r.permissions %}
+      <div style="display:flex;flex-direction:column;gap:3px;max-height:260px;overflow-y:auto">
+        {% for p in all_perms %}
+        <label class="flex gap-1" style="font-size:12px;cursor:pointer">
+          <input type="checkbox" name="perms_{{ rid }}" value="{{ p }}" style="width:15px;height:15px"
+            {{ 'checked' if p in checked }} {{ 'disabled' if '*' in r.permissions }}>
+          {{ PERMISSION_FA.get(p, p) }}
+        </label>
+        {% endfor %}
+        {% if '*' in r.permissions %}<small class="text-3" style="font-size:10.5px">سوپر ادمین: همه دسترسی‌ها</small>{% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  <button class="btn btn-primary btn-lg" type="submit" style="margin-top:16px">💾 ذخیره دسترسی‌ها</button>
+</form>
+{% endblock %}

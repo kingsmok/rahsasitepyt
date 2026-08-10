@@ -1,0 +1,33 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}اقساط{% endblock %}
+{% block acontent %}
+<div class="dash-head">
+  <div><h1>💳 مدیریت اقساط</h1><p>همه قسط‌های پرداخت اقساطی</p></div>
+  <div class="flex gap-1">
+    <a class="btn btn-sm {{ 'btn-primary' if not status else 'btn-ghost' }}" href="{{ url_for('admin.installments') }}">همه</a>
+    <a class="btn btn-sm {{ 'btn-primary' if status == 'pending' else 'btn-ghost' }}" href="{{ url_for('admin.installments', status='pending') }}">در انتظار</a>
+    <a class="btn btn-sm {{ 'btn-primary' if status == 'paid' else 'btn-ghost' }}" href="{{ url_for('admin.installments', status='paid') }}">پرداخت شده</a>
+  </div>
+</div>
+<div class="card" style="padding:20px">
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>سفارش</th><th>کاربر</th><th>قسط</th><th>مبلغ</th><th>سررسید</th><th>وضعیت</th></tr></thead>
+    <tbody>
+      {% for it in items %}
+      <tr>
+        <td><a href="{{ url_for('admin.order_detail', oid=it.order_id) }}" dir="ltr">{{ it.order.code if it.order else '—' }}</a></td>
+        <td>{{ it.order.user.name if it.order and it.order.user else '—' }}</td>
+        <td>{{ fa(it.number) }} از {{ fa(it.order.installment_count) if it.order else '—' }}</td>
+        <td>{{ fa('{:,.0f}'.format(it.amount)) }}</td>
+        <td>{{ it.due_date|jdate if it.due_date else '—' }}</td>
+        <td>{% if it.status == 'paid' %}<span class="badge badge-success">✅ پرداخت شده</span>
+          {% elif it.status == 'overdue' %}<span class="badge badge-danger">⚠️ گذشته</span>
+          {% else %}<span class="badge badge-accent">در انتظار</span>{% endif %}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" class="text-center text-3">قسطی ثبت نشده — سفارش‌های بالای ۳۰۰ هزار تومان اقساطی می‌شوند.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+</div>
+{% endblock %}

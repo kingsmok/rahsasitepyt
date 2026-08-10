@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% from 'partials/course_card.html' import course_card %}
+{% block title %}{{ seo.title or "مدرس" }}{% endblock %}
+
+{% block content %}
+<section class="section" style="padding-top:36px">
+  <div class="container" style="max-width:1100px">
+    <nav class="breadcrumb" aria-label="مسیر صفحه">
+      <a href="{{ url_for('site.index') }}">خانه</a><span class="sep">/</span>
+      <a href="{{ url_for('site.teachers') }}">اساتید</a><span class="sep">/</span>
+      <span>{{ teacher.name }}</span>
+    </nav>
+
+    <div class="card" style="padding:34px;margin-bottom:34px">
+      <div class="flex gap-3 wrap">
+        <span class="avatar avatar-lg" style="background:{{ teacher.avatar_color }};width:96px;height:96px;font-size:32px;border-radius:26px">{{ teacher.initials() }}</span>
+        <div style="flex:1;min-width:260px">
+          <h1 style="font-size:24px">{{ teacher.name }}</h1>
+          <span class="badge badge-primary mb-2">مدرس آکادمی</span>
+          <p class="text-2" style="font-size:14px;margin-top:8px">{{ teacher.bio or '' }}</p>
+        </div>
+        <div class="flex gap-2">
+          <div class="card stat-card" style="border:none;box-shadow:none;background:var(--bg-2);padding:16px 22px">
+            <div class="num">{{ fa(courses|length) }}</div><div class="lbl">دوره</div>
+          </div>
+          <div class="card stat-card" style="border:none;box-shadow:none;background:var(--bg-2);padding:16px 22px">
+            <div class="num">{{ fa(courses|sum(attribute='students_count')) }}</div><div class="lbl">دانشجو</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <h2 class="mb-3" style="font-size:20px">📚 دوره‌های {{ teacher.name.split()[0] }}</h2>
+    <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:24px">
+      {% for c in courses %}{{ course_card(c) }}{% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}

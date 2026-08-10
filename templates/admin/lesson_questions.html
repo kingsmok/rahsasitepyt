@@ -1,0 +1,21 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}پرسش‌های درسی{% endblock %}
+{% block acontent %}
+<div class="dash-head"><div><h1>💬 پرسش‌های بدون پاسخ</h1><p>پرسش‌های دانشجویان زیر جلسات</p></div></div>
+{% for q in items %}
+<div class="card" style="padding:18px;margin-bottom:12px">
+  <div style="display:flex;justify-content:space-between;flex-wrap:wrap;margin-bottom:8px">
+    <strong style="font-size:13.5px">{{ q.user.name if q.user else '—' }}</strong>
+    <small class="text-3">{{ q.lesson.title if q.lesson else '—' }} — {{ q.created_at|jdatetime }}</small>
+  </div>
+  <p style="font-size:13.5px;background:var(--bg-2);padding:12px;border-radius:10px">{{ q.question }}</p>
+  <form method="post" action="{{ url_for('admin.lesson_question_answer', qid=q.id) }}" class="flex gap-1 mt-2">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+    <input class="form-control" name="answer" placeholder="پاسخ مدرس..." style="flex:1" required>
+    <button class="btn btn-primary btn-sm" type="submit">📤 ارسال پاسخ</button>
+  </form>
+</div>
+{% else %}
+<div class="card text-center" style="padding:40px"><p class="text-3">پرسش بی‌پاسخی وجود ندارد. 🎉</p></div>
+{% endfor %}
+{% endblock %}

@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+{% block title %}{{ seo.title or "دریافت مشاوره رایگان — آکادمی آنلاین" }}{% endblock %}
+
+{% block content %}
+<section class="section" style="padding-top:36px">
+  <div class="container" style="max-width:720px">
+    <nav class="breadcrumb" aria-label="مسیر صفحه">
+      <a href="{{ url_for('site.index') }}">خانه</a><span class="sep">/</span>
+      <span>مشاوره رایگان</span>
+    </nav>
+    <div class="card" style="padding:38px;border-radius:20px">
+      <div class="text-center mb-3">
+        <div style="font-size:44px">🎯</div>
+        <h1 style="font-size:24px;margin:10px 0 6px">مشاوره رایگان انتخاب مسیر یادگیری</h1>
+        <p class="text-2" style="font-size:13.5px">نمی‌دانی از کجا شروع کنی؟ شماره‌ات را بگذار تا کارشناسان ما با تو تماس بگیرند و بهترین مسیر را پیشنهاد دهند.</p>
+      </div>
+
+      <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:26px">
+        <div class="card" style="padding:16px;text-align:center"><div style="font-size:24px">🧭</div><small class="text-2">انتخاب مسیر درست</small></div>
+        <div class="card" style="padding:16px;text-align:center"><div style="font-size:24px">💬</div><small class="text-2">پاسخ به سوالات شما</small></div>
+        <div class="card" style="padding:16px;text-align:center"><div style="font-size:24px">🎁</div><small class="text-2">پیشنهاد تخفیف ویژه</small></div>
+        <div class="card" style="padding:16px;text-align:center"><div style="font-size:24px">⚡</div><small class="text-2">تماس سریع</small></div>
+      </div>
+
+      <form method="post">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+        <div class="grid" style="grid-template-columns:1fr 1fr;gap:14px">
+          <div class="form-group">
+            <label for="cs_name">نام و نام خانوادگی *</label>
+            <input id="cs_name" class="form-control" name="name" required placeholder="مثلاً: علی رضایی">
+          </div>
+          <div class="form-group">
+            <label for="cs_phone">شماره تماس *</label>
+            <input id="cs_phone" class="form-control" name="phone" dir="ltr" pattern="09[0-9]{9}" required placeholder="0912...">
+          </div>
+          <div class="form-group" style="grid-column:1/-1">
+            <label for="cs_goal">هدف شما از یادگیری چیست؟</label>
+            <select id="cs_goal" class="form-control" name="goal">
+              <option>تغییر مسیر شغلی به برنامه‌نویسی</option>
+              <option>یادگیری مهارت جدید برای کار فعلی</option>
+              <option>راه‌اندازی کسب‌وکار آنلاین</option>
+              <option>ورود به حوزه طراحی</option>
+              <option>سایر</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid" style="grid-template-columns:1fr 1fr;gap:14px">
+          <div class="form-group">
+            <label for="cs_time">زمان ترجیحی تماس</label>
+            <select id="cs_time" class="form-control" name="preferred_time">
+              <option>صبح (۹ تا ۱۲)</option><option>ظهر (۱۲ تا ۱۵)</option>
+              <option>عصر (۱۵ تا ۱۸)</option><option>شب (۱۸ تا ۲۱)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="cs_date">تاریخ تقریبی</label>
+            <input id="cs_date" class="form-control" type="date" name="preferred_date" data-jalali>
+          </div>
+        </div>
+        {{ captcha_box() }}
+        <button class="btn btn-primary btn-lg btn-block" type="submit">📞 درخواست تماس مشاوره</button>
+        <p class="text-3" style="font-size:11.5px;text-align:center;margin-top:10px">ارسال این فرم به‌معنای موافقت با <a href="{{ url_for('site.privacy') }}">سیاست حریم خصوصی</a> است. اطلاعات شما نزد ما محفوظ می‌ماند.</p>
+      </form>
+    </div>
+  </div>
+</section>
+{% endblock %}

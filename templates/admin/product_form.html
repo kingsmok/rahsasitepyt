@@ -1,0 +1,33 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}ویرایش محصول{% endblock %}
+{% block acontent %}
+<div class="dash-head"><div><h1>🛍 ویرایش «{{ p.title }}»</h1></div><a class="btn btn-ghost" href="{{ url_for('admin.products_admin') }}">← محصولات</a></div>
+<div class="card" style="padding:24px;max-width:860px">
+  <form method="post">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+    <div class="grid" style="grid-template-columns:1fr 1fr;gap:14px">
+      <div class="form-group"><label>عنوان *</label><input class="form-control" name="title" required value="{{ p.title }}"></div>
+      <div class="form-group"><label>دسته</label><input class="form-control" name="category" value="{{ p.category or '' }}" placeholder="لیوان و فنجان"></div>
+    </div>
+    <div class="form-group"><label>توضیحات</label><textarea class="form-control" name="description" rows="3">{{ p.description or '' }}</textarea></div>
+    <div class="grid" style="grid-template-columns:repeat(4,1fr);gap:14px">
+      <div class="form-group"><label>قیمت (تومان)</label><input class="form-control" type="number" name="price" value="{{ p.price }}"></div>
+      <div class="form-group"><label>قیمت با تخفیف</label><input class="form-control" type="number" name="discount_price" value="{{ p.discount_price }}"></div>
+      <div class="form-group"><label>موجودی</label><input class="form-control" type="number" name="stock" value="{{ p.stock }}"></div>
+      <div class="form-group"><label>شناسه (SKU)</label><input class="form-control" name="sku" value="{{ p.sku or '' }}" dir="ltr"></div>
+    </div>
+    <div class="grid" style="grid-template-columns:1fr 1fr 1fr;gap:14px">
+      <div class="form-group"><label>ابعاد</label><input class="form-control" name="dimensions" value="{{ p.dimensions or '' }}" placeholder="۷×۷ سانتی‌متر"></div>
+      <div class="form-group"><label>وزن</label><input class="form-control" name="weight" value="{{ p.weight or '' }}" placeholder="۲۸۰ گرم"></div>
+      <div class="form-group"><label>جنس</label><input class="form-control" name="material" value="{{ p.material or '' }}" placeholder="شیشه"></div>
+    </div>
+    <div class="form-group"><label>ویژگی‌ها (هر خط یک مورد)</label><textarea class="form-control" name="features" rows="4" placeholder="بسته‌بندی کادویی&#10;قابل استفاده در مایکروویو">{{ p.features or '' }}</textarea></div>
+    <div class="form-group"><label>تصویر (نام فایل در static/img یا URL)</label><input class="form-control" name="image" value="{{ p.image or '' }}" placeholder="cover-python.webp یا https://..."></div>
+    <div class="flex gap-2" style="gap:16px;margin-bottom:16px">
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" name="featured" value="1" {{ 'checked' if p.featured }} style="width:17px;height:17px;accent-color:var(--primary)"> ویژه</label>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" name="is_active" value="1" {{ 'checked' if p.is_active }} style="width:17px;height:17px;accent-color:var(--primary)"> فعال (نمایش در سایت)</label>
+    </div>
+    <button class="btn btn-primary" type="submit">💾 ذخیره</button>
+  </form>
+</div>
+{% endblock %}

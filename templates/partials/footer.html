@@ -1,0 +1,64 @@
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <a class="logo" href="{{ url_for('site.index') }}" style="color:#fff;margin-bottom:16px">
+          <span class="logo-ic">{{ icon('school', 20) }}</span>
+          <span>{{ site.site_name or 'آکادمی آنلاین' }}</span>
+        </a>
+        <p style="margin-top:14px">{{ site.site_desc or '' }}</p>
+        {% set st = site_stats() %}
+        <p style="margin-top:14px;color:var(--footer-text-2)">با بیش از {{ fa(st.students or 0) }} دانشجوی فعال، {{ fa(st.courses or 0) }} دوره تخصصی و همکاری با {{ fa(st.teachers or 0) }} مدرس برتر کشور، همراه مطمئن مسیر یادگیری شما هستیم.</p>
+      </div>
+
+      <div>
+        <h4>دسترسی سریع</h4>
+        <ul>
+          <li><a href="{{ url_for('site.courses') }}">همه دوره‌ها</a></li>
+          <li><a href="{{ url_for('products.product_list') }}">فروشگاه محصولات</a></li>
+          <li><a href="{{ url_for('site.teachers') }}">اساتید</a></li>
+          <li><a href="{{ url_for('site.blog') }}">وبلاگ</a></li>
+          <li><a href="{{ url_for('site.faq') }}">سوالات متداول</a></li>
+          <li><a href="{{ url_for('site.about') }}">درباره ما</a></li>
+          <li><a href="{{ url_for('site.contact') }}">تماس با ما</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <h4>دسته‌بندی دوره‌ها</h4>
+        <ul>
+          {% for c in site_categories[:7] %}
+          <li><a href="{{ url_for('site.courses', cat=c.slug) }}">{{ c.name }}</a></li>
+          {% endfor %}
+        </ul>
+      </div>
+
+      <div>
+        <h4>ارتباط با ما</h4>
+        <ul class="footer-contact">
+          <li><span class="ic">{{ icon('map-pin', 16) }}</span><span>{{ site.address or 'تهران، خیابان ولیعصر' }}</span></li>
+          <li><span class="ic">{{ icon('phone', 16) }}</span><span>{{ fa(site.phone or '۰۲۱-۹۱۰۰۱۲۳۴') }}</span></li>
+          <li><span class="ic">{{ icon('mail', 16) }}</span><span>{{ site.email or 'info@academy.ir' }}</span></li>
+          <li><span class="ic">{{ icon('clock', 16) }}</span><span>{{ site.support_hours or 'شنبه تا پنجشنبه — ۹ تا ۲۱' }}</span></li>
+        </ul>
+        <form action="{{ url_for('site.newsletter') }}" method="post" style="margin-top:14px">
+<input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+          <div class="newsletter-box" style="max-width:none">
+            <input type="email" name="email" placeholder="عضویت در خبرنامه..." required aria-label="ایمیل برای عضویت در خبرنامه">
+            <button class="btn btn-primary btn-sm" type="submit">عضویت</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <span>© {{ fa(now.year) }} — تمامی حقوق برای {{ site.site_name or 'آکادمی آنلاین' }} محفوظ است.</span>
+      <div class="socials">
+        <a href="https://t.me/{{ site.telegram or 'academy_ir' }}" target="_blank" rel="noopener" title="تلگرام">{{ icon('brand-telegram', 18) }}</a>
+        <a href="https://instagram.com/{{ site.instagram or 'academy.ir' }}" target="_blank" rel="noopener" title="اینستاگرام">{{ icon('brand-instagram', 18) }}</a>
+        <a href="https://wa.me/98" target="_blank" rel="noopener" title="واتساپ">{{ icon('brand-whatsapp', 18) }}</a>
+        <a href="https://youtube.com" target="_blank" rel="noopener" title="یوتیوب">{{ icon('brand-youtube', 18) }}</a>
+      </div>
+    </div>
+  </div>
+</footer>

@@ -1,0 +1,215 @@
+{
+  "theme_id": "pd-07",
+  "theme_name": "میناکاری",
+  "category": "فناوری - مدرن",
+  "colors": {
+    "primary": "#16324F",
+    "secondary": "#2EC4B6",
+    "accent": "#48A9A6",
+    "background": "#F5F9FB",
+    "text": "#15212E"
+  },
+  "layout_components": {
+    "homepage": "<section dir=\"rtl\" style=\"font-family:Vazirmatn,Tahoma,sans-serif;background:#F5F9FB;color:#15212E;padding:40px 20px;line-height:1.9\">\n  <div style=\"max-width:1100px;margin:0 auto;text-align:center\">\n    <span style=\"display:inline-block;background:#48A9A622;color:#48A9A6;font-weight:800;border-radius:99px;padding:6px 18px;font-size:13px\">میناکاری</span>\n    <h1 style=\"font-size:clamp(26px,4.5vw,44px);font-weight:900;margin:18px 0 12px;color:#15212E\">کدت را مثل میناکاری صیقل بده</h1>\n    <p style=\"max-width:620px;margin:0 auto 26px;color:#15212E99;font-size:15px\">برنامه‌نویسی، هوش مصنوعی و مهندسی نرم‌افزار — دقیق، تمیز و شفاف.</p>\n    <div style=\"display:flex;gap:12px;justify-content:center;flex-wrap:wrap\">\n      <a href=\"/courses\" style=\"background:#16324F;color:#fff;text-decoration:none;font-weight:800;padding:13px 30px;border-radius:14px;box-shadow:0 10px 24px #16324F44\">💻 دوره‌های برنامه‌نویسی</a>\n      <a href=\"/about\" style=\"border:2px solid #48A9A6;color:#48A9A6;text-decoration:none;font-weight:800;padding:12px 30px;border-radius:14px\">درباره ما</a>\n    </div>\n    <div style=\"display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-top:34px\">\n      <div style=\"background:#fff;border-radius:16px;padding:18px;border:1px solid #16324F22\"><b style=\"font-size:22px;color:#16324F\">۱۵۰+</b><div style=\"font-size:12.5px;color:#15212E88\">دوره آموزشی</div></div>\n      <div style=\"background:#fff;border-radius:16px;padding:18px;border:1px solid #16324F22\"><b style=\"font-size:22px;color:#16324F\">۵۰,۰۰۰+</b><div style=\"font-size:12.5px;color:#15212E88\">دانشجوی فعال</div></div>\n      <div style=\"background:#fff;border-radius:16px;padding:18px;border:1px solid #16324F22\"><b style=\"font-size:22px;color:#16324F\">۲,۰۰۰+</b><div style=\"font-size:12.5px;color:#15212E88\">ساعت آموزش</div></div>\n      <div style=\"background:#fff;border-radius:16px;padding:18px;border:1px solid #16324F22\"><b style=\"font-size:22px;color:#16324F\">٪۹۸</b><div style=\"font-size:12.5px;color:#15212E88\">رضایت</div></div>\n    </div>\n  </div></section>",
+    "course_card": "<section dir=\"rtl\" style=\"font-family:Vazirmatn,Tahoma,sans-serif;background:#F5F9FB;color:#15212E;padding:40px 20px;line-height:1.9\">\n  <div style=\"max-width:380px;margin:0 auto;background:#fff;border-radius:20px;overflow:hidden;border:1px solid #16324F22;box-shadow:0 14px 34px #15212E12\">\n    <div style=\"height:170px;background:linear-gradient(135deg,#16324F,#2EC4B6)\"></div>\n    <div style=\"padding:20px\">\n      <span style=\"font-size:11px;color:#16324F;font-weight:800;background:#16324F14;padding:4px 12px;border-radius:99px\">دوره جامع</span>\n      <h3 style=\"font-size:17px;font-weight:900;margin:12px 0 8px;color:#15212E\">عنوان دوره نمونه — میناکاری</h3>\n      <p style=\"font-size:12.5px;color:#15212E88;margin-bottom:14px\">توضیح کوتاه درباره سرفصل‌ها و دستاوردهای این دوره آموزشی…</p>\n      <div style=\"display:flex;align-items:center;justify-content:space-between;border-top:1px dashed #16324F33;padding-top:14px\">\n        <div><b style=\"font-size:18px;color:#16324F\">۱,۲۵۰,۰۰۰</b> <small style=\"color:#15212E77\">تومان</small></div>\n        <a href=\"/courses\" style=\"background:#16324F;color:#fff;text-decoration:none;font-weight:800;padding:10px 22px;border-radius:12px\">خرید سریع 🛒</a>\n      </div>\n    </div>\n  </div></section>",
+    "video_player": "<section dir=\"rtl\" style=\"font-family:Vazirmatn,Tahoma,sans-serif;background:#F5F9FB;color:#15212E;padding:40px 20px;line-height:1.9\">\n  <div style=\"max-width:900px;margin:0 auto;display:grid;grid-template-columns:1fr 280px;gap:16px\" class=\"resp\">\n    <div style=\"border-radius:18px;overflow:hidden;background:#000;aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;color:#fff;font-size:52px\">▶</div>\n    <div style=\"background:#fff;border:1px solid #16324F22;border-radius:18px;padding:14px\">\n      <h4 style=\"font-size:14px;font-weight:900;margin-bottom:10px;color:#15212E\">🎬 لیست پخش</h4>\n      <div style=\"display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;background:#16324F0d;margin-bottom:6px;font-size:12.5px\"><b style=\"color:#16324F\">1</b> قسمت 1 — عنوان درس</div><div style=\"display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;background:#16324F0d;margin-bottom:6px;font-size:12.5px\"><b style=\"color:#16324F\">2</b> قسمت 2 — عنوان درس</div><div style=\"display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;background:#16324F0d;margin-bottom:6px;font-size:12.5px\"><b style=\"color:#16324F\">3</b> قسمت 3 — عنوان درس</div><div style=\"display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;background:#16324F0d;margin-bottom:6px;font-size:12.5px\"><b style=\"color:#16324F\">4</b> قسمت 4 — عنوان درس</div>\n      <div style=\"margin-top:12px;padding:10px;background:#48A9A614;border-radius:12px;font-size:12px;color:#48A9A6;font-weight:700\">📝 یادداشت‌برداری و فایل ضمیمه این قسمت</div>\n    </div>\n  </div></section>",
+    "about_us": "<section dir=\"rtl\" style=\"font-family:Vazirmatn,Tahoma,sans-serif;background:#F5F9FB;color:#15212E;padding:40px 20px;line-height:1.9\">\n  <div style=\"max-width:1000px;margin:0 auto\">\n    <h2 style=\"font-size:26px;font-weight:900;text-align:center;margin-bottom:8px;color:#15212E\">داستان میناکاری</h2>\n    <p style=\"text-align:center;color:#15212E88;max-width:640px;margin:0 auto 30px;font-size:14px\">ما با عشق به فرهنگ ایرانی و باور به آموزش باکیفیت، این آکادمی را بنا کردیم.</p>\n    <div style=\"display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px\">\n      <div style=\"background:#fff;border-radius:18px;padding:20px;border-top:4px solid #16324F\"><b style=\"color:#16324F\">🎯 مأموریت</b><p style=\"font-size:12.5px;color:#15212E88;margin-top:8px\">آموزش مهارت‌های واقعی به زبان ساده برای همه ایرانیان.</p></div>\n      <div style=\"background:#fff;border-radius:18px;padding:20px;border-top:4px solid #48A9A6\"><b style=\"color:#48A9A6\">👁 چشم‌انداز</b><p style=\"font-size:12.5px;color:#15212E88;margin-top:8px\">مرجع اول آموزش آنلاین با هویت ایرانی در منطقه.</p></div>\n      <div style=\"background:#fff;border-radius:18px;padding:20px;border-top:4px solid #16324F\"><b style=\"color:#16324F\">🏆 افتخارات</b><p style=\"font-size:12.5px;color:#15212E88;margin-top:8px\">بیش از ۵۰ هزار دانشجو و ۶ سال حضور مستمر.</p></div>\n    </div>\n  </div></section>",
+    "contact_us": "<section dir=\"rtl\" style=\"font-family:Vazirmatn,Tahoma,sans-serif;background:#F5F9FB;color:#15212E;padding:40px 20px;line-height:1.9\">\n  <div style=\"max-width:1000px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:18px\" class=\"resp\">\n    <form style=\"background:#fff;border-radius:18px;padding:22px;border:1px solid #16324F22\">\n      <h3 style=\"font-weight:900;margin-bottom:14px;color:#15212E\">📨 فرم تماس</h3>\n      <input placeholder=\"نام و نام خانوادگی\" style=\"width:100%;padding:11px 14px;border:1.5px solid #16324F33;border-radius:11px;margin-bottom:10px\">\n      <input placeholder=\"ایمیل\" style=\"width:100%;padding:11px 14px;border:1.5px solid #16324F33;border-radius:11px;margin-bottom:10px\">\n      <textarea placeholder=\"پیام شما…\" rows=\"4\" style=\"width:100%;padding:11px 14px;border:1.5px solid #16324F33;border-radius:11px;margin-bottom:12px\"></textarea>\n      <button style=\"background:#16324F;color:#fff;border:none;font-weight:800;padding:12px 30px;border-radius:12px;cursor:pointer\">ارسال پیام</button>\n    </form>\n    <div style=\"background:#fff;border-radius:18px;padding:22px;border:1px solid #16324F22;font-size:13px;color:#15212E88\">\n      <h3 style=\"font-weight:900;margin-bottom:14px;color:#15212E\">📍 اطلاعات دسترسی</h3>\n      <div style=\"margin-bottom:10px\">🏢 تهران، خیابان آزادی، پلاک ۱۲۳</div>\n      <div style=\"margin-bottom:10px\">📞 ۰۲۱-۱۲۳۴۵۶۷۸</div>\n      <div style=\"margin-bottom:10px\">✉️ info@academy.ir</div>\n      <div style=\"height:140px;border-radius:14px;background:linear-gradient(135deg,#2EC4B6,#16324F22);display:flex;align-items:center;justify-content:center;color:#16324F;font-weight:800;margin-top:12px\">🗺 نقشه — شبکه سراسری پشتیبانی</div>\n    </div>\n  </div></section>"
+  },
+  "homepage_rows": [
+    {
+      "id": "sld",
+      "settings": {
+        "gap": 0,
+        "py": 0
+      },
+      "cols": [
+        [
+          {
+            "id": "w_sl",
+            "type": "slider",
+            "data": {
+              "height": "430",
+              "autoplay": true,
+              "interval": "5",
+              "dots": true,
+              "arrows": true,
+              "swipe": true,
+              "slides": [
+                {
+                  "img": "hero.webp",
+                  "title": "کدت را مثل میناکاری صیقل بده",
+                  "sub": "برنامه‌نویسی، هوش مصنوعی و مهندسی نرم‌افزار — دقیق، تمیز و شفاف.",
+                  "btn_text": "💻 دوره‌های برنامه‌نویسی",
+                  "btn_url": "/courses",
+                  "align": "right"
+                },
+                {
+                  "img": "cover-python.webp",
+                  "title": "از صفر تا استادی در پایتون",
+                  "sub": "مسیر یادگیری قدم‌به‌قدم با پروژه‌های واقعی.",
+                  "btn_text": "مشاهده دوره پایتون",
+                  "btn_url": "/courses",
+                  "align": "center"
+                }
+              ]
+            }
+          }
+        ]
+      ]
+    },
+    {
+      "id": "stt",
+      "settings": {
+        "gap": 0,
+        "py": 50
+      },
+      "cols": [
+        [
+          {
+            "id": "w_st",
+            "type": "stats",
+            "data": {
+              "columns": "4",
+              "items": [
+                {
+                  "value": "۱۵۰+",
+                  "label": "دوره آموزشی"
+                },
+                {
+                  "value": "۵۰,۰۰۰+",
+                  "label": "دانشجوی فعال"
+                },
+                {
+                  "value": "۲,۰۰۰+",
+                  "label": "ساعت آموزش"
+                },
+                {
+                  "value": "٪۹۸",
+                  "label": "رضایت دانشجویان"
+                }
+              ]
+            }
+          }
+        ]
+      ]
+    },
+    {
+      "id": "ftr",
+      "settings": {
+        "gap": 22,
+        "py": 60
+      },
+      "cols": [
+        [
+          {
+            "id": "w_ft",
+            "type": "feature",
+            "data": {
+              "columns": "3",
+              "items": [
+                {
+                  "icon": "💻",
+                  "title": "کدنویسی تمیز",
+                  "text": "استانداردهای مهندسی"
+                },
+                {
+                  "icon": "🤖",
+                  "title": "هوش مصنوعی",
+                  "text": "از مفاهیم تا استقرار مدل"
+                },
+                {
+                  "icon": "🔬",
+                  "title": "دقت و شفافیت",
+                  "text": "مثل مینای شفاف"
+                },
+                {
+                  "icon": "⚡",
+                  "title": "پرفورمنس",
+                  "text": "بهینه‌سازی کد"
+                },
+                {
+                  "icon": "🛠",
+                  "title": "ابزارهای روز",
+                  "text": "تکنولوژی‌های ۲۰۲۶"
+                },
+                {
+                  "icon": "🚀",
+                  "title": "استقرار سریع",
+                  "text": "از IDE تا سرور"
+                }
+              ]
+            }
+          }
+        ]
+      ]
+    },
+    {
+      "id": "crs",
+      "settings": {
+        "gap": 24,
+        "py": 60
+      },
+      "cols": [
+        [
+          {
+            "id": "w_cr",
+            "type": "courses",
+            "data": {
+              "title": "💻 دانشکده کامپیوتر",
+              "subtitle": "مهندسی مثل میناکاری",
+              "limit": "8",
+              "columns": "4",
+              "sort": "popular"
+            }
+          }
+        ]
+      ]
+    },
+    {
+      "id": "tst",
+      "settings": {
+        "gap": 22,
+        "py": 60,
+        "bg": "#ffffff",
+        "radius": 24
+      },
+      "cols": [
+        [
+          {
+            "id": "w_ts",
+            "type": "reviews",
+            "data": {
+              "title": "⭐ نظرات واقعی دانشجویان",
+              "limit": "6"
+            }
+          }
+        ]
+      ]
+    },
+    {
+      "id": "cta",
+      "settings": {
+        "gap": 0,
+        "py": 30
+      },
+      "cols": [
+        [
+          {
+            "id": "w_ct",
+            "type": "cta",
+            "data": {
+              "title": "کدنویسی را حرفه‌ای شروع کن",
+              "text": "با تخفیف ۳۰٪ دوره‌های ترم پاییز",
+              "btn_text": "ثبت‌نام با تخفیف",
+              "btn_url": "/register"
+            }
+          }
+        ]
+      ]
+    }
+  ],
+  "dark": false,
+  "container": "1280",
+  "radius": "10"
+}

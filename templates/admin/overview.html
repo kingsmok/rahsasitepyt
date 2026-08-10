@@ -1,0 +1,99 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}داشبورد مدیریت{% endblock %}
+{% block acontent %}
+<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:22px">
+  <div class="card stat-ic stat-ic-blue" style="padding:16px;text-align:center"><div class="num">{{ fa('{:,.0f}'.format(month_revenue)) }}</div><small>فروش این ماه</small><div class="text-3" style="font-size:11px;opacity:.8">{{ fa(month_orders) }} سفارش</div></div>
+  <div class="card stat-ic stat-ic-green" style="padding:16px;text-align:center"><div class="num">{{ fa(new_today) }}</div><small>ثبت‌نام امروز</small></div>
+  <div class="card stat-ic stat-ic-orange" style="padding:16px;text-align:center"><div class="num">{{ fa(active_users) }}</div><small>کاربر فعال ۷ روز</small></div>
+  <div class="card stat-ic stat-ic-green" style="padding:16px;text-align:center"><div class="num">٪{{ fa(completion_rate) }}</div><small>نرخ تکمیل دوره</small><div class="text-3" style="font-size:11px;opacity:.8">میانگین پیشرفت ٪{{ fa(avg_progress) }}</div></div>
+</div>
+
+<div class="dash-head">
+  <div>
+    <h1>📊 داشبورد مدیریت</h1>
+    <p>نمای کلی فعالیت سایت — {{ now|jdate }}</p>
+  </div>
+  <a class="btn btn-primary" href="{{ url_for('admin.course_new') }}">+ دوره جدید</a>
+</div>
+
+<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:16px;margin-bottom:24px">
+  <div class="card card-hover stat-card"><span class="ic stat-ic-green">💰</span><div><div class="num">{{ fa('{:,.0f}'.format(total_revenue)) }}</div><div class="lbl">کل فروش (تومان)</div></div></div>
+  <div class="card card-hover stat-card"><span class="ic stat-ic-blue">🧾</span><div><div class="num">{{ fa(paid_orders) }}</div><div class="lbl">سفارش پرداخت‌شده</div></div></div>
+  <div class="card card-hover stat-card"><span class="ic stat-ic-orange">🆕</span><div><div class="num">{{ fa(today_orders) }}</div><div class="lbl">سفارش امروز</div></div></div>
+  <div class="card card-hover stat-card"><span class="ic stat-ic-red">👥</span><div><div class="num">{{ fa(users_count) }}</div><div class="lbl">کاربران</div></div></div>
+  <div class="card card-hover stat-card"><span class="ic stat-ic-blue">📚</span><div><div class="num">{{ fa(courses_count) }}</div><div class="lbl">دوره‌ها</div></div></div>
+</div>
+
+{% if week %}
+<div class="card" style="padding:22px;margin-bottom:22px">
+  <div class="flex between mb-3">
+    <h3 style="font-size:16px">📈 فروش ۷ روز اخیر</h3>
+    <div class="flex gap-2">
+      {% for w in week %}
+      <span class="text-3" style="font-size:11px">{{ w.label }}: <b class="text-primary">{{ fa(w.count) }}</b></span>
+      {% endfor %}
+    </div>
+  </div>
+  <div class="chart-bars">
+    {% for w in week %}
+    <div class="chart-col">
+      <div class="chart-val">{{ fa('{:,.0f}'.format(w.revenue)) }} <small>تومان</small></div>
+      <div class="chart-bar" style="height:{{ w.pct }}%"><span></span></div>
+      <div class="chart-label">{{ w.label.split()[0] }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<div class="grid" style="grid-template-columns:1.3fr 1fr;gap:22px;align-items:start">
+  <div class="card" style="padding:22px">
+    <div class="flex between mb-2">
+      <h3 style="font-size:16px">🕘 آخرین سفارش‌ها</h3>
+      <a href="{{ url_for('admin.orders') }}" class="btn btn-ghost btn-sm">همه ←</a>
+    </div>
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>کد</th><th>کاربر</th><th>مبلغ</th><th>وضعیت</th></tr></thead>
+        <tbody>
+          {% for o in recent_orders %}
+          <tr>
+            <td dir="ltr" style="font-weight:700">{{ o.code }}</td>
+            <td>{{ o.user.name }}</td>
+            <td>{{ fa('{:,.0f}'.format(o.final_total)) }} ت</td>
+            <td>
+              {% if o.status == 'paid' %}<span class="badge badge-success">پرداخت</span>
+              {% elif o.status == 'pending' %}<span class="badge badge-accent">در انتظار</span>
+              {% else %}<span class="badge badge-danger">{{ o.status_fa }}</span>{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div>
+    <div class="card" style="padding:22px;margin-bottom:22px">
+      <h3 style="font-size:16px;margin-bottom:14px">🔥 پربازدیدترین دوره‌ها</h3>
+      {% for c in top_courses %}
+      <a class="cart-row" href="{{ url_for('admin.course_edit', cid=c.id) }}" style="padding:10px 6px">
+        <img class="c-thumb" src="/static/img/{{ c.image }}" alt="" style="width:74px;height:46px">
+        <div class="c-info"><h4 style="font-size:13px">{{ c.title }}</h4><small>{{ fa(c.views) }} بازدید — {{ fa(c.students_count) }} دانشجو</small></div>
+        <span class="badge badge-gray">{{ fa(c.lesson_count) }} جلسه</span>
+      </a>
+      {% endfor %}
+    </div>
+    <div class="card" style="padding:22px">
+      <h3 style="font-size:16px;margin-bottom:14px">👤 کاربران جدید</h3>
+      {% for u in recent_users %}
+      <div class="flex gap-1" style="padding:7px 0">
+        <span class="avatar" style="background:{{ u.avatar_color }}">{{ u.initials() }}</span>
+        <div style="flex:1"><strong style="font-size:13px">{{ u.name }}</strong><br><small class="text-3">{{ u.created_at|jdate }}</small></div>
+        <span class="badge {{ 'badge-success' if u.is_admin else ('badge-primary' if u.role == 'teacher' else 'badge-gray') }}">{{ 'مدیر' if u.is_admin else ('مدرس' if u.role == 'teacher' else 'دانشجو') }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

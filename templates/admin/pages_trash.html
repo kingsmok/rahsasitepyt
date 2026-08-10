@@ -1,0 +1,29 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}سطل زباله صفحات{% endblock %}
+{% block acontent %}
+<div class="dash-head"><div><h1>🗑 سطل زباله</h1><p>صفحات حذف‌شده موقت — قابل بازیابی</p></div><a class="btn btn-ghost" href="{{ url_for('admin.pages') }}">← صفحات</a></div>
+<div class="card" style="padding:22px">
+  {% if pages %}
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>عنوان</th><th>اسلاگ</th><th>تاریخ حذف</th><th>عملیات</th></tr></thead>
+    <tbody>
+      {% for p in pages %}
+      <tr>
+        <td><strong>{{ p.title }}</strong></td>
+        <td dir="ltr">{{ p.slug }}</td>
+        <td>{{ p.updated_at|jdatetime }}</td>
+        <td>
+          <form method="post" action="{{ url_for('admin.page_restore', pid=p.id) }}" style="display:inline">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+            <button class="btn btn-success btn-sm">♻️ بازیابی</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}
+  <p class="text-3 text-center" style="padding:30px">سطل زباله خالی است.</p>
+  {% endif %}
+</div>
+{% endblock %}

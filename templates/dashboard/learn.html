@@ -1,0 +1,223 @@
+{% extends 'base.html' %}
+{% block title %}{{ seo.title or "یادگیری" }}{% endblock %}
+{% block body_attrs %}data-lesson="{{ current.id }}"{% endblock %}
+
+{% block content %}
+<section class="section" style="padding-top:26px">
+  <div class="container" style="max-width:1200px">
+    <nav class="breadcrumb" aria-label="مسیر صفحه">
+      <a href="{{ url_for('student.dashboard') }}">داشبورد</a><span class="sep">/</span>
+      <a href="{{ url_for('student.my_courses') }}">دوره‌های من</a><span class="sep">/</span>
+      <span>{{ course.title }}</span>
+    </nav>
+
+    <div class="grid" style="grid-template-columns:1fr 340px;gap:26px;align-items:start">
+      <!-- پخش‌کننده -->
+      <div>
+        <!-- پلیر اختصاصی با واترمارک -->
+        <div class="player-wrap pp-wrap" id="pp-wrap">
+          {% if current.video_type == 'youtube' and yt_id %}
+          <div class="pp-iframe">
+            <iframe src="https://www.youtube-nocookie.com/embed/{{ yt_id }}" title="{{ current.title }}"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowfullscreen></iframe>
+          </div>
+          {% elif current.video_type == 'aparat' and ap_hash %}
+          <div class="pp-iframe">
+            <iframe src="https://www.aparat.com/video/video/embed/videohash/{{ ap_hash }}/vt/frame"
+                    title="{{ current.title }}" allowfullscreen></iframe>
+          </div>
+          {% else %}
+          <video id="pp-video" src="{{ current.video_src or '/static/video/sample.mp4' }}"
+                 poster="/static/img/{{ course.image }}" preload="metadata" playsinline
+                 {% if current.captions %}crossorigin="anonymous"{% endif %}>
+            {% if current.captions %}<track kind="captions" src="/uploads/lessons/{{ current.captions }}" srclang="fa" label="فارسی">{% endif %}
+          </video>
+          <div class="pp-controls" id="pp-controls">
+            <button class="pp-btn" id="pp-play" type="button" title="پخش/توقف">▶</button>
+            <span class="pp-time" id="pp-time">۰۰:۰۰ / ۰۰:۰۰</span>
+            <input class="pp-seek" id="pp-seek" type="range" min="0" max="1000" value="0" title="موقعیت پخش">
+            <button class="pp-btn" id="pp-mute" type="button" title="صدا">🔊</button>
+            <input class="pp-vol" id="pp-vol" type="range" min="0" max="100" value="100" title="میزان صدا">
+            <span class="pp-spacer"></span>
+            {% if current.video_url_hd %}<button class="pp-btn" id="pp-quality" type="button" title="کیفیت" data-hd="{{ current.video_url_hd }}">HD</button>{% endif %}
+            <button class="pp-btn" id="pp-speed" type="button" title="سرعت پخش">۱×</button>
+            <button class="pp-btn" id="pp-fs" type="button" title="تمام‌صفحه">⛶</button>
+          </div>
+          {% endif %}
+
+          <!-- واترمارک: نام و کد ملی دانشجو روی ویدیو -->
+          {% if site.watermark_enabled != '0' and cur_user %}
+          <div class="pp-wm-corner">🎓 {{ cur_user.name }} — کد ملی: {{ cur_user.national_code|mask_nc }}</div>
+          <div class="pp-wm-moving"><span>{{ cur_user.name }} ✦ {{ cur_user.national_code|mask_nc }} ✦ {{ site.site_name or 'آکادمی آنلاین' }} ✦ {{ cur_user.name }} ✦ {{ cur_user.national_code|mask_nc }} ✦ {{ site.site_name or 'آکادمی آنلاین' }} ✦</span></div>
+          {% endif %}
+        </div>
+
+        <div class="card mt-2" style="padding:20px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <span style="font-size:13px;font-weight:800;color:var(--text-2)">📝 یادداشت شخصی این جلسه <small style="font-weight:500;color:var(--text-3)">(فقط روی این دستگاه ذخیره می‌شود)</small></span>
+            <span id="pp-notes-hint" style="font-size:11px;color:var(--success);opacity:0;transition:opacity .3s">✓ ذخیره شد</span>
+          </div>
+          <textarea id="pp-notes" rows="3" class="form-control" placeholder="نکته‌های این جلسه را اینجا بنویسید... به‌صورت خودکار ذخیره می‌شود." style="margin-bottom:14px"></textarea>
+          <div class="flex between wrap gap-2">
+            <div>
+              <h2 style="font-size:17px">{{ current.title }}</h2>
+              <p class="text-3" style="font-size:12.5px">
+                ⏱ مدت: {{ fa(current.duration) }} —
+                {% if current.video_type == 'youtube' %}▶️ ویدیو از یوتیوب
+                {% elif current.video_type == 'aparat' %}🎥 ویدیو از آپارات
+                {% elif current.video_type == 'none' %}📄 جلسه متنی (بدون ویدیو)
+                {% else %}🎬 ویدیو مستقیم{% endif %}
+                — {{ 'جلسه رایگان' if current.is_free else 'جلسه دوره' }}
+              </p>
+            </div>
+            <form method="post" action="{{ url_for('student.complete_lesson', course_id=course.id, lesson_id=current.id) }}">
+<input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+              {% if current.id in done %}
+              <input type="hidden" name="action" value="uncomplete">
+              <button class="btn btn-ghost" type="submit">↺ لغو تکمیل</button>
+              {% else %}
+              <input type="hidden" name="action" value="complete">
+              <button class="btn btn-success" type="submit">✓ تکمیل جلسه</button>
+              {% endif %}
+            </form>
+          </div>
+          {% if current.content %}
+          <div style="border-top:1px dashed var(--border);margin-top:16px;padding-top:14px">
+            <h4 class="mb-1" style="font-size:14px">📝 توضیحات جلسه</h4>
+            <p class="text-2" style="font-size:13.5px">{{ current.content }}</p>
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- فایل‌های پروژه / دیتای جلسه -->
+        {% if current.file_url %}
+        <div class="card mt-2" style="padding:20px">
+          <h4 class="mb-2" style="font-size:14.5px">📎 فایل‌های این جلسه</h4>
+          <div class="file-row">
+            <span class="file-ic">📦</span>
+            <div class="file-info">
+              <strong>{{ current.file_name or 'فایل پیوست' }}</strong>
+              <small>{{ current.file_size or '' }} — قابل دانلود از هر دستگاه</small>
+            </div>
+            <a class="btn btn-primary btn-sm" href="{{ url_for('admin.protected_lesson_file', lid=current.id) }}">⬇ دانلود فایل</a>
+          </div>
+        </div>
+        {% endif %}
+
+        <div class="card mt-2" style="padding:20px">
+          <div class="flex between mb-2">
+            <h3 style="font-size:15.5px">پیشرفت شما</h3>
+            <span class="badge badge-primary">{{ fa(enrollment.percent) }}٪</span>
+          </div>
+          <div class="progress"><div class="bar {{ 'gold' if enrollment.is_completed }}" style="width:{{ enrollment.percent }}%"></div></div>
+          {% if enrollment.is_completed %}
+          <a class="btn btn-accent btn-lg btn-block mt-3" href="{{ url_for('student.certificate', course_id=course.id) }}">🏅 دریافت گواهینامه دوره</a>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- فهرست جلسات -->
+      <aside>
+        <div class="lesson-list-side">
+          {% for sec in course.sections %}
+          <div style="font-size:13px;font-weight:800;color:var(--text-2);padding:12px 10px 6px">{{ sec.title }}</div>
+          {% for l in sec.lessons %}
+          {% if l.id in locked %}
+          <div class="lesson-item" style="opacity:.55;cursor:not-allowed" title="🔒 این جلسه {{ fa(locked[l.id]) }} روز دیگر باز می‌شود (دسترسی تدریجی)">
+            <span class="l-num">🔒</span>
+            <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ l.title }}</span>
+            <span style="font-size:10.5px;color:var(--text-3)">{{ fa(locked[l.id]) }} روز</span>
+          </div>
+          {% else %}
+          <a class="lesson-item {{ 'active' if l.id == current.id }} {{ 'done' if l.id in done }}"
+             href="{{ url_for('student.learn', course_id=course.id, lesson=l.id) }}">
+            <span class="l-num">{{ '✓' if l.id in done else fa(loop.index) }}</span>
+            <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ l.title }}</span>
+            {% if l.file_url %}<span title="دارای فایل پیوست" style="font-size:11px">📎</span>{% endif %}
+            <span style="font-size:11px;color:var(--text-3)">{{ fa(l.duration) }}</span>
+          </a>
+          {% endif %}
+          {% endfor %}
+          {% endfor %}
+        </div>
+      </aside>
+    </div>
+  </div>
+    {% if checkpoint_quiz %}
+    <div class="card" style="padding:18px 20px;margin-top:16px;background:var(--success-soft);border:none;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <span style="font-size:26px">🎯</span>
+      <div style="flex:1;min-width:200px">
+        <strong style="font-size:13.5px">چک‌پوینت یادگیری!</strong>
+        <small class="text-2" style="display:block;font-size:12px">{{ fa(done|length) }} جلسه را کامل کردی — دانشت را با یک کوییز کوتاه بسنج!</small>
+      </div>
+      <a class="btn btn-success btn-sm" href="{{ url_for('features.quiz_view', qid=checkpoint_quiz.id) }}">📝 شروع کوییز</a>
+    </div>
+    {% endif %}
+    <!-- آزمون‌ها و تمرین‌های دوره -->
+    {% if course.quizzes or course.assignments %}
+    <div class="mt-4">
+      <h2 style="font-size:17px;margin-bottom:12px">📝 آزمون‌ها و تمرین‌های این دوره</h2>
+      <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px">
+        {% for qz in course.quizzes %}
+        <a class="card card-hover" style="padding:16px;display:flex;align-items:center;gap:12px;text-decoration:none" href="{{ url_for('features.quiz_view', qid=qz.id) }}">
+          <span style="font-size:24px">📝</span>
+          <div style="flex:1;min-width:0">
+            <strong style="font-size:13px;display:block">{{ qz.title }}</strong>
+            <small class="text-3">{{ fa(qz.questions|length) }} سوال — قبولی {{ fa(qz.passing_score or 50) }}٪</small>
+          </div>
+          <span class="btn btn-ghost btn-sm">شروع</span>
+        </a>
+        {% endfor %}
+        {% for asg in course.assignments %}
+        <a class="card card-hover" style="padding:16px;display:flex;align-items:center;gap:12px;text-decoration:none" href="{{ url_for('features.assignment_view', aid=asg.id) }}">
+          <span style="font-size:24px">📌</span>
+          <div style="flex:1;min-width:0">
+            <strong style="font-size:13px;display:block">{{ asg.title }}</strong>
+            <small class="text-3">نمره از {{ fa(asg.max_score or 100) }}</small>
+          </div>
+          <span class="btn btn-ghost btn-sm">ارسال</span>
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- پرسش و پاسخ زیر درس -->
+    <div class="card mt-4" style="padding:24px" id="lesson-qa">
+      <h2 style="font-size:16px;margin-bottom:14px">💬 پرسش و پاسخ این جلسه</h2>
+      {% set lqs = current.questions|list %}
+      {% if lqs %}
+      <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:18px">
+        {% for lq in lqs %}
+        <div class="lq-item {{ 'answered' if lq.answer }}">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <span class="avatar" style="width:30px;height:30px;font-size:12px;background:{{ lq.user.avatar_color if lq.user else 'var(--bg-2)' }}">{{ (lq.user.initials() if lq.user else '؟') }}</span>
+            <strong style="font-size:13px">{{ lq.user.name if lq.user else 'دانشجو' }}</strong>
+            <small class="text-3" style="font-size:11px">{{ lq.created_at|jdatetime }}</small>
+          </div>
+          <p style="font-size:13.5px;margin:0 0 6px">{{ lq.question }}</p>
+          {% if lq.answer %}
+          <div style="background:var(--primary-soft);border-radius:10px;padding:10px 14px;font-size:13px">
+            <strong style="font-size:12px">👨‍🏫 پاسخ مدرس:</strong> {{ lq.answer }}
+          </div>
+          {% else %}
+          <small class="text-3" style="font-size:11.5px">⏳ در انتظار پاسخ مدرس</small>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+      <form method="post" action="{{ url_for('features.lesson_ask', lid=current.id) }}">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+        <div class="form-group" style="margin-bottom:10px">
+          <label for="lq_text" style="font-size:13px">سوال خود درباره این جلسه را بپرسید:</label>
+          <textarea id="lq_text" class="form-control" name="question" rows="2" required placeholder="مثلاً: در دقیقه ۵، چرا از این تابع استفاده شد؟"></textarea>
+        </div>
+        <button class="btn btn-primary btn-sm" type="submit">📤 ارسال سوال</button>
+      </form>
+    </div>
+  </div>
+</section>
+<script src="/static/js/player.js?v={{ asset_v() }}"></script>
+{% endblock %}

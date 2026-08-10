@@ -1,0 +1,35 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}آزمون‌ها{% endblock %}
+{% block acontent %}
+<div class="dash-head">
+  <div><h1>📝 آزمون‌ها</h1><p>ساخت و مدیریت آزمون دوره‌ها</p></div>
+  <a class="btn btn-primary" href="{{ url_for('admin.quiz_new') }}">+ آزمون جدید</a>
+</div>
+<div class="card" style="padding:22px">
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>عنوان</th><th>دوره</th><th>سوالات</th><th>قبولی</th><th>تعیین سطح</th><th>عملیات</th></tr></thead>
+      <tbody>
+        {% for q in quizzes %}
+        <tr>
+          <td><strong>{{ q.title }}</strong></td>
+          <td>{{ q.course.title if q.course else '—' }}</td>
+          <td>{{ fa(q.questions|length) }}</td>
+          <td>{{ fa(q.passing_score) }}٪</td>
+          <td>{{ '✅' if q.is_placement else '—' }}</td>
+          <td style="white-space:nowrap">
+            <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.quiz_edit', qid=q.id) }}">✏️ ویرایش</a>
+            <form method="post" action="{{ url_for('admin.quiz_delete', qid=q.id) }}" style="display:inline">
+              <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+              <button class="btn btn-danger btn-sm" onclick="return confirm('حذف؟')">🗑</button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="text-center text-3">آزمونی ساخته نشده است.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

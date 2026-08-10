@@ -1,0 +1,30 @@
+{% extends 'teacher/base.html' %}
+{% block tcontent %}
+<div class="dash-head">
+  <div><h1 style="font-size:20px">📊 داشبورد استاد</h1><p>نمای کلی دوره‌ها و فعالیت‌های آموزشی شما</p></div>
+</div>
+<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:22px">
+  <div class="card stat-ic stat-ic-1" style="padding:18px;text-align:center"><div style="font-size:26px">📚</div><strong style="font-size:20px;display:block">{{ fa(courses|length) }}</strong><small class="text-3">دوره</small></div>
+  <div class="card stat-ic stat-ic-2" style="padding:18px;text-align:center"><div style="font-size:26px">👥</div><strong style="font-size:20px;display:block">{{ fa(total_students) }}</strong><small class="text-3">دانشجو</small></div>
+  <div class="card stat-ic stat-ic-3" style="padding:18px;text-align:center"><div style="font-size:26px">💰</div><strong style="font-size:20px;display:block">{{ fa('{:,.0f}'.format(share)) }}</strong><small class="text-3">سهم شما (تومان)</small></div>
+  <div class="card stat-ic stat-ic-4" style="padding:18px;text-align:center"><div style="font-size:26px">📌</div><strong style="font-size:20px;display:block">{{ fa(pending_asgs) }}</strong><small class="text-3">تکلیف در انتظار</small></div>
+  <div class="card stat-ic stat-ic-5" style="padding:18px;text-align:center"><div style="font-size:26px">💬</div><strong style="font-size:20px;display:block">{{ fa(pending_qs) }}</strong><small class="text-3">پرسش بی‌پاسخ</small></div>
+</div>
+
+<div class="card" style="padding:22px">
+  <h2 style="font-size:15px;margin-bottom:12px">📌 تکالیف اخیر در انتظار نمره</h2>
+  {% if recent_submissions %}
+  {% for s in recent_submissions %}
+  <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);font-size:13px">
+    <div><strong>{{ s.user.name if s.user else '—' }}</strong> — {{ s.assignment.title }} <small class="text-3">({{ s.created_at|jdatetime }})</small></div>
+    <div class="flex gap-1">
+      {% if s.file %}<a class="btn btn-ghost btn-sm" href="/uploads/submissions/{{ s.file }}" target="_blank">📎</a>{% endif %}
+      <a class="btn btn-primary btn-sm" href="{{ url_for('teacher.assignments') }}">نمره‌دهی</a>
+    </div>
+  </div>
+  {% endfor %}
+  {% else %}
+  <p class="text-3" style="font-size:13px">تکلیفی در انتظار نیست. 🎉</p>
+  {% endif %}
+</div>
+{% endblock %}

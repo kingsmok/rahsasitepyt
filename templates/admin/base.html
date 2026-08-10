@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block title %}{% block atitle %}پنل مدیریت{% endblock %} — {{ site.site_name or 'آکادمی آنلاین' }}{% endblock %}
+
+{% block content %}
+<div class="admin-layout">
+  <aside class="as-sidebar">
+      <div class="as-brand">
+        <span class="as-logo">🎓</span>
+        <div><strong>{{ site.site_name or 'آکادمی' }}</strong><small>{{ current_role or 'پنل مدیریت' }}</small></div>
+      </div>
+      <nav style="display:flex;flex-direction:column;gap:2px;padding:10px">
+        {% set menu = bc_admin_menu() %}
+        {% for ep, label in menu %}
+        {% if ep == 'sep' %}
+        <div style="font-size:10.5px;font-weight:800;color:var(--text-3);padding:14px 12px 4px;letter-spacing:.3px">{{ label }}</div>
+        {% else %}
+        <a href="{{ url_for(ep) }}" class="as-link {{ 'active' if request.endpoint and request.endpoint.startswith(ep.split('.')[0] + '.') and (ep.split('.')[1] == request.endpoint.split('.')[1] or request.endpoint in [ep]) }}">
+          <span>{{ label.split(' ',1)[0] }}</span> {{ label.split(' ',1)[1] if ' ' in label else '' }}
+        </a>
+        {% endif %}
+        {% endfor %}
+        <div style="border-top:1px solid var(--border);margin:8px 0;padding-top:8px">
+          <a class="as-link" href="{{ url_for('site.index') }}" target="_blank">🌐 مشاهده سایت</a>
+          <a class="as-link" href="{{ url_for('auth.logout') }}">🚪 خروج</a>
+        </div>
+      </nav>
+    </aside>  <main class="admin-main">
+    {% block acontent %}{% endblock %}
+  </main>
+</div>
+{% endblock %}

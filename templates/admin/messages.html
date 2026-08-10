@@ -1,0 +1,29 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}پیام‌های تماس{% endblock %}
+{% block acontent %}
+<div class="dash-head"><div><h1>✉️ پیام‌های تماس</h1><p>پیام‌های ارسالی از فرم تماس</p></div></div>
+{% if msgs %}
+<div class="grid" style="gap:14px">
+  {% for m in msgs %}
+  <div class="card" style="padding:20px;{{ 'opacity:.7' if m.is_read }}">
+    <div class="flex between wrap gap-2">
+      <div>
+        <strong>{{ m.name }}</strong>
+        {% if m.email %}<span class="text-3" style="font-size:12.5px;margin-right:10px" dir="ltr">{{ m.email }}</span>{% endif %}
+        {% if m.subject %}<span class="badge badge-primary" style="margin-right:10px">{{ m.subject }}</span>{% endif %}
+      </div>
+      <div class="flex gap-1">
+        <span class="text-3" style="font-size:12px">{{ m.created_at|jdatetime }}</span>
+        {% if not m.is_read %}
+        <button class="btn btn-ghost btn-sm" onclick="fetch('/api/contact/read/{{ m.id }}',{method:'POST'});this.remove()">✓ خوانده شد</button>
+        {% endif %}
+      </div>
+    </div>
+    <p class="mt-2" style="background:var(--bg-2);border-radius:10px;padding:12px 16px;font-size:13.5px;color:var(--text-2)">{{ m.message }}</p>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card text-center" style="padding:60px"><h3>پیامی وجود ندارد</h3></div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,46 @@
+/* پسته رفسنجان — طبیعت - رشد | تولیدشده از pd-09 */
+:root{
+--primary:#6FA34F;--primary-2:#57823D;--primary-soft:#80ae64;
+--on-primary:#14202E;--on-accent:#FFFFFF;
+--accent:#8A6A44;--accent-2:#6F5436;--accent-soft:#9a7f5e;
+--success:#15803d;--success-soft:#f0fdf4;--danger:#dc2626;--danger-soft:#fef2f2;--warning:#8A6A44;--info:#6FA34F;
+--bg:#FAF9F3;--bg-2:#F0F2E8;--card:#FFFFFF;--card-2:#FFFFFF;
+--border:#474f43;--border-2:#60665b;
+--text:#2A3326;--text-2:#abaea5;--text-3:#81867c;
+--header-bg:rgba(255,255,255,.92);--header-border:#474f43;--header-text:#2A3326;--header-text-2:#abaea5;
+--hero-bg:linear-gradient(135deg,#6FA34F 0%,#4F7A38 55%,#436732 100%);--hero-text:#FFFFFF;--hero-text-2:rgba(255,255,255,.88);--hero-card:rgba(255,255,255,.12);
+--footer-bg:#3E5130;--footer-text:#CBD6BE;--footer-text-2:#9DAE8F;--footer-head:#FFFFFF;
+--grad-brand:linear-gradient(135deg,#6FA34F,#57823D);--grad-accent:linear-gradient(135deg,#8A6A44,#6F5436);
+--radius-sm:8px;--radius-md:14px;--radius-lg:16px;
+--shadow-sm:rgba(42,51,38,.05);--shadow-md:rgba(42,51,38,.08);--shadow-lg:rgba(42,51,38,.12);
+}
+.builder-site-header .dk-logo-ic{background:linear-gradient(135deg,#6FA34F,#57823D);border-radius:12px;box-shadow:0 6px 16px rgba(42,51,38,.08)}
+.builder-site-header .dk-search{border:2px solid #6FA34F}
+.builder-site-header .dk-search:focus-within{box-shadow:0 0 0 4px #80ae64}
+.builder-site-header .dk-search button{background:#6FA34F;color:#14202E}
+.builder-site-header .dk-search button:hover{background:#57823D}
+.builder-site-header .dk-icon-link:hover{background:#80ae64;color:#6FA34F}
+.builder-site-header .dk-badge{background:#6FA34F}
+.builder-site-header .dk-auth a{background:#6FA34F;color:#14202E}
+.builder-site-header .dk-auth a:hover{background:#57823D}
+.builder-site-header .dk-user-dd{border-top:3px solid #6FA34F}
+.builder-site-header .dk-mega-trigger{background:#6FA34F;color:#14202E;box-shadow:0 6px 16px rgba(42,51,38,.08)}
+.builder-site-header .dk-nav a:hover{color:#6FA34F;background:#80ae64}
+.builder-site-header .dk-mega-panel{border-top:3px solid #6FA34F}
+.builder-site-header .dk-mega-head:hover,.builder-site-header .dk-mega-link:hover{color:#6FA34F;background:#80ae64}
+.builder-site-header .dk-mega-all{color:#6FA34F}
+.builder-site-footer{background:radial-gradient(700px 300px at 90% -20%,#9a7f5e,transparent 60%),linear-gradient(180deg,#3E5130 0%,#3E5130 50%,#000000 100%);border-top:3px solid #6FA34F}
+.builder-site-footer .pb-f-links h2::after,.builder-site-footer .pb-f-contact h2::after{background:#6FA34F}
+.builder-site-footer .pb-f-links ul a::before{color:#6FA34F}
+.builder-site-footer .pb-f-about .dk-logo-ic{background:linear-gradient(135deg,#6FA34F,#57823D)}
+.builder-site-footer .pb-f-about .pb-f-socials a:hover{background:#6FA34F;border-color:#6FA34F}
+.builder-site-footer .pb-f-contact ul li span{color:#6FA34F}
+.builder-site-footer .newsletter-box .btn{background:#6FA34F;color:#14202E}
+.builder-site-footer .pb-trust-badges a:hover{border-color:#6FA34F}
+.pb-slide-overlay{background:linear-gradient(120deg,rgba(8,15,35,.88),#6FA34F 75%)}
+.pb-slide-content h1,.pb-slide-content h2{color:#fff}
+.dk-topbar a:hover{color:#8A6A44}
+.btn-primary{color:#14202E}
+.btn-accent{background:linear-gradient(135deg,#8A6A44,#6F5436);color:#FFFFFF}
+.pb-slide-arrow{color:#6FA34F}
+.chart-bar span{background:linear-gradient(135deg,#6FA34F,#57823D)}

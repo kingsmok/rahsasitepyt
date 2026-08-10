@@ -1,0 +1,42 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}کلاس‌های آنلاین{% endblock %}
+{% block acontent %}
+<div class="dash-head"><div><h1>🎥 کلاس‌های آنلاین</h1><p>وبینار و جلسات زنده — لینک اسکای‌روم/گپ/وبینار</p></div></div>
+<div class="grid" style="grid-template-columns:1fr 1.5fr;gap:18px;align-items:start">
+  <div class="card" style="padding:20px">
+    <h2 style="font-size:14px;margin-bottom:12px">+ کلاس جدید</h2>
+    <form method="post">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+      <div class="form-group"><label>عنوان *</label><input class="form-control" name="title" required placeholder="مثلاً: رفع اشکال فصل ۲ پایتون"></div>
+      <div class="form-group"><label>توضیحات</label><textarea class="form-control" name="description" rows="2"></textarea></div>
+      <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px">
+        <div class="form-group"><label>شروع *</label><input class="form-control" type="datetime-local" name="starts_at" required></div>
+        <div class="form-group"><label>مدت (دقیقه)</label><input class="form-control" type="number" name="duration_min" value="90"></div>
+      </div>
+      <div class="form-group"><label>لینک جلسه (اسکای‌روم/گپ)</label><input class="form-control" name="link" dir="ltr" placeholder="https://www.skyroom.online/ch/..."></div>
+      <div class="form-group"><label>دوره مرتبط</label>
+        <select class="form-control" name="course_id"><option value="">— عمومی —</option>
+          {% for c in courses %}<option value="{{ c.id }}">{{ c.title }}</option>{% endfor %}
+        </select>
+      </div>
+      <button class="btn btn-primary" type="submit">💾 ساخت کلاس</button>
+    </form>
+  </div>
+  <div class="card" style="padding:20px">
+    <h2 style="font-size:14px;margin-bottom:12px">کلاس‌های برنامه‌ریزی‌شده ({{ fa(sessions|length) }})</h2>
+    {% for s in sessions %}
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)">
+      <div>
+        <strong style="font-size:13.5px">{{ s.title }}</strong>
+        <small class="text-3" style="display:block;font-size:11.5px">🗓 {{ s.starts_at|jdatetime }} — {{ fa(s.duration_min) }} دقیقه{% if s.course %} — {{ s.course.title[:25] }}{% endif %}</small>
+        {% if s.link %}<small class="text-2" style="font-size:11px" dir="ltr">{{ s.link[:40] }}</small>{% endif %}
+      </div>
+      <form method="post" action="{{ url_for('admin.live_session_delete', sid=s.id) }}">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+        <button class="btn btn-danger btn-sm" onclick="return confirm('حذف کلاس؟')">🗑</button>
+      </form>
+    </div>
+    {% else %}<p class="text-3" style="font-size:13px">کلاسی ساخته نشده.</p>{% endfor %}
+  </div>
+</div>
+{% endblock %}

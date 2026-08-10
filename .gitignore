@@ -1,0 +1,27 @@
+# ── محیط و اسرار ──
+.env
+*.env.local
+
+# ── دیتابیس و داده محلی ──
+instance/*.db
+instance/*.db-wal
+instance/*.db-shm
+instance/backups/
+instance/uploads/
+instance/.installed
+instance/.install_progress.json
+
+# ── لاگ‌ها ──
+logs/
+*.log
+
+# ── کش‌ها ──
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+
+# ── محیط مجازی ──
+venv/
+.venv/
+env/

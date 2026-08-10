@@ -1,0 +1,440 @@
+{% extends 'base.html' %}
+{% block body_class %}{% if not enrolled %}has-buy-bar{% endif %}{% endblock %}
+{% block title %}{{ seo.title or "دوره آموزشی" }}{% endblock %}
+{% block head %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {"@type": "ListItem", "position": 1, "name": "خانه", "item": "{{ request.host_url.rstrip('/') }}/"},
+    {"@type": "ListItem", "position": 2, "name": "دوره‌ها", "item": "{{ request.host_url.rstrip('/') }}/courses"},
+    {% if course.category %}{"@type": "ListItem", "position": 3, "name": "{{ course.category.name }}", "item": "{{ request.host_url.rstrip('/') }}/courses?cat={{ course.category.slug }}"},{% endif %}
+    {"@type": "ListItem", "position": 4, "name": "{{ course.title }}"}
+  ]
+}
+</script>
+{% if course.intro_video %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "VideoObject",
+  "name": "معرفی دوره {{ course.title }}",
+  "description": "{{ (course.subtitle or course.description or '')[:250] }}",
+  "thumbnailUrl": "{{ request.host_url.rstrip('/') }}/static/img/{{ course.image or 'hero.webp' }}",
+  "uploadDate": "{{ (course.updated_at or course.created_at or '').strftime('%Y-%m-%d') if (course.updated_at or course.created_at) else '2026-01-01' }}",
+  "contentUrl": "{{ request.host_url.rstrip('/') ~ course.intro_video if course.intro_video.startswith('/') else course.intro_video }}",
+  "embedUrl": "{{ course.intro_video.replace('watch?v=', 'embed/') if 'youtube' in course.intro_video else course.intro_video }}",
+  "duration": "PT5M",
+  "publisher": {"@type": "Organization", "name": "{{ site.site_name or 'آکادمی آنلاین' }}"},
+  "inLanguage": "fa"
+}
+</script>
+{% endif %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {"@type": "Question", "name": "آیا این دوره برای مبتدیان مناسب است؟",
+     "acceptedAnswer": {"@type": "Answer", "text": "{{ (course.audience or 'بله، این دوره از مفاهیم پایه شروع می‌شود و برای همه سطوح مناسب است.').split('\n')[0][:180] }}"}},
+    {"@type": "Question", "name": "پیش‌نیاز شرکت در دوره چیست؟",
+     "acceptedAnswer": {"@type": "Answer", "text": "{{ (course.requirements or 'بدون پیش‌نیاز خاص — کافی است با کامپیوتر آشنا باشید.').split('\n')[0][:180] }}"}},
+    {"@type": "Question", "name": "مدت زمان دوره چقدر است؟",
+     "acceptedAnswer": {"@type": "Answer", "text": "این دوره شامل {{ fa(course.lesson_count) }} جلسه ویدیویی و {{ fa(course.duration_hours) }} ساعت آموزش پروژه‌محور است."}},
+    {"@type": "Question", "name": "آیا گواهینامه پایان دوره ارائه می‌شود؟",
+     "acceptedAnswer": {"@type": "Answer", "text": "بله، پس از تکمیل دوره گواهینامه معتبر با کد رهگیری دریافت می‌کنید."}},
+    {"@type": "Question", "name": "ضمانت بازگشت وجه چگونه است؟",
+     "acceptedAnswer": {"@type": "Answer", "text": "تا ۷ روز پس از خرید، اگر از دوره راضی نبودید کل مبلغ بدون قید و شرط بازگردانده می‌شود."}}
+  ]
+}
+</script>
+{% endblock %}
+
+{% block content %}
+<!-- سربرگ دوره -->
+<section class="course-hero">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="مسیر صفحه" style="color:rgba(255,255,255,.6)">
+      <a href="{{ url_for('site.index') }}" style="color:rgba(255,255,255,.85)">خانه</a><span class="sep">/</span>
+      <a href="{{ url_for('site.courses') }}" style="color:rgba(255,255,255,.85)">دوره‌ها</a><span class="sep">/</span>
+      {% if course.category %}<a href="{{ url_for('site.courses', cat=course.category.slug) }}" style="color:rgba(255,255,255,.85)">{{ course.category.name }}</a><span class="sep">/</span>{% endif %}
+      <span>{{ course.title }}</span>
+    </nav>
+    <div class="badges">
+      {% if course.has_discount %}<span class="badge badge-danger">٪{{ fa(course.discount_percent) }} تخفیف ویژه</span>{% endif %}
+      <span class="badge badge-white">{{ course.level }}</span>
+      {% if course.is_free() %}<span class="badge badge-success">رایگان</span>{% endif %}
+    </div>
+    <h1>{{ course.title }}</h1>
+    <p class="sub">{{ course.subtitle }}</p>
+    <div class="meta-row">
+      <span>{{ icon('star', 14) }} {{ fa(course.rating) if course.rating else '—' }} ({{ fa(course.reviews|length) }} نظر)</span>
+      <span>{{ icon('users', 15) }} {{ fa(course.students_count) }} دانشجو</span>
+      <span>{{ icon('clock', 15) }} {{ fa(course.duration_hours) }} ساعت آموزش</span>
+      <span>🗣 {{ course.language }}</span>
+      <span>📶 {{ course.level }}</span>
+      <span>👁 {{ fa(course.views) }} بازدید</span>
+      <span>🆕 {{ course.created_at|jdate }}</span>
+    </div>
+    <!-- نشان‌های اعتماد (E-E-A-T) -->
+    <div class="hero-trust" style="margin-top:18px">
+      <span>🛡 ضمانت بازگشت وجه ۷ روزه</span>
+      <span>🏅 گواهینامه معتبر با کد رهگیری</span>
+      <span>💬 پشتیبانی مستقیم مدرس</span>
+      <span>♾ به‌روزرسانی مادام‌العمر</span>
+    </div>
+  </div>
+</section>
+
+<section class="section" style="padding-top:44px">
+  <div class="container">
+    <div class="course-layout">
+      <!-- ستون اصلی -->
+      <div class="main">
+        <div class="course-tabs">
+          <button class="active" data-tab="tab-overview">📋 معرفی دوره</button>
+          <button data-tab="tab-curriculum">📚 سرفصل‌ها ({{ fa(course.lesson_count) }} جلسه)</button>
+          <button data-tab="tab-reviews">💬 نظرات ({{ fa(course.reviews|length) }})</button>
+          <button data-tab="tab-teacher">👨‍🏫 مدرس</button>
+        </div>
+
+        <!-- معرفی -->
+        <div class="tab-pane" id="tab-overview">
+          {% if course.intro_video %}
+          <div class="panel">
+            <h3><span class="ic">🎬</span> ویدئوی معرفی دوره</h3>
+            <div style="border-radius:14px;overflow:hidden;aspect-ratio:16/9">
+              {% if 'youtube' in course.intro_video %}
+              <iframe src="{{ course.intro_video.replace('watch?v=', 'embed/') }}" frameborder="0" allowfullscreen style="width:100%;height:100%"></iframe>
+              {% elif 'aparat' in course.intro_video %}
+              <iframe src="https://www.aparat.com/video/video/embed/videohash/{{ course.intro_video.split('/v/')[-1].split('?')[0] }}/vt/frame" frameborder="0" allowfullscreen style="width:100%;height:100%"></iframe>
+              {% else %}
+              <video controls preload="none" poster="/static/img/{{ course.image }}" style="width:100%;height:100%;background:#000"><source src="{{ course.intro_video }}"></video>
+              {% endif %}
+            </div>
+          </div>
+          {% endif %}
+          {% if course.quizzes or course.assignments %}
+          <div class="panel">
+            <h3><span class="ic">📝</span> آزمون‌ها و تمرین‌های دوره</h3>
+            <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px">
+              {% for qz in course.quizzes %}
+              <a class="card card-hover" style="padding:14px;text-decoration:none" href="{{ url_for('features.quiz_view', qid=qz.id) }}">
+                <strong style="font-size:13px">📝 {{ qz.title }}</strong>
+                <small class="text-3" style="display:block">{{ fa(qz.questions|length) }} سوال</small>
+              </a>
+              {% endfor %}
+              {% for asg in course.assignments %}
+              <a class="card card-hover" style="padding:14px;text-decoration:none" href="{{ url_for('features.assignment_view', aid=asg.id) }}">
+                <strong style="font-size:13px">📌 {{ asg.title }}</strong>
+                <small class="text-3" style="display:block">تمرین دوره</small>
+              </a>
+              {% endfor %}
+            </div>
+          </div>
+          {% endif %}
+          <div class="panel">
+            <h3><span class="ic">📝</span> توضیحات دوره</h3>
+            <p class="text-2" style="white-space:pre-line">{{ course.description }}</p>
+          </div>
+          {% if course.what_you_learn %}
+          <div class="panel">
+            <h3><span class="ic">🎯</span> در این دوره چه چیزهایی یاد می‌گیرید؟</h3>
+            <ul class="learn-list">
+              {% for item in course.what_you_learn.split('\n') %}
+                {% if item.strip() %}<li>{{ item.strip() }}</li>{% endif %}
+              {% endfor %}
+            </ul>
+          </div>
+          {% endif %}
+          {% if course.requirements %}
+          <div class="panel">
+            <h3><span class="ic">📌</span> پیش‌نیازها</h3>
+            <ul class="req-list">
+              {% for item in course.requirements.split('\n') %}
+                {% if item.strip() %}<li>{{ item.strip() }}</li>{% endif %}
+              {% endfor %}
+            </ul>
+          </div>
+          {% endif %}
+          {% if course.audience %}
+          <div class="panel">
+            <h3><span class="ic">👥</span> مناسب برای چه افرادی؟</h3>
+            <ul class="req-list">
+              {% for item in course.audience.split('\n') %}
+                {% if item.strip() %}<li>{{ item.strip() }}</li>{% endif %}
+              {% endfor %}
+            </ul>
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- سرفصل‌ها -->
+        <div class="tab-pane" id="tab-curriculum" style="display:none" data-acc-group>
+          {% for sec in course.sections %}
+          <div class="accordion {{ 'open' if loop.first }}">
+            <button class="acc-head">
+              <span class="badge badge-gray">{{ fa(loop.index) }}</span>
+              <span>{{ sec.title }}</span>
+              <span class="badge badge-gray">{{ fa(sec.lessons|length) }} جلسه</span>
+              <span class="arrow">▼</span>
+            </button>
+            <div class="acc-body">
+              {% for lesson in sec.lessons %}
+              <div class="lesson-row {{ 'done' if enrolled and lesson.id in done_ids else '' }}">
+                <span class="l-ic">{{ '✔' if enrolled and lesson.id in done_ids else ('▶' if lesson.video_url else '📄') }}</span>
+                <span class="l-title">
+                  {{ lesson.title }}
+                  {% if lesson.is_free %}<span class="badge badge-accent l-badge">رایگان</span>{% endif %}
+                </span>
+                <span class="l-dur">⏱ {{ fa(lesson.duration) }}</span>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+
+        <!-- نظرات -->
+        <div class="tab-pane" id="tab-reviews" style="display:none">
+          <div class="panel" id="reviews">
+            <h3><span class="ic">💬</span> نظرات دانشجویان <span class="badge badge-primary">⭐ {{ fa(course.rating) if course.rating else '—' }} از ۵</span></h3>
+            {% if reviews %}
+              {% for r in reviews %}
+              <div class="review-item">
+                <span class="avatar" style="background:{{ r.user.avatar_color if r.user else '#64748b' }}">{{ r.user.initials() if r.user else '؟' }}</span>
+                <div>
+                  <div class="r-head">
+                    <strong>{{ r.user.name if r.user else 'کاربر' }}</strong>
+                    <span class="stars">{{ '★' * r.rating }}<span class="off">{{ '★' * (5 - r.rating) }}</span></span>
+                    <time>{{ r.created_at|jdate }}</time>
+                  </div>
+                  <p>{{ r.comment }}</p>
+                </div>
+              </div>
+              {% endfor %}
+            {% else %}
+              <p class="text-3 text-center" style="padding:20px 0">هنوز نظری ثبت نشده است. اولین نفر باشید!</p>
+            {% endif %}
+
+            {% if cur_user %}
+              {% if enrolled %}
+              <div style="border-top:1px dashed var(--border);margin-top:18px;padding-top:20px">
+                <h4 class="mb-2" style="font-size:15px">✍️ ثبت نظر شما</h4>
+                <form method="post" action="{{ url_for('site.add_review', slug=course.slug) }}">
+<input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                  <div class="form-group">
+                    <div class="rating-input" style="margin-bottom:8px">
+                      {% for s in [5,4,3,2,1] %}
+                      <input type="radio" name="rating" id="r{{ s }}" value="{{ s }}" {{ 'checked' if s == 5 }}>
+                      <label for="r{{ s }}">★</label>
+                      {% endfor %}
+                    </div>
+                    <textarea class="form-control" name="comment" placeholder="تجربه‌ات از این دوره را بنویس..." required></textarea>
+                  </div>
+                  <button class="btn btn-primary" type="submit">ثبت نظر</button>
+                </form>
+              </div>
+              {% else %}
+              <p class="badge badge-gray mt-3" style="padding:10px 16px">💡 برای ثبت نظر، ابتدا در این دوره ثبت‌نام کنید.</p>
+              {% endif %}
+            {% else %}
+              <p class="badge badge-gray mt-3" style="padding:10px 16px">🔑 <a href="{{ url_for('auth.login') }}" style="color:var(--primary);font-weight:800">وارد شوید</a> تا نظر ثبت کنید.</p>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- مدرس -->
+        <div class="tab-pane" id="tab-teacher" style="display:none">
+          {% if course.teacher %}
+          <div class="panel">
+            <div class="flex gap-2">
+              <span class="avatar avatar-lg" style="background:{{ course.teacher.avatar_color }}" role="img" aria-label="عکس مدرس {{ course.teacher.name }}">{{ course.teacher.initials() }}</span>
+              <div>
+                <h3 style="margin-bottom:2px">{{ course.teacher.name }}</h3>
+                <span class="badge badge-primary">مدرس آکادمی</span>
+                <p class="text-2 mt-2" style="font-size:13.5px">{{ course.teacher.bio or '' }}</p>
+                <a class="btn btn-outline btn-sm mt-2" href="{{ url_for('site.teacher_detail', uid=course.teacher.id) }}">مشاهده پروفایل مدرس</a>
+              </div>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- اشتراک‌گذاری -->
+      <div class="card" style="padding:16px 20px;margin-bottom:18px">
+        <div class="flex between wrap gap-2">
+          <span style="font-weight:800;font-size:13.5px">📤 اشتراک‌گذاری دوره:</span>
+          <div class="pb-share" style="gap:6px">
+            <button type="button" class="pb-share-btn" data-share="telegram" title="تلگرام" style="padding:7px 12px;font-size:15px">✈️</button>
+            <button type="button" class="pb-share-btn" data-share="whatsapp" title="واتساپ" style="padding:7px 12px;font-size:15px">💬</button>
+            <button type="button" class="pb-share-btn" data-share="twitter" title="توییتر" style="padding:7px 12px;font-size:15px">🐦</button>
+            <button type="button" class="pb-share-btn" data-share="copy" title="کپی لینک" style="padding:7px 12px;font-size:15px">🔗</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- کارت خرید -->
+      <aside>
+        <div class="buy-card">
+          <div class="thumb">
+            <img src="/static/img/{{ course.image }}" alt="دوره {{ course.title }} — کاور دوره {{ site.site_name or 'آکادمی آنلاین' }}" loading="lazy" width="640" height="360">
+            {% if course.has_discount %}
+            <span class="badge badge-danger" style="position:absolute;top:12px;right:12px">٪{{ fa(course.discount_percent) }} تخفیف</span>
+            {% endif %}
+          </div>
+          <div class="price-row">
+            {% if course.is_free() %}
+            <span class="price free" style="font-size:24px">رایگان</span>
+            {% else %}
+            <span class="price" style="font-size:24px">{{ fa('{:,.0f}'.format(course.final_price)) }}</span>
+            <small class="text-3">تومان</small>
+            {% if course.has_discount %}
+            <span class="price-old">{{ fa('{:,.0f}'.format(course.price)) }}</span>
+            <span class="discount-tag">٪{{ fa(course.discount_percent) }}</span>
+            {% endif %}
+            {% endif %}
+          </div>
+          <div class="buy-body">
+            {% if not course.is_free() %}
+            <div class="countdown" data-countdown="{{ 60 * 60 * 7 }}">
+              <div class="cd"><b class="cd-h">07</b><small>ساعت</small></div>
+              <div class="cd"><b class="cd-m">00</b><small>دقیقه</small></div>
+              <div class="cd"><b class="cd-s">00</b><small>ثانیه</small></div>
+            </div>
+            {% endif %}
+
+            {% if enrolled %}
+            <a class="btn btn-success btn-lg btn-block" href="{{ url_for('student.learn', course_id=course.id) }}">▶ ادامه یادگیری</a>
+            {% elif cur_user %}
+            <button class="btn btn-primary btn-lg btn-block" data-add-cart="{{ course.id }}">🛒 افزودن به سبد خرید</button>
+            {% else %}
+            <a class="btn btn-primary btn-lg btn-block" href="{{ url_for('auth.login', next=url_for('site.course_detail', slug=course.slug)) }}">برای خرید وارد شوید</a>
+            {% endif %}
+
+            <div class="includes">
+              <h4>این دوره شامل:</h4>
+              <ul>
+                <li>{{ fa(course.lesson_count) }} جلسه ویدیویی</li>
+                {% if course.access_days and course.access_days > 0 %}
+                <li>دسترسی {{ fa(course.access_days) }} روزه</li>
+                {% else %}
+                <li>دسترسی مادام‌العمر</li>
+                {% endif %}
+                <li>گواهینامه پایان دوره</li>
+                <li>پشتیبانی پاسخگویی تیکت</li>
+                <li>به‌روزرسانی رایگان</li>
+                <li>قابل استفاده در موبایل و دسکتاپ</li>
+              </ul>
+            </div>
+            <div class="secure">🛡️ پرداخت امن از طریق درگاه بانکی معتبر</div>
+            {% if not course.is_free() and course.final_price >= 300000 %}
+            <div style="margin-top:12px;background:var(--bg-2);border-radius:10px;padding:10px 14px;font-size:12.5px;color:var(--text-2)">
+              💳 پرداخت <b>اقساطی</b> هم داریم:
+              {% set q = course.final_price * 30 // 100 %}
+              ۲ قسط ماهانه از <b>{{ fa('{:,.0f}'.format(q)) }} تومان</b> — در تسویه انتخاب کنید.
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <!-- سوالات متداول (FAQ) — E-E-A-T و Helpful Content -->
+    <div style="margin-top:50px" id="faq">
+      <div class="section-head" style="margin-bottom:26px">
+        <span class="tag">❓ پرسش و پاسخ</span>
+        <h2>سوالات متداول درباره {{ course.title }}</h2>
+      </div>
+      <div class="faq-list" style="max-width:820px;margin:0 auto" data-acc-group>
+        <div class="accordion open">
+          <button class="acc-head"><span>👤 آیا این دوره برای مبتدیان مناسب است؟</span><span class="arrow">▼</span></button>
+          <div class="acc-body"><p class="text-2" style="padding:6px 4px">{{ (course.audience or 'بله، این دوره از مفاهیم پایه شروع می‌شود و برای همه سطوح مناسب است.').split('\n')[0] }}</p></div>
+        </div>
+        <div class="accordion">
+          <button class="acc-head"><span>📌 پیش‌نیاز شرکت در دوره چیست؟</span><span class="arrow">▼</span></button>
+          <div class="acc-body"><p class="text-2" style="padding:6px 4px">{{ (course.requirements or 'بدون پیش‌نیاز خاص — کافی است با کامپیوتر آشنا باشید.').split('\n')[0] }}</p></div>
+        </div>
+        <div class="accordion">
+          <button class="acc-head"><span>⏱ مدت زمان دوره چقدر است؟</span><span class="arrow">▼</span></button>
+          <div class="acc-body"><p class="text-2" style="padding:6px 4px">این دوره شامل {{ fa(course.lesson_count) }} جلسه ویدیویی و {{ fa(course.duration_hours) }} ساعت آموزش پروژه‌محور است.</p></div>
+        </div>
+        <div class="accordion">
+          <button class="acc-head"><span>🏅 آیا گواهینامه پایان دوره ارائه می‌شود؟</span><span class="arrow">▼</span></button>
+          <div class="acc-body"><p class="text-2" style="padding:6px 4px">بله، پس از تکمیل دوره گواهینامه معتبر با کد رهگیری دریافت می‌کنید.</p></div>
+        </div>
+        <div class="accordion">
+          <button class="acc-head"><span>🛡 ضمانت بازگشت وجه چگونه است؟</span><span class="arrow">▼</span></button>
+          <div class="acc-body"><p class="text-2" style="padding:6px 4px">تا ۷ روز پس از خرید، اگر از دوره راضی نبودید کل مبلغ بدون قید و شرط بازگردانده می‌شود.</p></div>
+        </div>
+      </div>
+      <div style="text-align:center;margin-top:26px">
+        {% if not enrolled %}
+        <a class="btn btn-primary btn-lg" href="{{ url_for('auth.register') if not cur_user else '#' }}" {% if cur_user %}onclick="document.querySelector('[data-add-cart]').click();return false"{% endif %}>🚀 همین حالا ثبت‌نام کن و با {{ fa(course.discount_percent) if course.has_discount else 'تخفیف' }}٪ تخفیف شروع کن</a>
+        {% else %}
+        <a class="btn btn-success btn-lg" href="{{ url_for('student.learn', course_id=course.id) }}">▶ ادامه یادگیری</a>
+        {% endif %}
+        <span style="display:block;margin-top:10px;font-size:12px;color:var(--text-3)">پاسخگویی به سوالات شما در تیکت‌ها — پشتیبانی ۷ روز هفته</span>
+      </div>
+    </div>
+
+    <!-- مقالات مرتبط (لینک‌سازی داخلی) -->
+    {% if blog_posts %}
+    <div style="margin-top:50px">
+      <div class="section-head" style="margin-bottom:26px">
+        <span class="tag">📰 مقالات مرتبط</span>
+        <h2>از بلاگ آکادمی</h2>
+      </div>
+      <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:18px">
+        {% for post in blog_posts %}
+        <a class="card card-hover" href="{{ url_for('site.blog_post', slug=post.slug) }}" style="padding:16px 18px;display:block;text-decoration:none">
+          <h3 style="font-size:14.5px;font-weight:800;margin-bottom:6px;line-height:1.8">{{ post.title }}</h3>
+          <span class="badge badge-primary" style="font-size:10.5px">مطالعه مقاله ←</span>
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- دوره‌های مرتبط -->
+    {% if related %}
+    <div style="margin-top:50px">
+      <div class="section-head" style="margin-bottom:26px">
+        <span class="tag">🔗 مرتبط</span>
+        <h2>دوره‌های مشابه</h2>
+      </div>
+      <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:22px">
+        {% from 'partials/course_card.html' import course_card %}
+        {% for c in related %}{{ course_card(c) }}{% endfor %}
+      </div>
+      {% if course.category %}
+      <div style="text-align:center;margin-top:20px">
+        <a class="btn btn-outline" href="{{ url_for('site.courses', cat=course.category.slug) }}">مشاهده همه دوره‌های «{{ course.category.name }}» ←</a>
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+</section>
+
+<!-- نوار خرید شناور — فقط موبایل -->
+{% if not enrolled %}
+<div class="buy-sticky-bar">
+  <div class="bsb-info">
+    {% if course.is_free() %}
+    <strong>رایگان</strong><small>دوره رایگان</small>
+    {% else %}
+    <strong>{{ fa('{:,.0f}'.format(course.final_price)) }} <small>تومان</small></strong>
+    {% if course.has_discount %}<small class="bsb-off">٪{{ fa(course.discount_percent) }} تخفیف</small>{% endif %}
+    {% endif %}
+  </div>
+  {% if cur_user %}
+  <button class="btn btn-primary" data-add-cart="{{ course.id }}">🛒 افزودن به سبد</button>
+  {% else %}
+  <a class="btn btn-primary" href="{{ url_for('auth.login', next=url_for('site.course_detail', slug=course.slug)) }}">خرید دوره</a>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

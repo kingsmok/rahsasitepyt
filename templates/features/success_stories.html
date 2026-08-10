@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% block title %}{{ seo.title or "داستان‌های موفقیت" }}{% endblock %}
+{% block content %}
+<section class="section" style="padding-top:30px">
+  <div class="container" style="max-width:860px">
+    <nav class="breadcrumb" aria-label="مسیر صفحه">
+      <a href="{{ url_for('site.index') }}">خانه</a><span class="sep">/</span>
+      <span>داستان‌های موفقیت</span>
+    </nav>
+    <div style="text-align:center;margin-bottom:26px">
+      <div style="font-size:42px">🌟</div>
+      <h1 style="font-size:24px;margin:10px 0 6px">نتایج واقعی دانشجویان ما</h1>
+      <p class="text-2" style="font-size:14px;max-width:520px;margin:0 auto">این‌ها آمار نیستند؛ آدم‌های واقعی‌اند که مسیر را رفتند. مسیر تو هم می‌تواند همین‌جا شروع شود.</p>
+    </div>
+    <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:18px">
+      {% for s in stories %}
+      <div class="card" style="padding:24px;border-radius:20px;display:flex;flex-direction:column;gap:12px">
+        <div class="flex" style="align-items:center;gap:12px">
+          <span style="width:46px;height:46px;border-radius:14px;background:{{ s.color }};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:18px">{{ s.name[:1] }}</span>
+          <div>
+            <strong style="font-size:14.5px">{{ s.name }}</strong>
+            <small class="text-3" style="display:block;font-size:11.5px">{{ s.role }}</small>
+          </div>
+        </div>
+        {% if s.result %}
+        <div style="background:var(--primary-soft);border-radius:12px;padding:10px 14px;font-size:12.5px;font-weight:700;color:var(--primary)">🎯 {{ s.result }}</div>
+        {% endif %}
+        {% if s.story %}
+        <p class="text-2" style="font-size:13px;line-height:2;margin:0">{{ s.story }}</p>
+        {% endif %}
+        {% if s.course %}
+        <a class="btn btn-ghost btn-sm" href="{{ url_for('site.course_detail', slug=s.course.slug) }}">دوره مرتبط: {{ s.course.title[:30] }} ←</a>
+        {% endif %}
+      </div>
+      {% else %}
+      <p class="text-2" style="text-align:center;grid-column:1/-1">به‌زودی...</p>
+      {% endfor %}
+    </div>
+    <div class="card" style="padding:26px;border-radius:20px;margin-top:24px;text-align:center;background:linear-gradient(135deg,var(--primary-soft),transparent)">
+      <h2 style="font-size:17px;margin-bottom:8px">داستان بعدی، داستان توست 🚀</h2>
+      <p class="text-2" style="font-size:13.5px;margin-bottom:14px">همین امروز شروع کن — همه این مسیرها از یک قدم اول ساده شروع شدند.</p>
+      <a class="btn btn-primary btn-lg" href="{{ url_for('site.courses') }}">مشاهده دوره‌ها</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

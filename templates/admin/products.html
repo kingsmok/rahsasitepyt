@@ -1,0 +1,58 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}محصولات فروشگاه{% endblock %}
+{% block acontent %}
+<div class="dash-head"><div><h1>🛍 محصولات فروشگاه</h1><p>{{ fa(items|length) }} محصول — کالاهای فیزیکی قابل فروش</p></div></div>
+
+<div class="card" style="padding:22px;margin-bottom:18px">
+  <h2 style="font-size:14px;margin-bottom:12px">➕ محصول جدید</h2>
+  <form method="post" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+    <input class="form-control" name="title" required placeholder="عنوان محصول *">
+    <input class="form-control" name="price" type="number" placeholder="قیمت (تومان)">
+    <input class="form-control" name="discount_price" type="number" placeholder="قیمت با تخفیف">
+    <input class="form-control" name="category" placeholder="دسته (لیوان و فنجان...)">
+    <input class="form-control" name="sku" placeholder="شناسه محصول" dir="ltr">
+    <input class="form-control" name="stock" type="number" placeholder="موجودی" value="0">
+    <input class="form-control" name="image" placeholder="نام تصویر (cover-...)">
+    <button class="btn btn-primary" type="submit">💾 ساخت</button>
+  </form>
+  <small class="text-3" style="font-size:11px;margin-top:6px;display:block">جزئیات کامل (ابعاد/وزن/جنس/ویژگی‌ها) را بعد از ساخت در ویرایش پر کنید.</small>
+</div>
+
+<div class="card" style="padding:22px">
+  <div class="table-wrap"><table class="table" style="width:100%;font-size:13px">
+    <thead><tr><th>محصول</th><th>دسته</th><th>قیمت</th><th>موجودی</th><th>وضعیت</th><th>عملیات</th></tr></thead>
+    <tbody>
+      {% for p in items %}
+      <tr>
+        <td>
+          <div class="flex" style="gap:10px;align-items:center">
+            {% if p.image %}<img src="{{ p.image if p.image.startswith('http') else '/static/img/' + p.image }}" alt="" style="width:44px;height:44px;border-radius:10px;object-fit:cover">{% endif %}
+            <div><strong>{{ p.title }}</strong><br><small class="text-3" dir="ltr">{{ p.sku or '' }}</small></div>
+          </div>
+        </td>
+        <td>{{ p.category or '—' }}</td>
+        <td>
+          {% if p.has_discount %}<span style="text-decoration:line-through;color:#9ca3af;font-size:11px">{{ fa('{:,.0f}'.format(p.price)) }}</span><br>{% endif %}
+          <b>{{ fa('{:,.0f}'.format(p.final_price)) }}</b>
+        </td>
+        <td><span class="badge" style="background:{{ '#dcfce7;color:#15803d' if p.stock > 0 else '#fee2e2;color:#b91c1c' }}">{{ fa(p.stock) }}</span></td>
+        <td><span class="badge" style="background:{{ '#dcfce7;color:#15803d' if p.is_active else '#f1f5f9;color:#64748b' }}">{{ 'فعال' if p.is_active else 'غیرفعال' }}</span></td>
+        <td>
+          <div class="flex gap-1" style="gap:6px">
+            <a class="btn btn-sm" style="background:var(--bg-2)" href="{{ url_for('admin.product_admin_edit', pid=p.id) }}">✏️</a>
+            <form method="post" action="{{ url_for('admin.product_admin_delete', pid=p.id) }}" style="display:inline" onsubmit="return confirm('حذف شود؟')">
+              <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+              <button class="btn btn-sm btn-danger">🗑</button>
+            </form>
+            <a class="btn btn-sm" style="background:var(--bg-2)" href="{{ url_for('products.product_detail', slug=p.slug) }}" target="_blank">👁</a>
+          </div>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" class="text-3" style="text-align:center;padding:24px">هنوز محصولی ساخته نشده است.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+</div>
+{% endblock %}

@@ -1,0 +1,44 @@
+{% extends 'dashboard/base.html' %}
+{% block dtitle %}علاقه‌مندی‌ها{% endblock %}
+{% block dcontent %}
+<div class="dash-head">
+  <div>
+    <h1>❤️ علاقه‌مندی‌های من</h1>
+    <p>دوره‌هایی که نشان کردید</p>
+  </div>
+</div>
+
+{% if favs %}
+<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px">
+  {% for f in favs %}
+  <div class="card card-hover course-card">
+    <div class="thumb">
+      <a href="{{ url_for('site.course_detail', slug=f.course.slug) }}">
+        <img src="/static/img/{{ f.course.image }}" alt="">
+      </a>
+      <button class="fav-btn active" data-fav="{{ f.course.id }}">❤️</button>
+    </div>
+    <div class="body">
+      <h3 style="min-height:0"><a href="{{ url_for('site.course_detail', slug=f.course.slug) }}">{{ f.course.title }}</a></h3>
+      <div class="meta"><span>⭐ {{ fa(f.course.rating) if f.course.rating else '—' }}</span><span>👥 {{ fa(f.course.students_count) }}</span></div>
+      <div class="foot">
+        {% if f.course.is_free() %}
+        <span class="price free">رایگان</span>
+        {% else %}
+        <span class="price">{{ fa('{:,.0f}'.format(f.course.final_price)) }} <small class="text-3" style="font-size:11px">تومان</small></span>
+        {% endif %}
+        <button class="btn btn-primary btn-sm" data-add-cart="{{ f.course.id }}">🛒 خرید</button>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card text-center" style="padding:70px 20px">
+  <div style="font-size:54px">💔</div>
+  <h2 style="margin:14px 0 6px">هنوز دوره‌ای نشان نکرده‌اید</h2>
+  <p class="text-2 mb-3">روی آیکون قلب کنار دوره‌ها بزنید تا اینجا ذخیره شوند.</p>
+  <a class="btn btn-primary btn-lg" href="{{ url_for('site.courses') }}">مشاهده دوره‌ها</a>
+</div>
+{% endif %}
+{% endblock %}

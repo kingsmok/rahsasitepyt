@@ -1,0 +1,53 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}مدیریت صفحات{% endblock %}
+{% block acontent %}
+<div class="dash-head">
+  <div><h1>📄 مدیریت صفحات</h1><p>همه صفحات — ویرایش با صفحه‌ساز، کپی، پیش‌نویس/انتشار، نسخه‌ها</p></div>
+  <div class="flex gap-1">
+    <a class="btn btn-ghost" href="{{ url_for('admin.pages_trash') }}">🗑 سطل زباله</a>
+    <a class="btn btn-primary" href="{{ url_for('builder.index') }}">🧩 ساخت صفحه جدید</a>
+  </div>
+</div>
+
+<div class="card" style="padding:22px">
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>عنوان</th><th>نوع</th><th>وضعیت</th><th>نسخه‌ها</th><th>آخرین ویرایش</th><th>عملیات</th></tr></thead>
+      <tbody>
+        {% for p in pages %}
+        <tr>
+          <td><strong>{{ p.title }}</strong><br><small class="text-3" dir="ltr">/{{ p.slug }}</small></td>
+          <td><span class="badge badge-gray">{{ types.get(p.ptype, p.ptype) }}</span></td>
+          <td>{% if p.is_published %}<span class="badge badge-success">منتشرشده</span>{% else %}<span class="badge badge-accent">پیش‌نویس</span>{% endif %}</td>
+          <td>{{ fa(rev_count.get(p.id, 0)) }}</td>
+          <td>{{ p.updated_at|jdatetime }}</td>
+          <td style="white-space:nowrap">
+            <a class="btn btn-primary btn-sm" href="{{ url_for('builder.editor', slug=p.slug) }}">🧩 ویرایش</a>
+            {% if p.ptype == 'page' %}
+            <button class="btn btn-ghost btn-sm" onclick="var d=prompt('تاریخ انتشار شمسی (مثال: 1405/05/15 14:30) یا خالی برای همین حالا:');if(d!==null){var f=document.createElement('form');f.method='post';f.action='{{ url_for('admin.page_schedule', pid=p.id) }}';var i=document.createElement('input');i.type='hidden';i.name='publish_at';i.value=d;f.appendChild(i);var c=document.createElement('input');c.type='hidden';c.name='_csrf_token';c.value='{{ csrf_token }}';f.appendChild(c);document.body.appendChild(f);f.submit();}">🕐 زمان‌بندی</button>
+            {% endif %}
+            <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.page_revisions', pid=p.id) }}">🕘 نسخه‌ها</a>
+            <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.page_seo', pid=p.id) }}">🔍 SEO</a>
+            <button class="btn btn-ghost btn-sm" onclick="var h=prompt('آیدی هدر اختصاصی (خالی = پیش‌فرض):');var f2=document.createElement('form');f2.method='post';f2.action='{{ url_for('admin.page_custom_theme', pid=p.id) }}';var i1=document.createElement('input');i1.type='hidden';i1.name='custom_header';i1.value=h||'';f2.appendChild(i1);var i2=document.createElement('input');i2.type='hidden';i2.name='_csrf_token';i2.value='{{ csrf_token }}';f2.appendChild(i2);document.body.appendChild(f2);f2.submit();">🎨 هدر/فوتر</button>
+            {% if p.ptype in ('page',) %}
+            <form method="post" action="{{ url_for('admin.page_copy', pid=p.id) }}" style="display:inline">
+              <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+              <button class="btn btn-ghost btn-sm" title="کپی">⧉</button>
+            </form>
+            {% endif %}
+            {% if p.ptype != 'trash' %}
+            <form method="post" action="{{ url_for('admin.page_delete', pid=p.id) }}" style="display:inline">
+              <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+              <button class="btn btn-danger btn-sm" onclick="return confirm('به سطل زباله منتقل شود؟')" title="حذف موقت">🗑</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="text-center text-3">صفحه‌ای وجود ندارد.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

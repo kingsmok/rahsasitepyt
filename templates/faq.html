@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+{% block title %}{{ seo.title or "سوالات متداول" }}{% endblock %}
+{% block head %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {"@type": "Question", "name": "چگونه می‌توانم دوره بخرم؟", "acceptedAnswer": {"@type": "Answer", "text": "دوره موردنظر را به سبد خرید اضافه کنید، سپس از طریق تسویه حساب وارد درگاه پرداخت شوید. پس از پرداخت موفق، دوره بلافاصله به حساب شما اضافه می‌شود."}},
+    {"@type": "Question", "name": "دسترسی به دوره‌ها تا چه زمانی معتبر است؟", "acceptedAnswer": {"@type": "Answer", "text": "دسترسی به دوره‌های خریداری‌شده مادام‌العمر است و آپدیت‌های بعدی دوره رایگان ارائه می‌شود."}},
+    {"@type": "Question", "name": "گواهینامه دوره چگونه دریافت می‌شود؟", "acceptedAnswer": {"@type": "Answer", "text": "پس از تکمیل ۱۰۰٪ جلسات دوره، گواهینامه با کد رهگیری منحصربه‌فرد در بخش دوره‌های من فعال می‌شود."}},
+    {"@type": "Question", "name": "ضمانت بازگشت وجه دارید؟", "acceptedAnswer": {"@type": "Answer", "text": "بله، ظرف ۷ روز پس از خرید در صورت عدم استفاده از بیش از ۲۰٪ محتوا، وجه بازگردانده می‌شود."}}
+  ]
+}
+</script>
+{% endblock %}
+
+{% block content %}
+<section class="section">
+  <div class="container" style="max-width:800px">
+    <div class="section-head">
+      <span class="tag">❓ سوالات متداول</span>
+      <h1 style="font-size:clamp(22px,3vw,32px)">پاسخ سوالات شما</h1>
+      <p>اگر پاسخ سوال‌تان را پیدا نکردید، با پشتیبانی در تماس باشید.</p>
+    </div>
+    <div data-acc-group>
+      <div class="faq-item open">
+        <button class="fq-q"><span class="ic">💳</span> چگونه می‌توانم دوره بخرم؟<span class="arrow">▼</span></button>
+        <div class="fq-a">کافی است دوره موردنظر را به سبد خرید اضافه کنید، سپس از طریق تسویه حساب وارد درگاه پرداخت شوید. پس از پرداخت موفق، دوره بلافاصله به حساب شما اضافه می‌شود.</div>
+      </div>
+      <div class="faq-item">
+        <button class="fq-q"><span class="ic">⏳</span> دسترسی به دوره‌ها تا چه زمانی معتبر است؟<span class="arrow">▼</span></button>
+        <div class="fq-a">دسترسی شما به دوره‌های خریداری‌شده مادام‌العمر است! هر زمان که بخواهید می‌توانید به محتوا مراجعه کنید و آپدیت‌های بعدی دوره را رایگان دریافت می‌کنید.</div>
+      </div>
+      <div class="faq-item">
+        <button class="fq-q"><span class="ic">🏅</span> گواهینامه دوره چگونه دریافت می‌شود؟<span class="arrow">▼</span></button>
+        <div class="fq-a">پس از تکمیل ۱۰۰٪ جلسات دوره، گواهینامه پایان دوره با کد رهگیری منحصربه‌فرد در بخش «دوره‌های من» برای شما فعال می‌شود و می‌توانید آن را چاپ کنید.</div>
+      </div>
+      <div class="faq-item">
+        <button class="fq-q"><span class="ic">🎟</span> کد تخفیف چیست و چگونه استفاده کنم؟<span class="arrow">▼</span></button>
+        <div class="fq-a">کدهای تخفیف در صفحه تسویه حساب وارد می‌شوند. برای تست می‌توانید از کد WELCOME20 استفاده کنید.</div>
+      </div>
+      <div class="faq-item">
+        <button class="fq-q"><span class="ic">💬</span> اگر سوالی درباره دوره داشته باشم چه کنم؟<span class="arrow">▼</span></button>
+        <div class="fq-a">از بخش «تیکت‌های پشتیبانی» در داشبورد، تیکت ثبت کنید. تیم پشتیبانی معمولاً کمتر از ۲۴ ساعت پاسخ می‌دهد. همچنین می‌توانید در بخش نظرات هر دوره سوال‌تان را بپرسید.</div>
+      </div>
+      <div class="faq-item">
+        <button class="fq-q"><span class="ic">💻</span> دوره‌ها روی موبایل هم قابل استفاده‌اند؟<span class="arrow">▼</span></button>
+        <div class="fq-a">بله! سایت کاملاً واکنش‌گرا (Responsive) است و تمام دوره‌ها روی موبایل، تبلت و دسکتاپ قابل مشاهده هستند.</div>
+      </div>
+      <div class="faq-item">
+        <button class="fq-q"><span class="ic">↩️</span> ضمانت بازگشت وجه دارید؟<span class="arrow">▼</span></button>
+        <div class="fq-a">بله، اگر ظرف ۷ روز پس از خرید از دوره راضی نبودید، با پشتیبانی تماس بگیرید تا وجه شما به حسابتان بازگردد.</div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

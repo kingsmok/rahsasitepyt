@@ -1,0 +1,41 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}مکالمه تیکت{% endblock %}
+{% block acontent %}
+<div class="dash-head">
+  <div>
+    <h1>💬 {{ t.subject }}</h1>
+    <p class="text-3" style="font-size:12px">{{ t.user.name if t.user else '—' }} — {{ t.category or 'عمومی' }} — {{ {'urgent':'🔴 فوری','high':'🟠 زیاد','normal':'🟡 معمولی','low':'🟢 کم'}.get(t.priority, t.priority) }} — {{ t.created_at|jdatetime }}</p>
+  </div>
+  <a class="btn btn-ghost" href="{{ url_for('admin.tickets') }}">← تیکت‌ها</a>
+</div>
+
+<div class="card" style="padding:20px;margin-bottom:14px">
+  <h2 style="font-size:13px;margin-bottom:10px;color:var(--text-2)">پیام اولیه کاربر</h2>
+  <div style="background:var(--bg-2);border-radius:12px;padding:14px 18px;font-size:14px">{{ t.body }}</div>
+  {% if t.attachment %}<a class="btn btn-ghost btn-sm mt-2" href="/uploads/tickets/{{ t.attachment }}" target="_blank">📎 فایل پیوست</a>{% endif %}
+</div>
+
+<h2 style="font-size:14px;margin:16px 0 10px">📜 تاریخچه مکالمه ({{ fa(replies|length + (1 if t.admin_reply else 0)) }})</h2>
+<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:18px">
+  {% for r in replies %}
+  <div style="max-width:80%;padding:12px 16px;border-radius:14px;font-size:13.5px;{{ 'background:var(--success-soft);align-self:flex-start' if r.is_admin else 'background:var(--bg-2);align-self:flex-end' }}">
+    <div>{{ r.body }}</div>
+    <small class="text-3" style="font-size:10.5px">{{ '👨‍💻 شما' if r.is_admin else '👤 ' ~ (r.user.name if r.user else 'کاربر') }} — {{ r.created_at|jdatetime }}</small>
+    {% if r.attachment %}<a class="btn btn-ghost btn-sm" href="/uploads/tickets/{{ r.attachment }}" target="_blank">📎</a>{% endif %}
+  </div>
+  {% endfor %}
+</div>
+
+<div class="card" style="padding:20px">
+  <h2 style="font-size:14px;margin-bottom:12px">✍️ پاسخ جدید</h2>
+  <form method="post" action="{{ url_for('admin.ticket_reply_file', tid=t.id) }}" enctype="multipart/form-data">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+    <textarea class="form-control" name="body" rows="3" placeholder="متن پاسخ..." required></textarea>
+    <div class="flex gap-1 mt-1" style="flex-wrap:wrap">
+      <input class="form-control" type="file" name="attachment" accept=".pdf,.jpg,.png,.zip,.docx" style="max-width:240px">
+      <button class="btn btn-primary" type="submit">📤 ارسال پاسخ</button>
+      <a class="btn btn-ghost" href="{{ url_for('admin.canned_replies') }}">💬 پاسخ‌های آماده</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

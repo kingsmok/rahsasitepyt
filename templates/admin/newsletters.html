@@ -1,0 +1,32 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}خبرنامه{% endblock %}
+{% block acontent %}
+<div class="card" style="padding:20px;margin-bottom:18px">
+  <h2 style="font-size:14px;margin-bottom:12px">📣 ارسال خبرنامه گروهی</h2>
+  <form method="post" action="{{ url_for('admin.newsletter_send') }}">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+    <div class="flex gap-1" style="flex-wrap:wrap">
+      <input class="form-control" name="subject" placeholder="موضوع خبرنامه" required style="flex:1;min-width:200px">
+      <select class="form-control" name="channel" style="max-width:150px">
+        <option value="email">📧 ایمیل</option>
+        <option value="messenger">📨 پیام‌رسان‌ها</option>
+        <option value="sms">📱 پیامک</option>
+      </select>
+      <button class="btn btn-primary">📣 ارسال</button>
+    </div>
+    <textarea class="form-control mt-1" name="body" rows="3" placeholder="متن خبرنامه..." required></textarea>
+  </form>
+</div>
+
+<div class="dash-head"><div><h1>📧 اعضای خبرنامه</h1><p>{{ fa(emails|length) }} ایمیل ثبت‌شده</p></div></div>
+<div class="table-wrap">
+  <table class="table">
+    <thead><tr><th>ایمیل</th><th>تاریخ عضویت</th></tr></thead>
+    <tbody>
+      {% for e in emails %}
+      <tr><td dir="ltr">{{ e.email }}</td><td>{{ e.created_at|jdate }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

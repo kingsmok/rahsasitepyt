@@ -1,0 +1,85 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}داشبورد سئو{% endblock %}
+{% block acontent %}
+<div class="dash-head">
+  <div>
+    <h1>🔍 داشبورد سئو <span class="badge badge-primary">نسخه حرفه‌ای</span></h1>
+    <p>سلامت سئو همه صفحات — شبیه Rank Math</p>
+  </div>
+  <div class="flex gap-2">
+    <form method="post" action="{{ url_for('seo_admin.auto_generate') }}">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+      <button class="btn btn-primary" type="submit">⚡ تولید خودکار کامل</button>
+    </form>
+    <a class="btn btn-ghost" href="{{ url_for('seo_admin.bulk') }}">✏️ ویرایش انبوه</a>
+  </div>
+</div>
+
+<!-- کارت‌های آمار -->
+<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:16px;margin-bottom:22px">
+  <div class="card card-hover stat-card"><span class="ic stat-ic-blue">📄</span><div><div class="num">{{ fa(total) }}</div><div class="lbl">صفحات قابل سئو</div></div></div>
+  <div class="card card-hover stat-card"><span class="ic stat-ic-green">✅</span><div><div class="num">{{ fa(with_seo) }}</div><div class="lbl">متای ساخته‌شده</div></div></div>
+  <div class="card card-hover stat-card"><span class="ic stat-ic-orange">📊</span><div><div class="num">{% if avg %}{{ fa(avg) }}{% else %}—{% endif %}</div><div class="lbl">میانگین امتیاز</div></div></div>
+  <div class="card card-hover stat-card"><span class="ic stat-ic-green">🟢</span><div><div class="num">{{ fa(great) }}</div><div class="lbl">عالی (۸۰+)</div></div></div>
+  <div class="card card-hover stat-card"><span class="ic stat-ic-orange">🟡</span><div><div class="num">{{ fa(good) }}</div><div class="lbl">خوب (۵۵-۷۹)</div></div></div>
+  <div class="card card-hover stat-card"><span class="ic stat-ic-red">🔴</span><div><div class="num">{{ fa(bad) }}</div><div class="lbl">نیاز بهبود</div></div></div>
+  <div class="card card-hover stat-card"><span class="ic stat-ic-blue">🔁</span><div><div class="num">{{ fa(redirects) }}</div><div class="lbl">ریدایرکت‌ها</div></div></div>
+  <div class="card card-hover stat-card"><span class="ic stat-ic-red">🚫</span><div><div class="num">{{ fa(notfound) }}</div><div class="lbl">خطاهای 404</div></div></div>
+</div>
+
+<div class="flex gap-1" style="margin-bottom:16px;flex-wrap:wrap">
+  <a class="btn btn-sm {{ 'btn-primary' if not request.args.get('kind') }}" href="{{ url_for('seo_admin.dashboard') }}">همه</a>
+  <a class="btn btn-sm {{ 'btn-primary' if request.args.get('kind') == 'course' }}" href="{{ url_for('seo_admin.dashboard', kind='course') }}">دوره‌ها</a>
+  <a class="btn btn-sm {{ 'btn-primary' if request.args.get('kind') == 'post' }}" href="{{ url_for('seo_admin.dashboard', kind='post') }}">مقالات</a>
+  <a class="btn btn-sm {{ 'btn-primary' if request.args.get('kind') == 'teacher' }}" href="{{ url_for('seo_admin.dashboard', kind='teacher') }}">اساتید</a>
+  <a class="btn btn-sm {{ 'btn-primary' if request.args.get('kind') == 'page' }}" href="{{ url_for('seo_admin.dashboard', kind='page') }}">صفحات</a>
+</div>
+
+<div class="table-wrap">
+  <table class="table">
+    <thead><tr><th>صفحه</th><th>نوع</th><th>عنوان سئو</th><th>کلمه کلیدی</th><th>امتیاز</th><th>عملیات</th></tr></thead>
+    <tbody>
+      {% for it in items %}
+      {% if not request.args.get('kind') or request.args.get('kind') == it.kind %}
+      <tr>
+        <td>
+          <div style="min-width:200px">
+            <strong style="font-size:13px">{{ it.name }}</strong>
+            <br><small class="text-3" dir="ltr">{{ it.path }}</small>
+          </div>
+        </td>
+        <td>
+          <span class="badge {{ 'badge-primary' if it.kind == 'course' else ('badge-success' if it.kind == 'post' else ('badge-accent' if it.kind == 'teacher' else 'badge-gray')) }}">
+            {{ {'course': 'دوره', 'post': 'مقاله', 'teacher': 'استاد', 'page': 'صفحه'}.get(it.kind) }}
+          </span>
+        </td>
+        <td style="max-width:220px;font-size:12px">{{ it.seo.title if it.seo and it.seo.title else '—' }}</td>
+        <td><span class="badge badge-gray">{{ it.seo.focus_keyword if it.seo and it.seo.focus_keyword else '—' }}</span></td>
+        <td>
+          {% if it.seo and it.seo.score %}
+          <span class="seo-score {{ 'seo-great' if it.seo.score >= 80 else ('seo-good' if it.seo.score >= 55 else 'seo-bad') }}">{{ fa(it.seo.score) }}</span>
+          {% else %}
+          <span class="seo-score seo-none">—</span>
+          {% endif %}
+        </td>
+        <td>
+          <div class="actions-cell">
+            {% if it.seo %}
+            <a class="btn btn-primary btn-sm" href="{{ url_for('seo_admin.edit', mid=it.seo.id) }}">✏️ متا</a>
+            <a class="btn btn-ghost btn-sm" href="{{ url_for('seo_admin.analyze', path=it.path[1:]) }}">📊 تحلیل</a>
+            {% else %}
+            <a class="btn btn-ghost btn-sm" href="{{ url_for('seo_admin.auto_generate') }}">⚡ ساخت</a>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+      {% endif %}
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<style>
+.seo-score { display:inline-flex;width:42px;height:42px;border-radius:50%;align-items:center;justify-content:center;font-weight:900;font-size:14px;color:#fff; }
+.seo-great { background:#16a34a; } .seo-good { background:#d97706; } .seo-bad { background:#dc2626; } .seo-none { background:#cbd5e1; }
+</style>
+{% endblock %}

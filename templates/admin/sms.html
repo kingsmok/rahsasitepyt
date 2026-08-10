@@ -1,0 +1,66 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}تنظیمات پیامک{% endblock %}
+{% block acontent %}
+<div class="dash-head">
+  <div><h1>📱 پیامک خودکار</h1><p>برای OTP ورود، تایید خرید و اعلان‌ها — فقط API Key را وارد کنید</p></div>
+</div>
+
+<form method="post">
+  <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+  <div class="card" style="padding:22px;max-width:640px">
+    <div class="form-group">
+      <label>سرویس‌دهنده پیامک</label>
+      <select class="form-control" name="sms_provider">
+        {% for pid, p in providers.items() %}
+        <option value="{{ pid }}" {{ 'selected' if site.sms_provider == pid }}>{{ p.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="card" style="background:var(--bg-2);border:none;padding:16px;margin-bottom:14px">
+      <strong>کاوه‌نگار</strong>
+      <div class="form-group" style="margin-top:8px"><label>API Key</label><input class="form-control" dir="ltr" name="sms_kavenegar_key" value="{{ site.sms_kavenegar_key or '' }}" placeholder="6A7B..."></div>
+      <div class="grid" style="grid-template-columns:2fr 1fr;gap:10px">
+        <div class="form-group"><label>شماره فرستنده</label><input class="form-control" dir="ltr" name="sms_kavenegar_sender" value="{{ site.sms_kavenegar_sender or '' }}" placeholder="20005006600660"></div>
+        <div class="form-group"><label>قالب OTP</label><input class="form-control" dir="ltr" name="sms_kavenegar_template" value="{{ site.sms_kavenegar_template or '' }}" placeholder="academy-otp"></div>
+      </div>
+    </div>
+
+    <div class="card" style="background:var(--bg-2);border:none;padding:16px;margin-bottom:14px">
+      <strong>ملی‌پیامک</strong>
+      <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px">
+        <div class="form-group"><label>نام کاربری</label><input class="form-control" dir="ltr" name="sms_melli_username" value="{{ site.sms_melli_username or '' }}"></div>
+        <div class="form-group"><label>رمز عبور</label><input class="form-control" dir="ltr" type="password" name="sms_melli_password" value="{{ site.sms_melli_password or '' }}"></div>
+      </div>
+      <div class="form-group"><label>شماره فرستنده</label><input class="form-control" dir="ltr" name="sms_melli_sender" value="{{ site.sms_melli_sender or '' }}" placeholder="5000271001"></div>
+    </div>
+
+    <div class="card" style="background:var(--bg-2);border:none;padding:16px;margin-bottom:14px">
+      <strong>فراز اس‌ام‌اس (ایپنل)</strong>
+      <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px">
+        <div class="form-group"><label>توکن</label><input class="form-control" dir="ltr" name="sms_faraz_token" value="{{ site.sms_faraz_token or '' }}" placeholder="username:password"></div>
+        <div class="form-group"><label>شماره فرستنده</label><input class="form-control" dir="ltr" name="sms_faraz_sender" value="{{ site.sms_faraz_sender or '' }}"></div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>شماره تست (برای دکمه تست اتصال)</label>
+      <input class="form-control" dir="ltr" name="sms_test_phone" value="{{ site.sms_test_phone or '' }}" placeholder="0912...">
+    </div>
+
+    <button class="btn btn-primary btn-lg" type="submit">💾 ذخیره تنظیمات پیامک</button>
+    <button class="btn btn-ghost btn-lg" type="submit" name="action" value="test" style="margin-right:8px">📤 ارسال پیام تست</button>
+  </div>
+</form>
+
+<div class="card" style="padding:18px;margin-top:16px;max-width:640px;font-size:12.5px;color:var(--text-2)">
+  <strong>📌 نحوه فعال‌سازی:</strong>
+  <ol style="padding-right:18px;margin-top:6px">
+    <li>در پنل کاوه‌نگار/ملی‌پیامک/فراز حساب بسازید و اعتبار خریداری کنید.</li>
+    <li>API Key (یا نام کاربری/رمز) را در بالا وارد و ذخیره کنید.</li>
+    <li>دکمه «ارسال پیام تست» را بزنید تا اتصال بررسی شود.</li>
+    <li>از این لحظه، کد ورود (OTP) و اعلان‌های خرید به‌صورت خودکار پیامک می‌شوند.</li>
+  </ol>
+  <p style="margin-top:8px">حالت «دمو» پیام‌ها را در لاگ سرور ثبت می‌کند و کد را روی صفحه نمایش می‌دهد.</p>
+</div>
+{% endblock %}

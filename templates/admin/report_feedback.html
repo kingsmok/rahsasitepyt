@@ -1,0 +1,29 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}گزارش رضایت‌سنجی{% endblock %}
+{% block acontent %}
+<div class="dash-head"><div><h1>⭐ گزارش رضایت‌سنجی دوره‌ها</h1><p>میانگین امتیاز هر دوره از بازخورد دانشجویان پس از اتمام</p></div></div>
+<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:18px">
+  <div class="card" style="padding:18px;text-align:center"><div style="font-size:26px">📝</div><strong>{{ fa(total) }}</strong><small class="text-3" style="display:block">بازخورد ثبت‌شده</small></div>
+  <div class="card" style="padding:18px;text-align:center"><div style="font-size:26px">⭐</div><strong>{{ overall }}</strong><small class="text-3" style="display:block">میانگین کل</small></div>
+</div>
+<div class="card" style="padding:22px">
+  <div class="table-wrap"><table class="table" style="width:100%;font-size:13px">
+    <thead><tr><th>دوره</th><th>تعداد بازخورد</th><th>میانگین امتیاز</th><th>پیشنهاد به دیگران</th></tr></thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td>{{ r.course }}</td>
+        <td>{{ fa(r.count) }}</td>
+        <td>
+          <div class="stars" style="direction:ltr;text-align:right">{{ '★' * (r.avg|round(0,'floor')|int) }}<span class="off">{{ '★' * (5 - (r.avg|round(0,'floor')|int)) }}</span>
+          <small class="text-2">({{ r.avg }})</small></div>
+        </td>
+        <td><div style="display:flex;align-items:center;gap:8px"><div style="width:110px;height:7px;background:var(--bg-2);border-radius:99px;overflow:hidden"><div style="width:{{ r.pct }}%;height:100%;background:#16a34a"></div></div><small>{{ fa(r.pct) }}٪</small></div></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="4" class="text-3" style="text-align:center;padding:20px">هنوز بازخوردی ثبت نشده است.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+</div>
+{% endblock %}

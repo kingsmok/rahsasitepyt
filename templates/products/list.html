@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+{% block title %}{{ seo.title or 'فروشگاه محصولات' }}{% endblock %}
+{% block content %}
+<section class="section" style="padding-top:30px">
+  <div class="container" style="max-width:1200px">
+    <nav class="breadcrumb" aria-label="مسیر صفحه">
+      <a href="{{ url_for('site.index') }}">خانه</a><span class="sep">/</span>
+      <span>فروشگاه</span>
+    </nav>
+    <div class="dash-head" style="margin-bottom:20px">
+      <div>
+        <h1 style="font-size:24px">🛍 فروشگاه محصولات</h1>
+        <p class="text-2">کالاهای آموزشی با ارسال سریع و کیفیت تضمینی</p>
+      </div>
+    </div>
+
+    <form method="get" class="flex gap-1" style="gap:10px;margin-bottom:22px;align-items:center">
+      <input class="form-control" name="q" value="{{ q }}" placeholder="جستجوی محصول..." style="flex:1">
+      <select class="form-control" name="cat" style="max-width:200px">
+        <option value="">همه دسته‌ها</option>
+        {% for c in cats %}
+        <option value="{{ c }}" {{ 'selected' if cat == c }}>{{ c }}</option>
+        {% endfor %}
+      </select>
+      <select class="form-control" name="sort" style="max-width:160px">
+        <option value="newest" {{ 'selected' if sort == 'newest' }}>جدیدترین</option>
+        <option value="popular" {{ 'selected' if sort == 'popular' }}>پربازدیدترین</option>
+        <option value="cheap" {{ 'selected' if sort == 'cheap' }}>ارزان‌ترین</option>
+        <option value="expensive" {{ 'selected' if sort == 'expensive' }}>گران‌ترین</option>
+      </select>
+      <button class="btn btn-ghost" type="submit">🔍</button>
+    </form>
+
+    {% if items %}
+    <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:20px">
+      {% for p in items %}
+      <a class="card card-hover" href="{{ url_for('products.product_detail', slug=p.slug) }}" style="overflow:hidden;border-radius:16px;text-decoration:none;color:inherit;display:flex;flex-direction:column">
+        <div style="position:relative;aspect-ratio:1/1;background:var(--bg-2);overflow:hidden">
+          {% if p.image %}
+          <img src="{{ p.image if p.image.startswith('http') else '/static/img/' + p.image }}" alt="{{ p.title }}" style="width:100%;height:100%;object-fit:cover" loading="lazy">
+          {% else %}
+          <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:44px">🛍</div>
+          {% endif %}
+          {% if p.has_discount %}<span style="position:absolute;top:10px;right:10px;background:#dc2626;color:#fff;font-size:11px;font-weight:800;border-radius:99px;padding:4px 12px">{{ fa((p.price - p.final_price) * 100 // p.price) }}٪ تخفیف</span>{% endif %}
+          {% if p.stock is not none and p.stock <= 0 %}<span style="position:absolute;bottom:10px;left:10px;background:rgba(0,0,0,.65);color:#fff;font-size:11px;border-radius:99px;padding:4px 12px">ناموجود</span>{% endif %}
+        </div>
+        <div style="padding:14px 16px 16px;display:flex;flex-direction:column;gap:6px;flex:1">
+          <div style="font-size:11px;color:var(--text-3)">{{ p.category or '' }}{% if p.sku %} · کد: {{ p.sku }}{% endif %}</div>
+          <strong style="font-size:14.5px;line-height:1.6">{{ p.title }}</strong>
+          <div class="flex between" style="align-items:center;margin-top:auto">
+            <div>
+              {% if p.has_discount %}<span style="text-decoration:line-through;color:#9ca3af;font-size:12px">{{ fa('{:,.0f}'.format(p.price)) }}</span>{% endif %}
+              <div style="color:var(--primary);font-weight:900;font-size:16px">{{ fa('{:,.0f}'.format(p.final_price)) }} <small style="font-size:10.5px">تومان</small></div>
+            </div>
+          </div>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="card" style="padding:50px;text-align:center">
+      <div style="font-size:40px">🛍</div>
+      <h3 style="margin:10px 0 6px">محصولی پیدا نشد</h3>
+      <p class="text-2">عبارت دیگری جستجو کنید یا همه محصولات را ببینید.</p>
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

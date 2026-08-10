@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block title %}{{ seo.title or "وبلاگ" }}{% endblock %}
+
+{% block content %}
+<section class="section">
+  <div class="container">
+    <div class="section-head">
+      <span class="tag">📝 وبلاگ آکادمی</span>
+      <h1 style="font-size:clamp(22px,3vw,32px)">مقالات آموزشی تازه</h1>
+      <p>دانش روز دنیای فناوری و مهارت‌های دیجیتال</p>
+    </div>
+
+    <div class="flex gap-1" style="justify-content:center;margin-bottom:34px;flex-wrap:wrap">
+      <a class="btn btn-sm {{ 'btn-primary' if not cat else 'btn-ghost' }}" href="{{ url_for('site.blog') }}">همه</a>
+      {% for c in cats %}
+      <a class="btn btn-sm {{ 'btn-primary' if cat == c else 'btn-ghost' }}" href="{{ url_for('site.blog', cat=c) }}">{{ c }}</a>
+      {% endfor %}
+    </div>
+
+    {% if posts %}
+    <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:24px">
+      {% for p in posts %}
+      <article class="card card-hover post-card">
+        <a class="thumb" href="{{ url_for('site.blog_post', slug=p.slug) }}"><img src="/static/img/{{ p.image }}" alt="{{ p.title }}" loading="lazy"></a>
+        <div class="body">
+          <div class="p-meta"><span class="badge badge-primary">{{ p.category }}</span><span>{{ p.created_at|jdate }}</span><span>⏱ {{ fa(p.read_time) }} دقیقه</span></div>
+          <h2 style="font-size:17px;line-height:1.6"><a href="{{ url_for('site.blog_post', slug=p.slug) }}">{{ p.title }}</a></h2>
+          <p>{{ p.excerpt }}</p>
+          <a class="more" href="{{ url_for('site.blog_post', slug=p.slug) }}">ادامه مطلب ◂</a>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+
+    {% if pages > 1 %}
+    <nav class="pagination">
+      {% for p in range(1, pages + 1) %}
+        {% if p == page %}<span class="active">{{ fa(p) }}</span>
+        {% else %}<a href="{{ url_for('site.blog', page=p, cat=cat) }}">{{ fa(p) }}</a>{% endif %}
+      {% endfor %}
+    </nav>
+    {% endif %}
+    {% else %}
+    <div class="card text-center" style="padding:60px"><h3>مطلبی منتشر نشده است</h3></div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

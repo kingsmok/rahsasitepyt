@@ -1,0 +1,108 @@
+{% extends 'dashboard/base.html' %}
+{% block dtitle %}نمای کلی{% endblock %}
+{% block dcontent %}
+{% if reminder %}
+<div class="card" style="padding:16px 20px;margin-bottom:16px;background:var(--accent-soft);border:none;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+  <span style="font-size:26px">⏰</span>
+  <div style="flex:1;min-width:200px">
+    <strong style="font-size:13.5px">ادامه بده! دوره «{{ reminder.course.title[:40] if reminder.course else '' }}» منتظر توست</strong>
+    <small class="text-2" style="display:block;font-size:12px">پیشرفت فعلی: {{ fa(reminder.percent) }}٪ — چند روزی است ادامه ندادی</small>
+  </div>
+  <a class="btn btn-primary btn-sm" href="{{ url_for('student.learn', course_id=reminder.course_id) }}">▶ ادامه یادگیری</a>
+</div>
+{% endif %}
+{% if suggested %}
+<div class="card" style="padding:18px 20px;margin-bottom:20px">
+  <h2 style="font-size:14px;margin-bottom:12px">✨ پیشنهاد ویژه برای شما</h2>
+  <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px">
+    {% for c in suggested %}
+    <a class="card card-hover" href="{{ url_for('site.course_detail', slug=c.slug) }}" style="overflow:hidden">
+      <img src="/static/img/{{ c.image }}" alt="" style="width:100%;aspect-ratio:16/9;object-fit:cover">
+      <div style="padding:12px">
+        <strong style="font-size:12.5px;display:block">{{ c.title[:35] }}</strong>
+        <small class="text-3">{{ fa(c.students_count) }} دانشجو — {{ fa(c.final_price) }} تومان</small>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+<div class="card" style="padding:18px 22px;margin-bottom:20px;background:linear-gradient(135deg, var(--primary-soft), transparent);border:none">
+  <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+    <div style="display:flex;align-items:center;gap:10px">
+      <span style="width:46px;height:46px;border-radius:14px;background:var(--grad-brand);color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px">⭐</span>
+      <div><strong style="font-size:18px;display:block">{{ fa(cur_user.points or 0) }} امتیاز</strong><small class="text-3" style="font-size:11.5px">🔥 استریک: {{ fa(cur_user.streak or 0) }} روز</small></div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      {% for b in my_badges %}
+      <span class="badge badge-accent">🏅 {{ b }}</span>
+      {% endfor %}
+    </div>
+    <div style="margin-right:auto;display:flex;gap:8px">
+      <a class="btn btn-ghost btn-sm" href="{{ url_for('features.study_plan') }}">📅 برنامه مطالعه</a>
+      <a class="btn btn-ghost btn-sm" href="{{ url_for('features.leaderboard') }}">🏆 جدول برترین‌ها</a>
+      <a class="btn btn-ghost btn-sm" href="{{ url_for('features.referral') }}">🎁 دعوت دوستان</a>
+    </div>
+  </div>
+</div>
+<div class="dash-head">
+  <div>
+    <h1>سلام {{ cur_user.name.split()[0] }} عزیز 👋</h1>
+    <p>امروز {{ now|jdate }} — به مسیر یادگیری ادامه بده!</p>
+  </div>
+  <a class="btn btn-primary" href="{{ url_for('site.courses') }}">+ خرید دوره جدید</a>
+</div>
+
+<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:18px;margin-bottom:26px">
+  <div class="card card-hover stat-card"><span class="ic stat-ic-blue">📚</span><div><div class="num">{{ fa(stats.courses) }}</div><div class="lbl">دوره ثبت‌نامی</div></div></div>
+  <div class="card card-hover stat-card"><span class="ic stat-ic-green">✅</span><div><div class="num">{{ fa(stats.completed) }}</div><div class="lbl">دوره تکمیل‌شده</div></div></div>
+  <div class="card card-hover stat-card"><span class="ic stat-ic-red">❤️</span><div><div class="num">{{ fa(stats.favorites) }}</div><div class="lbl">علاقه‌مندی</div></div></div>
+  <div class="card card-hover stat-card"><span class="ic stat-ic-orange">🧾</span><div><div class="num">{{ fa(stats.orders) }}</div><div class="lbl">سفارش ثبت‌شده</div></div></div>
+</div>
+
+{% if in_progress %}
+<div class="panel">
+  <h3><span class="ic">▶️</span> ادامه یادگیری</h3>
+  {% for e in in_progress[:3] %}
+  <a class="cart-row" href="{{ url_for('student.learn', course_id=e.course_id) }}" style="border:1px solid var(--border);border-radius:14px;margin-bottom:12px;display:flex">
+    <img class="c-thumb" src="/static/img/{{ e.course.image }}" alt="">
+    <div class="c-info">
+      <h4>{{ e.course.title }}</h4>
+      <div class="progress" style="margin-top:6px;max-width:400px"><div class="bar" style="width:{{ e.percent }}%"></div></div>
+    </div>
+    <div style="text-align:left">
+      <span class="badge badge-primary">{{ fa(e.percent) }}٪</span>
+      <div class="text-3 mt-1" style="font-size:12px">ادامه ←</div>
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if orders %}
+<div class="panel">
+  <h3><span class="ic">🧾</span> آخرین سفارش‌ها</h3>
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>کد سفارش</th><th>تاریخ</th><th>مبلغ</th><th>وضعیت</th><th></th></tr></thead>
+      <tbody>
+        {% for o in orders %}
+        <tr>
+          <td dir="ltr" style="font-weight:700">{{ o.code }}</td>
+          <td>{{ o.created_at|jdate }}</td>
+          <td>{{ fa('{:,.0f}'.format(o.final_total)) }} تومان</td>
+          <td>
+            {% if o.status == 'paid' %}<span class="badge badge-success">✓ پرداخت‌شده</span>
+            {% elif o.status == 'pending' %}<span class="badge badge-accent">در انتظار پرداخت</span>
+            {% elif o.status == 'failed' %}<span class="badge badge-danger">ناموفق</span>
+            {% else %}<span class="badge badge-gray">لغو شده</span>{% endif %}
+          </td>
+          <td><a class="btn btn-ghost btn-sm" href="{{ url_for('student.invoice', code=o.code) }}">فاکتور</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

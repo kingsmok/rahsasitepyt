@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+{% block title %}{{ seo.title or f.title }}{% endblock %}
+{% block content %}
+<section class="section" style="padding-top:36px">
+  <div class="container" style="max-width:640px">
+    <div class="card" style="padding:34px;border-radius:20px">
+      <div class="text-center mb-3">
+        <div style="font-size:40px">📋</div>
+        <h1 style="font-size:22px;margin:8px 0 4px">{{ f.title }}</h1>
+        {% if f.description %}<p class="text-2" style="font-size:13.5px">{{ f.description }}</p>{% endif %}
+      </div>
+      <form method="post" enctype="multipart/form-data">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+        {% for field in f.fields_list() %}
+        <div class="form-group">
+          <label for="ff_{{ loop.index }}">{{ field.label }}{% if field.required %} <span class="req">*</span>{% endif %}</label>
+          {% if field.type == 'textarea' %}
+          <textarea id="ff_{{ loop.index }}" class="form-control" name="{{ field.label }}" rows="4" {{ 'required' if field.required }}></textarea>
+          {% elif field.type == 'select' %}
+          <select id="ff_{{ loop.index }}" class="form-control" name="{{ field.label }}" {{ 'required' if field.required }}>
+            <option value="">— انتخاب —</option>
+            {% for o in field.options %}<option>{{ o }}</option>{% endfor %}
+          </select>
+          {% elif field.type == 'radio' %}
+          <div style="display:flex;flex-direction:column;gap:6px">
+            {% for o in field.options %}
+            <label class="quiz-opt"><input type="radio" name="{{ field.label }}" value="{{ o }}" {{ 'required' if field.required and loop.first }}> {{ o }}</label>
+            {% endfor %}
+          </div>
+          {% elif field.type == 'checkbox' %}
+          <div style="display:flex;flex-direction:column;gap:6px">
+            {% for o in field.options %}
+            <label class="quiz-opt"><input type="checkbox" name="{{ field.label }}" value="{{ o }}"> {{ o }}</label>
+            {% endfor %}
+          </div>
+          {% elif field.type == 'file' %}
+          <input id="ff_{{ loop.index }}" class="form-control" type="file" name="{{ field.label }}" accept=".jpg,.jpeg,.png,.webp,.pdf,.doc,.docx,.zip,.txt,.csv,.xlsx" {{ 'required' if field.required }}>
+          {% elif field.type == 'phone' %}
+          <input id="ff_{{ loop.index }}" class="form-control" type="tel" name="{{ field.label }}" dir="ltr" placeholder="09xxxxxxxxx" pattern="09[0-9]{9}" {{ 'required' if field.required }}>
+          {% elif field.type == 'email' %}
+          <input id="ff_{{ loop.index }}" class="form-control" type="email" name="{{ field.label }}" dir="ltr" {{ 'required' if field.required }}>
+          {% elif field.type == 'date' %}
+          <input id="ff_{{ loop.index }}" class="form-control" type="date" name="{{ field.label }}" {{ 'required' if field.required }}>
+          {% else %}
+          <input id="ff_{{ loop.index }}" class="form-control" type="text" name="{{ field.label }}" {{ 'required' if field.required }}>
+          {% endif %}
+        </div>
+        {% endfor %}
+        {{ captcha_box() }}
+        <button class="btn btn-primary btn-lg btn-block" type="submit">📤 ثبت</button>
+      </form>
+    </div>
+  </div>
+</section>
+{% endblock %}

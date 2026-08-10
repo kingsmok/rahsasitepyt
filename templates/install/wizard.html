@@ -1,0 +1,456 @@
+{% set _site_name = 'آکادمی آنلاین' %}
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>نصب {{ _site_name }} — راه‌اندازی سریع</title>
+<link rel="icon" href="/static/img/favicon.svg" type="image/svg+xml">
+<style>
+@font-face{font-family:'Vazirmatn';src:url('/static/fonts/Vazirmatn-Variable.woff2') format('woff2-variations');font-weight:100 900;font-display:swap}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Vazirmatn',Tahoma,sans-serif;background:linear-gradient(160deg,#0f2557 0%,#1d4ed8 55%,#2563eb 100%);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;color:#0f172a}
+.wrap{width:100%;max-width:640px}
+.head{text-align:center;color:#fff;margin-bottom:22px}
+.head .logo{width:64px;height:64px;border-radius:18px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25);display:inline-flex;align-items:center;justify-content:center;font-size:30px;backdrop-filter:blur(6px);margin-bottom:12px}
+.head h1{font-size:22px;font-weight:800}
+.head p{font-size:13px;opacity:.85;margin-top:6px}
+.card{background:#fff;border-radius:20px;padding:28px;box-shadow:0 30px 80px rgba(2,8,30,.4)}
+.steps{display:flex;gap:6px;margin-bottom:24px}
+.step{flex:1;text-align:center;padding:9px 4px;border-radius:12px;background:#f1f5f9;font-size:12px;font-weight:700;color:#64748b;transition:all .25s}
+.step .n{display:inline-flex;width:22px;height:22px;border-radius:50%;background:#cbd5e1;color:#fff;align-items:center;justify-content:center;font-size:11px;margin-left:6px}
+.step.on{background:#eff6ff;color:#1d4ed8}
+.step.on .n{background:#2563eb}
+.step.done{background:#dcfce7;color:#15803d}
+.step.done .n{background:#16a34a}
+.pane{display:none}
+.pane.on{display:block;animation:fadeIn .3s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+h3{font-size:16px;font-weight:800;margin-bottom:4px}
+.sub{font-size:12.5px;color:#64748b;margin-bottom:18px}
+.fg{margin-bottom:14px}
+.fg label{display:block;font-size:12.5px;font-weight:700;margin-bottom:6px}
+.fg input{width:100%;padding:10px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13.5px;font-family:inherit;transition:all .2s}
+.fg input:focus{outline:none;border-color:#2563eb;box-shadow:0 0 0 4px #eff6ff}
+.fg-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.db-choice{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+.dbc{border:2px solid #e2e8f0;border-radius:14px;padding:14px;cursor:pointer;text-align:center;transition:all .2s}
+.dbc .ic{font-size:24px;margin-bottom:6px}
+.dbc b{display:block;font-size:13.5px}
+.dbc small{color:#64748b;font-size:11px}
+.dbc.sel{border-color:#2563eb;background:#eff6ff}
+.hint{font-size:11.5px;color:#64748b;background:#f8fafc;border:1px dashed #e2e8f0;border-radius:10px;padding:10px 12px;margin-bottom:16px;line-height:1.9}
+.msg{display:none;padding:12px 14px;border-radius:10px;font-size:13px;font-weight:700;margin-bottom:14px}
+.msg.ok{display:block;background:#dcfce7;color:#15803d;border:1px solid #86efac}
+.msg.err{display:block;background:#fee2e2;color:#b91c1c;border:1px solid #fecaca}
+.btn{width:100%;padding:13px;border:none;border-radius:12px;font-family:inherit;font-size:14.5px;font-weight:800;cursor:pointer;transition:all .2s}
+.btn-p{background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff}
+.btn-p:hover{transform:translateY(-2px);box-shadow:0 10px 26px rgba(37,99,235,.35)}
+.btn-p:disabled{opacity:.6;cursor:wait;transform:none}
+.btn-g{background:#f1f5f9;color:#475569}
+.btn-g:hover{background:#e2e8f0}
+.btn-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
+.check{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;cursor:pointer;background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:10px;padding:10px 12px}
+.check input{width:17px;height:17px;accent-color:#2563eb}
+.foot{text-align:center;color:rgba(255,255,255,.75);font-size:11.5px;margin-top:18px;line-height:2}
+.foot code{background:rgba(255,255,255,.15);padding:2px 8px;border-radius:6px;direction:ltr;display:inline-block}
+.spin{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite;vertical-align:-3px;margin-left:8px}
+@keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head">
+    <div class="logo">🎓</div>
+    <h1>نصب {{ _site_name }}</h1>
+    <p>راه‌اندازی در چند دقیقه — مشابه نصب وردپرس</p>
+  </div>
+
+  <div class="card">
+    <div class="steps">
+      <div class="step on" id="st-1"><span class="n">۱</span>دیتابیس</div>
+      <div class="step" id="st-2"><span class="n">۲</span>حساب مدیر</div>
+      <div class="step" id="st-3"><span class="n">۳</span>اطلاعات سایت</div>
+      <div class="step" id="st-4"><span class="n">✓</span>نصب</div>
+    </div>
+
+    <div id="msg-box" class="msg"></div>
+
+    <!-- پنل بررسی خودکار سرور -->
+    <div id="health-panel" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;padding:16px;margin-bottom:18px;display:none">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <b style="font-size:13.5px">🩺 بررسی سلامت سرور</b>
+        <span id="health-status" style="font-size:12px;font-weight:700"></span>
+      </div>
+      <div id="health-rows" style="display:grid;gap:6px;font-size:12.5px"></div>
+      <div id="repair-box" style="display:none;margin-top:12px;background:#fef3c7;border:1px solid #fcd34d;border-radius:12px;padding:14px">
+        <b style="font-size:13px">⚠️ نصب ناقص است — دیتابیس سالم نیست</b>
+        <p style="font-size:12px;color:#92400e;margin:6px 0 10px">دکمه زیر جدول‌ها و داده‌های اولیه را دوباره می‌سازد (داده‌های موجود پاک نمی‌شوند).</p>
+        <button class="btn btn-p" style="width:auto;padding:10px 22px" onclick="runRepair()">🔧 تعمیر دیتابیس</button>
+      </div>
+    </div>
+
+    <!-- گام ۱: دیتابیس -->
+    <div class="pane on" id="pane-1">
+      <h3>🗄 اتصال به دیتابیس</h3>
+      <p class="sub">دیتابیس جایی است که اطلاعات سایت (کاربران، دوره‌ها، سفارش‌ها) ذخیره می‌شود.</p>
+      <div class="db-choice">
+        <div class="dbc sel" id="dbc-sqlite" onclick="pickDb('sqlite')">
+          <div class="ic">💾</div><b>SQLite</b><small>بدون نیاز به تنظیم — مناسب شروع</small>
+        </div>
+        <div class="dbc" id="dbc-mysql" onclick="pickDb('mysql')">
+          <div class="ic">🗄</div><b>MySQL</b><small>دیتابیس هاست — برای سایت جدی</small>
+        </div>
+      </div>
+      <div id="mysql-fields" style="display:none">
+        <div class="fg-row">
+          <div class="fg"><label>آدرس (Host)</label><input id="db_host" placeholder="localhost" dir="ltr"></div>
+          <div class="fg"><label>پورت</label><input id="db_port" placeholder="3306" dir="ltr"></div>
+        </div>
+        <div class="fg"><label>نام دیتابیس</label><input id="db_name" placeholder="academy" dir="ltr"></div>
+        <div class="fg-row">
+          <div class="fg"><label>نام کاربری</label><input id="db_user" placeholder="username" dir="ltr"></div>
+          <div class="fg"><label>رمز عبور</label><input id="db_pass" type="password" dir="ltr"></div>
+        </div>
+        <div class="hint">💡 آدرس (Host) را دقیقاً از پنل هاست بردارید — <b>اکثر هاست‌ها: localhost</b> (بدون @ و # و فاصله).<br>
+        نام دیتابیس را اول در پنل هاست بسازید (مثلاً cPanel → MySQL Databases) — فقط نام را وارد کنید، نه آدرس کامل.<br>
+        رمز عبور می‌تواند هر کاراکتری داشته باشد (خودکار encode می‌شود).</div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-g" onclick="testDb()" id="btn-test">🔌 تست اتصال</button>
+        <button class="btn btn-p" onclick="next(1)">ادامه ←</button>
+      </div>
+    </div>
+
+    <!-- گام ۲: حساب مدیر -->
+    <div class="pane" id="pane-2">
+      <h3>👑 حساب مدیر (مدیر سایت)</h3>
+      <p class="sub">با این حساب وارد پنل مدیریت می‌شوید — بعداً از پنل می‌توانید کاربران دیگر را بسازید.</p>
+      <div class="fg"><label>نام و نام خانوادگی مدیر</label><input id="admin_name" placeholder="مثلاً: علی محمدی"></div>
+      <div class="fg"><label>ایمیل مدیر (برای ورود)</label><input id="admin_email" type="email" dir="ltr" placeholder="admin@example.com"></div>
+      <div class="fg-row">
+        <div class="fg"><label>رمز عبور (حداقل ۸ کاراکتر)</label><input id="admin_pass" type="password" dir="ltr"></div>
+        <div class="fg"><label>تکرار رمز عبور</label><input id="admin_pass2" type="password" dir="ltr"></div>
+      </div>
+      <label class="check" style="margin-bottom:14px"><input type="checkbox" id="demo_student" checked> ساخت حساب دانشجویی نمونه (demo@academy.ir / demo123)</label>
+      <div class="btn-row">
+        <button class="btn btn-g" onclick="prev(1)">→ بازگشت</button>
+        <button class="btn btn-p" onclick="next(2)">ادامه ←</button>
+      </div>
+    </div>
+
+    <!-- گام ۳: اطلاعات سایت -->
+    <div class="pane" id="pane-3">
+      <h3>🌐 اطلاعات سایت</h3>
+      <p class="sub">این موارد بعداً از «پنل ادمین ← تنظیمات سوپر» قابل تغییر هستند.</p>
+      <div class="fg"><label>نام سایت</label><input id="site_name" value="آکادمی آنلاین"></div>
+      <div class="fg"><label>توضیح کوتاه (شعار سایت)</label><input id="site_desc" value="مرجع آموزش آنلاین فارسی — دوره‌های پروژه‌محور با مدرسان برتر"></div>
+      <div class="fg-row">
+        <div class="fg"><label>تلفن پشتیبانی</label><input id="site_phone" value="021-91001234"></div>
+        <div class="fg"><label>ایمیل تماس</label><input id="site_email" dir="ltr" value="info@academy.ir"></div>
+      </div>
+      <div class="fg"><label>آدرس سایت (اختیاری — برای لینک‌های ایمیل)</label><input id="site_url" dir="ltr" placeholder="https://example.com"></div>
+      <div class="hint">✨ پس از نصب به‌صورت خودکار ساخته می‌شوند: ۸ دسته‌بندی، صفحه اصلی حرفه‌ای، یک دوره نمونه رایگان، کوپن تخفیف WELCOME20 و تنظیمات اولیه سایت.</div>
+      <div class="btn-row">
+        <button class="btn btn-g" onclick="prev(2)">→ بازگشت</button>
+        <button class="btn btn-p" id="btn-install" onclick="runInstall()">⚡ شروع نصب و ساخت داده‌ها</button>
+      </div>
+    </div>
+
+    <!-- گام ۴: در حال نصب -->
+    <div class="pane" id="pane-4">
+      <h3>⚙️ در حال نصب...</h3>
+      <p class="sub" id="install-log">اتصال به دیتابیس...</p>
+      <div style="background:#f1f5f9;border-radius:12px;padding:18px;font-size:13px;line-height:2.4" id="install-steps">
+        <div>🔌 اتصال به دیتابیس <span id="lg-1"></span></div>
+        <div>🗄 ساخت جدول‌ها (۶۵ جدول) <span id="lg-2"></span></div>
+        <div>👑 ساخت حساب مدیر <span id="lg-3"></span></div>
+        <div>📚 ساخت داده‌های اولیه (دسته‌ها، دوره نمونه، صفحه اصلی) <span id="lg-4"></span></div>
+        <div>📝 ذخیره تنظیمات و فایل .env <span id="lg-5"></span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <div>نصب‌کننده خودکار — مشابه وردپرس (wp-admin/install.php)</div>
+    <div>بعد از نصب، صفحه نصب غیرفعال می‌شود و مسیر <code>/install</code> بسته خواهد شد.</div>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════
+   نصب‌کننده — نسخه تمیز و تست‌شده
+   همه پاسخ‌ها با parseResp (ضد JSON.parse شکستن)
+   نصب پس‌زمینه با polling + تشخیص stale
+   ═══════════════════════════════════════════════ */
+var dbType = 'sqlite';
+var testAbort = null;
+var pollTimer = null;
+var installing = false;
+
+function $(id){ return document.getElementById(id); }
+
+/* پارسر مقاوم: هر پاسخی (JSON/HTML/خطا) را به {ok, d} تبدیل می‌کند */
+function parseResp(r){
+  return r.text().then(function(t){
+    try { return {ok: r.ok, d: JSON.parse(t)}; }
+    catch(e){
+      var hint = (t||'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim().slice(0,140);
+      return {ok: false, d: {ok: false, msg: 'پاسخ نامعتبر از سرور (کد ' + r.status + ')' + (hint ? ' — ' + hint : '')}};
+    }
+  });
+}
+
+function pickDb(t){
+  dbType = t;
+  $('dbc-sqlite').classList.toggle('sel', t==='sqlite');
+  $('dbc-mysql').classList.toggle('sel', t==='mysql');
+  $('mysql-fields').style.display = (t==='mysql') ? 'block' : 'none';
+}
+
+function msg(ok, text){
+  var m = $('msg-box');
+  m.className = 'msg ' + (ok ? 'ok' : 'err');
+  m.textContent = text;
+  m.style.display = 'block';
+  setTimeout(function(){ m.style.display = 'none'; }, 7000);
+}
+
+function go(n){
+  for (var i=1; i<=4; i++){
+    $('pane-'+i).classList.toggle('on', i===n);
+    $('st-'+i).classList.toggle('on', i===n);
+  }
+  if (n > 1) $('st-'+(n-1)).classList.add('done');
+}
+function next(step){
+  if (step===1 && dbType==='mysql'){
+    var p = dbParams();
+    if (!p.host || !p.name || !p.user){ msg(false, 'اطلاعات MySQL را کامل کنید یا روی «تست اتصال» بزنید.'); return; }
+    if (/[@#:\/\\ ]/.test(p.host)){ msg(false, 'آدرس (Host) نامعتبر است — فقط آدرس میزبان مثل localhost (بدون @ و # و فاصله).'); return; }
+  }
+  if (step===2){
+    if ($('admin_name').value.trim().length < 3){ msg(false, 'نام مدیر حداقل ۳ حرف باشد.'); return; }
+    if ($('admin_email').value.indexOf('@') < 0){ msg(false, 'ایمیل مدیر نامعتبر است.'); return; }
+    if ($('admin_pass').value.length < 8){ msg(false, 'رمز عبور حداقل ۸ کاراکتر باشد.'); return; }
+    if ($('admin_pass').value !== $('admin_pass2').value){ msg(false, 'تکرار رمز مطابقت ندارد.'); return; }
+  }
+  go(step + 1);
+}
+function prev(n){ go(n); }
+
+function dbParams(){
+  return {
+    db_type: dbType,
+    host: $('db_host').value.trim(),
+    port: $('db_port').value.trim(),
+    name: $('db_name').value.trim(),
+    user: $('db_user').value.trim(),
+    password: $('db_pass').value
+  };
+}
+
+/* ── دکمه ۱: تست اتصال (سریع + ضد-hang) ── */
+function testDb(){
+  var p = dbParams();
+  if (p.db_type === 'mysql'){
+    if (/[@#:\/\\ ]/.test(p.host)){ msg(false, 'آدرس (Host) نامعتبر است — فقط آدرس میزبان مثل localhost (بدون @ و # و فاصله).'); return; }
+    if (!p.host || !p.name || !p.user){ msg(false, 'آدرس، نام دیتابیس و نام کاربری را کامل کنید.'); return; }
+  }
+  var b = $('btn-test');
+  b.disabled = true; b.innerHTML = '<span class="spin"></span> در حال تست...';
+  if (testAbort) testAbort.abort();
+  testAbort = new AbortController();
+  var tm = setTimeout(function(){ testAbort.abort(); }, 20000);
+  fetch('/install/test-db', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(p),
+    signal: testAbort.signal
+  })
+  .then(parseResp)
+  .then(function(res){ msg(res.d.ok, res.d.msg || 'اتصال برقرار شد ✅'); })
+  .catch(function(e){
+    msg(false, (e && e.name === 'AbortError') ? 'سرور دیر پاسخ داد — دوباره تلاش کنید یا آدرس (Host) را بررسی کنید.' : 'خطا در ارتباط با سرور');
+  })
+  .finally(function(){ clearTimeout(tm); b.disabled = false; b.textContent = '🔌 تست اتصال'; });
+}
+
+/* ── تعمیر نصب ناقص (پس‌زمینه + polling) ── */
+function runRepair(){
+  var b = event.target;
+  b.disabled = true; b.innerHTML = '<span class="spin"></span> در حال تعمیر...';
+  fetch('/install/repair', {method: 'POST', body: new FormData()})
+    .then(parseResp)
+    .then(function(res){
+      if (res.d && res.d.ok){
+        b.textContent = '🔧 در حال تعمیر...';
+        var box = $('repair-box');
+        if (box) box.innerHTML = '<b style="font-size:13px">🔧 تعمیر در حال انجام...</b><p style="font-size:12px;color:#92400e;margin-top:6px">لطفاً صبر کنید — پیشرفت پایین صفحه نمایش داده می‌شود.</p>';
+        go(4);
+        resetSteps();
+        $('install-log').textContent = 'تعمیر شروع شد — در حال انجام...';
+        pollTimer = setTimeout(pollInstall, 1500);
+      } else {
+        b.disabled = false; b.textContent = '🔧 تعمیر دیتابیس';
+        msg(false, (res.d && res.d.msg) || 'خطا در تعمیر');
+      }
+    })
+    .catch(function(){ b.disabled = false; b.textContent = '🔧 تعمیر دیتابیس'; msg(false, 'خطا در ارتباط با سرور'); });
+}
+
+/* ── پنل سلامت سرور (خودکار هنگام باز شدن صفحه) ── */
+function checkHealth(){
+  var panel = $('health-panel');
+  fetch('/install/status')
+    .then(parseResp)
+    .then(function(res){
+      var d = res.d || {};
+      panel.style.display = 'block';
+      var rows = '';
+      function row(label, val, ok){
+        rows += '<div style="display:flex;justify-content:space-between;gap:10px"><span>'+label+'</span><b style="color:'+(ok?'#16a34a':'#dc2626')+'">'+(ok?'✅ ':'❌ ')+val+'</b></div>';
+      }
+      row('پایتون', d.python || '?', true);
+      row('Flask', d.flask || 'نصب نیست!', !!d.flask);
+      row('Flask-SQLAlchemy', d.flask_sqlalchemy || 'نصب نیست!', !!d.flask_sqlalchemy);
+      row('SQLAlchemy', d.sqlalchemy || 'نصب نیست!', !!d.sqlalchemy);
+      row('PyMySQL (برای MySQL)', d.pymysql || 'نصب نیست!', !!d.pymysql);
+      row('Pillow', d.pillow || 'نصب نیست!', !!d.pillow);
+      row('Cryptography', d.cryptography || 'نصب نیست!', !!d.cryptography);
+
+      /* نصب در حال اجراست (مثلاً بعد از رفرش) → ادامه polling */
+      if (d.install_status === 'running'){
+        $('health-status').textContent = 'وضعیت: در حال نصب... ⏳';
+        $('health-status').style.color = '#2563eb';
+        go(4);
+        resetSteps();
+        $('install-log').textContent = (d.install_msg || 'در حال نصب...') + ' — لطفاً صبر کنید';
+        pollTimer = setTimeout(pollInstall, 1500);
+        return;
+      }
+      if (d.installed){
+        row('دیتابیس', d.db_ok ? 'سالم' : 'خراب/ناقص — تعمیر لازم است', d.db_ok);
+        row('نوع دیتابیس', d.db_type || '?', true);
+        if (!d.db_ok){
+          $('health-status').textContent = 'وضعیت: نصب ناقص ⚠️';
+          $('health-status').style.color = '#d97706';
+          $('repair-box').style.display = 'block';
+          $('st-1').classList.add('done');
+          go(4);
+          resetSteps();
+          $('install-log').textContent = 'دیتابیس سالم نیست — دکمه «تعمیر دیتابیس» را بزنید.';
+        } else {
+          $('health-status').textContent = 'وضعیت: نصب شده — سالم ✅';
+          $('health-status').style.color = '#16a34a';
+          [1,2,3].forEach(function(i){ $('pane-'+i).style.display = 'none'; });
+        }
+      } else {
+        row('پوشه instance قابل نوشتن', d.instance_writable === false ? 'خیر — chmod -R 775 instance' : (d.instance_writable === null ? 'ساخته می‌شود' : 'بله'), d.instance_writable !== false);
+        row('فایل .env', d.env_exists ? 'موجود' : 'ساخته می‌شود', true);
+        $('health-status').textContent = 'وضعیت: آماده نصب ✅';
+        $('health-status').style.color = '#16a34a';
+      }
+      $('health-rows').innerHTML = rows;
+      var missing = ['flask','flask_sqlalchemy','sqlalchemy'].filter(function(k){ return !d[k]; });
+      if (missing.length){
+        msg(false, 'پکیج‌های ضروری نصب نیستند! در ترمینال هاست اجرا کنید: ./venv/bin/pip install -r requirements.txt');
+      }
+    })
+    .catch(function(){ panel.style.display = 'none'; });
+}
+
+/* ── دکمه شروع نصب: پس‌زمینه + polling ── */
+function resetSteps(){
+  for (var i=1; i<=5; i++) $('lg-'+i).textContent = '...';
+}
+function setStep(n){
+  for (var i=1; i<=5; i++){
+    $('lg-'+i).textContent = (i < n) ? '✅' : (i === n ? '⏳' : '...');
+  }
+}
+function enableInstallBtn(){
+  var btn = $('btn-install');
+  btn.disabled = false;
+  btn.textContent = '⚡ شروع نصب و ساخت داده‌ها';
+}
+function pollInstall(){
+  fetch('/install/status')
+    .then(parseResp)
+    .then(function(res){
+      var d = res.d || {};
+      var st = d.install_status || 'idle';
+      var step = d.install_step || 0;
+      if (st === 'running' || st === 'idle'){
+        setStep(Math.max(1, Math.min(5, step + 1)));
+        $('install-log').textContent = (d.install_msg || 'در حال نصب...') + ' — لطفاً صبر کنید';
+        pollTimer = setTimeout(pollInstall, 2000);
+      } else if (st === 'done'){
+        setStep(5);
+        $('install-log').textContent = '✅ نصب کامل شد — در حال انتقال به سایت...';
+        setTimeout(function(){ window.location.href = '/'; }, 800);
+      } else {
+        for (var i=1; i<=5; i++) $('lg-'+i).textContent = '❌';
+        $('install-log').textContent = d.install_msg || d.db_msg || 'خطا در نصب';
+        enableInstallBtn();
+        if (pollTimer) clearTimeout(pollTimer);
+      }
+    })
+    .catch(function(){
+      $('install-log').textContent = 'اتصال قطع شد — دوباره تلاش می‌کنم...';
+      pollTimer = setTimeout(pollInstall, 3000);
+    });
+}
+function runInstall(){
+  if (installing) return;
+  installing = true;
+  var data = new FormData();
+  data.append('db_type', dbType);
+  data.append('db_host', $('db_host').value.trim());
+  data.append('db_port', $('db_port').value.trim());
+  data.append('db_name', $('db_name').value.trim());
+  data.append('db_user', $('db_user').value.trim());
+  data.append('db_pass', $('db_pass').value);
+  data.append('admin_name', $('admin_name').value.trim());
+  data.append('admin_email', $('admin_email').value.trim());
+  data.append('admin_pass', $('admin_pass').value);
+  data.append('admin_pass2', $('admin_pass2').value);
+  data.append('demo_student', $('demo_student').checked ? '1' : '0');
+  data.append('site_name', $('site_name').value.trim());
+  data.append('site_desc', $('site_desc').value.trim());
+  data.append('site_phone', $('site_phone').value.trim());
+  data.append('site_email', $('site_email').value.trim());
+  data.append('site_url', $('site_url').value.trim());
+
+  var btn = $('btn-install');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> در حال نصب...';
+  go(4);
+  resetSteps();
+  $('install-log').textContent = 'در حال ارسال درخواست نصب...';
+
+  fetch('/install/run', {method: 'POST', body: data})
+    .then(parseResp)
+    .then(function(res){
+      if (res.d && res.d.ok){
+        $('install-log').textContent = 'نصب شروع شد — در حال انجام...';
+        pollTimer = setTimeout(pollInstall, 1500);
+      } else {
+        for (var i=1; i<=5; i++) $('lg-'+i).textContent = '❌';
+        $('install-log').textContent = (res.d && res.d.msg) ? res.d.msg : 'خطای ناشناخته در شروع نصب';
+        enableInstallBtn();
+        installing = false;
+      }
+    })
+    .catch(function(e){
+      $('install-log').textContent = 'خطا در ارتباط با سرور: ' + (e || '');
+      enableInstallBtn();
+      installing = false;
+    });
+}
+
+/* شروع: بررسی خودکار سلامت + اگر نصب در جریان است ادامه بده */
+checkHealth();
+</script>
+</body>
+</html>

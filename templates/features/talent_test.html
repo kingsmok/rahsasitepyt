@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block title %}{{ seo.title or "آزمون استعدادیابی" }}{% endblock %}
+{% block content %}
+<section class="section" style="padding-top:36px">
+  <div class="container" style="max-width:680px">
+    <div class="card" style="padding:34px;border-radius:20px">
+      <div class="text-center mb-3">
+        <div style="font-size:44px">🧠</div>
+        <h1 style="font-size:22px;margin:8px 0 4px">آزمون استعدادیابی</h1>
+        <p class="text-2" style="font-size:13.5px">۸ سوال کوتاه — مسیر شغلی مناسب تو را پیدا کن!</p>
+      </div>
+      <form method="post" action="{{ url_for('features.talent_result') }}">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+        {% for tq in questions %}
+        <div class="card" style="padding:18px;margin-bottom:14px;background:var(--bg-2);border:none">
+          <div style="font-weight:800;font-size:14px;margin-bottom:10px">{{ fa(loop.index) }}) {{ tq.q }}</div>
+          <div style="display:flex;flex-direction:column;gap:7px">
+            {% for text, path in tq.o %}
+            <label class="quiz-opt"><input type="radio" name="t_{{ loop.index0 }}" value="{{ text }}" required> {{ text }}</label>
+            {% endfor %}
+          </div>
+        </div>
+        {% endfor %}
+        <button class="btn btn-primary btn-lg btn-block" type="submit">🔮 کشف استعداد من</button>
+      </form>
+    </div>
+  </div>
+</section>
+{% endblock %}

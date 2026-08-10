@@ -1,0 +1,46 @@
+/* مدرن تهران — مدرن - گلسمورفیسم | تولیدشده از pd-20 */
+:root{
+--primary:#4F5D75;--primary-2:#3E4A5E;--primary-soft:#647086;
+--on-primary:#FFFFFF;--on-accent:#14202E;
+--accent:#7A8B99;--accent-2:#5F6E7A;--accent-soft:#8d9ba7;
+--success:#15803d;--success-soft:#f0fdf4;--danger:#dc2626;--danger-soft:#fef2f2;--warning:#7A8B99;--info:#4F5D75;
+--bg:#F3F4F7;--bg-2:#EAECF2;--card:#FFFFFF;--card-2:#FFFFFF;
+--border:#3f434a;--border-2:#585c62;
+--text:#22262E;--text-2:#a4a6ab;--text-3:#7a7d82;
+--header-bg:rgba(255,255,255,.92);--header-border:#3f434a;--header-text:#22262E;--header-text-2:#a4a6ab;
+--hero-bg:linear-gradient(135deg,#4F5D75 0%,#333B4C 55%,#2c3342 100%);--hero-text:#FFFFFF;--hero-text-2:rgba(255,255,255,.88);--hero-card:rgba(255,255,255,.12);
+--footer-bg:#2A2F3A;--footer-text:#C7CBD6;--footer-text-2:#9299A8;--footer-head:#FFFFFF;
+--grad-brand:linear-gradient(135deg,#4F5D75,#3E4A5E);--grad-accent:linear-gradient(135deg,#7A8B99,#5F6E7A);
+--radius-sm:8px;--radius-md:22px;--radius-lg:24px;
+--shadow-sm:rgba(34,38,46,.05);--shadow-md:rgba(34,38,46,.08);--shadow-lg:rgba(34,38,46,.12);
+}
+.builder-site-header .dk-logo-ic{background:linear-gradient(135deg,#4F5D75,#3E4A5E);border-radius:20px;box-shadow:0 6px 16px rgba(34,38,46,.08)}
+.builder-site-header .dk-search{border:2px solid #4F5D75}
+.builder-site-header .dk-search:focus-within{box-shadow:0 0 0 4px #647086}
+.builder-site-header .dk-search button{background:#4F5D75;color:#FFFFFF}
+.builder-site-header .dk-search button:hover{background:#3E4A5E}
+.builder-site-header .dk-icon-link:hover{background:#647086;color:#4F5D75}
+.builder-site-header .dk-badge{background:#4F5D75}
+.builder-site-header .dk-auth a{background:#4F5D75;color:#FFFFFF}
+.builder-site-header .dk-auth a:hover{background:#3E4A5E}
+.builder-site-header .dk-user-dd{border-top:3px solid #4F5D75}
+.builder-site-header .dk-mega-trigger{background:#4F5D75;color:#FFFFFF;box-shadow:0 6px 16px rgba(34,38,46,.08)}
+.builder-site-header .dk-nav a:hover{color:#4F5D75;background:#647086}
+.builder-site-header .dk-mega-panel{border-top:3px solid #4F5D75}
+.builder-site-header .dk-mega-head:hover,.builder-site-header .dk-mega-link:hover{color:#4F5D75;background:#647086}
+.builder-site-header .dk-mega-all{color:#4F5D75}
+.builder-site-footer{background:radial-gradient(700px 300px at 90% -20%,#8d9ba7,transparent 60%),linear-gradient(180deg,#2A2F3A 0%,#2A2F3A 50%,#000000 100%);border-top:3px solid #4F5D75}
+.builder-site-footer .pb-f-links h2::after,.builder-site-footer .pb-f-contact h2::after{background:#4F5D75}
+.builder-site-footer .pb-f-links ul a::before{color:#4F5D75}
+.builder-site-footer .pb-f-about .dk-logo-ic{background:linear-gradient(135deg,#4F5D75,#3E4A5E)}
+.builder-site-footer .pb-f-about .pb-f-socials a:hover{background:#4F5D75;border-color:#4F5D75}
+.builder-site-footer .pb-f-contact ul li span{color:#4F5D75}
+.builder-site-footer .newsletter-box .btn{background:#4F5D75;color:#FFFFFF}
+.builder-site-footer .pb-trust-badges a:hover{border-color:#4F5D75}
+.pb-slide-overlay{background:linear-gradient(120deg,rgba(8,15,35,.88),#4F5D75 75%)}
+.pb-slide-content h1,.pb-slide-content h2{color:#fff}
+.dk-topbar a:hover{color:#7A8B99}
+.btn-primary{color:#FFFFFF}
+.btn-accent{background:linear-gradient(135deg,#7A8B99,#5F6E7A);color:#14202E}
+.pb-slide-arrow{color:#4F5D75}
+.chart-bar span{background:linear-gradient(135deg,#4F5D75,#3E4A5E)}

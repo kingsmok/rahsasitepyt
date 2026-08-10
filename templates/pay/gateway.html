@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% block title %}{{ seo.title or "انتخاب درگاه" }}{% endblock %}
+
+{% block content %}
+<section class="section" style="padding-top:36px">
+  <div class="container" style="max-width:720px">
+    <div class="card" style="padding:34px">
+      <div class="text-center mb-3">
+        <div style="font-size:46px">💳</div>
+        <h1 style="font-size:22px;margin:10px 0 4px">انتخاب درگاه پرداخت</h1>
+        <p class="text-2" style="font-size:13px">سفارش <b class="text-primary" dir="ltr">{{ order.code }}</b> — مبلغ <b class="price">{{ fa('{:,.0f}'.format(order.final_total)) }}</b> تومان</p>
+      </div>
+
+      <form method="post">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+        <div class="grid" style="gap:12px;margin-bottom:22px">
+          {% for gw in gateways %}
+          <label class="gateway-card {{ 'selected' if gw.id == 'zarinpal' or loop.first }}">
+            <span class="g-ic">{{ gw.icon }}</span>
+            <div>
+              <div class="g-name">{{ gw.name }}</div>
+              <div class="g-desc">{{ gw.desc }}</div>
+              <div class="g-fee">کارمزد: {{ gw.fee }}</div>
+            </div>
+            <input type="radio" name="gateway" value="{{ gw.id }}" class="hide" {{ 'checked' if gw.id == 'zarinpal' or loop.first }}>
+            <span class="g-radio"></span>
+          </label>
+          {% endfor %}
+        </div>
+
+        <div class="card" style="background:var(--bg-2);border:none;padding:14px 18px;font-size:12.5px;color:var(--text-2);margin-bottom:22px">
+          ℹ️ درگاه‌های زرین‌پال، آیدی‌پی و زیبال در حالت آزمایشی (sandbox) قرار دارند. برای اتصال درگاه واقعی، شناسه مرچنت را در تنظیمات پنل مدیریت وارد کنید. گزینه «درگاه آزمایشی» بدون پرداخت واقعی، جریان پرداخت را شبیه‌سازی می‌کند.
+        </div>
+
+        <div class="flex gap-2">
+          <button class="btn btn-primary btn-lg" style="flex:1" type="submit">پرداخت {{ fa('{:,.0f}'.format(order.final_total)) }} تومان ←</button>
+          <a class="btn btn-ghost btn-lg" href="{{ url_for('student.orders') }}">انصراف</a>
+        </div>
+        <form method="post" action="{{ url_for('shop.checkout_wallet') }}" style="margin-top:10px">
+          <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+          <input type="hidden" name="code" value="{{ order.code }}">
+          {% if cur_user.wallet_balance and cur_user.wallet_balance >= order.final_total %}
+          <button class="btn btn-outline-success btn-lg btn-block" type="submit">💰 پرداخت با کیف پول (موجودی: {{ fa('{:,.0f}'.format(cur_user.wallet_balance)) }} تومان)</button>
+          {% else %}
+          <button class="btn btn-ghost btn-lg btn-block" type="button" disabled title="موجودی کافی نیست">💰 کیف پول (موجودی: {{ fa('{:,.0f}'.format(cur_user.wallet_balance or 0)) }})</button>
+          {% endif %}
+        </form>
+      </form>
+    </div>
+  </div>
+</section>
+{% endblock %}

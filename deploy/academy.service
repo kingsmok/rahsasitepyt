@@ -1,0 +1,37 @@
+# ============================================================
+# Systemd Service — اجرای ۲۴/۷ آکادمی با Gunicorn (3 worker)
+# نصب: sudo cp deploy/academy.service /etc/systemd/system/
+#       sudo systemctl daemon-reload
+#       sudo systemctl enable --now academy
+# ============================================================
+[Unit]
+Description=Academy Online LMS (Flask + Gunicorn)
+After=network.target
+
+[Service]
+Type=notify
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/academy
+# مسیرهای پایتون venv — در صورت نصب venv
+Environment=PATH=/var/www/academy/venv/bin
+Environment=PYTHONUNBUFFERED=1
+# بارگذاری خودکار .env
+EnvironmentFile=/var/www/academy/.env
+ExecStart=/var/www/academy/venv/bin/gunicorn -c gunicorn.conf.py wsgi:app
+ExecReload=/bin/kill -s HUP $MAINPID
+KillMode=mixed
+TimeoutStopSec=30
+# اجرای سالم — چک دوره‌ای
+Restart=always
+RestartSec=5
+
+# ── امنیت سرویس ──
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=/var/www/academy/instance /var/www/academy/logs
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

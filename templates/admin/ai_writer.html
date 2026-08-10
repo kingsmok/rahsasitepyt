@@ -1,0 +1,84 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}نویسنده هوشمند (Groq){% endblock %}
+{% block acontent %}
+<div class="dash-head">
+  <div>
+    <h1>🤖 نویسنده هوشمند</h1>
+    <p>تولید مقاله سئوشده، پاسخ به سوالات و متادیتای سئو با Groq (Llama-3) — رایگان و بدون تحریم</p>
+  </div>
+</div>
+
+{% if not key_set %}
+<div class="alert alert-danger" style="margin-bottom:16px">
+  ⚠️ کلید <code>GROQ_API_KEY</code> در فایل <code>.env</code> تنظیم نشده — برای فعال‌سازی، از
+  <a href="https://console.groq.com" target="_blank">console.groq.com</a> کلید رایگان بگیرید و در .env قرار دهید.
+</div>
+{% endif %}
+
+<div class="card" style="padding:20px 22px;margin-bottom:18px">
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:14px">
+    <label class="radio-card" style="display:flex;align-items:center;gap:8px;border:2px solid var(--border);border-radius:12px;padding:12px 14px;cursor:pointer">
+      <input type="radio" name="mode" value="article" checked style="accent-color:var(--primary)">
+      <div><b style="font-size:13px">📝 مقاله کامل</b><br><small class="text-3">سئوشده با H2/H3 و CTA</small></div>
+    </label>
+    <label style="display:flex;align-items:center;gap:8px;border:2px solid var(--border);border-radius:12px;padding:12px 14px;cursor:pointer">
+      <input type="radio" name="mode" value="answer">
+      <div><b style="font-size:13px">💬 پاسخ به سوال</b><br><small class="text-3">پشتیبانی/FAQ</small></div>
+    </label>
+    <label style="display:flex;align-items:center;gap:8px;border:2px solid var(--border);border-radius:12px;padding:12px 14px;cursor:pointer">
+      <input type="radio" name="mode" value="seo">
+      <div><b style="font-size:13px">🔍 متادیتای سئو</b><br><small class="text-3">عنوان، متا، کلمات کلیدی</small></div>
+    </label>
+  </div>
+  <div class="form-group">
+    <label>موضوع / سوال شما</label>
+    <textarea class="form-control" id="prompt" rows="3" placeholder="مثلا: آموزش جامع پایتون برای مبتدیان — راهنمای کامل ۱۴۰۵"></textarea>
+  </div>
+  <button class="btn btn-primary" id="gen-btn">⚡ تولید با هوش مصنوعی</button>
+  <span class="text-3" id="status" style="margin-right:12px;font-size:12px"></span>
+</div>
+
+<div class="card" id="result-card" style="padding:22px 26px;display:none">
+  <div class="flex between" style="margin-bottom:12px">
+    <h4 style="font-size:15px">📄 خروجی</h4>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-sm btn-ghost" onclick="copyResult()">📋 کپی</button>
+      <button class="btn btn-sm btn-ghost" onclick="downloadResult()">⬇ دانلود</button>
+    </div>
+  </div>
+  <div id="result" style="white-space:pre-wrap;font-size:13.5px;line-height:2.1;background:var(--bg-2);border-radius:14px;padding:18px 22px;max-height:560px;overflow-y:auto"></div>
+</div>
+
+<script>
+var btn=document.getElementById('gen-btn');
+var statusEl=document.getElementById('status');
+var resultCard=document.getElementById('result-card');
+var resultEl=document.getElementById('result');
+var lastText='';
+btn.addEventListener('click',function(){
+  var prompt=document.getElementById('prompt').value.trim();
+  var mode=document.querySelector('input[name="mode"]:checked').value;
+  if(!prompt){alert('موضوع را بنویسید');return;}
+  btn.disabled=true;btn.textContent='…در حال تولید';
+  statusEl.textContent='این کار ممکن است ۲۰ تا ۴۰ ثانیه طول بکشد';
+  fetch('/api/ai-writer',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({prompt:prompt,mode:mode})})
+    .then(function(r){return r.json()})
+    .then(function(d){
+      btn.disabled=false;btn.textContent='⚡ تولید با هوش مصنوعی';
+      if(!d.ok){statusEl.textContent='❌ '+d.msg;return;}
+      statusEl.textContent='✅ آماده شد';
+      lastText=d.text;
+      resultEl.textContent=d.text;
+      resultCard.style.display='block';
+    })
+    .catch(function(){btn.disabled=false;btn.textContent='⚡ تولید با هوش مصنوعی';statusEl.textContent='❌ خطا در ارتباط';});
+});
+function copyResult(){navigator.clipboard.writeText(lastText).then(function(){alert('کپی شد ✅');});}
+function downloadResult(){
+  var blob=new Blob([lastText],{type:'text/markdown;charset=utf-8'});
+  var a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='article-'+Date.now()+'.md';a.click();
+}
+</script>
+{% endblock %}

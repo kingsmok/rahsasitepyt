@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% block title %}{{ asg.title }}{% endblock %}
+{% block content %}
+<section class="section" style="padding-top:30px">
+  <div class="container" style="max-width:720px">
+    <nav class="breadcrumb" aria-label="مسیر صفحه">
+      <a href="{{ url_for('site.course_detail', slug=asg.course.slug) }}">{{ asg.course.title }}</a><span class="sep">/</span>
+      <span>{{ asg.title }}</span>
+    </nav>
+    <div class="card" style="padding:32px;border-radius:20px">
+      <div style="font-size:36px">📌</div>
+      <h1 style="font-size:20px;margin:8px 0 6px">{{ asg.title }}</h1>
+      <p class="text-2" style="font-size:13.5px;margin-bottom:14px">{{ asg.description or 'توضیحاتی برای تمرین وارد نشده است.' }}</p>
+      <span class="badge badge-primary">حداکثر نمره: {{ fa(asg.max_score or 100) }}</span>
+
+      {% if sub %}
+      <div class="card mt-3" style="background:var(--bg-2);border:none;padding:18px">
+        <strong>📤 پاسخ شما ({{ sub.created_at|jdatetime }})</strong>
+        {% if sub.text %}<p class="mt-1" style="font-size:13.5px">{{ sub.text }}</p>{% endif %}
+        {% if sub.file %}<a class="btn btn-ghost btn-sm mt-1" href="/uploads/submissions/{{ sub.file }}" target="_blank">📎 دانلود فایل ارسالی</a>{% endif %}
+        {% if sub.status == 'graded' %}
+        <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+          <strong style="color:var(--success)">نمره: {{ fa(sub.score) }} از {{ fa(asg.max_score or 100) }}</strong>
+          {% if sub.feedback %}<p class="text-2" style="font-size:13px;margin-top:6px">💬 {{ sub.feedback }}</p>{% endif %}
+        </div>
+        {% else %}
+        <div class="badge badge-accent mt-2">⏳ در انتظار تصحیح توسط مدرس</div>
+        {% endif %}
+      </div>
+      {% else %}
+      <form method="post" enctype="multipart/form-data" class="mt-3">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+        <div class="form-group">
+          <label for="asg_text">پاسخ خود را بنویسید</label>
+          <textarea id="asg_text" class="form-control" name="text" rows="5" placeholder="توضیح راه‌حل، کد یا پاسخ تمرین..."></textarea>
+        </div>
+        <div class="form-group">
+          <label for="asg_file">یا فایل بارگذاری کنید (pdf/zip/code)</label>
+          <input id="asg_file" class="form-control" type="file" name="file" accept=".pdf,.zip,.rar,.py,.js,.html,.css,.txt,.docx">
+        </div>
+        <button class="btn btn-primary btn-lg" type="submit">📤 ارسال پاسخ</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endblock %}

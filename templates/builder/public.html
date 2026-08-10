@@ -1,0 +1,8 @@
+{% extends 'base.html' %}
+{% from 'builder/blocks.html' import row_view %}
+{% set pseo = page.settings() %}
+{% block title %}{{ seo.title or pseo.get('seo_title') or page.title or site.site_name }}{% endblock %}
+{% block description %}{{ pseo.get('seo_desc') or site.site_desc or '' }}{% endblock %}
+{% block content %}
+{% for row in page.rows() %}{{ row_view(row) }}{% endfor %}
+{% endblock %}

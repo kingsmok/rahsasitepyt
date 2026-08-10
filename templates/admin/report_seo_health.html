@@ -1,0 +1,21 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}سلامت سئو{% endblock %}
+{% block acontent %}
+<div class="dash-head"><div><h1>🔍 سلامت سئو صفحات</h1><p>صفحات بدون عنوان/توضیحات متا</p></div><a class="btn btn-ghost" href="{{ url_for('seo_admin.dashboard') }}">← داشبورد سئو</a></div>
+<div class="card" style="padding:20px">
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>صفحه</th><th>آدرس</th><th>عنوان</th><th>توضیحات</th><th>وضعیت</th></tr></thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td><strong>{{ r.name }}</strong></td>
+        <td dir="ltr" style="font-size:11.5px">{{ r.path }}</td>
+        <td style="font-size:12px">{{ r.title[:40] if r.title else '—' }}</td>
+        <td style="font-size:12px">{{ r.desc[:40] if r.desc else '—' }}</td>
+        <td>{% if r.has_meta %}<span class="badge badge-success">✅ کامل</span>{% else %}<span class="badge badge-danger">⚠️ بدون متا</span>{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+</div>
+{% endblock %}

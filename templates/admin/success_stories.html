@@ -1,0 +1,56 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}داستان‌های موفقیت{% endblock %}
+{% block acontent %}
+<div class="dash-head"><div><h1>🌟 داستان‌های موفقیت</h1><p>نتایج واقعی دانشجویان — نمایش در صفحه اصلی و صفحه اختصاصی</p></div></div>
+<div class="grid" style="grid-template-columns:1fr 1fr;gap:18px;align-items:start">
+  <div class="card" style="padding:22px">
+    <h2 style="font-size:14px;margin-bottom:14px">➕ داستان جدید</h2>
+    <form method="post">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+      <div class="form-group"><label>نام دانشجو *</label><input class="form-control" name="name" required placeholder="مثلاً: مریم احمدی"></div>
+      <div class="form-group"><label>شغل/موقعیت فعلی</label><input class="form-control" name="role" placeholder="مثلاً: توسعه‌دهنده ارشد در شرکت X"></div>
+      <div class="form-group">
+        <label>دوره مرتبط</label>
+        <select class="form-control" name="course_id">
+          <option value="">— بدون دوره —</option>
+          {% for c in courses %}<option value="{{ c.id }}">{{ c.title }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="form-group"><label>نتیجه (خلاصه دستاورد)</label><input class="form-control" name="result" placeholder="مثلاً: استخدام در ۴ ماه با ۲.۵ برابر حقوق قبلی"></div>
+      <div class="form-group"><label>داستان</label><textarea class="form-control" name="story" rows="4" placeholder="روایت کوتاه مسیر موفقیت..."></textarea></div>
+      <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px">
+        <div class="form-group"><label>رنگ آواتار</label><input class="form-control" type="color" name="color" value="#7c3aed" style="height:42px;padding:4px"></div>
+        <div class="form-group"><label>ترتیب</label><input class="form-control" type="number" name="sort" value="0" min="0"></div>
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:14px;cursor:pointer">
+        <input type="checkbox" name="is_active" value="1" checked style="width:17px;height:17px;accent-color:var(--primary)"> فعال (نمایش در سایت)
+      </label>
+      <button class="btn btn-primary" type="submit">💾 ذخیره</button>
+    </form>
+  </div>
+  <div class="card" style="padding:22px">
+    <h2 style="font-size:14px;margin-bottom:12px">📚 داستان‌های موجود ({{ fa(stories|length) }})</h2>
+    {% for s in stories %}
+    <div style="padding:12px 0;border-bottom:1px solid var(--border)">
+      <div class="flex between" style="align-items:center;gap:8px">
+        <strong style="font-size:13px">{{ s.name }}</strong>
+        <div class="flex gap-1" style="gap:6px">
+          <form method="post" action="{{ url_for('admin.success_story_toggle', sid=s.id) }}" style="display:inline">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+            <button class="btn btn-sm" style="background:{{ 'var(--bg-2)' if s.is_active else '#fef3c7' }}">{{ '👁' if s.is_active else '🚫' }}</button>
+          </form>
+          <form method="post" action="{{ url_for('admin.success_story_delete', sid=s.id) }}" style="display:inline" onsubmit="return confirm('حذف شود؟')">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+            <button class="btn btn-sm btn-danger">🗑</button>
+          </form>
+        </div>
+      </div>
+      <small class="text-2" style="font-size:12px;display:block;margin-top:4px">{{ s.role }} — {{ s.result }}</small>
+      {% if s.course %}<small class="text-3" style="font-size:11px">دوره: {{ s.course.title[:40] }}</small>{% endif %}
+    </div>
+    {% else %}
+    <p class="text-3" style="font-size:13px">هنوز داستانی ثبت نشده است.</p>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

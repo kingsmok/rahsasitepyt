@@ -1,0 +1,36 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}بکاپ‌ها{% endblock %}
+{% block acontent %}
+<div class="dash-head"><div><h1>🗄 بکاپ‌های دیتابیس</h1><p>نسخه‌های خودکار روزانه + ساخت دستی + دانلود + بازیابی</p></div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <form method="post" action="{{ url_for('admin.backup_create') }}">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+      <button class="btn btn-primary">➕ ساخت بکاپ جدید</button>
+    </form>
+    <a class="btn btn-ghost" href="{{ url_for('admin.backup') }}">⬇ دانلود بکاپ جدید</a>
+  </div>
+</div>
+<div class="card" style="padding:20px">
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>فایل</th><th>حجم</th><th>زمان</th><th>عملیات</th></tr></thead>
+    <tbody>
+      {% for b in backups %}
+      <tr>
+        <td dir="ltr" style="font-size:12px">{{ b.name }}</td>
+        <td>{{ fa(b.size) }} KB</td>
+        <td>{{ b.time|int|timestamp_to_jdate }}</td>
+        <td>
+          <a class="btn btn-ghost btn-sm" href="/admin/backup" title="دانلود نسخه فعلی">⬇</a>
+          <form method="post" action="{{ url_for('admin.backup_restore', name=b.name) }}" style="display:inline">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+            <button class="btn btn-warning btn-sm" onclick="return confirm('دیتابیس فعلی با این بکاپ جایگزین شود؟ (از فعلی بکاپ گرفته می‌شود)')">♻️ بازیابی</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="4" class="text-center text-3">بکاپی وجود ندارد — به‌صورت خودکار هر ۲۴ ساعت ساخته می‌شود.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+</div>
+{% endblock %}

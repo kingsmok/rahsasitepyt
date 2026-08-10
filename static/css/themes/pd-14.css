@@ -1,0 +1,46 @@
+/* مینیاتور ایرانی — هنر - سنتی | تولیدشده از pd-14 */
+:root{
+--primary:#E07B39;--primary-2:#C05F24;--primary-soft:#e48b51;
+--on-primary:#14202E;--on-accent:#14202E;
+--accent:#9AA0A8;--accent-2:#7E848C;--accent-soft:#a8adb4;
+--success:#15803d;--success-soft:#f0fdf4;--danger:#dc2626;--danger-soft:#fef2f2;--warning:#9AA0A8;--info:#E07B39;
+--bg:#FBF6EE;--bg-2:#F3EADB;--card:#FFFFFF;--card-2:#FFFFFF;
+--border:#554a40;--border-2:#6c6259;
+--text:#3A2E24;--text-2:#b2aaa1;--text-3:#8b8279;
+--header-bg:rgba(255,255,255,.92);--header-border:#554a40;--header-text:#3A2E24;--header-text-2:#b2aaa1;
+--hero-bg:linear-gradient(135deg,#E07B39 0%,#B85920 55%,#994c1e 100%);--hero-text:#FFFFFF;--hero-text-2:rgba(255,255,255,.88);--hero-card:rgba(255,255,255,.12);
+--footer-bg:#14263F;--footer-text:#C3CEE0;--footer-text-2:#8B9AB5;--footer-head:#FFFFFF;
+--grad-brand:linear-gradient(135deg,#E07B39,#C05F24);--grad-accent:linear-gradient(135deg,#9AA0A8,#7E848C);
+--radius-sm:8px;--radius-md:14px;--radius-lg:16px;
+--shadow-sm:rgba(58,46,36,.05);--shadow-md:rgba(58,46,36,.08);--shadow-lg:rgba(58,46,36,.12);
+}
+.builder-site-header .dk-logo-ic{background:linear-gradient(135deg,#E07B39,#C05F24);border-radius:12px;box-shadow:0 6px 16px rgba(58,46,36,.08)}
+.builder-site-header .dk-search{border:2px solid #E07B39}
+.builder-site-header .dk-search:focus-within{box-shadow:0 0 0 4px #e48b51}
+.builder-site-header .dk-search button{background:#E07B39;color:#14202E}
+.builder-site-header .dk-search button:hover{background:#C05F24}
+.builder-site-header .dk-icon-link:hover{background:#e48b51;color:#E07B39}
+.builder-site-header .dk-badge{background:#E07B39}
+.builder-site-header .dk-auth a{background:#E07B39;color:#14202E}
+.builder-site-header .dk-auth a:hover{background:#C05F24}
+.builder-site-header .dk-user-dd{border-top:3px solid #E07B39}
+.builder-site-header .dk-mega-trigger{background:#E07B39;color:#14202E;box-shadow:0 6px 16px rgba(58,46,36,.08)}
+.builder-site-header .dk-nav a:hover{color:#E07B39;background:#e48b51}
+.builder-site-header .dk-mega-panel{border-top:3px solid #E07B39}
+.builder-site-header .dk-mega-head:hover,.builder-site-header .dk-mega-link:hover{color:#E07B39;background:#e48b51}
+.builder-site-header .dk-mega-all{color:#E07B39}
+.builder-site-footer{background:radial-gradient(700px 300px at 90% -20%,#a8adb4,transparent 60%),linear-gradient(180deg,#14263F 0%,#14263F 50%,#000000 100%);border-top:3px solid #E07B39}
+.builder-site-footer .pb-f-links h2::after,.builder-site-footer .pb-f-contact h2::after{background:#E07B39}
+.builder-site-footer .pb-f-links ul a::before{color:#E07B39}
+.builder-site-footer .pb-f-about .dk-logo-ic{background:linear-gradient(135deg,#E07B39,#C05F24)}
+.builder-site-footer .pb-f-about .pb-f-socials a:hover{background:#E07B39;border-color:#E07B39}
+.builder-site-footer .pb-f-contact ul li span{color:#E07B39}
+.builder-site-footer .newsletter-box .btn{background:#E07B39;color:#14202E}
+.builder-site-footer .pb-trust-badges a:hover{border-color:#E07B39}
+.pb-slide-overlay{background:linear-gradient(120deg,rgba(8,15,35,.88),#E07B39 75%)}
+.pb-slide-content h1,.pb-slide-content h2{color:#fff}
+.dk-topbar a:hover{color:#9AA0A8}
+.btn-primary{color:#14202E}
+.btn-accent{background:linear-gradient(135deg,#9AA0A8,#7E848C);color:#14202E}
+.pb-slide-arrow{color:#E07B39}
+.chart-bar span{background:linear-gradient(135deg,#E07B39,#C05F24)}

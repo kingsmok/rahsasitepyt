@@ -1,0 +1,46 @@
+/* فیروزه‌ای اصفهان — سنتی - رسمی | تولیدشده از pd-01 */
+:root{
+--primary:#0F766E;--primary-2:#115E59;--primary-soft:#2c867f;
+--on-primary:#FFFFFF;--on-accent:#14202E;
+--accent:#C9971C;--accent-2:#A87E14;--accent-soft:#d1a63c;
+--success:#15803d;--success-soft:#f0fdf4;--danger:#dc2626;--danger-soft:#fef2f2;--warning:#C9971C;--info:#0F766E;
+--bg:#FAF8F2;--bg-2:#F1EEE4;--card:#FFFFFF;--card-2:#FFFFFF;
+--border:#3b484e;--border-2:#566065;
+--text:#1C2B33;--text-2:#a6aaa9;--text-3:#798183;
+--header-bg:rgba(255,255,255,.92);--header-border:#3b484e;--header-text:#1C2B33;--header-text-2:#a6aaa9;
+--hero-bg:linear-gradient(135deg,#0F766E 0%,#0B3B3A 55%,#0b3333 100%);--hero-text:#FFFFFF;--hero-text-2:rgba(255,255,255,.88);--hero-card:rgba(255,255,255,.12);
+--footer-bg:#0B3B3A;--footer-text:#BFD8D4;--footer-text-2:#8FB4AE;--footer-head:#FFFFFF;
+--grad-brand:linear-gradient(135deg,#0F766E,#115E59);--grad-accent:linear-gradient(135deg,#C9971C,#A87E14);
+--radius-sm:8px;--radius-md:14px;--radius-lg:16px;
+--shadow-sm:rgba(28,43,51,.05);--shadow-md:rgba(28,43,51,.08);--shadow-lg:rgba(28,43,51,.12);
+}
+.builder-site-header .dk-logo-ic{background:linear-gradient(135deg,#0F766E,#115E59);border-radius:12px;box-shadow:0 6px 16px rgba(28,43,51,.08)}
+.builder-site-header .dk-search{border:2px solid #0F766E}
+.builder-site-header .dk-search:focus-within{box-shadow:0 0 0 4px #2c867f}
+.builder-site-header .dk-search button{background:#0F766E;color:#FFFFFF}
+.builder-site-header .dk-search button:hover{background:#115E59}
+.builder-site-header .dk-icon-link:hover{background:#2c867f;color:#0F766E}
+.builder-site-header .dk-badge{background:#0F766E}
+.builder-site-header .dk-auth a{background:#0F766E;color:#FFFFFF}
+.builder-site-header .dk-auth a:hover{background:#115E59}
+.builder-site-header .dk-user-dd{border-top:3px solid #0F766E}
+.builder-site-header .dk-mega-trigger{background:#0F766E;color:#FFFFFF;box-shadow:0 6px 16px rgba(28,43,51,.08)}
+.builder-site-header .dk-nav a:hover{color:#0F766E;background:#2c867f}
+.builder-site-header .dk-mega-panel{border-top:3px solid #0F766E}
+.builder-site-header .dk-mega-head:hover,.builder-site-header .dk-mega-link:hover{color:#0F766E;background:#2c867f}
+.builder-site-header .dk-mega-all{color:#0F766E}
+.builder-site-footer{background:radial-gradient(700px 300px at 90% -20%,#d1a63c,transparent 60%),linear-gradient(180deg,#0B3B3A 0%,#0B3B3A 50%,#000000 100%);border-top:3px solid #0F766E}
+.builder-site-footer .pb-f-links h2::after,.builder-site-footer .pb-f-contact h2::after{background:#0F766E}
+.builder-site-footer .pb-f-links ul a::before{color:#0F766E}
+.builder-site-footer .pb-f-about .dk-logo-ic{background:linear-gradient(135deg,#0F766E,#115E59)}
+.builder-site-footer .pb-f-about .pb-f-socials a:hover{background:#0F766E;border-color:#0F766E}
+.builder-site-footer .pb-f-contact ul li span{color:#0F766E}
+.builder-site-footer .newsletter-box .btn{background:#0F766E;color:#FFFFFF}
+.builder-site-footer .pb-trust-badges a:hover{border-color:#0F766E}
+.pb-slide-overlay{background:linear-gradient(120deg,rgba(8,15,35,.88),#0F766E 75%)}
+.pb-slide-content h1,.pb-slide-content h2{color:#fff}
+.dk-topbar a:hover{color:#C9971C}
+.btn-primary{color:#FFFFFF}
+.btn-accent{background:linear-gradient(135deg,#C9971C,#A87E14);color:#14202E}
+.pb-slide-arrow{color:#0F766E}
+.chart-bar span{background:linear-gradient(135deg,#0F766E,#115E59)}

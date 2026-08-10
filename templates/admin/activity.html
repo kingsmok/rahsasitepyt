@@ -1,0 +1,30 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}لاگ فعالیت{% endblock %}
+{% block acontent %}
+<div class="dash-head">
+  <div><h1>📋 لاگ فعالیت کاربران</h1><p>ورودها، پرداخت‌ها و رویدادهای مهم (۲۰۰ مورد آخر)</p></div>
+</div>
+
+<div class="card" style="padding:22px">
+  {% if logs %}
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>زمان</th><th>کاربر</th><th>رویداد</th><th>جزئیات</th><th>IP</th></tr></thead>
+      <tbody>
+        {% for l in logs %}
+        <tr>
+          <td style="white-space:nowrap">{{ l.created_at|jdatetime }}</td>
+          <td>{{ l.user.name if l.user else '—' }}</td>
+          <td><span class="badge {{ 'badge-success' if l.action == 'payment' else ('badge-primary' if l.action == 'login' else 'badge-gray') }}">{{ {'login':'ورود','payment':'پرداخت','logout_all':'خروج همه دستگاه‌ها','ticket':'تیکت','profile':'پروفایل'}.get(l.action, l.action) }}</span></td>
+          <td>{{ l.detail or '—' }}</td>
+          <td dir="ltr" style="font-size:12px">{{ l.ip or '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="text-3 text-center" style="padding:30px">هنوز رویدادی ثبت نشده است.</p>
+  {% endif %}
+</div>
+{% endblock %}

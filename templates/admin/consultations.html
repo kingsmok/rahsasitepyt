@@ -1,0 +1,48 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}درخواست‌های مشاوره{% endblock %}
+{% block acontent %}
+<div class="dash-head"><div><h1>🎯 درخواست‌های مشاوره (لیدهای فروش)</h1><p>فرم‌های دریافت مشاوره رایگان — با شماره تماس و زمان ترجیحی</p></div></div>
+<div class="card" style="padding:22px">
+  <div style="overflow-x:auto">
+    <table class="table" style="width:100%;font-size:13px">
+      <thead>
+        <tr><th>نام</th><th>تلفن</th><th>پیام</th><th>تاریخ</th><th>وضعیت</th><th>عملیات</th></tr>
+      </thead>
+      <tbody>
+        {% for l in leads %}
+        <tr style="{{ '' if l.is_read else 'background:var(--primary-soft)' }}">
+          <td><strong>{{ l.name }}</strong></td>
+          <td dir="ltr">{{ l.subject.split('—')[-1] if '—' in l.subject else l.subject }}</td>
+          <td style="max-width:320px">
+            <small class="text-2">{{ l.message[:160] }}{% if l.message|length > 160 %}...{% endif %}</small>
+          </td>
+          <td class="text-2">{{ l.created_at|jdatetime }}</td>
+          <td>
+            {% if l.is_read %}<span class="badge" style="background:#e2e8f0;color:#475569">خوانده شده</span>
+            {% else %}<span class="badge" style="background:#fef3c7;color:#b45309">جدید</span>{% endif %}
+          </td>
+          <td>
+            <div class="flex gap-1" style="gap:6px">
+              <form method="post" style="display:inline">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="mid" value="{{ l.id }}">
+                <input type="hidden" name="action" value="{{ 'unread' if l.is_read else 'read' }}">
+                <button class="btn btn-sm" style="background:var(--bg-2)">{{ '↩️' if l.is_read else '✓' }}</button>
+              </form>
+              <form method="post" style="display:inline" onsubmit="return confirm('حذف شود؟')">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="mid" value="{{ l.id }}">
+                <input type="hidden" name="action" value="delete">
+                <button class="btn btn-sm btn-danger">🗑</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="text-3" style="text-align:center;padding:20px">هنوز درخواست مشاوره‌ای ثبت نشده است.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

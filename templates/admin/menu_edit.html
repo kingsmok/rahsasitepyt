@@ -1,0 +1,47 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}ویرایش منو{% endblock %}
+{% block acontent %}
+<div class="dash-head"><div><h1>🧭 {{ m.title }}</h1><p>آیتم‌ها — هر خط: برچسب | آدرس | آیکون | نقش‌ها</p></div><a class="btn btn-ghost" href="{{ url_for('admin.menus') }}">← منوها</a></div>
+<div class="card" style="padding:24px;max-width:760px">
+  <form method="post">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+    <div class="grid" style="grid-template-columns:2fr 1fr 1fr;gap:14px">
+      <div class="form-group"><label>عنوان</label><input class="form-control" name="title" value="{{ m.title }}" required></div>
+      <div class="form-group"><label>موقعیت</label>
+        <select class="form-control" name="location">
+          {% for loc, name in [('main','هدر'),('footer','فوتر'),('mobile','موبایل'),('user','پنل کاربری')] %}
+          <option value="{{ loc }}" {{ 'selected' if m.location == loc }}>{{ name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-check" style="align-self:end;margin-bottom:18px"><label><input type="checkbox" name="is_active" {{ 'checked' if m.is_active }}> فعال</label></div>
+    </div>
+    <div class="form-group">
+      <label>آیتم‌های منو</label>
+      <textarea class="form-control" name="items_raw" rows="12" dir="rtl">{{ raw }}</textarea>
+      <p class="form-hint">فرمت: برچسب | آدرس | آیکون | نقش‌ها | شماره خط والد (خالی = سطح اول) — زیرمنو با والد پشتیبانی می‌شود</p>
+    </div>
+    <button class="btn btn-primary" type="submit">💾 ذخیره منو</button>
+  </form>
+  <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
+    <h3 style="font-size:13px;margin-bottom:8px">👁 پیش‌نمایش (بر اساس نقش)</h3>
+    <div style="display:flex;gap:14px;flex-wrap:wrap">
+      {% for role in ['guest', 'student', 'teacher', 'admin'] %}
+      <div class="card" style="padding:12px;background:var(--bg-2);border:none;min-width:180px">
+        <small class="text-3" style="display:block;margin-bottom:6px">{{ {'guest':'مهمان','student':'دانشجو','teacher':'استاد','admin':'ادمین'}[role] }}</small>
+        {% for i in m.items if not i.parent_id %}
+          {% set roles = i.roles.split(',') if i.roles else [] %}
+          {% if (role == 'guest' and not roles) or role in roles %}
+          <div style="font-size:12.5px;padding:3px 0">{{ i.icon or '•' }} {{ i.label }}
+            {% for ch in m.items if ch.parent_id == i.id %}
+            <div style="padding-right:14px;font-size:11.5px;color:var(--text-2)">└ {{ ch.icon or '•' }} {{ ch.label }}</div>
+            {% endfor %}
+          </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

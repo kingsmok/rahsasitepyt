@@ -1,0 +1,160 @@
+{% from 'builder/blocks.html' import row_view %}
+{# صفحه ویرایشگر صفحه‌ساز — طراحی به سبک المنتور — تمام‌صفحه بدون هدر/فوتر سایت #}
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🧩 صفحه‌ساز — {{ page.title }} — {{ site.site_name or 'آکادمی آنلاین' }}</title>
+<link rel="icon" href="/static/img/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/static/css/base.css?v={{ asset_v() }}">
+<link rel="stylesheet" href="/static/css/themes/{{ theme }}.css?v={{ asset_v() }}">
+<link rel="stylesheet" href="/static/css/builder.css?v={{ asset_v() }}">
+<link rel="stylesheet" href="/static/css/editor.css?v={{ asset_v() }}">
+</head>
+<body class="pb-editor-body">
+
+<script>
+window.PB_DATA = {{ page.parsed()|tojson }};
+window.PB_PAGE = { slug: {{ page.slug|tojson }}, title: {{ page.title|tojson }}, published: {{ 'true' if page.is_published else 'false' }}, ptype: {{ page.ptype|tojson }} };
+window.PB_WIDGETS = {{ widgets|tojson }};
+window.PB_CATS = {{ cats|tojson }};
+window.PB_IMAGES = {{ images|tojson }};
+window.PB_CAT_OPTS = {{ cat_options|tojson }};
+window.PB_COURSE_OPTS = {{ course_options|tojson }};
+window.PB_SECTION_TEMPLATES = {{ section_templates|tojson }};
+window.PB_DESIGNS = {{ persian_designs|tojson }};
+window.PB_PAGE_TEMPLATES = {{ page_templates|tojson }};
+window.PB_PAGES = {{ other_pages|tojson }};
+window.PB_ASSET_V = {{ asset_v()|tojson }};
+window.PB_THEME = {{ theme|tojson }};
+window.PB_PREVIEW_URL = {{ ('/' if page.ptype in ['home', 'header', 'footer', 'footer_mobile', 'mobile_menu'] else url_for('site.custom_page', slug=page.slug))|tojson }};
+</script>
+
+<!-- نوار ابزار بالا (مثل المنتور) -->
+<header class="pb-toolbar">
+  <div class="pb-tb-right">
+    <a class="pb-tb-back" href="{{ url_for('builder.index') }}" title="بازگشت به فهرست صفحات">→</a>
+    <div class="pb-tb-title">
+      <strong>{{ page.title }}</strong>
+      <small>{{ {'home': 'صفحه اصلی', 'header': 'هدر سایت', 'footer': 'فوتر سایت', 'footer_mobile': 'فوتر موبایل', 'mobile_menu': 'منوی موبایل', 'page': 'صفحه'}.get(page.ptype, 'صفحه') }}</small>
+    </div>
+    <select id="pb-page-switch" class="pb-tb-page-switch" title="تغییر صفحه">
+      {% for p in g.pages.values() %}{% if p.id != page.id %}
+      <option value="{{ p.slug }}">{{ p.title }} ({{ p.ptype }})</option>
+      {% endif %}{% endfor %}
+    </select>
+  </div>
+
+  <div class="pb-tb-center">
+    <div class="pb-tb-group" title="پیش‌نمایش دستگاه">
+      <button class="pb-tb-btn active" data-dev="desktop" title="دسکتاپ">🖥</button>
+      <button class="pb-tb-btn" data-dev="tablet" title="تبلت">📱</button>
+      <button class="pb-tb-btn" data-dev="mobile" title="موبایل">📲</button>
+    </div>
+    <div class="pb-tb-group">
+      <button id="pb-undo" class="pb-tb-btn" title="واگردانی (Ctrl+Z)">↩</button>
+      <button id="pb-redo" class="pb-tb-btn" title="از نو (Ctrl+Y)">↪</button>
+    </div>
+    <div class="pb-tb-group">
+      <button id="pb-nav-toggle" class="pb-tb-btn" title="ناوبر ساختار صفحه">🗺</button>
+    </div>
+    <button id="pb-palette-toggle" class="pb-tb-btn" title="کتابخانه ویجت‌ها" style="display:none">🧩</button>
+    <button id="pb-panel-toggle" class="pb-tb-btn" title="پنل تنظیمات" style="display:none">⚙️</button>
+  </div>
+
+  <div class="pb-tb-left">
+    <span id="pb-device-label" style="font-size:11px;color:#8b8b98;min-width:70px">🖥 دسکتاپ</span>
+    <label class="pb-publish" title="انتشار/پیش‌نویس">
+      <input type="checkbox" id="pb-published" {{ 'checked' if page.is_published }}>
+      <span class="pb-switch"></span> منتشر
+    </label>
+    <button id="pb-preview-btn" class="pb-btn pb-btn-ghost">👁 پیش‌نمایش</button>
+    <button id="pb-tpl" class="pb-btn pb-btn-ghost" title="ذخیره به عنوان قالب صفحه">📦</button>
+    <button id="pb-save" class="pb-btn pb-btn-primary">💾 ذخیره</button>
+    <span id="pb-save-state" class="pb-save-state"></span>
+  </div>
+</header>
+
+<div class="pb-layout">
+  <!-- پنل چپ: کتابخانه ویجت‌ها -->
+  <aside class="pb-palette" id="pb-palette">
+    <div class="pb-palette-head">
+      <h4>🧩 افزودن عنصر <small>— بکشید یا کلیک کنید</small></h4>
+    </div>
+    <div class="pb-palette-search">
+      <input id="pb-widget-search" placeholder="جستجوی ویجت...">
+      <span class="pb-search-ic">🔍</span>
+    </div>
+    <div class="pb-palette-scroll" id="pb-palette-scroll"></div>
+  </aside>
+
+  <!-- بوم -->
+  <main class="pb-canvas-wrap" id="pb-canvas-wrap">
+    <div class="pb-empty" id="pb-empty" style="display:none">
+      <div class="pb-empty-ic">🪄</div>
+      <h3>صفحه خالی است</h3>
+      <p>از پنل سمت راست یک سکشن بکشید، یا با دکمه زیر شروع کنید. بعداً همه‌چیز با درگ قابل جابه‌جایی است.</p>
+      <button type="button" class="pb-btn pb-btn-primary" id="pb-empty-add">➕ افزودن اولین سکشن</button>
+    </div>
+    <div class="pb-frame-shell dev-desktop" id="pb-frame-shell">
+      <iframe id="pb-frame" title="بوم ویرایش"></iframe>
+    </div>
+  </main>
+
+  <!-- پنل راست: تنظیمات -->
+  <aside class="pb-panel" id="pb-panel">
+    <div class="pb-panel-head">
+      <div class="pb-panel-title">
+        <span class="pb-panel-ic" id="pb-panel-ic">⚙️</span>
+        <div><span id="pb-panel-title">تنظیمات صفحه</span><small id="pb-panel-sub">صفحه</small></div>
+      </div>
+      <button id="pb-panel-close" class="pb-panel-close" title="بستن">✕</button>
+    </div>
+    <div class="pb-panel-body" id="pb-panel-body"></div>
+  </aside>
+</div>
+
+<!-- ناویگیتور -->
+<aside class="pb-navigator-drawer" id="pb-navigator-drawer">
+  <div class="pb-nav-head">
+    <span>🗺 ساختار صفحه</span>
+    <button id="pb-nav-close">✕ بستن</button>
+  </div>
+  <div class="pb-nav-body" id="pb-nav-body"></div>
+</aside>
+
+<!-- نوار وضعیت -->
+<footer class="pb-statusbar">
+  <div class="pb-sb-right">
+    <span><span class="dot ok" id="pb-st-dot"></span><b id="pb-st-state">آماده</b></span>
+    <span>سکشن‌ها: <b id="pb-st-rows">0</b></span>
+    <span>ویجت‌ها: <b id="pb-st-widgets">0</b></span>
+  </div>
+  <span>🧩 صفحه‌ساز آکادمی — Ctrl+S ذخیره · Ctrl+Z واگردانی · Esc لغو</span>
+</footer>
+
+<!-- پنجره پیش‌نمایش -->
+<div class="pb-preview-overlay" id="pb-preview-overlay">
+  <div class="pb-preview-bar">
+    <span class="pb-pv-title">👁 پیش‌نمایش — {{ page.title }}</span>
+    <div class="pb-pv-devices">
+      <button data-dev="desktop" class="active" title="دسکتاپ">🖥</button>
+      <button data-dev="tablet" title="تبلت">📱</button>
+      <button data-dev="mobile" title="موبایل">📲</button>
+    </div>
+    <span style="display:flex;gap:8px;align-items:center">
+      <button class="pb-pv-open" id="pb-pv-open">↗ باز کردن در تب جدید</button>
+      <button class="pb-pv-close" id="pb-preview-close" title="بستن">✕</button>
+    </span>
+  </div>
+  <div class="pb-preview-wrap">
+    <iframe id="pb-preview-frame" class="pb-preview-frame dev-desktop" title="پیش‌نمایش"></iframe>
+  </div>
+</div>
+
+<div id="pb-toasts"></div>
+
+<script src="/static/js/builder.js?v={{ asset_v() }}"></script>
+</body>
+</html>

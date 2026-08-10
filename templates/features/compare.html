@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+{% block title %}{{ seo.title or "مقایسه دوره‌ها" }}{% endblock %}
+{% block content %}
+<section class="section" style="padding-top:36px">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="مسیر صفحه">
+      <a href="{{ url_for('site.courses') }}">دوره‌ها</a><span class="sep">/</span>
+      <span>مقایسه</span>
+    </nav>
+    <div class="section-head">
+      <span class="tag">⚖️ مقایسه هوشمند</span>
+      <h1 style="font-size:clamp(24px,3vw,32px)">مقایسه دوره‌های آموزشی</h1>
+      <p>از صفحه دوره‌ها، دوره‌ها را انتخاب کنید و کنار هم ببینید.</p>
+    </div>
+
+    {% if courses %}
+    <div class="card" style="padding:22px;overflow-x:auto">
+      <table class="table" style="min-width:560px">
+        <thead>
+          <tr>
+            <th style="min-width:140px">ویژگی</th>
+            {% for c in courses %}
+            <th style="text-align:center">{{ c.title[:30] }}</th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% set rows = [
+            ('تصویر', 'img'),
+            ('مدرس', 'teacher'),
+            ('دسته', 'cat'),
+            ('سطح', 'level'),
+            ('مدت', 'hours'),
+            ('جلسات', 'lessons'),
+            ('امتیاز', 'rating'),
+            ('دانشجو', 'students'),
+            ('قیمت', 'price'),
+            ('پیش‌نیاز', 'req'),
+            ('گواهینامه', 'cert')
+          ] %}
+          {% for label, key in rows %}
+          <tr>
+            <td><strong style="font-size:13px">{{ label }}</strong></td>
+            {% for c in courses %}
+            <td style="text-align:center;font-size:13px">
+              {% if key == 'img' %}<img src="/static/img/{{ c.image }}" alt="" style="width:110px;height:64px;object-fit:cover;border-radius:8px">{% endif %}
+              {% if key == 'teacher' %}{{ c.teacher.name if c.teacher else '—' }}{% endif %}
+              {% if key == 'cat' %}{{ c.category.name if c.category else '—' }}{% endif %}
+              {% if key == 'level' %}<span class="badge badge-gray">{{ c.level }}</span>{% endif %}
+              {% if key == 'hours' %}{{ fa(c.duration_hours) }} ساعت{% endif %}
+              {% if key == 'lessons' %}{{ fa(c.lesson_count) }} جلسه{% endif %}
+              {% if key == 'rating' %}⭐ {{ fa(c.rating) if c.rating else '—' }}{% endif %}
+              {% if key == 'students' %}👥 {{ fa(c.students_count) }}{% endif %}
+              {% if key == 'price' %}
+                {% if c.is_free() %}<span class="price free">رایگان</span>
+                {% else %}
+                  {% if c.has_discount %}<span class="price-old" style="font-size:11px">{{ fa('{:,.0f}'.format(c.price)) }}</span><br>{% endif %}
+                  <span class="price">{{ fa('{:,.0f}'.format(c.final_price)) }}</span>
+                {% endif %}
+              {% endif %}
+              {% if key == 'req' %}{{ (c.requirements or '—')[:40] }}{% endif %}
+              {% if key == 'cert' %}✅{% endif %}
+            </td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+          <tr>
+            <td></td>
+            {% for c in courses %}
+            <td style="text-align:center;padding:14px"><a class="btn btn-primary btn-sm" href="{{ url_for('site.course_detail', slug=c.slug) }}">مشاهده دوره</a></td>
+            {% endfor %}
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="card text-center" style="padding:50px">
+      <p class="text-3">هیچ دوره‌ای برای مقایسه انتخاب نشده.</p>
+      <a class="btn btn-primary mt-2" href="{{ url_for('site.courses') }}">انتخاب از بین دوره‌ها</a>
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

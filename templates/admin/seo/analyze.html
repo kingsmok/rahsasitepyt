@@ -1,0 +1,51 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}تحلیل سئو{% endblock %}
+{% block acontent %}
+<div class="dash-head">
+  <div>
+    <h1>📊 تحلیل سئو <span class="badge badge-gray" dir="ltr">{{ path }}</span></h1>
+    <p>تحلیل زنده با جدیدترین معیارهای گوگل (E-E-A-T، Core Web Vitals و...)</p>
+  </div>
+  <div class="flex gap-2">
+    <a class="btn btn-ghost" href="{{ url_for('seo_admin.edit', mid=seo.id) }}">✏️ ویرایش متا</a>
+    <a class="btn btn-ghost" href="{{ url_for('seo_admin.dashboard') }}">← داشبورد</a>
+  </div>
+</div>
+
+<!-- امتیاز کلی -->
+<div class="card" style="padding:30px;text-align:center;margin-bottom:22px">
+  <div class="overall-ring {{ 'ring-great' if result.grade == 'great' else ('ring-good' if result.grade == 'good' else 'ring-bad') }}">
+    <span>{{ fa(result.overall) }}</span>
+  </div>
+  <h2 style="font-size:22px;margin-top:14px">امتیاز سئو: {{ result.grade_fa }}</h2>
+  <p class="text-2" style="font-size:13.5px">بر اساس تحلیل عنوان، توضیحات، کلمه کلیدی، ساختار محتوا، خوانایی و داده‌های ساختاریافته</p>
+  <form method="post" action="{{ url_for('seo_admin.save_score') }}" style="margin-top:14px">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="mid" value="{{ seo.id }}">
+    <input type="hidden" name="score" value="{{ result.overall }}">
+    <input type="hidden" name="grade" value="{{ result.grade }}">
+    <button class="btn btn-primary" type="submit">💾 ثبت امتیاز در دیتابیس</button>
+  </form>
+</div>
+
+<div class="grid" style="grid-template-columns:1fr 1fr;gap:16px;align-items:start">
+  {% for key, (score, note) in result.sections.items() %}
+  <div class="card" style="padding:20px;{{ 'outline:2px solid var(--success)' if score >= 80 else ('outline:2px solid var(--warning)' if score >= 55 else 'outline:2px solid var(--danger)') }}">
+    <div class="flex between" style="margin-bottom:10px">
+      <strong style="font-size:14px">{{ {'title': '🎯 عنوان سئو', 'description': '📝 توضیحات متا', 'keyword': '🔑 کلمه کلیدی', 'headings': '🏷 ساختار هدینگ', 'images': '🖼 تصاویر', 'links': '🔗 لینک‌ها', 'readability': '📖 خوانایی', 'schema': '🧬 داده ساختاریافته', 'technical': '⚙️ فنی'}.get(key, key) }}</strong>
+      <span class="seo-score {{ 'seo-great' if score >= 80 else ('seo-good' if score >= 55 else 'seo-bad') }}" style="width:38px;height:38px;font-size:13px">{{ fa(score) }}</span>
+    </div>
+    <div class="progress" style="height:6px"><div class="bar" style="width:{{ score }}%;background:{{ '#16a34a' if score >= 80 else ('#d97706' if score >= 55 else '#dc2626') }}"></div></div>
+    <p style="font-size:12px;color:var(--text-2);margin-top:10px;line-height:1.9">{{ note }}</p>
+  </div>
+  {% endfor %}
+</div>
+<style>
+.seo-score { display:inline-flex;border-radius:50%;align-items:center;justify-content:center;font-weight:900;color:#fff; }
+.seo-great { background:#16a34a; } .seo-good { background:#d97706; } .seo-bad { background:#dc2626; }
+.overall-ring { width:130px;height:130px;border-radius:50%;margin:0 auto;display:flex;align-items:center;justify-content:center;font-size:42px;font-weight:900;color:#fff; }
+.ring-great { background:radial-gradient(circle at 30% 30%,#22c55e,#15803d); }
+.ring-good { background:radial-gradient(circle at 30% 30%,#f59e0b,#b45309); }
+.ring-bad { background:radial-gradient(circle at 30% 30%,#f87171,#b91c1c); }
+</style>
+{% endblock %}

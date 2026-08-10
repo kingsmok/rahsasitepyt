@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block title %}نتیجه تعیین سطح — آکادمی آنلاین{% endblock %}
+{% block content %}
+<section class="section" style="padding-top:36px">
+  <div class="container" style="max-width:720px">
+    <div class="card" style="padding:34px;border-radius:20px;text-align:center;margin-bottom:22px">
+      <div style="font-size:44px">{{ '🚀' if level == 'پیشرفته' else ('🎯' if level == 'متوسط' else '🌱') }}</div>
+      <h1 style="font-size:22px;margin:10px 0 6px">سطح پیشنهادی شما: <span class="badge badge-primary" style="font-size:16px">{{ level }}</span></h1>
+      <p class="text-2" style="font-size:13.5px">امتیاز شما در آزمون تعیین سطح: {{ fa(score) }}٪</p>
+    </div>
+    <h2 style="font-size:16px;margin-bottom:14px">📚 دوره‌های پیشنهادی برای سطح {{ level }}</h2>
+    <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px">
+      {% for c in courses %}
+      <a class="card card-hover" href="{{ url_for('site.course_detail', slug=c.slug) }}" style="overflow:hidden">
+        <img src="/static/img/{{ c.image }}" alt="" style="width:100%;aspect-ratio:16/9;object-fit:cover">
+        <div style="padding:14px">
+          <strong style="font-size:13px;display:block">{{ c.title[:40] }}</strong>
+          <small class="text-3">{{ fa(c.duration_hours) }} ساعت — {{ fa(c.final_price) }} تومان</small>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+    <div class="text-center mt-3">
+      <a class="btn btn-ghost" href="{{ url_for('site.courses') }}">مشاهده همه دوره‌ها</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

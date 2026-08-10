@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+  <rect width="120" height="120" rx="20" fill="#fefce8"/>
+  <path d="M60 12 L104 32 L104 62 C104 88 86 104 60 110 C34 104 16 88 16 62 L16 32 Z" fill="#ca8a04"/>
+  <circle cx="60" cy="56" r="20" fill="#ffffff"/>
+  <text x="60" y="63" text-anchor="middle" font-size="18" font-weight="bold" fill="#ca8a04" font-family="Tahoma">★</text>
+  <text x="60" y="92" text-anchor="middle" font-size="8.5" font-weight="bold" fill="#ca8a04" font-family="Tahoma">اتحادیه کشوری</text>
+</svg>

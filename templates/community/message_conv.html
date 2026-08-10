@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block title %}پیام با {{ other.name }}{% endblock %}
+{% block content %}
+<section class="section" style="padding-top:30px">
+  <div class="container" style="max-width:680px">
+    <nav class="breadcrumb" aria-label="مسیر صفحه">
+      <a href="{{ url_for('community.messages') }}">پیام‌ها</a><span class="sep">/</span>
+      <span>{{ other.name }}</span>
+    </nav>
+    <div class="card" style="padding:22px;border-radius:20px">
+      <div id="msg-box" style="max-height:420px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;margin-bottom:14px;background:var(--bg-2);border-radius:14px;padding:14px">
+        {% for m in msgs %}
+        <div style="max-width:78%;padding:10px 14px;border-radius:14px;font-size:13.5px;{{ 'background:var(--primary-soft);align-self:flex-end;border-bottom-left-radius:4px' if m.sender_id == cur_user.id else 'background:var(--card);align-self:flex-start;border:1px solid var(--border);border-bottom-right-radius:4px' }}">
+          <div>{{ m.body }}</div>
+          <small class="text-3" style="font-size:10.5px">{{ m.created_at|jdatetime }} — {{ 'شما' if m.sender_id == cur_user.id else other.name }}</small>
+        </div>
+        {% endfor %}
+      </div>
+      <form method="post" class="flex gap-1">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+        <input class="form-control" name="body" placeholder="پیام شما..." style="flex:1" required autofocus>
+        <button class="btn btn-primary">📤 ارسال</button>
+      </form>
+    </div>
+  </div>
+</section>
+<script>
+  var box = document.getElementById('msg-box');
+  if (box) box.scrollTop = box.scrollHeight;
+</script>
+{% endblock %}

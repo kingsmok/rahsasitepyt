@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 60">
+  <rect width="120" height="60" rx="10" fill="#ffffff" stroke="#e2e8f0"/>
+  <rect x="18" y="20" width="22" height="22" rx="5" fill="#1a56db"/>
+  <path d="M24 31 l5 5 l8 -8" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="48" y="30" font-family="Tahoma" font-size="11" font-weight="bold" fill="#1e293b">شاپرک</text>
+  <text x="48" y="43" font-family="Tahoma" font-size="8" fill="#94a3b8">Shaparak</text>
+</svg>

@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% block title %}رضایت سنجی — {{ course.title }}{% endblock %}
+{% block content %}
+<section class="section" style="padding-top:30px">
+  <div class="container" style="max-width:620px">
+    <div class="card" style="padding:34px;border-radius:20px;text-align:center">
+      <div style="font-size:44px">💬</div>
+      <h1 style="font-size:21px;margin:8px 0 4px">رضایت شما از دوره</h1>
+      <p class="text-2" style="font-size:13.5px">«{{ course.title }}» — نظرت به ما کمک می‌کند بهتر شویم.</p>
+      <form method="post">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+        <div style="margin:20px 0">
+          <label style="font-size:13px;font-weight:800;display:block;margin-bottom:8px">امتیاز شما (۱ تا ۵)</label>
+          <div style="display:flex;gap:8px;justify-content:center">
+            {% for i in range(1, 6) %}
+            <label class="quiz-opt" style="flex-direction:column;gap:2px;padding:8px 12px">
+              <input type="radio" name="score" value="{{ i }}" {{ 'checked' if existing and existing.score == i else ('checked' if i == 5 and not existing else '') }}>
+              <span style="font-size:20px">{{ '⭐' * i }}</span>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="form-check" style="justify-content:center;margin-bottom:14px">
+          <label><input type="checkbox" name="recommend" value="1" {{ 'checked' if not existing or existing.recommend }}> به دیگران پیشنهاد می‌کنم</label>
+        </div>
+        <div class="form-group">
+          <label>نظر شما (اختیاری)</label>
+          <textarea class="form-control" name="comment" rows="3" placeholder="چه چیزی خوب بود؟ چه چیزی بهتر می‌شد؟">{{ existing.comment if existing else '' }}</textarea>
+        </div>
+        <button class="btn btn-primary btn-lg btn-block" type="submit">📤 ثبت بازخورد</button>
+      </form>
+    </div>
+  </div>
+</section>
+{% endblock %}

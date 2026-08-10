@@ -1,0 +1,30 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}چت با {{ u.name }}{% endblock %}
+{% block acontent %}
+<div class="dash-head"><div><h1>💬 چت با {{ u.name }}</h1><p dir="ltr">{{ u.email }} — {{ u.phone or '' }}</p></div><a class="btn btn-ghost" href="{{ url_for('admin.chat') }}">← چت‌ها</a></div>
+<div class="card" style="padding:20px">
+  <div id="chat-box" style="max-height:420px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;margin-bottom:14px;padding:6px">
+    {% for m in msgs %}
+    <div style="max-width:75%;padding:10px 14px;border-radius:14px;font-size:13.5px;{{ 'background:var(--primary-soft);align-self:flex-start;border-bottom-right-radius:4px' if not m.is_admin else 'background:var(--bg-2);align-self:flex-end;border-bottom-left-radius:4px' }}">
+      <div>{{ m.body }}</div>
+      <small class="text-3" style="font-size:10.5px">{{ m.created_at|jdatetime }} — {{ 'کاربر' if not m.is_admin else 'شما' }}</small>
+    </div>
+    {% endfor %}
+  </div>
+  <form method="post" action="{{ url_for('admin.chat_send', uid=u.id) }}" class="flex gap-1">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+    <input class="form-control" name="body" placeholder="پاسخ شما..." style="flex:1" required autofocus>
+    <button class="btn btn-primary">📤 ارسال</button>
+  </form>
+</div>
+<script>
+  var box = document.getElementById('chat-box');
+  if (box) box.scrollTop = box.scrollHeight;
+  setInterval(function () {
+    fetch('/admin/chat/' + {{ u.id }} + '/poll').then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (d.new_msg) { location.reload(); }
+      }).catch(function () {});
+  }, 5000);
+</script>
+{% endblock %}

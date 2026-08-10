@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+{% block title %}{{ seo.title or "وبلاگ" }}{% endblock %}
+
+{% block content %}
+<section class="section" style="padding-top:36px">
+  <div class="container" style="max-width:800px">
+    <nav class="breadcrumb" aria-label="مسیر صفحه">
+      <a href="{{ url_for('site.index') }}">خانه</a><span class="sep">/</span>
+      <a href="{{ url_for('site.blog') }}">وبلاگ</a><span class="sep">/</span>
+      <span>{{ post.title }}</span>
+    </nav>
+
+    <article>
+      <h1 style="font-size:clamp(22px,3.4vw,30px);line-height:1.6;margin-bottom:14px">{{ post.title }}</h1>
+      <div class="flex gap-2 wrap" style="margin-bottom:22px">
+        <span class="badge badge-primary">{{ post.category }}</span>
+        <span class="text-3" style="font-size:12.5px">✍️ {{ post.author.name if post.author else 'تیم آکادمی' }}</span>
+        <span class="text-3" style="font-size:12.5px">🗓 {{ post.created_at|jdate }}</span>
+        <span class="text-3" style="font-size:12.5px">⏱ {{ fa(post.read_time) }} دقیقه مطالعه</span>
+        <span class="text-3" style="font-size:12.5px">👁 {{ fa(post.views) }} بازدید</span>
+      </div>
+      <img src="/static/img/{{ post.image }}" alt="{{ post.title }}" style="border-radius:18px;margin-bottom:26px;width:100%;aspect-ratio:16/8;object-fit:cover">
+      <div class="post-body">
+        {% for para in post.body.split('\n') %}
+          {% if para.strip() %}<p>{{ para.strip() }}</p>{% endif %}
+        {% endfor %}
+      </div>
+    </article>
+
+    <div class="cta-band mt-4">
+      <h2>این مقاله برایت مفید بود؟ 🚀</h2>
+      {% if related_course %}
+      <p>مطالب این مقاله را در دوره «{{ related_course.title }}» قدم‌به‌قدم و عملی یاد بگیر!</p>
+      <div class="actions">
+        <a class="btn btn-white btn-lg" href="{{ url_for('site.course_detail', slug=related_course.slug) }}">مشاهده دوره {{ related_course.title.split('—')[0].split('–')[0].strip()[:30] }} ←</a>
+        <a class="btn btn-outline-white btn-lg" href="{{ url_for('site.courses') }}">همه دوره‌ها</a>
+      </div>
+      {% else %}
+      <p>دوره‌های عملی و پروژه‌محور آکادمی را ببین!</p>
+      <div class="actions"><a class="btn btn-white btn-lg" href="{{ url_for('site.courses') }}">مشاهده دوره‌ها</a></div>
+      {% endif %}
+    </div>
+
+    <!-- دیدگاه‌ها -->
+    <div class="mt-5" id="comments">
+      <h2 class="mb-3" style="font-size:20px">💬 دیدگاه‌ها ({{ fa(post.comments|selectattr('is_approved')|list|length) }})</h2>
+      {% set approved = post.comments|selectattr('is_approved')|list %}
+      {% if approved %}
+      <div style="display:flex;flex-direction:column;gap:14px;margin-bottom:26px">
+        {% for c in approved %}
+        <div class="card" style="padding:18px 22px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+            <span class="avatar" style="background:var(--primary-soft);color:var(--primary);width:38px;height:38px;font-size:14px">{{ c.name[:1] }}</span>
+            <div>
+              <strong style="font-size:13.5px">{{ c.name }}</strong>
+              <small class="text-3" style="display:block;font-size:11.5px">{{ c.created_at|jdate }}</small>
+            </div>
+          </div>
+          <p style="font-size:14px;color:var(--text-2);margin:0">{{ c.comment }}</p>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="text-3" style="font-size:13.5px">اولین نفری باشید که دیدگاه می‌گذارد! 🖊</p>
+      {% endif %}
+
+      <div class="card" style="padding:26px">
+        <h3 style="font-size:16px;margin-bottom:14px">✍️ دیدگاه خود را بنویسید</h3>
+        <form method="post" action="{{ url_for('site.blog_post', slug=post.slug) }}#comments">
+          <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+          <div class="form-group">
+            <label for="cm_name">نام شما *</label>
+            <input id="cm_name" class="form-control" name="name" required placeholder="نام شما">
+          </div>
+          <div class="form-group">
+            <label for="cm_text">متن دیدگاه *</label>
+            <textarea id="cm_text" class="form-control" name="comment" rows="4" required placeholder="نظر یا سوال خود را بنویسید..."></textarea>
+          </div>
+          <button class="btn btn-primary" type="submit">ارسال دیدگاه</button>
+        </form>
+      </div>
+    </div>
+
+    {% if recent %}
+    <div class="mt-4">
+      <h2 class="mb-3" style="font-size:19px">📌 مطالب مرتبط</h2>
+      <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:18px">
+        {% for r in recent %}
+        <a class="card card-hover post-card" href="{{ url_for('site.blog_post', slug=r.slug) }}">
+          <div class="thumb"><img src="/static/img/{{ r.image }}" alt=""></div>
+          <div class="body"><h3 style="font-size:14px">{{ r.title }}</h3></div>
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

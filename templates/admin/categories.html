@@ -1,0 +1,45 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}دسته‌بندی‌ها{% endblock %}
+{% block acontent %}
+<div class="dash-head">
+  <div><h1>🗂 مدیریت دسته‌بندی‌ها</h1><p>ساختار دسته‌بندی دوره‌های سایت</p></div>
+</div>
+<div class="grid" style="grid-template-columns:1fr 340px;gap:22px;align-items:start">
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>آیکون</th><th>نام</th><th>اسلاگ</th><th>دوره‌ها</th><th>عملیات</th></tr></thead>
+      <tbody>
+        {% for c in cats %}
+        <tr>
+          <td style="font-size:20px">{{ c.icon }}</td>
+          <td><strong>{{ c.name }}</strong><br><small class="text-3">{{ c.description }}</small></td>
+          <td dir="ltr">{{ c.slug }}</td>
+          <td>{{ fa(c.courses|length) }}</td>
+          <td>
+            <form method="post" onsubmit="return confirm('حذف شود؟')">
+<input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+              <input type="hidden" name="action" value="delete">
+              <input type="hidden" name="cid" value="{{ c.id }}">
+              <button class="btn btn-danger btn-sm" type="submit">🗑</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="card" style="padding:22px">
+    <h4 class="mb-2" style="font-size:15px">➕ دسته‌بندی جدید</h4>
+    <form method="post">
+<input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="action" value="add">
+      <div class="form-group"><label for="f_name_1">نام</label><input id="f_name_1" class="form-control" name="name" required></div>
+      <div class="form-group"><label for="f_icon_1">آیکون (ایموجی)</label><input id="f_icon_1" class="form-control" name="icon" placeholder="💻" value="📚"></div>
+      <div class="form-group"><label for="f_color_1">رنگ</label><input id="f_color_1" class="form-control" type="color" name="color" value="#2563eb" style="height:44px"></div>
+      <div class="form-group"><label for="f_sort_1">ترتیب</label><input id="f_sort_1" class="form-control" type="number" name="sort" value="0"></div>
+      <div class="form-group"><label for="f_description_1">توضیحات</label><textarea id="f_description_1" class="form-control" name="description"></textarea></div>
+      <button class="btn btn-primary btn-block" type="submit">افزودن</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}{{ seo.title or (site.site_name ~ ' — ' ~ site.site_desc if site.site_desc else site.site_name) }}{% endblock %}</title>
+  <meta name="description" content="{% block description %}{{ seo.description or site.site_desc or '' }}{% endblock %}">
+  {% if seo.keywords %}<meta name="keywords" content="{{ seo.keywords }}">{% endif %}
+  <meta name="robots" content="{{ 'noindex,nofollow' if seo.noindex else (site.seo_robots_main or 'index,follow') }}">
+  <link rel="canonical" href="{{ seo.canonical }}">
+  {% if seo.noindex %}<meta name="googlebot" content="noindex">{% endif %}
+  <meta name="author" content="{{ site.seo_author or site.site_name or 'آکادمی آنلاین' }}">
+  <meta name="generator" content="Academy LMS — Flask">
+  <meta name="theme-color" content="{{ g.theme_color or ('#f2640c' if theme == 'theme-22' else ('#0e9488' if theme == 'theme-21' else '#2563eb')) }}">
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="{{ seo.title or self.title() }}">
+  <meta property="og:description" content="{{ seo.description or self.description() }}">
+  <meta property="og:type" content="{{ seo.og_type or 'website' }}">
+  <meta property="og:url" content="{{ seo.canonical }}">
+  <meta property="og:site_name" content="{{ site.site_name or 'آکادمی آنلاین' }}">
+  <meta property="og:locale" content="fa_IR">
+  <meta property="og:image" content="{{ request.host_url.rstrip('/') }}/static/img/{{ seo.og_image or 'hero.webp' }}">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:site" content="{{ site.seo_twitter or '@academy_ir' }}">
+  <meta name="twitter:title" content="{{ seo.title or self.title() }}">
+  <meta name="twitter:description" content="{{ seo.description or self.description() }}">
+  <meta name="twitter:image" content="{{ request.host_url.rstrip('/') }}/static/img/{{ seo.og_image or 'hero.webp' }}">
+  <link rel="icon" href="/static/img/favicon.svg" type="image/svg+xml">
+  <link rel="preload" href="/static/fonts/Vazirmatn-Variable.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="dns-prefetch" href="https://www.googletagmanager.com">
+  <link rel="dns-prefetch" href="https://client.crisp.chat">
+  <link rel="manifest" href="/static/manifest.json?v={{ asset_v() }}">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="stylesheet" href="/static/css/base.css?v={{ asset_v() }}">
+  {% if site.ga_code %}
+  <!-- Google Analytics -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id={{ site.ga_code }}"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', '{{ site.ga_code }}');
+  </script>
+  {% endif %}
+  <link rel="stylesheet" href="/static/css/builder.css?v={{ asset_v() }}">
+  <!-- کلاس‌های dv-* — ۲۰ واریانت UI/UX (بدون تداخل با استایل اصلی) -->
+  <link rel="stylesheet" href="/static/css/design_variants.css?v={{ asset_v() }}">
+  <link id="theme-css" rel="stylesheet" href="/static/css/themes/{{ theme }}.css?v={{ asset_v() }}">
+  {% if site.brand_color %}<style>:root{--primary:{{ site.brand_color }};--primary-2:{{ site.brand_color2 or site.brand_color }};--grad-brand:linear-gradient(135deg,{{ site.brand_color }},{{ site.brand_color2 or site.brand_color }})}</style>{% endif %}
+  {% if site.get('kit_container') %}<style>:root{--container:{{ site.kit_container }}px}</style>{% endif %}
+  {% if site.get('kit_radius') %}<style>:root{--radius-sm:{{ site.kit_radius }}px;--radius-md:{{ site.kit_radius|int + 6 }}px;--radius-lg:{{ site.kit_radius|int + 12 }}px}</style>{% endif %}
+  <!-- Schema.org: سازمان -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "EducationalOrganization",
+    "name": "{{ site.site_name or 'آکادمی آنلاین' }}",
+    "url": "{{ request.host_url.rstrip('/') }}",
+    "logo": "{{ request.host_url.rstrip('/') }}/static/img/favicon.svg",
+    "description": "{{ seo.description or site.site_desc or '' }}",
+    "email": "{{ site.email or 'info@academy.ir' }}",
+    "telephone": "{{ site.phone or '021-91001234' }}",
+    "address": { "@type": "PostalAddress", "streetAddress": "{{ site.address or 'تهران' }}", "addressCountry": "IR" },
+    "sameAs": [
+      "https://t.me/{{ site.telegram or 'academy_ir' }}",
+      "https://instagram.com/{{ site.instagram or 'academy.ir' }}"
+    ]
+  }
+  </script>
+  {% if seo.schema %}
+  <script type="application/ld+json">
+  {{ seo.schema|tojson }}
+  </script>
+  {% endif %}
+  {% block head %}{% endblock %}
+  <!-- Microsoft Clarity — تحلیل رفتار کاربر (فعال فقط با CLARITY_ID) -->
+  {{ clarity_script|safe }}
+</head>
+<body class="{% block body_class %}{% endblock %}" {% block body_attrs %}{% endblock %}>
+<a href="#main-content" class="skip-link" style="position:absolute;top:-60px;right:12px;z-index:9999;background:var(--primary);color:#fff;padding:10px 22px;border-radius:0 0 12px 12px;font-weight:800;font-size:13px;transition:top .2s ease" onfocus="this.style.top='0'" onblur="this.style.top='-60px'">پرش به محتوای اصلی</a>
+
+{% include 'partials/flash.html' %}
+
+{% if session.get('admin_impersonating') %}
+<div style="background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;padding:8px 20px;font-size:13px;display:flex;align-items:center;justify-content:center;gap:12px;position:sticky;top:0;z-index:500">
+  <span>👁 شما در حالت مشاهده حساب کاربر دیگری هستید</span>
+  <a href="{{ url_for('admin.impersonate_exit') }}" style="background:#fff;color:#7c3aed;padding:3px 14px;border-radius:99px;font-weight:800;font-size:12px">بازگشت به پنل مدیریت</a>
+</div>
+{% endif %}
+
+{% from 'builder/blocks.html' import row_view %}
+{% set pset = bc_page_settings() %}
+{% set hide_hdr = pset.get('hide_header') or g.hide_hdr %}
+{% if not hide_hdr %}
+{% set use_header = builder_pages.get('header') %}
+{% if g.page_custom_header %}
+  {% set use_header = builder_pages.get('header-' ~ g.page_custom_header) or use_header %}
+{% endif %}
+{% if use_header and use_header.is_published %}
+<header class="site-header builder-site-header">
+  {% for row in use_header.rows() %}{{ row_view(row) }}{% endfor %}
+</header>
+{% else %}
+{% include 'partials/header.html' %}
+{% endif %}
+{% endif %}
+
+<main id="main-content">
+  {% block content %}{% endblock %}
+</main>
+
+{% set hide_ftr = pset.get('hide_footer') or g.hide_ftr %}
+{% if not hide_ftr %}
+{% set use_footer = builder_pages.get('footer') %}
+{% if g.page_custom_footer %}
+  {% set use_footer = builder_pages.get('footer-' ~ g.page_custom_footer) or use_footer %}
+{% endif %}
+{% set use_footer_m = builder_pages.get('footer_mobile') %}
+<!-- فوتر دسکتاپ -->
+{% if use_footer and use_footer.is_published %}
+<footer class="site-footer builder-site-footer dk-footer-only">
+  <div class="pb-footer-body">
+    {% for row in use_footer.rows() %}{{ row_view(row) }}{% endfor %}
+  </div>
+</footer>
+{% else %}
+<footer class="site-footer dk-footer-only">{% include 'partials/footer.html' %}</footer>
+{% endif %}
+<!-- فوتر موبایل (مجزا — فقط در موبایل نمایش داده می‌شود) -->
+{% if use_footer_m and use_footer_m.is_published %}
+<footer class="site-footer builder-site-footer mb-footer-only">
+  <div class="pb-footer-body">
+    {% for row in use_footer_m.rows() %}{{ row_view(row) }}{% endfor %}
+  </div>
+</footer>
+{% endif %}
+{% endif %}
+
+{% if builder_pages.get('mobile_menu') and builder_pages['mobile_menu'].is_published %}
+<nav class="mobile-bottom-nav" id="mobile-bottom-nav">
+  {% for row in builder_pages['mobile_menu'].rows() %}{% for col in row.cols %}{% for b in col %}
+    {% set md = b.data or {} %}
+    <a class="mb-item" href="{{ md.url or '#' }}" data-mb-link="{{ md.url or '' }}">
+      <span class="mb-icon">{{ md.icon or '•' }}</span>
+      <span class="mb-label">{{ md.label or '' }}</span>
+    </a>
+  {% endfor %}{% endfor %}{% endfor %}
+</nav>
+{% endif %}
+<!-- پنجره خروج هوشمند -->
+<div class="exit-offer" id="exit-offer" role="dialog" aria-modal="true" aria-label="پیشنهاد ویژه">
+  <div class="eo-card">
+    <button class="eo-close" type="button" aria-label="بستن">{{ icon('x', 14) }}</button>
+    <div style="font-size:40px;text-align:center">🎁</div>
+    <h2 style="text-align:center;font-size:19px;margin:8px 0 6px">صبر کن! یک هدیه داری 🎉</h2>
+    <p class="text-2" style="text-align:center;font-size:13px;margin-bottom:16px">همین حالا با کد زیر <b>۲۰٪ تخفیف</b> بگیر و اولین قدم را محکم بردار:</p>
+    <div style="text-align:center;margin-bottom:16px">
+      <div style="display:inline-flex;align-items:center;gap:8px">
+        <code id="exit-coupon" style="display:inline-block;background:var(--primary-soft);color:var(--primary);font-size:20px;font-weight:900;padding:8px 20px;border-radius:12px;letter-spacing:2px;direction:ltr">WELCOME20</code>
+        <button type="button" onclick="copyCoupon()" title="کپی کد تخفیف" style="width:40px;height:40px;border-radius:11px;background:var(--primary);color:#fff;font-size:15px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;box-shadow:0 6px 16px color-mix(in srgb,var(--primary) 35%,transparent)">📋</button>
+      </div>
+    </div>
+    <div class="flex gap-2" style="justify-content:center">
+      <a class="btn btn-primary" href="{{ url_for('site.courses') }}">🚀 مشاهده دوره‌ها</a>
+      <a class="btn btn-ghost" href="#" data-eo-close>بعداً</a>
+    </div>
+  </div>
+</div>
+
+<!-- بازگشت به بالا -->
+<button class="back-to-top" id="back-to-top" title="بازگشت به بالا" aria-label="بازگشت به بالا">{{ icon('arrow-up', 18) }}</button>
+
+<!-- پشتیبانی -->
+<div class="support-fab">
+  <button class="sf-btn" title="پشتیبانی آنلاین">💬</button>
+</div>
+<div class="support-pop">
+  <div class="sp-head">
+    <span class="avatar" style="background:rgba(255,255,255,.25)">پ</span>
+    <div>
+      <strong>پشتیبانی آکادمی</strong>
+      <small>آنلاین — پاسخگویی در سریع‌ترین زمان</small>
+    </div>
+  </div>
+  <div class="sp-body">
+    <div class="sp-msg">سلام! 👋 به پشتیبانی آکادمی خوش آمدید. چطور می‌توانیم کمکتان کنیم؟</div>
+    <div class="sp-links">
+      <a href="{{ url_for('site.faq') }}">📖 سوالات متداول</a>
+      <a href="{{ url_for('site.contact') }}">✉️ فرم تماس با ما</a>
+      {% if cur_user %}
+      <a href="{{ url_for('student.ticket_new') }}">🎫 ثبت تیکت پشتیبانی</a>
+      {% else %}
+      <a href="{{ url_for('auth.login') }}">🎫 ثبت تیکت پشتیبانی</a>
+      {% endif %}
+      <a href="tel:{{ site.phone or '021-91001234' }}">📞 {{ fa(site.phone or '۰۲۱-۹۱۰۰۱۲۳۴') }}</a>
+      <a href="https://wa.me/98910001234" target="_blank" rel="noopener">💬 گفتگو در واتساپ</a>
+      <a href="https://t.me/{{ site.telegram or 'academy_ir' }}" target="_blank" rel="noopener">✈️ گفتگو در تلگرام</a>
+    </div>
+  </div>
+</div>
+
+<!-- دکمه باز کردن منوی کشویی موبایل (فقط موبایل) -->
+<button class="mobile-menu-fab" id="mobile-menu-fab" aria-label="باز کردن منوی موبایل">{{ icon('menu-2', 20) }}</button>
+
+<!-- منوی موبایل -->
+<nav class="mobile-menu" id="mobile-menu" role="navigation" aria-label="منوی موبایل">
+  <div class="mm-head">
+    <a class="logo" href="{{ url_for('site.index') }}">
+      <span class="logo-ic">🎓</span>
+      <span>{{ site.site_name or 'آکادمی آنلاین' }}</span>
+    </a>
+    <button class="icon-btn" data-close-mm aria-label="بستن">{{ icon('x', 16) }}</button>
+  </div>
+  <div class="mm-body">
+    {% set mm_page = builder_pages.get('mobile_menu') %}
+    {% set mm_links = [] %}
+    {% if mm_page and mm_page.is_published %}
+      {% for row in mm_page.rows() %}{% for col in row.cols %}{% for b in col %}{% if b.type == 'mobile_link' %}
+        {% set _ = mm_links.append(b) %}
+      {% endif %}{% endfor %}{% endfor %}{% endfor %}
+    {% endif %}
+    {% if mm_links %}
+      {% for b in mm_links %}{% set md = b.data or {} %}
+      <a class="mm-link" href="{{ md.url or '#' }}" data-close-mm>
+        <span class="mm-link-ic">{{ md.icon or '•' }}</span>
+        <span class="mm-link-label">{{ md.label }}</span>
+        {% if md.badge %}<span class="mm-link-badge">{{ md.badge }}</span>{% endif %}
+      </a>
+      {% endfor %}
+    {% else %}
+      <!-- منوی پیش‌فرض موبایل — با صفحه‌ساز (صفحه mobile_menu) قابل ویرایش -->
+      <a href="{{ url_for('site.index') }}" data-close-mm>🏠 خانه</a>
+      <a href="{{ url_for('site.courses') }}" data-close-mm>📚 همه دوره‌ها</a>
+      <a href="{{ url_for('site.teachers') }}" data-close-mm>👨‍🏫 اساتید</a>
+      <a href="{{ url_for('site.blog') }}" data-close-mm>📝 وبلاگ</a>
+      <a href="{{ url_for('site.about') }}" data-close-mm>ℹ️ درباره ما</a>
+      <a href="{{ url_for('site.faq') }}" data-close-mm>❓ سوالات متداول</a>
+      <a href="{{ url_for('site.contact') }}" data-close-mm>✉️ تماس با ما</a>
+      {% if cur_user %}
+      <a href="{{ url_for('student.dashboard') }}" data-close-mm>📊 داشبورد</a>
+      <a href="{{ url_for('auth.logout') }}" data-close-mm>🚪 خروج</a>
+      {% else %}
+      <a href="{{ url_for('auth.login') }}" data-close-mm>🔑 ورود</a>
+      <a href="{{ url_for('auth.register') }}" data-close-mm>✨ ثبت‌نام</a>
+      {% endif %}
+    {% endif %}
+  </div>
+</nav>
+
+<script>
+/* افزودن خودکار توکن CSRF به همه فرم‌های POST */
+(function () {
+  var token = {{ csrf_token|tojson }};
+  if (!token) return;
+  document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('form').forEach(function (f) {
+      if ((f.method || 'get').toLowerCase() === 'post' && !f.querySelector('input[name="_csrf_token"]')) {
+        var i = document.createElement('input');
+        i.type = 'hidden'; i.name = '_csrf_token'; i.value = token;
+        f.appendChild(i);
+      }
+    });
+  });
+})();
+</script>
+<script src="/static/js/app.js?v={{ asset_v() }}"></script>
+<script src="/static/js/jalali.js?v={{ asset_v() }}"></script>
+<script src="/static/js/form-feedback.js?v={{ asset_v() }}"></script>
+{% block scripts %}{% endblock %}
+<!-- Crisp Chat — پشتیبانی آنلاین (فعال فقط با CRISP_WEBSITE_ID) -->
+{{ crisp_script|safe }}
+</body>
+</html>

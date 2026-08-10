@@ -1,0 +1,22 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}کاربران غیرفعال{% endblock %}
+{% block acontent %}
+<div class="dash-head"><div><h1>😴 کاربران غیرفعال</h1><p>بدون فعالیت در ۳۰ روز اخیر — {{ fa(users|length) }} کاربر</p></div><a class="btn btn-ghost" href="{{ url_for('admin.overview') }}">← داشبورد</a></div>
+<div class="card" style="padding:20px">
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>نام</th><th>ایمیل</th><th>موبایل</th><th>نقش</th><th>آخرین فعالیت</th><th>تاریخ عضویت</th></tr></thead>
+    <tbody>
+      {% for u in users %}
+      <tr>
+        <td><strong>{{ u.name }}</strong></td>
+        <td dir="ltr">{{ u.email }}</td>
+        <td dir="ltr">{{ u.phone or '—' }}</td>
+        <td>{{ u.role }}</td>
+        <td>{{ u.last_active|jdate if u.last_active else 'هرگز' }}</td>
+        <td>{{ u.created_at|jdate }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+</div>
+{% endblock %}

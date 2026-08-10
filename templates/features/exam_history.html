@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% block title %}{{ seo.title or "تاریخچه آزمون‌ها" }}{% endblock %}
+{% block content %}
+<section class="section" style="padding-top:30px">
+  <div class="container" style="max-width:720px">
+    <nav class="breadcrumb" aria-label="مسیر صفحه">
+      <a href="{{ url_for('student.dashboard') }}">داشبورد</a><span class="sep">/</span>
+      <a href="{{ url_for('features.exam_practice') }}">شبیه‌ساز آزمون</a><span class="sep">/</span>
+      <span>تاریخچه</span>
+    </nav>
+    <div class="card" style="padding:28px;border-radius:20px;margin-bottom:16px;text-align:center">
+      <h1 style="font-size:20px;margin-bottom:14px">📊 عملکرد شما در آزمون‌ها</h1>
+      <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px">
+        <div class="card" style="padding:16px;background:var(--bg-2);border:none"><div style="font-size:22px">🎯</div><strong>{{ fa(items|length) }}</strong><small class="text-3" style="display:block">آزمون داده‌شده</small></div>
+        <div class="card" style="padding:16px;background:var(--bg-2);border:none"><div style="font-size:22px">🏆</div><strong>{{ fa(best) }}</strong><small class="text-3" style="display:block">بهترین پاسخ درست</small></div>
+        <div class="card" style="padding:16px;background:var(--bg-2);border:none"><div style="font-size:22px">📈</div><strong>{{ fa(avg) }}٪</strong><small class="text-3" style="display:block">میانگین درصد</small></div>
+      </div>
+    </div>
+    <div class="card" style="padding:24px;border-radius:20px">
+      <h2 style="font-size:15px;margin-bottom:14px">🕘 همه آزمون‌ها</h2>
+      {% if items %}
+      <div style="overflow-x:auto">
+        <table class="table" style="width:100%;font-size:13px">
+          <thead><tr><th>دسته</th><th>نتیجه</th><th>درصد</th><th>زمان</th><th>تاریخ</th><th></th></tr></thead>
+          <tbody>
+            {% for h in items %}
+            {% set pct = h.score * 100 // h.total if h.total else 0 %}
+            <tr>
+              <td>{{ h.category }}</td>
+              <td><b>{{ fa(h.score) }}</b> از {{ fa(h.total) }}</td>
+              <td><span class="badge" style="background:{{ '#dcfce7;color:#15803d' if pct >= 70 else ('#fef3c7;color:#b45309' if pct >= 50 else '#fee2e2;color:#b91c1c') }}">{{ fa(pct) }}٪</span></td>
+              <td class="text-2">{{ fa(h.duration_sec // 60) }} دقیقه</td>
+              <td class="text-2">{{ h.created_at|jdatetime }}</td>
+              <td><a class="btn btn-ghost btn-sm" href="{{ url_for('features.exam_practice_result', aid=h.id) }}">مرور</a></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="text-2" style="font-size:13.5px;text-align:center;padding:14px 0">هنوز آزمونی نداده‌اید. <a class="text-primary" href="{{ url_for('features.exam_practice') }}">اولین آزمون را شروع کنید ←</a></p>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endblock %}

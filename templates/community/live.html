@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% block title %}{{ seo.title or "کلاس‌های آنلاین" }}{% endblock %}
+{% block content %}
+<section class="section" style="padding-top:36px">
+  <div class="container" style="max-width:860px">
+    <div class="dash-head" style="margin-bottom:18px">
+      <div>
+        <h1 style="font-size:22px">🎥 کلاس‌های آنلاین و وبینارها</h1>
+        <p class="text-2" style="font-size:13px">جلسات زنده، رفع اشکال و کارگاه‌های تعاملی</p>
+      </div>
+      <a class="btn btn-ghost" href="{{ url_for('community.forum') }}">← انجمن</a>
+    </div>
+    <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px">
+      {% for s in sessions %}
+      <div class="card card-hover" style="overflow:hidden">
+        <div style="background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;padding:16px;display:flex;align-items:center;gap:10px">
+          <span style="font-size:26px">🎥</span>
+          <div><strong style="font-size:14px">{{ s.title }}</strong></div>
+        </div>
+        <div style="padding:16px">
+          {% if s.description %}<p class="text-2" style="font-size:12.5px;margin-bottom:10px">{{ s.description[:120] }}</p>{% endif %}
+          <div style="font-size:12.5px;color:var(--text-2);margin-bottom:8px">
+            🗓 {{ s.starts_at|jdatetime }} — ⏱ {{ fa(s.duration_min) }} دقیقه
+          </div>
+          {% if s.course %}<span class="badge badge-primary" style="margin-bottom:8px">📚 {{ s.course.title[:30] }}</span>{% endif %}
+          <div class="flex gap-1" style="margin-top:10px">
+            {% if cur_user %}
+            <form method="post" action="{{ url_for('community.live_book', sid=s.id) }}" style="flex:1">
+              <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+              <button class="btn btn-primary btn-sm btn-block">📝 رزرو کلاس</button>
+            </form>
+            {% if s.link %}<a class="btn btn-ghost btn-sm" href="{{ s.link }}" target="_blank" rel="noopener">🔗 ورود به جلسه</a>{% endif %}
+            {% else %}
+            <a class="btn btn-primary btn-sm btn-block" href="{{ url_for('auth.login', next=request.path) }}">برای رزرو وارد شوید</a>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      {% else %}
+      <div class="card text-center" style="padding:50px;grid-column:1/-1">
+        <p class="text-3">کلاس آنلاینی در برنامه نیست — به‌زودی اضافه می‌شود!</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}

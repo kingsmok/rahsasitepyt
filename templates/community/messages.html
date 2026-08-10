@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block title %}{{ seo.title or "پیام‌های من" }}{% endblock %}
+{% block content %}
+<section class="section" style="padding-top:30px">
+  <div class="container" style="max-width:720px">
+    <nav class="breadcrumb" aria-label="مسیر صفحه">
+      <a href="{{ url_for('student.dashboard') }}">داشبورد</a><span class="sep">/</span>
+      <span>پیام‌ها</span>
+    </nav>
+    <div class="card" style="padding:26px;border-radius:20px">
+      <h1 style="font-size:20px;margin-bottom:16px">💬 پیام‌های خصوصی</h1>
+      {% if rows %}
+      {% for r in rows %}
+      <a href="{{ url_for('community.message_conversation', uid=r.user.id) }}" class="card" style="padding:14px 18px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;text-decoration:none">
+        <div style="display:flex;align-items:center;gap:12px">
+          {% if r.user.avatar %}<img class="avatar" src="{{ r.user.avatar_url }}" alt="">{% else %}<span class="avatar" style="background:{{ r.user.avatar_color }}">{{ r.user.initials() }}</span>{% endif %}
+          <div>
+            <strong style="font-size:13.5px">{{ r.user.name }}</strong>
+            <small class="text-3" style="display:block;font-size:11px">{{ r.last|jdatetime }}</small>
+          </div>
+        </div>
+        {% if r.unread %}<span class="badge badge-danger">{{ fa(r.unread) }} جدید</span>{% endif %}
+      </a>
+      {% endfor %}
+      {% else %}
+      <div class="empty-state"><div class="es-icon">📭</div><h3>پیامی ندارید</h3><p>از صفحه مدرس یا انجمن به دیگران پیام بدهید.</p></div>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endblock %}

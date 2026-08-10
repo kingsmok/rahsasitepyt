@@ -1,0 +1,35 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}بسته‌های آموزشی{% endblock %}
+{% block acontent %}
+<div class="dash-head">
+  <div><h1>📦 باندل‌ها</h1><p>بسته‌های چند دوره با تخفیف</p></div>
+  <a class="btn btn-primary" href="{{ url_for('admin.bundle_new') }}">+ باندل جدید</a>
+</div>
+<div class="card" style="padding:22px">
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>عنوان</th><th>دوره‌ها</th><th>قیمت</th><th>تخفیف‌خورده</th><th>فعال</th><th>عملیات</th></tr></thead>
+      <tbody>
+        {% for b in items %}
+        <tr>
+          <td><strong>{{ b.title }}</strong></td>
+          <td>{{ fa(b.courses|length) }} دوره</td>
+          <td>{{ fa('{:,.0f}'.format(b.price)) }}</td>
+          <td>{{ fa('{:,.0f}'.format(b.discount_price)) }}</td>
+          <td>{{ '✅' if b.is_active else '—' }}</td>
+          <td>
+            <a class="btn btn-sm" style="background:var(--bg-2)" href="{{ url_for('admin.bundle_edit', bid=b.id) }}">✏️</a>
+            <form method="post" action="{{ url_for('admin.bundle_delete', bid=b.id) }}">
+              <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+              <button class="btn btn-danger btn-sm" onclick="return confirm('حذف؟')">🗑</button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="text-center text-3">باندلی ساخته نشده است.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,160 @@
+{% extends 'dashboard/base.html' %}
+{% block dtitle %}تنظیمات حساب{% endblock %}
+{% block dcontent %}
+<div class="dash-head">
+  <div>
+    <h1>👤 تنظیمات حساب</h1>
+    <p>اطلاعات شخصی، عکس پروفایل و امنیت</p>
+  </div>
+</div>
+
+<div class="grid" style="grid-template-columns:1fr 300px;gap:22px;align-items:start">
+  <div class="card" style="padding:26px">
+    <form method="post" enctype="multipart/form-data">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+
+      <div class="grid" style="grid-template-columns:1fr 1fr;gap:14px">
+        <div class="form-group">
+          <label for="f_name_1">نام و نام خانوادگی</label>
+          <input id="f_name_1" class="form-control" name="name" value="{{ cur_user.name }}" required>
+        </div>
+        <div class="form-group">
+          <label>ایمیل</label>
+          <input class="form-control" value="{{ cur_user.email or '' }}" dir="ltr" disabled>
+        </div>
+      </div>
+      <div class="grid" style="grid-template-columns:1fr 1fr;gap:14px">
+        <div class="form-group">
+          <label for="f_phone_1">شماره موبایل <span class="req">*</span></label>
+          <input id="f_phone_1" class="form-control" name="phone" value="{{ cur_user.phone or '' }}" dir="ltr"
+                 pattern="09[0-9]{9}" required title="شماره موبایل ۱۱ رقمی">
+        </div>
+        <div class="form-group">
+          <label for="f_national_code_1">کد ملی <span class="req">*</span></label>
+          <input id="f_national_code_1" class="form-control" name="national_code" value="{{ cur_user.national_code or '' }}"
+                 dir="ltr" pattern="[0-9]{10}" maxlength="10" required title="کد ملی ۱۰ رقمی">
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="f_bio_1">درباره من</label>
+        <textarea id="f_bio_1" class="form-control" name="bio" placeholder="چند خط درباره خودت...">{{ cur_user.bio or '' }}</textarea>
+      </div>
+      <!-- اطلاعات تکمیلی — فرم کامل پروفایل -->
+      <div class="grid" style="grid-template-columns:1fr 1fr;gap:14px">
+        <div class="form-group">
+          <label for="f_national_id_1">شماره شناسنامه</label>
+          <input id="f_national_id_1" class="form-control" name="national_id" value="{{ cur_user.national_id or '' }}" dir="ltr" maxlength="20" placeholder="مثال: 1234567890">
+        </div>
+        <div class="form-group">
+          <label for="f_birth_1">تاریخ تولد (شمسی)</label>
+          <input id="f_birth_1" class="form-control" type="date" name="birth_date" data-jalali value="{{ cur_user.birth_date or '' }}" placeholder="۱۴۰۵/۰۵/۱۵">
+        </div>
+      </div>
+      <div class="grid" style="grid-template-columns:1fr 1fr;gap:14px">
+        <div class="form-group">
+          <label for="f_edu_1">سطح تحصیلات</label>
+          <select id="f_edu_1" class="form-control" name="education_level">
+            <option value="">— انتخاب کنید —</option>
+            {% for lvl in ['زیر دیپلم', 'دیپلم', 'کارشناسی', 'کارشناسی ارشد', 'دکتری', 'حوزوی'] %}
+            <option value="{{ lvl }}" {{ 'selected' if cur_user.education_level == lvl }}>{{ lvl }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="f_major_1">مقطع / رشته تحصیلی</label>
+          <input id="f_major_1" class="form-control" name="education_major" value="{{ cur_user.education_major or '' }}" maxlength="100" placeholder="مثال: مهندسی کامپیوتر">
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="f_marital_1">وضعیت تأهل</label>
+        <select id="f_marital_1" class="form-control" name="marital_status" style="max-width:220px">
+          <option value="">— انتخاب کنید —</option>
+          <option value="مجرد" {{ 'selected' if cur_user.marital_status == 'مجرد' }}>مجرد</option>
+          <option value="متأهل" {{ 'selected' if cur_user.marital_status == 'متأهل' }}>متأهل</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>رنگ آواتار</label>
+        <div class="flex gap-1 wrap">
+          {% for c in colors %}
+          <label style="cursor:pointer">
+            <input type="radio" name="avatar_color" value="{{ c }}" class="hide" {{ 'checked' if cur_user.avatar_color == c }}>
+            <span style="display:inline-block;width:34px;height:34px;border-radius:10px;background:{{ c }};border:3px solid {{ 'var(--text)' if cur_user.avatar_color == c else 'transparent' }}"></span>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+      <div style="border-top:1px dashed var(--border);padding-top:18px;margin-top:18px">
+        <h4 class="mb-2" style="font-size:14.5px">🔒 تغییر رمز عبور (اختیاری)</h4>
+        <div class="form-group">
+          <label for="f_password_1">رمز جدید</label>
+          <input id="f_password_1" class="form-control" type="password" name="password" placeholder="حداقل ۶ کاراکتر">
+        </div>
+      </div>
+      <div style="border-top:1px dashed var(--border);padding-top:18px;margin-top:18px">
+        <h4 class="mb-2" style="font-size:14.5px">🔔 تنظیمات اعلان‌ها</h4>
+        <label class="checkbox-line" style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:8px;cursor:pointer">
+          <input type="checkbox" name="notify_email" value="1" {{ 'checked' if cur_user.notify_email else '' }} style="width:17px;height:17px;accent-color:var(--primary)">
+          دریافت ایمیل اطلاع‌رسانی (خرید، گواهی، پاسخ تیکت)
+        </label>
+        <label class="checkbox-line" style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
+          <input type="checkbox" name="notify_sms" value="1" {{ 'checked' if cur_user.notify_sms else '' }} style="width:17px;height:17px;accent-color:var(--primary)">
+          دریافت پیامک اطلاع‌رسانی
+        </label>
+        <small class="text-3" style="font-size:11px;display:block;margin-top:6px">کدهای ورود (OTP) و هشدارهای امنیتی همیشه ارسال می‌شوند.</small>
+      </div>
+      <button class="btn btn-primary btn-lg" type="submit">💾 ذخیره تغییرات</button>
+    </form>
+  </div>
+
+  <div>
+    <div class="card" style="padding:22px;text-align:center">
+            <div class="card" style="padding:16px;margin-top:12px;background:var(--bg-2);border:none;text-align:right">
+        <small class="text-3" style="font-size:11px">🎁 لینک دعوت دوستان شما</small>
+        <div class="flex gap-1" style="margin-top:6px">
+          <input id="my-ref-link" class="form-control" value="{{ request.host_url }}register?ref={{ cur_user.referral_code or '' }}" dir="ltr" readonly style="font-size:11px">
+          <button class="btn btn-primary btn-sm" type="button" onclick="navigator.clipboard.writeText(document.getElementById('my-ref-link').value);this.textContent='✅'">📋</button>
+        </div>
+        <small class="text-3" style="font-size:10.5px;display:block;margin-top:4px">با هر خرید دوستانتان، ۱۰٪ به کیف پول شما واریز می‌شود.</small>
+      </div>
+      <div class="card" style="padding:16px;margin-top:12px;background:var(--bg-2);border:none;text-align:right">
+        <small class="text-3" style="font-size:11px">🏆 وضعیت گیمیفیکیشن</small>
+        <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:12.5px">
+          <span>⭐ امتیاز: <b>{{ fa(cur_user.points or 0) }}</b></span>
+          <span>🔥 استریک: <b>{{ fa(cur_user.streak or 0) }} روز</b></span>
+          <span>🏅 نشان‌ها: <b>{{ fa(my_badges|length) }}</b></span>
+        </div>
+      </div>
+{% if cur_user.avatar %}
+      <img class="avatar avatar-lg" src="{{ cur_user.avatar_url }}" alt="عکس پروفایل"
+           style="width:96px;height:96px;margin:0 auto 12px;display:block;border-radius:26px;object-fit:cover">
+      {% else %}
+      <span class="avatar avatar-lg" style="background:{{ cur_user.avatar_color }};margin:0 auto 12px;display:flex;align-items:center;justify-content:center">{{ cur_user.initials() }}</span>
+      {% endif %}
+      <strong>{{ cur_user.name }}</strong>
+      <p class="text-3" style="font-size:12px" dir="ltr">{{ cur_user.phone or '' }}</p>
+      <form method="post" enctype="multipart/form-data" style="margin-top:12px">
+<input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+        <input type="file" name="avatar" accept="image/*" class="form-control" style="font-size:12px;padding:8px">
+        <button class="btn btn-ghost btn-sm btn-block mt-1" type="submit">⬆ آپلود عکس پروفایل</button>
+      </form>
+      <div class="mt-3">
+        <div class="badge badge-primary mb-1">عضو از {{ cur_user.created_at|jdate }}</div>
+        {% set bd = cur_user.birth_jalali %}
+        {% if bd %}<div class="badge" style="background:var(--accent-soft);color:var(--accent)">🎂 تولد: {{ bd }}</div>{% endif %}
+        <div class="badge badge-gray">کد ملی: {{ cur_user.masked_national_code }}</div>
+        {% if cur_user.national_id %}<div class="badge badge-gray">شناسنامه: {{ cur_user.national_id }}</div>{% endif %}
+        {% if cur_user.education_level %}<div class="badge badge-gray">🎓 {{ cur_user.education_level }}{% if cur_user.education_major %} — {{ cur_user.education_major }}{% endif %}</div>{% endif %}
+        {% if cur_user.marital_status %}<div class="badge badge-gray">💍 {{ cur_user.marital_status }}</div>{% endif %}
+      </div>
+      <div class="mt-3" style="border-top:1px solid var(--border);padding-top:14px">
+        <form method="post" action="{{ url_for('student.logout_all') }}">
+          <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+          <button class="btn btn-danger btn-sm btn-block" type="submit" onclick="return confirm('همه دستگاه‌های متصل به حساب شما از سشن خارج می‌شوند. ادامه می‌دهید؟')">🔐 خروج از همه دستگاه‌ها</button>
+        </form>
+        <p class="text-3" style="font-size:11px;margin-top:8px">اگر به دستگاه یا مرورگر دیگری دسترسی دارید، با این دکمه همه سشن‌های قبلی باطل می‌شود.</p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

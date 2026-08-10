@@ -1,0 +1,25 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}مدیریت انجمن{% endblock %}
+{% block acontent %}
+<div class="dash-head"><div><h1>💬 مدیریت انجمن</h1><p>{{ fa(topics|length) }} تاپیک</p></div><a class="btn btn-ghost" href="{{ url_for('community.forum') }}" target="_blank">مشاهده انجمن ←</a></div>
+{% for t in topics %}
+<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:var(--card);border:1px solid var(--border);border-radius:12px;margin-bottom:8px">
+  <div>
+    <strong style="font-size:13.5px">{{ '📌 ' if t.is_pinned }}{{ t.title }}</strong>
+    <small class="text-3" style="display:block;font-size:11.5px">{{ t.user.name if t.user else '—' }} — {{ fa(t.posts|length) }} پاسخ — {{ t.created_at|jdatetime }}</small>
+  </div>
+  <div style="display:flex;gap:6px">
+    <form method="post" action="{{ url_for('admin.forum_topic_pin', tid=t.id) }}">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+      <button class="btn btn-ghost btn-sm">{{ '📌 پین شد' if t.is_pinned else '📌 پین' }}</button>
+    </form>
+    <form method="post" action="{{ url_for('admin.forum_topic_delete', tid=t.id) }}">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+      <button class="btn btn-danger btn-sm" onclick="return confirm('حذف تاپیک؟')">🗑</button>
+    </form>
+  </div>
+</div>
+{% else %}
+<div class="card text-center" style="padding:40px"><p class="text-3">تاپیکی وجود ندارد.</p></div>
+{% endfor %}
+{% endblock %}

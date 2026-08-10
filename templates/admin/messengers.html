@@ -1,0 +1,80 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}پیام‌رسان‌ها و اعلان همگانی{% endblock %}
+{% block acontent %}
+<style>
+  .msg-glass {
+    background: linear-gradient(135deg, rgba(255,255,255,.75), rgba(255,255,255,.45));
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(255,255,255,.6); border-radius: 18px;
+    box-shadow: 0 8px 28px rgba(13,31,54,.10);
+  }
+  .msg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+  .msg-card { padding: 18px; position: relative; overflow: hidden; }
+  .msg-card::before { content: ''; position: absolute; inset: 0; opacity: .06;
+    background: radial-gradient(120px 60px at 20% 0%, var(--mc, #229ed9), transparent 70%); }
+  .msg-head { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; position: relative; }
+  .msg-logo { width: 44px; height: 44px; border-radius: 14px; background: var(--mc, #229ed9);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    box-shadow: 0 6px 16px color-mix(in srgb, var(--mc, #229ed9) 45%, transparent); }
+  .msg-logo img { width: 26px; height: 26px; filter: brightness(0) invert(1); }
+  .msg-status { margin-left: auto; font-size: 11px; font-weight: 800; }
+  .on { color: var(--success); } .off { color: var(--text-3); }
+</style>
+
+<div class="dash-head">
+  <div><h1>📨 پیام‌رسان‌ها</h1><p>توکن ربات‌ها را وارد کنید — اعلان همگانی به همه پیام‌رسان‌های متصل</p></div>
+</div>
+
+<form method="post">
+  <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+  <div class="msg-grid">
+    {% for m in messengers %}
+    {% set tok = site.get(m.token_key) or '' %}
+    <div class="msg-glass msg-card" style="--mc: {{ m.color }}">
+      <div class="msg-head">
+        <span class="msg-logo"><img src="{{ m.icon }}" alt="{{ m.fa }}"></span>
+        <div>
+          <strong>{{ m.fa }}</strong>
+          <small class="text-3" style="display:block;font-size:11px">{{ m.name }}</small>
+        </div>
+        <span class="msg-status {{ 'on' if tok else 'off' }}">{{ '🔗 متصل' if tok else '⛔ خاموش' }}</span>
+      </div>
+      <div class="form-group"><label>توکن ربات</label>
+        <input class="form-control" dir="ltr" name="{{ m.token_key }}" value="{{ tok }}" placeholder="123456:ABC-...">
+      </div>
+      <div class="form-group"><label>آیدی کانال/چت</label>
+        <input class="form-control" dir="ltr" name="{{ m.chat_key }}" value="{{ site.get(m.chat_key) or '' }}" placeholder="@channel یا 123456789">
+      </div>
+      <button class="btn btn-ghost btn-sm" formaction="{{ url_for('admin.messenger_test', mid=m.id) }}">🔌 تست اتصال</button>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="msg-glass" style="padding:22px;margin-top:20px">
+    <h2 style="font-size:15px;margin-bottom:6px">📣 ارسال پیام همگانی به همه پیام‌رسان‌های متصل</h2>
+    <p class="text-3" style="font-size:12px;margin-bottom:12px">برای اعلان دوره جدید، تخفیف، جلسه و ... — فقط به پیام‌رسان‌هایی ارسال می‌شود که توکن دارند.</p>
+    <div class="form-group">
+      <label>متن پیام</label>
+      <textarea class="form-control" name="broadcast_text" rows="3" placeholder="مثلاً: 🎉 دوره جدید «هوش مصنوعی» با ۵۰٪ تخفیف منتشر شد!"></textarea>
+    </div>
+    <div class="form-group">
+      <label>لینک (اختیاری)</label>
+      <input class="form-control" dir="ltr" name="broadcast_link" placeholder="https://...">
+    </div>
+    <button class="btn btn-primary" type="submit" name="action" value="broadcast">📣 ارسال به همه</button>
+    <button class="btn btn-primary" type="submit" style="margin-right:8px">💾 ذخیره تنظیمات</button>
+  </div>
+</form>
+
+{% if results %}
+<div class="card" style="padding:20px;margin-top:18px">
+  <h2 style="font-size:14px;margin-bottom:10px">📤 نتیجه ارسال همگانی</h2>
+  {% for mid, (ok, msg) in results.items() %}
+  <div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:13px">
+    <span style="font-weight:800">{{ messengers|selectattr('id','equalto',mid)|map(attribute='fa')|list|first or mid }}</span>:
+    <span style="color:{{ 'var(--success)' if ok else 'var(--danger)' }}">{{ '✅ ' if ok else '❌ ' }}{{ msg }}</span>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

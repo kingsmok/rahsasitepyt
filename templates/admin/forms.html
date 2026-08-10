@@ -1,0 +1,33 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}فرم‌ها{% endblock %}
+{% block acontent %}
+<div class="dash-head">
+  <div><h1>🛠 فرم‌های ساخته‌شده</h1><p>{{ fa(forms|length) }} فرم</p></div>
+  <a class="btn btn-primary" href="{{ url_for('admin.form_new') }}">+ فرم جدید</a>
+</div>
+<div class="card" style="padding:22px">
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>عنوان</th><th>فیلدها</th><th>پاسخ‌ها</th><th>وضعیت</th><th>عملیات</th></tr></thead>
+    <tbody>
+      {% for f in forms %}
+      <tr>
+        <td><strong>{{ f.title }}</strong><br><small class="text-3" dir="ltr">/form/{{ f.slug }}</small></td>
+        <td>{{ fa(f.fields_list()|length) }}</td>
+        <td><a href="{{ url_for('admin.form_entries', pid=f.id) }}">{{ fa(counts.get(f.id, 0)) }}</a></td>
+        <td>{% if f.is_active %}<span class="badge badge-success">فعال</span>{% else %}<span class="badge badge-gray">غیرفعال</span>{% endif %}</td>
+        <td style="white-space:nowrap">
+          <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.form_edit', pid=f.id) }}">✏️</a>
+          <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.form_entries', pid=f.id) }}">📥</a>
+          <form method="post" action="{{ url_for('admin.form_toggle', pid=f.id) }}" style="display:inline">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+            <button class="btn btn-ghost btn-sm">{{ '⏸' if f.is_active else '▶️' }}</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" class="text-center text-3">هنوز فرمی ساخته نشده — «+ فرم جدید»</td></tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+</div>
+{% endblock %}

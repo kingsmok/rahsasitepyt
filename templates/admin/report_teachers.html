@@ -1,0 +1,22 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}گزارش درآمد مدرس‌ها{% endblock %}
+{% block acontent %}
+<div class="dash-head"><div><h1>💰 گزارش درآمد مدرس‌ها</h1><p>فروش دوره‌های هر مدرس، سهم ۵۰٪ و تسویه‌ها</p></div></div>
+<div class="card" style="padding:22px">
+  <div class="table-wrap"><table class="table" style="width:100%;font-size:13px">
+    <thead><tr><th>مدرس</th><th>دانشجو</th><th>فروش دوره‌ها</th><th>سهم مدرس (۵۰٪)</th><th>تسویه‌شده</th><th>در انتظار</th></tr></thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td><strong>{{ r.teacher.name }}</strong><br><small class="text-3" dir="ltr">{{ r.teacher.email or r.teacher.phone }}</small></td>
+        <td>{{ fa(r.students) }}</td>
+        <td>{{ fa('{:,.0f}'.format(r.revenue)) }} تومان</td>
+        <td class="text-primary" style="font-weight:800">{{ fa('{:,.0f}'.format(r.share)) }} تومان</td>
+        <td>{{ fa('{:,.0f}'.format(r.paid_out)) }} تومان</td>
+        <td>{% if r.pending %}<span class="badge" style="background:#fef3c7;color:#b45309">{{ fa('{:,.0f}'.format(r.pending)) }} تومان</span>{% else %}—{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+</div>
+{% endblock %}

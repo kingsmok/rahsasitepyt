@@ -1,0 +1,57 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}مدیریت دوره‌ها{% endblock %}
+{% block acontent %}
+<div class="dash-head">
+  <div>
+    <h1>📚 مدیریت دوره‌ها</h1>
+    <p>{{ fa(courses|length) }} دوره</p>
+  </div>
+  <div class="flex gap-2">
+    <form class="search-box">
+      <input type="text" name="q" placeholder="جستجوی دوره..." value="{{ q }}">
+      <button>🔍</button>
+    </form>
+    <a class="btn btn-primary" href="{{ url_for('admin.course_new') }}">+ دوره جدید</a>
+  </div>
+</div>
+
+<div class="table-wrap">
+  <table class="table">
+    <thead><tr><th>دوره</th><th>دسته</th><th>مدرس</th><th>قیمت</th><th>دانشجو</th><th>وضعیت</th><th>عملیات</th></tr></thead>
+    <tbody>
+      {% for c in courses %}
+      <tr>
+        <td>
+          <div class="flex gap-1">
+            <img src="/static/img/{{ c.image }}" alt="" style="width:54px;height:36px;border-radius:8px;object-fit:cover">
+            <div><strong style="font-size:13px">{{ c.title }}</strong><br><small class="text-3">{{ c.level }} — {{ fa(c.lesson_count) }} جلسه</small></div>
+          </div>
+        </td>
+        <td>{{ c.category.name if c.category else '—' }}</td>
+        <td>{{ c.teacher.name if c.teacher else '—' }}</td>
+        <td>
+          {% if c.has_discount %}<small class="text-3" style="text-decoration:line-through">{{ fa('{:,.0f}'.format(c.price)) }}</small><br>{% endif %}
+          <strong>{{ fa('{:,.0f}'.format(c.final_price)) }}</strong>
+        </td>
+        <td>{{ fa(c.students_count) }}</td>
+        <td>
+          {% if c.status == 'published' %}<span class="badge badge-success">منتشر شده</span>
+          {% else %}<span class="badge badge-gray">پیش‌نویس</span>{% endif %}
+          {% if c.featured %}<span class="badge badge-accent">ویژه</span>{% endif %}
+        </td>
+        <td>
+          <div class="actions-cell">
+            <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.course_lessons', cid=c.id) }}">📑 جلسات</a>
+            <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.course_edit', cid=c.id) }}">✏️</a>
+            <form method="post" action="{{ url_for('admin.course_delete', cid=c.id) }}" onsubmit="return confirm('دوره حذف شود؟')">
+<input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+              <button class="btn btn-danger btn-sm" type="submit">🗑</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -1,0 +1,116 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}مارکت‌پلیس‌ها{% endblock %}
+{% block acontent %}
+<div class="dash-head">
+  <div>
+    <h1>🏪 اتصال به مارکت‌پلیس‌ها</h1>
+    <p>فید ترب/ایمالز · همگام‌سازی دیجی‌کالا · سفارش‌های باسلام</p>
+  </div>
+</div>
+
+<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:20px">
+  <div class="card" style="padding:16px"><b style="font-size:20px;color:var(--primary)">{{ fa(counts.courses) }}</b><small class="text-3" style="display:block">دوره منتشرشده در فید</small></div>
+  <div class="card" style="padding:16px"><b style="font-size:20px;color:var(--primary)">{{ fa(counts.products) }}</b><small class="text-3" style="display:block">محصول با موجودی</small></div>
+  <div class="card" style="padding:16px"><b style="font-size:20px;color:var(--primary)">{{ fa(counts.basalam) }}</b><small class="text-3" style="display:block">سفارش باسلام</small></div>
+  <div class="card" style="padding:16px"><b style="font-size:20px;color:var(--primary)">{{ fa(counts.feed_ok) }}</b><small class="text-3" style="display:block">آخرین فید ترب</small></div>
+</div>
+
+<!-- فیدها -->
+<div class="card" style="padding:18px 22px;margin-bottom:18px">
+  <h4 style="font-size:15px;margin-bottom:12px">📡 فیدهای قیمت و موجودی (Real-time)</h4>
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px">
+    <div style="background:var(--bg-2);border-radius:12px;padding:14px">
+      <b style="font-size:13px">🛒 ترب (JSON)</b>
+      <code style="display:block;direction:ltr;text-align:left;font-size:11px;margin:8px 0">{{ request.host }}<span style="color:var(--primary)">/api/feed/torob.json</span></code>
+      <a class="btn btn-primary btn-sm" href="{{ url_for('market.torob_json') }}" target="_blank">مشاهده فید</a>
+    </div>
+    <div style="background:var(--bg-2);border-radius:12px;padding:14px">
+      <b style="font-size:13px">🛒 ترب (XML)</b>
+      <code style="display:block;direction:ltr;text-align:left;font-size:11px;margin:8px 0">{{ request.host }}<span style="color:var(--primary)">/api/feed/torob.xml</span></code>
+      <a class="btn btn-primary btn-sm" href="{{ url_for('market.torob_xml') }}" target="_blank">مشاهده فید</a>
+    </div>
+    <div style="background:var(--bg-2);border-radius:12px;padding:14px">
+      <b style="font-size:13px">🛍 ایمالز (JSON)</b>
+      <code style="display:block;direction:ltr;text-align:left;font-size:11px;margin:8px 0">{{ request.host }}<span style="color:var(--primary)">/api/feed/emalls.json</span></code>
+      <a class="btn btn-primary btn-sm" href="{{ url_for('market.emalls_json') }}" target="_blank">مشاهده فید</a>
+    </div>
+  </div>
+  <p class="text-3" style="font-size:11.5px;margin-top:12px">ℹ️ آدرس فید را در پنل ترب/ایمالز ثبت کنید؛ آن‌ها خودشان هر چند ساعت می‌خوانند. هدر <code>no-store</code> یعنی همیشه لحظه‌ای.</p>
+</div>
+
+<!-- دیجی‌کالا -->
+<div class="card" style="padding:18px 22px;margin-bottom:18px">
+  <div class="flex between wrap gap-2" style="margin-bottom:10px">
+    <div>
+      <h4 style="font-size:15px">🛍 همگام‌سازی دیجی‌کالا (Seller Center)</h4>
+      <p class="text-3" style="font-size:12px">موجودی محصولات فیزیکی به پنل فروشنده دیجی‌کالا ارسال می‌شود — در production با Celery هر ۳۰ دقیقه.</p>
+    </div>
+    <form method="post" action="{{ url_for('market.admin_sync') }}">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="channel" value="digikala">
+      <button class="btn btn-primary" type="submit">⚡ همگام‌سازی دستی</button>
+    </form>
+  </div>
+  <p class="text-3" style="font-size:12px;background:var(--bg-2);border-radius:10px;padding:10px 14px">
+    🔑 کلیدهای موردنیاز در «تنظیمات سایت»: <code>dk_api_base</code>، <code>dk_access_token</code>، <code>basalam_webhook_secret</code>، <code>emalls_seller_id</code>
+  </p>
+</div>
+
+<!-- باسلام -->
+<div class="card" style="padding:18px 22px;margin-bottom:18px">
+  <h4 style="font-size:15px;margin-bottom:8px">📦 سفارش‌های باسلام</h4>
+  <p class="text-3" style="font-size:12px;margin-bottom:12px">وب‌هوک: <code style="direction:ltr;display:inline-block">{{ request.host }}/api/marketplace/basalam/webhook</code> (امضای HMAC با <code>basalam_webhook_secret</code>)</p>
+  {% if orders %}
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>#</th><th>سفارش</th><th>مشتری</th><th>مبلغ</th><th>وضعیت</th><th>عملیات</th></tr></thead>
+    <tbody>
+    {% for o in orders %}
+    <tr>
+      <td>{{ fa(o.id) }}</td>
+      <td dir="ltr">{{ o.external_id }}</td>
+      <td>{{ o.customer_name or '—' }}<br><small class="text-3" dir="ltr">{{ o.customer_phone or '' }}</small></td>
+      <td>{{ fa('{:,.0f}'.format(o.total)) }}</td>
+      <td><span class="badge badge-{{ 'success' if o.status in ('done','shipped') else ('accent' if o.status=='accepted' else 'gray') }}">{{ o.status }}</span></td>
+      <td>
+        <form method="post" action="{{ url_for('market.admin_order_status', oid=o.id) }}" style="display:flex;gap:4px;margin:0">
+          <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+          <select name="status" class="form-control" style="width:auto;min-height:auto;padding:4px 8px;font-size:11px">
+            {% for st in ['new','accepted','shipped','done','canceled'] %}
+            <option value="{{ st }}" {{ 'selected' if o.status==st }}>{{ st }}</option>
+            {% endfor %}
+          </select>
+          <button class="btn btn-sm btn-primary" type="submit">ثبت</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}
+  <p class="text-3" style="font-size:13px">هنوز سفارشی از باسلام دریافت نشده — آدرس وب‌هوک را در پنل باسلام ثبت کنید.</p>
+  {% endif %}
+</div>
+
+<!-- لاگ‌ها -->
+<div class="card" style="padding:18px 22px">
+  <h4 style="font-size:15px;margin-bottom:12px">🧾 لاگ همگام‌سازی (آخرین ۳۰)</h4>
+  {% if logs %}
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>زمان</th><th>کانال</th><th>عملیات</th><th>وضعیت</th><th>جزئیات</th></tr></thead>
+    <tbody>
+    {% for l in logs %}
+    <tr>
+      <td style="white-space:nowrap">{{ l.created_at|jdatetime }}</td>
+      <td><b>{{ l.channel }}</b></td>
+      <td>{{ l.action }}</td>
+      <td><span class="badge badge-{{ 'success' if l.status=='ok' else 'danger' }}">{{ l.status }}</span></td>
+      <td style="font-size:11.5px;max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ l.detail }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}
+  <p class="text-3" style="font-size:13px">لاگی ثبت نشده — بعد از اولین فید/سینک اینجا ظاهر می‌شود.</p>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,62 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}{{ 'ویرایش فرم' if form else 'فرم‌ساز' }}{% endblock %}
+{% block acontent %}
+<div class="dash-head">
+  <div><h1>{{ '✏️ ویرایش «' ~ form.title ~ '»' if form else '🛠 فرم‌ساز حرفه‌ای' }}</h1><p>فرم بسازید؛ پاسخ‌ها در پنل ذخیره و با اکسل خروجی می‌گیرند</p></div>
+  <a class="btn btn-ghost" href="{{ url_for('admin.forms') }}">← فرم‌ها</a>
+</div>
+<div class="card" style="padding:24px;max-width:760px">
+  <form method="post">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+    <div class="grid" style="grid-template-columns:2fr 1fr;gap:14px">
+      <div class="form-group">
+        <label>عنوان فرم *</label>
+        <input class="form-control" name="title" required value="{{ form.title if form else '' }}" placeholder="مثلاً: فرم نظرسنجی دوره پایتون">
+      </div>
+      <div class="form-group">
+        <label>پیام موفقیت</label>
+        <input class="form-control" name="success_msg" value="{{ form.success_msg if form else 'ثبت شد ✅' }}">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>توضیحات</label>
+      <input class="form-control" name="description" value="{{ form.description if form else '' }}" placeholder="توضیح کوتاه بالای فرم">
+    </div>
+    <div class="form-group">
+      <label>فیلدها — هر خط: برچسب | نوع | الزامی(1/0) | گزینه‌ها(با - جدا)</label>
+      <textarea class="form-control" name="fields_raw" rows="9" dir="rtl" placeholder="نام و نام خانوادگی | text | 1
+شماره موبایل | phone | 1
+ایمیل | email | 0
+پیام | textarea | 1
+سطح آشنایی | select | 0 | مبتدی-متوسط-پیشرفته
+رضایت کلی | radio | 0 | عالی-خوب-ضعیف
+فایل نمونه‌کار | file | 0
+تاریخ شروع | date | 0">{{ raw if raw else '' }}</textarea>
+      <p class="form-hint">انواع: text، phone، email، textarea، select، radio، checkbox، file، date</p>
+    </div>
+    <div class="grid" style="grid-template-columns:1fr 1fr;gap:14px">
+      <div class="form-group">
+        <label>اعلان از طریق پیام‌رسان</label>
+        <select class="form-control" name="notify_messenger">
+          <option value="">بدون اعلان</option>
+          <option value="telegram" {{ 'selected' if form and form.notify_messenger == 'telegram' }}>تلگرام</option>
+          <option value="bale" {{ 'selected' if form and form.notify_messenger == 'bale' }}>بله</option>
+          <option value="eitaa" {{ 'selected' if form and form.notify_messenger == 'eitaa' }}>ایتا</option>
+          <option value="soroush" {{ 'selected' if form and form.notify_messenger == 'soroush' }}>سروش</option>
+          <option value="rubika" {{ 'selected' if form and form.notify_messenger == 'rubika' }}>روبیکا</option>
+        </select>
+      </div>
+      <div class="form-check" style="align-self:end;margin-bottom:18px">
+        <label><input type="checkbox" name="notify_sms" {{ 'checked' if form and form.notify_sms }}> اعلان پیامکی</label>
+      </div>
+    </div>
+    <button class="btn btn-primary" type="submit">💾 ذخیره فرم</button>
+  </form>
+  {% if form %}
+  <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--border)">
+    <strong style="font-size:13px">لینک عمومی فرم:</strong>
+    <code dir="ltr" style="display:block;margin-top:6px">{{ request.host_url }}form/{{ form.slug }}</code>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

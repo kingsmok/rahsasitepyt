@@ -1,0 +1,14 @@
+{
+  "name": "آکادمی آنلاین — مرجع آموزش آنلاین فارسی",
+  "short_name": "آکادمی",
+  "description": "دوره‌های پروژه‌محور برنامه‌نویسی، طراحی و مهارت‌های دیجیتال",
+  "start_url": "/",
+  "display": "standalone",
+  "dir": "rtl",
+  "lang": "fa",
+  "background_color": "#0d1f36",
+  "theme_color": "#f2640c",
+  "icons": [
+    { "src": "/static/img/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

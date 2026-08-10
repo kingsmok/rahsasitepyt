@@ -1,0 +1,75 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}کتابخانه رسانه{% endblock %}
+{% block acontent %}
+<div class="dash-head">
+  <div><h1>📁 کتابخانه رسانه</h1><p>{{ fa(total) }} فایل — مدیریت یکپارچه تصاویر، ویدیو و فایل‌ها</p></div>
+</div>
+
+<div class="card" style="padding:22px;margin-bottom:18px">
+  <h2 style="font-size:14px;margin-bottom:12px">⬆ آپلود فایل جدید (چندتایی)</h2>
+  <form method="post" enctype="multipart/form-data">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+    <div class="flex gap-1" style="gap:10px;align-items:center">
+      <input type="file" name="files" multiple class="form-control" style="flex:1"
+             accept=".jpg,.jpeg,.png,.webp,.gif,.svg,.pdf,.zip,.rar,.mp4,.webm,.mp3,.docx,.xlsx,.txt">
+      <button class="btn btn-primary" type="submit">📤 آپلود</button>
+    </div>
+    <small class="text-3" style="font-size:11px;margin-top:6px;display:block">تصاویر، ویدیو، صدا و فایل‌های مستند — با whitelist پسوند امن</small>
+  </form>
+</div>
+
+<div class="card" style="padding:18px;margin-bottom:18px">
+  <form method="get" class="flex gap-1" style="gap:10px;align-items:center">
+    <input class="form-control" name="q" value="{{ q }}" placeholder="جستجوی فایل..." style="flex:1">
+    <select class="form-control" name="kind" style="max-width:170px">
+      <option value="">همه انواع</option>
+      {% for k in kinds %}
+      <option value="{{ k }}" {{ 'selected' if kind == k }}>{{ {'image':'🖼 تصویر','video':'🎥 ویدیو','audio':'🎵 صدا','file':'📄 فایل'}.get(k, k) }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn btn-ghost" type="submit">🔍</button>
+  </form>
+</div>
+
+{% if items %}
+<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px">
+  {% for m in items %}
+  <div class="card" style="padding:12px;border-radius:14px;position:relative;overflow:hidden">
+    <div style="height:110px;background:var(--bg-2);border-radius:10px;display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:pointer"
+         onclick="copyMedia('{{ m.url }}', this)" title="کلیک = کپی لینک">
+      {% if m.kind == 'image' %}
+      <img src="{{ m.url }}" alt="{{ m.filename }}" style="width:100%;height:100%;object-fit:cover" loading="lazy">
+      {% elif m.kind == 'video' %}
+      <span style="font-size:34px">🎥</span>
+      {% elif m.kind == 'audio' %}
+      <span style="font-size:34px">🎵</span>
+      {% else %}
+      <span style="font-size:34px">📄</span>
+      {% endif %}
+    </div>
+    <div style="margin-top:8px;font-size:11.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" dir="ltr" title="{{ m.filename }}">{{ m.filename }}</div>
+    <div class="flex between" style="margin-top:4px;align-items:center">
+      <small class="text-3" style="font-size:10px">{{ m.human_size }}{% if m.width %} · {{ m.width }}×{{ m.height }}{% endif %}</small>
+      <form method="post" action="{{ url_for('admin.media_delete', mid=m.id) }}" style="display:inline" onsubmit="return confirm('حذف شود؟')">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+        <button class="btn btn-sm btn-danger" style="padding:2px 8px;font-size:11px">🗑</button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<p class="text-3" style="text-align:center;padding:34px">فایلی یافت نشد — اولین آپلود را انجام دهید.</p>
+{% endif %}
+
+<script>
+function copyMedia(url, el){
+  var full = location.origin + url;
+  navigator.clipboard.writeText(full).then(function(){
+    var old = el.innerHTML;
+    el.innerHTML = '<span style="font-size:26px;color:var(--success)">✅</span>';
+    setTimeout(function(){ el.innerHTML = old; }, 1200);
+  });
+}
+</script>
+{% endblock %}

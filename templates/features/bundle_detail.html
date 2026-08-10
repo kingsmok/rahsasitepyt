@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% block title %}{{ seo.title or b.title }}{% endblock %}
+{% block content %}
+<section class="section" style="padding-top:30px">
+  <div class="container" style="max-width:820px">
+    <nav class="breadcrumb" aria-label="مسیر صفحه">
+      <a href="{{ url_for('features.bundles') }}">بسته‌ها</a><span class="sep">/</span>
+      <span>{{ b.title }}</span>
+    </nav>
+    <div class="card" style="overflow:hidden;border-radius:20px">
+      <img src="/static/img/{{ b.image }}" alt="{{ b.title }}" style="width:100%;aspect-ratio:21/9;object-fit:cover">
+      <div style="padding:30px">
+        <h1 style="font-size:22px;margin-bottom:8px">{{ b.title }}</h1>
+        <p class="text-2" style="font-size:13.5px;margin-bottom:16px">{{ b.description }}</p>
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:20px">
+          <div style="display:flex;align-items:baseline;gap:8px">
+            {% if b.discount_price and b.discount_price < b.price %}
+            <span class="price-old" style="font-size:15px">{{ fa('{:,.0f}'.format(b.price)) }}</span>
+            {% endif %}
+            <span class="price" style="font-size:26px">{{ fa('{:,.0f}'.format(b.discount_price if b.discount_price and b.discount_price < b.price else b.price)) }}</span>
+            <small class="text-3">تومان</small>
+          </div>
+          {% if b.courses %}
+          <span class="badge badge-primary">{{ fa(b.courses|length) }} دوره — ارزش کل {{ fa('{:,.0f}'.format(b.courses|sum(attribute='final_price'))) }} تومان</span>
+          {% endif %}
+        </div>
+        <form method="post" action="{{ url_for('features.bundle_buy', slug=b.slug) }}">
+          <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+          {% if cur_user %}
+          <button class="btn btn-primary btn-lg" type="submit">🛒 خرید بسته</button>
+          {% else %}
+          <a class="btn btn-primary btn-lg" href="{{ url_for('auth.login', next=url_for('features.bundle_detail', slug=b.slug)) }}">برای خرید وارد شوید</a>
+          {% endif %}
+        </form>
+      </div>
+    </div>
+
+    <div class="card" style="padding:26px;margin-top:20px;border-radius:20px">
+      <h2 style="font-size:16px;margin-bottom:14px">📚 دوره‌های این بسته</h2>
+      {% for c in b.courses %}
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)">
+        <img src="/static/img/{{ c.image }}" alt="" style="width:64px;height:40px;object-fit:cover;border-radius:8px">
+        <div style="flex:1;min-width:0">
+          <a href="{{ url_for('site.course_detail', slug=c.slug) }}" style="font-size:13.5px;font-weight:700">{{ c.title }}</a>
+          <small class="text-3" style="display:block;font-size:11px">⏱ {{ fa(c.duration_hours) }} ساعت — 👥 {{ fa(c.students_count) }} دانشجو — ⭐ {{ fa(c.rating) if c.rating else '—' }}</small>
+        </div>
+        <span class="price" style="font-size:14px">{{ fa('{:,.0f}'.format(c.final_price)) }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}

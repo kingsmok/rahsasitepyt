@@ -1,0 +1,46 @@
+/* شیشه رنگی ارسی — کودک و نوجوان - پویا | تولیدشده از pd-12 */
+:root{
+--primary:#E63946;--primary-2:#C02734;--primary-soft:#e9515c;
+--on-primary:#FFFFFF;--on-accent:#14202E;
+--accent:#F4D35E;--accent-2:#D8B62E;--accent-soft:#f6d975;
+--success:#15803d;--success-soft:#f0fdf4;--danger:#dc2626;--danger-soft:#fef2f2;--warning:#F4D35E;--info:#E63946;
+--bg:#FFFFFF;--bg-2:#F7F7FA;--card:#FFFFFF;--card-2:#FFFFFF;
+--border:#494a5c;--border-2:#626473;
+--text:#2B2D42;--text-2:#aeafb7;--text-3:#848591;
+--header-bg:rgba(255,255,255,.92);--header-border:#494a5c;--header-text:#2B2D42;--header-text-2:#aeafb7;
+--hero-bg:linear-gradient(135deg,#E63946 0%,#B02330 55%,#921f2b 100%);--hero-text:#FFFFFF;--hero-text-2:rgba(255,255,255,.88);--hero-card:rgba(255,255,255,.12);
+--footer-bg:#26264A;--footer-text:#D6D6EA;--footer-text-2:#A3A3C8;--footer-head:#FFFFFF;
+--grad-brand:linear-gradient(135deg,#E63946,#C02734);--grad-accent:linear-gradient(135deg,#F4D35E,#D8B62E);
+--radius-sm:8px;--radius-md:20px;--radius-lg:22px;
+--shadow-sm:rgba(43,45,66,.05);--shadow-md:rgba(43,45,66,.08);--shadow-lg:rgba(43,45,66,.12);
+}
+.builder-site-header .dk-logo-ic{background:linear-gradient(135deg,#E63946,#C02734);border-radius:18px;box-shadow:0 6px 16px rgba(43,45,66,.08)}
+.builder-site-header .dk-search{border:2px solid #E63946}
+.builder-site-header .dk-search:focus-within{box-shadow:0 0 0 4px #e9515c}
+.builder-site-header .dk-search button{background:#E63946;color:#FFFFFF}
+.builder-site-header .dk-search button:hover{background:#C02734}
+.builder-site-header .dk-icon-link:hover{background:#e9515c;color:#E63946}
+.builder-site-header .dk-badge{background:#E63946}
+.builder-site-header .dk-auth a{background:#E63946;color:#FFFFFF}
+.builder-site-header .dk-auth a:hover{background:#C02734}
+.builder-site-header .dk-user-dd{border-top:3px solid #E63946}
+.builder-site-header .dk-mega-trigger{background:#E63946;color:#FFFFFF;box-shadow:0 6px 16px rgba(43,45,66,.08)}
+.builder-site-header .dk-nav a:hover{color:#E63946;background:#e9515c}
+.builder-site-header .dk-mega-panel{border-top:3px solid #E63946}
+.builder-site-header .dk-mega-head:hover,.builder-site-header .dk-mega-link:hover{color:#E63946;background:#e9515c}
+.builder-site-header .dk-mega-all{color:#E63946}
+.builder-site-footer{background:radial-gradient(700px 300px at 90% -20%,#f6d975,transparent 60%),linear-gradient(180deg,#26264A 0%,#26264A 50%,#000000 100%);border-top:3px solid #E63946}
+.builder-site-footer .pb-f-links h2::after,.builder-site-footer .pb-f-contact h2::after{background:#E63946}
+.builder-site-footer .pb-f-links ul a::before{color:#E63946}
+.builder-site-footer .pb-f-about .dk-logo-ic{background:linear-gradient(135deg,#E63946,#C02734)}
+.builder-site-footer .pb-f-about .pb-f-socials a:hover{background:#E63946;border-color:#E63946}
+.builder-site-footer .pb-f-contact ul li span{color:#E63946}
+.builder-site-footer .newsletter-box .btn{background:#E63946;color:#FFFFFF}
+.builder-site-footer .pb-trust-badges a:hover{border-color:#E63946}
+.pb-slide-overlay{background:linear-gradient(120deg,rgba(8,15,35,.88),#E63946 75%)}
+.pb-slide-content h1,.pb-slide-content h2{color:#fff}
+.dk-topbar a:hover{color:#F4D35E}
+.btn-primary{color:#FFFFFF}
+.btn-accent{background:linear-gradient(135deg,#F4D35E,#D8B62E);color:#14202E}
+.pb-slide-arrow{color:#E63946}
+.chart-bar span{background:linear-gradient(135deg,#E63946,#C02734)}

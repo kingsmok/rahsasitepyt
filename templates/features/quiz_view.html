@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% block title %}{{ seo.title or quiz.title }}{% endblock %}
+{% block content %}
+<section class="section" style="padding-top:30px">
+  <div class="container" style="max-width:760px">
+    <nav class="breadcrumb" aria-label="مسیر صفحه">
+      <a href="{{ url_for('site.course_detail', slug=quiz.course.slug) }}">{{ quiz.course.title }}</a><span class="sep">/</span>
+      <span>{{ quiz.title }}</span>
+    </nav>
+    <div class="card" style="padding:34px;border-radius:20px;text-align:center">
+      <div style="font-size:44px">📝</div>
+      <h1 style="font-size:22px;margin:10px 0 6px">{{ quiz.title }}</h1>
+      <p class="text-2" style="font-size:13.5px">{{ quiz.description or 'دانش خود را بسنجید!' }}</p>
+      <div class="flex gap-1" style="justify-content:center;margin:14px 0 20px;flex-wrap:wrap">
+        <span class="badge badge-primary">{{ fa(quiz.questions|length) }} سوال</span>
+        <span class="badge badge-gray">قبولی: {{ fa(quiz.passing_score or 50) }}٪</span>
+        {% if quiz.time_limit %}<span class="badge badge-gray">⏱ {{ fa(quiz.time_limit) }} دقیقه</span>{% endif %}
+      </div>
+      {% if best %}
+      <div class="card" style="background:{{ 'var(--success-soft)' if best.passed else 'var(--danger-soft)' }};border:none;padding:16px;margin-bottom:18px">
+        <strong>بهترین نتیجه: {{ fa(best.score) }}٪</strong> — {{ '✅ قبول' if best.passed else '❌ نیاز به تلاش بیشتر' }}
+      </div>
+      {% endif %}
+      <a class="btn btn-primary btn-lg" href="{{ url_for('features.quiz_start', qid=quiz.id) }}">🚀 شروع آزمون</a>
+      <a class="btn btn-ghost btn-lg" href="{{ url_for('site.course_detail', slug=quiz.course.slug) }}">بازگشت به دوره</a>
+      {% if attempts %}
+      <div style="margin-top:26px;text-align:right">
+        <h2 style="font-size:15px;margin-bottom:10px">تلاش‌های قبلی</h2>
+        {% for a in attempts %}
+        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px">
+          <span>{{ a.finished_at|jdatetime }}</span>
+          <span>{{ fa(a.score) }}٪ — {{ '✅' if a.passed else '❌' }}</span>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endblock %}

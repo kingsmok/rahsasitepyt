@@ -1,0 +1,38 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}تسویه مدرس‌ها{% endblock %}
+{% block acontent %}
+<div class="dash-head"><div><h1>💰 درخواست‌های تسویه</h1><p>تسویه حساب با مدرس‌ها</p></div></div>
+{% for p in items %}
+<div class="card" style="padding:18px;margin-bottom:12px">
+  <div style="display:flex;justify-content:space-between;flex-wrap:wrap;align-items:center;gap:8px">
+    <div>
+      <strong>{{ p.teacher.name if p.teacher else '—' }}</strong>
+      <span class="badge {{ {'pending':'badge-accent','paid':'badge-success','rejected':'badge-danger'}.get(p.status,'badge-gray') }}">
+        {{ {'pending':'در انتظار','paid':'پرداخت شد','rejected':'رد شد'}.get(p.status,p.status) }}
+      </span>
+      <div class="text-3" style="font-size:12px;margin-top:4px">
+        مبلغ: <b>{{ fa('{:,.0f}'.format(p.amount)) }} تومان</b> — {{ p.created_at|jdatetime }} — حساب: <span dir="ltr">{{ p.account }}</span>
+      </div>
+      {% if p.admin_note %}<div class="text-2" style="font-size:12px">یادداشت: {{ p.admin_note }}</div>{% endif %}
+    </div>
+    {% if p.status == 'pending' %}
+    <div style="display:flex;gap:8px">
+      <form method="post" action="{{ url_for('admin.payout_action', pid=p.id) }}">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="action" value="paid">
+        <input class="form-control" name="note" placeholder="یادداشت (اختیاری)" style="width:180px;margin-left:6px">
+        <button class="btn btn-success btn-sm">✓ پرداخت شد</button>
+      </form>
+      <form method="post" action="{{ url_for('admin.payout_action', pid=p.id) }}">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="action" value="rejected">
+        <button class="btn btn-danger btn-sm">✕ رد</button>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% else %}
+<div class="card text-center" style="padding:40px"><p class="text-3">درخواست تسویه‌ای وجود ندارد.</p></div>
+{% endfor %}
+{% endblock %}

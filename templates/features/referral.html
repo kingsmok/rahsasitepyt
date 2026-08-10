@@ -1,0 +1,100 @@
+{% extends 'base.html' %}
+{% block title %}{{ seo.title or "دعوت دوستان" }}{% endblock %}
+{% block content %}
+<section class="section" style="padding-top:30px">
+  <div class="container" style="max-width:820px">
+    <nav class="breadcrumb" aria-label="مسیر صفحه">
+      <a href="{{ url_for('student.dashboard') }}">داشبورد</a><span class="sep">/</span>
+      <span>دعوت دوستان</span>
+    </nav>
+    <div class="card" style="padding:32px;border-radius:20px;text-align:center;margin-bottom:18px">
+      <div style="font-size:44px">🎁</div>
+      <h1 style="font-size:22px;margin:10px 0 6px">دوستانت را دعوت کن، پاداش بگیر!</h1>
+      <p class="text-2" style="font-size:13.5px;max-width:480px;margin:0 auto 18px">با هر دوستی که از طریق لینک شما ثبت‌نام کند و اولین خریدش را انجام دهد، <b class="text-primary">۱۰٪ از مبلغ اولین خرید</b> به کیف پول شما اضافه می‌شود.</p>
+
+      <div class="card" style="background:var(--bg-2);border:none;padding:18px;margin-bottom:16px">
+        <small class="text-3" style="display:block;margin-bottom:6px">لینک اختصاصی شما</small>
+        <div class="flex gap-1">
+          <input id="ref-link" class="form-control" value="{{ link }}" dir="ltr" readonly style="flex:1;font-size:12.5px">
+          <button class="btn btn-primary" type="button" onclick="navigator.clipboard.writeText(document.getElementById('ref-link').value);this.textContent='✅ کپی شد'">📋 کپی</button>
+        </div>
+      </div>
+
+      <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px">
+        <div class="card" style="padding:16px;background:var(--bg-2);border:none"><div style="font-size:24px">👥</div><strong>{{ fa(invited) }}</strong><small class="text-3" style="display:block">دوست دعوت‌شده</small></div>
+        <div class="card" style="padding:16px;background:var(--bg-2);border:none"><div style="font-size:24px">🛒</div><strong>{{ fa(invited_orders|length) }}</strong><small class="text-3" style="display:block">خرید موفق آن‌ها</small></div>
+        <div class="card" style="padding:16px;background:var(--bg-2);border:none"><div style="font-size:24px">💵</div><strong>{{ fa('{:,.0f}'.format(total_purchased)) }}</strong><small class="text-3" style="display:block">حجم خرید (تومان)</small></div>
+        <div class="card" style="padding:16px;background:var(--bg-2);border:none"><div style="font-size:24px">💰</div><strong>{{ fa('{:,.0f}'.format(bonus_sum)) }}</strong><small class="text-3" style="display:block">پاداش کسب‌شده (تومان)</small></div>
+      </div>
+
+      <div class="card" style="background:linear-gradient(135deg,var(--primary-soft),transparent);border:1px dashed var(--primary);padding:16px 20px;text-align:right">
+        <div class="flex between" style="align-items:center;gap:10px">
+          <div>
+            <small class="text-3" style="display:block">سطح همکاری در فروش شما</small>
+            <strong style="font-size:17px" class="text-primary">{{ rank }}</strong>
+          </div>
+          <div style="font-size:26px">🏆</div>
+        </div>
+        <div style="height:8px;background:rgba(0,0,0,.08);border-radius:99px;margin-top:12px;overflow:hidden">
+          <div style="height:100%;width:{{ [100, (total_purchased / 3000000 * 100)|int]|min }}%;background:linear-gradient(90deg,var(--primary),#f59e0b);border-radius:99px"></div>
+        </div>
+        <small class="text-3" style="display:block;margin-top:8px">
+          {% if next_rank_gap > 0 %}{{ fa('{:,.0f}'.format(next_rank_gap)) }} تومان خرید دیگر تا رسیدن به سطح «برنزی» (۳ میلیون تومان) {% else %}🎉 به سطح بالاتر نزدیک می‌شوید! {% endif %}
+        </small>
+      </div>
+
+      <p class="text-3" style="font-size:11.5px;margin-top:14px">پاداش بعد از پرداخت موفق اولین خرید دوست، به‌صورت خودکار به کیف پول شما واریز می‌شود.</p>
+    </div>
+
+    <div class="card" style="padding:26px;border-radius:20px;margin-bottom:18px">
+      <h2 style="font-size:16px;margin-bottom:16px">📊 عملکرد شما</h2>
+      {% if invited_users %}
+      <div style="overflow-x:auto">
+        <table class="table" style="width:100%;font-size:13px">
+          <thead><tr><th>دوست</th><th>تاریخ عضویت</th><th>وضعیت خرید</th><th>پاداش شما</th></tr></thead>
+          <tbody>
+            {% for u in invited_users %}
+            {% set orders = invited_orders|selectattr('user_id', 'equalto', u.id)|list %}
+            <tr>
+              <td><span style="display:inline-flex;align-items:center;gap:8px"><span class="avatar-sm" style="background:{{ u.avatar_color or '#2563eb' }}">{{ u.name[:1] }}</span>{{ u.name }}</td>
+              <td class="text-2">{{ u.created_at|jdate }}</td>
+              <td>
+                {% if orders %}<span class="badge" style="background:#dcfce7;color:#15803d">✅ {{ fa(orders|length) }} خرید</span>
+                {% else %}<span class="badge" style="background:#fef3c7;color:#b45309">در انتظار خرید</span>{% endif %}
+              </td>
+              <td class="text-primary" style="font-weight:800">
+                {% set my_bonus = bonuses|selectattr('detail', 'search', u.name)|list %}
+                {{ fa('{:,.0f}'.format(my_bonus|sum(attribute='amount'))) }} تومان
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="text-2" style="font-size:13.5px;text-align:center;padding:14px 0">هنوز کسی با لینک شما ثبت‌نام نکرده است. لینک بالا را با دوستانتان به اشتراک بگذارید 🚀</p>
+      {% endif %}
+    </div>
+
+    {% if bonuses %}
+    <div class="card" style="padding:26px;border-radius:20px">
+      <h2 style="font-size:16px;margin-bottom:16px">🧾 تاریخچه پاداش‌های ارجاع</h2>
+      <div style="overflow-x:auto">
+        <table class="table" style="width:100%;font-size:13px">
+          <thead><tr><th>توضیح</th><th>مبلغ</th><th>تاریخ</th></tr></thead>
+          <tbody>
+            {% for b in bonuses %}
+            <tr>
+              <td>{{ b.detail }}</td>
+              <td class="text-primary" style="font-weight:800">+{{ fa('{:,.0f}'.format(b.amount)) }} تومان</td>
+              <td class="text-2">{{ b.created_at|jdate }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

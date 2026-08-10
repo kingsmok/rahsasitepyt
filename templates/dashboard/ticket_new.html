@@ -1,0 +1,36 @@
+{% extends 'dashboard/base.html' %}
+{% block dtitle %}تیکت جدید{% endblock %}
+{% block dcontent %}
+<div class="dash-head">
+  <div>
+    <h1>🎫 ثبت تیکت جدید</h1>
+    <p>سوال یا مشکل خود را دقیق توضیح دهید</p>
+  </div>
+  <a class="btn btn-ghost" href="{{ url_for('student.tickets') }}">← بازگشت</a>
+</div>
+
+<div class="card" style="padding:26px;max-width:640px">
+  <form method="post">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+
+    <div class="form-group">
+      <label for="f_subject_1">موضوع <span class="req">*</span></label>
+      <input id="f_subject_1" class="form-control" name="subject" placeholder="مثلا: مشکل در پخش ویدیو دوره پایتون" required>
+    </div>
+    <div class="form-group">
+      <label for="f_body_1">توضیحات <span class="req">*</span></label>
+      <textarea id="f_body_1" class="form-control" name="body" placeholder="مشکل یا سوال خود را کامل توضیح دهید..." required style="min-height:150px"></textarea>
+    </div>
+    <div class="form-group">
+      <label for="f_course_1">دوره مرتبط (اختیاری)</label>
+      <select id="f_course_1" class="form-control" name="course">
+        <option value="">— بدون دوره —</option>
+        {% for e in cur_user.enrollments %}
+        <option value="{{ e.course_id }}">{{ e.course.title }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button class="btn btn-primary btn-lg" type="submit">ارسال تیکت</button>
+  </form>
+</div>
+{% endblock %}

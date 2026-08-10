@@ -1,0 +1,46 @@
+/* گلاب قمصر — عمومی - سبک زندگی | تولیدشده از pd-08 */
+:root{
+--primary:#C26C87;--primary-2:#A85570;--primary-soft:#c97e95;
+--on-primary:#14202E;--on-accent:#14202E;
+--accent:#9DB89A;--accent-2:#7F9E7B;--accent-soft:#abc2a8;
+--success:#15803d;--success-soft:#f0fdf4;--danger:#dc2626;--danger-soft:#fef2f2;--warning:#9DB89A;--info:#C26C87;
+--bg:#FCF9FA;--bg-2:#F6EDF0;--card:#FFFFFF;--card-2:#FFFFFF;
+--border:#554f5a;--border-2:#6c6670;
+--text:#3A3340;--text-2:#b2aeb3;--text-3:#8b868e;
+--header-bg:rgba(255,255,255,.92);--header-border:#554f5a;--header-text:#3A3340;--header-text-2:#b2aeb3;
+--hero-bg:linear-gradient(135deg,#C26C87 0%,#8F4560 55%,#773b52 100%);--hero-text:#FFFFFF;--hero-text-2:rgba(255,255,255,.88);--hero-card:rgba(255,255,255,.12);
+--footer-bg:#7A4A5C;--footer-text:#E3C6D2;--footer-text-2:#C29DAB;--footer-head:#FFFFFF;
+--grad-brand:linear-gradient(135deg,#C26C87,#A85570);--grad-accent:linear-gradient(135deg,#9DB89A,#7F9E7B);
+--radius-sm:8px;--radius-md:18px;--radius-lg:20px;
+--shadow-sm:rgba(58,51,64,.05);--shadow-md:rgba(58,51,64,.08);--shadow-lg:rgba(58,51,64,.12);
+}
+.builder-site-header .dk-logo-ic{background:linear-gradient(135deg,#C26C87,#A85570);border-radius:16px;box-shadow:0 6px 16px rgba(58,51,64,.08)}
+.builder-site-header .dk-search{border:2px solid #C26C87}
+.builder-site-header .dk-search:focus-within{box-shadow:0 0 0 4px #c97e95}
+.builder-site-header .dk-search button{background:#C26C87;color:#14202E}
+.builder-site-header .dk-search button:hover{background:#A85570}
+.builder-site-header .dk-icon-link:hover{background:#c97e95;color:#C26C87}
+.builder-site-header .dk-badge{background:#C26C87}
+.builder-site-header .dk-auth a{background:#C26C87;color:#14202E}
+.builder-site-header .dk-auth a:hover{background:#A85570}
+.builder-site-header .dk-user-dd{border-top:3px solid #C26C87}
+.builder-site-header .dk-mega-trigger{background:#C26C87;color:#14202E;box-shadow:0 6px 16px rgba(58,51,64,.08)}
+.builder-site-header .dk-nav a:hover{color:#C26C87;background:#c97e95}
+.builder-site-header .dk-mega-panel{border-top:3px solid #C26C87}
+.builder-site-header .dk-mega-head:hover,.builder-site-header .dk-mega-link:hover{color:#C26C87;background:#c97e95}
+.builder-site-header .dk-mega-all{color:#C26C87}
+.builder-site-footer{background:radial-gradient(700px 300px at 90% -20%,#abc2a8,transparent 60%),linear-gradient(180deg,#7A4A5C 0%,#7A4A5C 50%,#000000 100%);border-top:3px solid #C26C87}
+.builder-site-footer .pb-f-links h2::after,.builder-site-footer .pb-f-contact h2::after{background:#C26C87}
+.builder-site-footer .pb-f-links ul a::before{color:#C26C87}
+.builder-site-footer .pb-f-about .dk-logo-ic{background:linear-gradient(135deg,#C26C87,#A85570)}
+.builder-site-footer .pb-f-about .pb-f-socials a:hover{background:#C26C87;border-color:#C26C87}
+.builder-site-footer .pb-f-contact ul li span{color:#C26C87}
+.builder-site-footer .newsletter-box .btn{background:#C26C87;color:#14202E}
+.builder-site-footer .pb-trust-badges a:hover{border-color:#C26C87}
+.pb-slide-overlay{background:linear-gradient(120deg,rgba(8,15,35,.88),#C26C87 75%)}
+.pb-slide-content h1,.pb-slide-content h2{color:#fff}
+.dk-topbar a:hover{color:#9DB89A}
+.btn-primary{color:#14202E}
+.btn-accent{background:linear-gradient(135deg,#9DB89A,#7F9E7B);color:#14202E}
+.pb-slide-arrow{color:#C26C87}
+.chart-bar span{background:linear-gradient(135deg,#C26C87,#A85570)}

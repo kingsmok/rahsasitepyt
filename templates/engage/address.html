@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+{% block title %}📍 آدرس و ارسال پکیج | {{ site.site_name or 'آکادمی آنلاین' }}{% endblock %}
+{% block content %}
+<style>
+  .addr-wrap{max-width:860px;margin:0 auto}
+  .addr-card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:26px;box-shadow:var(--shadow-md)}
+  .est-result{display:none}
+  .est-result.show{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;animation:fadeInUp .4s ease both}
+  .est-prov{border:2px solid var(--border);border-radius:16px;padding:18px;text-align:center;background:#fff}
+  .est-prov b{font-size:17px;color:var(--primary);display:block;margin:6px 0 2px}
+  .est-prov small{color:var(--text-3);font-size:11.5px}
+  .map-box{border-radius:16px;overflow:hidden;border:1px solid var(--border);height:260px;background:var(--bg-2);display:flex;align-items:center;justify-content:center;color:var(--text-3);font-size:13px}
+</style>
+
+<div class="section">
+<div class="container">
+<div class="addr-wrap">
+  <h1 style="font-size:24px;font-weight:900;text-align:center;margin-bottom:6px">📍 انتخاب آدرس و محاسبه هزینه ارسال</h1>
+  <p class="text-2" style="text-align:center;margin-bottom:26px">برای دریافت پکیج‌های آموزشی، آدرس خود را انتخاب کنید — هزینه پیک اسنپ/تپسی لحظه‌ای محاسبه می‌شود.</p>
+
+  <div class="addr-card">
+    <div class="grid" style="grid-template-columns:1fr 1fr;gap:14px" id="prov-grid">
+      <div class="form-group">
+        <label>استان</label>
+        <select class="form-control" id="province">
+          <option value="">— انتخاب استان —</option>
+          {% for p in provinces %}<option value="{{ p }}">{{ p }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>شهر</label>
+        <select class="form-control" id="city" disabled>
+          <option value="">ابتدا استان را انتخاب کنید</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group" style="margin-top:14px">
+      <label>آدرس کامل پستی</label>
+      <textarea class="form-control" id="address" rows="2" placeholder="خیابان، کوچه، پلاک، واحد..."></textarea>
+    </div>
+    <div class="form-group" style="margin-top:14px">
+      <label>وزن تقریبی پکیج (کیلوگرم)</label>
+      <input type="number" class="form-control" id="weight" value="0.5" min="0.1" step="0.1" style="max-width:160px">
+    </div>
+    <button class="btn btn-primary btn-lg" id="calc-btn" style="margin-top:16px">🚀 محاسبه هزینه ارسال (اسنپ/تپسی)</button>
+
+    <div style="margin-top:22px">
+      <h3 style="font-size:15px;font-weight:900;margin-bottom:12px">🗺 پیش‌نمایش نقشه</h3>
+      <div class="map-box">
+        {% if map_key %}
+        <iframe src="https://map.ir/embed?key={{ map_key }}" style="width:100%;height:100%;border:none" title="نقشه Map.ir"></iframe>
+        {% else %}
+        <span>🗺 نقشه Map.ir — کلید API در تنظیمات سایت وارد شود<br><small>(در حالت بدون کلید، نقشه غیرفعال است)</small></span>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="est-result" id="est-result"></div>
+    <div id="est-note" class="text-3" style="font-size:12px;margin-top:12px"></div>
+  </div>
+</div>
+</div>
+</div>
+
+<script>
+(function(){
+  var prov=document.getElementById('province');
+  var city=document.getElementById('city');
+  prov.addEventListener('change',function(){
+    city.disabled=!prov.value;
+    city.innerHTML='<option value="">— انتخاب شهر —</option>';
+    if(!prov.value)return;
+    fetch('/api/address/cities?province='+encodeURIComponent(prov.value))
+      .then(function(r){return r.json()})
+      .then(function(d){
+        d.cities.forEach(function(c){
+          var o=document.createElement('option');o.value=c;o.textContent=c;city.appendChild(o);
+        });
+      });
+  });
+  document.getElementById('calc-btn').addEventListener('click',function(){
+    var box=document.getElementById('est-result');
+    var note=document.getElementById('est-note');
+    box.classList.remove('show');
+    if(!prov.value){note.textContent='لطفاً استان را انتخاب کنید.';return;}
+    fetch('/api/address/shipping-estimate',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({province:prov.value,weight:parseFloat(document.getElementById('weight').value||0.5)})})
+      .then(function(r){return r.json()})
+      .then(function(d){
+        if(!d.ok){note.textContent=d.msg||'خطا';return;}
+        box.innerHTML='';
+        d.providers.forEach(function(p){
+          var div=document.createElement('div');
+          div.className='est-prov';
+          div.innerHTML='<div style="font-size:26px">'+p.icon+'</div><b>'+p.name+'</b>'
+            +'<div style="font-size:20px;font-weight:900;color:var(--text)">'+new Intl.NumberFormat('fa-IR').format(p.price)+' <small style="font-size:11px">تومان</small></div>'
+            +'<small>'+p.estimate+' — حدود '+new Intl.NumberFormat('fa-IR').format(d.distance_km)+' کیلومتر</small>';
+          box.appendChild(div);
+        });
+        box.classList.add('show');
+        note.textContent='⏱ تحویل امروز در تهران و کرج — سایر شهرها ۲۴ تا ۴۸ ساعت کاری. هزینه‌ها تقریبی و توسط پیک محاسبه نهایی می‌شود.';
+      });
+  });
+})();
+</script>
+{% endblock %}

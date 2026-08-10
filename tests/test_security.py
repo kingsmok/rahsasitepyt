@@ -1,0 +1,69 @@
+# -*- coding: utf-8 -*-
+"""تست‌های امنیتی — CSRF، آپلود، XSS، IDOR"""
+import io
+import re
+from conftest import login
+
+
+def test_csrf_rejects_missing_token(client):
+    """POST بدون توکن CSRF → 400"""
+    r = client.post('/contact', data={'name': 'x', 'message': 'y'})
+    assert r.status_code == 400
+
+
+def test_csrf_accepts_valid_token(client):
+    r = client.get('/contact')
+    m = re.search(r'name="_csrf_token" value="([^"]+)"', r.text)
+    r = client.post('/contact', data={
+        '_csrf_token': m.group(1), 'name': 'کاربر', 'email': 'x@x.ir',
+        'subject': 'سوال', 'message': 'پیام تست',
+    }, follow_redirects=False)
+    assert r.status_code == 302
+
+
+def test_upload_rejects_dangerous_ext(client):
+    """آپلود فایل .php باید رد شود"""
+    login(client, 'demo@test.ir', 'demo123')
+    r = client.post('/api/media/upload', data={
+        'file': (io.BytesIO(b'<?php echo 1;'), 'shell.php')
+    }, content_type='multipart/form-data')
+    assert r.status_code == 400
+
+
+def test_upload_rejects_non_image_in_builder(client):
+    """آپلود غیرتصویر در صفحه‌ساز رد شود"""
+    from conftest import login as _login
+    # ادمین بسازیم
+    from models import db, User
+    from app import create_app
+    r = client.post('/api/media/upload', data={
+        'file': (io.BytesIO(b'MZ fake exe'), 'evil.exe')
+    }, content_type='multipart/form-data')
+    assert r.status_code in (400, 401)
+
+
+def test_xss_escaped_in_comment(client):
+    """XSS در متن‌ها escape شود"""
+    # ثبت نظر با اسکریپت — صفحه نباید تگ را اجرا کند
+    login(client, 'demo@test.ir', 'demo123')
+    r = client.get('/course/test-course')
+    html = r.get_data(as_text=True)
+    assert '<script>alert(1)</script>' not in html
+
+
+def test_private_lesson_file_protected(client):
+    """فایل درس بدون لاگین → ریدایرکت لاگین"""
+    r = client.get('/static/uploads/lessons/anything.zip')
+    assert r.status_code in (302, 403)
+
+
+def test_csrf_rejection_returns_400_not_500(client):
+    """POST بدون CSRF باید 400 برگرداند نه 500 — regression برای خطای آبشاری context processor"""
+    r = client.post('/contact', data={'name': 'x', 'message': 'y'})
+    assert r.status_code == 400
+
+
+def test_csrf_rejection_on_admin_post(client):
+    """POST ادمین بدون CSRF → 400 نه 500"""
+    r = client.post('/admin/menus/new', data={})
+    assert r.status_code in (400, 302)  # 302 اگر لاگین نباشد

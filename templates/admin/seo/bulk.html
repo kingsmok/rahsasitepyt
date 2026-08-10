@@ -1,0 +1,29 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}ویرایش انبوه سئو{% endblock %}
+{% block acontent %}
+<div class="dash-head">
+  <div><h1>✏️ ویرایش انبوه سئو</h1><p>عنوان، توضیحات و کلمه کلیدی همه صفحات را یکجا ویرایش کنید</p></div>
+  <a class="btn btn-ghost" href="{{ url_for('seo_admin.dashboard') }}">← داشبورد</a>
+</div>
+<form method="post">
+  <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>صفحه</th><th>عنوان سئو</th><th>توضیحات</th><th>کلمه کلیدی</th></tr></thead>
+      <tbody>
+        {% for m in metas %}
+        <tr>
+          <td dir="ltr" style="font-size:12px;font-weight:700;white-space:nowrap">{{ m.path }}</td>
+          <td style="min-width:220px"><input class="form-control" name="f_{{ m.id }}_title" value="{{ m.title or '' }}" maxlength="70" style="padding:7px;font-size:12px"></td>
+          <td style="min-width:260px"><input class="form-control" name="f_{{ m.id }}_desc" value="{{ m.description or '' }}" maxlength="200" style="padding:7px;font-size:12px"></td>
+          <td style="min-width:140px"><input class="form-control" name="f_{{ m.id }}_focus" value="{{ m.focus_keyword or '' }}" style="padding:7px;font-size:12px"></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="text-center mt-3">
+    <button class="btn btn-primary btn-lg" type="submit">💾 ذخیره همه تغییرات</button>
+  </div>
+</form>
+{% endblock %}

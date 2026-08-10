@@ -1,0 +1,1211 @@
+{# ============================================================
+   رندر بلوک‌های صفحه‌ساز (شبیه ویجت‌های المنتور)
+   ============================================================ #}
+{% from 'partials/course_card.html' import course_card %}
+
+{% macro nl2br(t) %}{{ (t or '').replace('\n', '<br>') }}{% endmacro %}
+
+{# مسیر صحیح تصویر: آپلودهای کتابخانه رسانه در /static/uploads/... و تصاویر عادی در /static/img/... #}
+{% macro img_url(src) %}
+{%- set s = (src or 'hero.webp')|string -%}
+{%- if s.startswith('/') %}{{ s }}{% elif '/' in s %}/static/{{ s }}{% else %}/static/img/{{ s }}{% endif -%}
+{% endmacro %}
+
+{% macro anim_attr(d) %}{% if d.get('anim') %} data-anim="{{ d['anim'] }}"{% endif %}{% endmacro %}
+
+{# استایل‌های عمومی تب «استایل» هر ویجت (از d.style — فقط اگر آبجکت باشد) #}
+{% macro widget_style(d) %}
+{% set s = d.style if d.style is mapping else {} %}
+{%- if s.get('align') %}text-align:{{ s.align }};{% endif -%}
+{%- if s.get('color') %}color:{{ s.color }};{% endif -%}
+{%- if s.get('bg') %}background:{{ s.bg }};{% endif -%}
+{%- if s.get('width') %}width:{{ s.width }};max-width:100%;{% endif -%}
+{%- if s.get('radius') %}border-radius:{{ s.radius }}px;{% endif -%}
+{%- if s.get('pt') %}padding-top:{{ s.pt }}px;{% endif -%}
+{%- if s.get('pb') %}padding-bottom:{{ s.pb }}px;{% endif -%}
+{%- if s.get('mt') %}margin-top:{{ s.mt }}px;{% endif -%}
+{%- if s.get('mb') %}margin-bottom:{{ s.mb }}px;{% endif -%}
+{% endmacro %}
+
+{# ---------------- ردیف ---------------- #}
+{% macro row_view(row, edit=false) %}
+{% set rs = row.settings if row.settings is mapping else {} %}
+{% set ncols = row.cols|length %}
+{% set widths = (rs.get('widths') or '').strip() %}
+<div class="pb-row {{ 'pb-hidden-m' if rs.get('hide_mobile') }} {{ 'pb-hidden-d' if rs.get('hide_desktop') }} {{ 'pb-row-edit' if edit }} {{ 'pb-row-locked' if rs.get('locked') }} {{ rs.get('css_class') or '' }}"
+     data-row="{{ row.id }}" {{ 'data-edit' if edit }}{% if rs.get('css_id') %} id="{{ rs['css_id'] }}"{% endif %}
+     style="{% if rs.get('bg') %}background:{{ rs.bg }};{% endif %}{% if rs.get('bg_image') %}background-image:url('{{ img_url(rs.bg_image) }}');background-size:cover;background-position:center;{% endif %}{% if rs.get('radius') %}border-radius:{{ rs.radius }}px;{% endif %}{% if rs.get('py') %}padding-top:{{ rs.py }}px;padding-bottom:{{ rs.py }}px;{% endif %}{% if rs.get('pt') %}padding-top:{{ rs.pt }}px;{% endif %}{% if rs.get('pb') %}padding-bottom:{{ rs.pb }}px;{% endif %}{% if rs.get('mt') %}margin-top:{{ rs.mt }}px;{% endif %}{% if rs.get('mb') %}margin-bottom:{{ rs.mb }}px;{% endif %}">
+  {% if edit %}
+  <div class="pb-row-tools">
+    <span class="pb-grip" title="جابه‌جایی">⠿</span>
+    <button class="pb-tool" data-row-up title="بالا">↑</button>
+    <button class="pb-tool" data-row-down title="پایین">↓</button>
+    <button class="pb-tool" data-row-copy title="کپی">⧉</button>
+    <button class="pb-tool" data-row-save title="ذخیره به کتابخانه قالب‌ها">⭐</button>
+    <button class="pb-tool {{ 'pb-tool-lock' if rs.get('locked') }}" data-row-lock title="قفل/باز کردن">🔒</button>
+    <button class="pb-tool pb-tool-del" data-row-del title="حذف">🗑</button>
+    <span class="pb-row-label">ردیف — {{ ncols }} ستون</span>
+    {% if rs.get('locked') %}<span class="pb-hidden-badge">🔒 قفل</span>{% endif %}
+    {% if rs.get('hide_mobile') %}<span class="pb-hidden-badge">📱 مخفی در موبایل</span>{% endif %}
+    {% if rs.get('hide_desktop') %}<span class="pb-hidden-badge">🖥 مخفی در دسکتاپ</span>{% endif %}
+  </div>
+  {% endif %}
+  <div class="pb-container">
+    <div class="pb-cols" style="grid-template-columns:{{ widths or ('repeat(' ~ ncols ~ ', 1fr)') }};gap:{{ rs.get('gap') or 24 }}px">
+      {% for col in row.cols %}
+      <div class="pb-col {{ 'pb-col-empty' if edit and not col }}" data-col="{{ loop.index0 }}" {{ 'data-edit' if edit }}>
+        {% for b in col %}
+          {{ block_view(b, edit) }}
+        {% endfor %}
+        {% if edit %}<div class="pb-drop-hint pb-col-drop {{ 'show' if not col }}" data-col-drop="{{ loop.index0 }}">+ رها کردن ویجت در این ستون</div>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endmacro %}
+
+{# ---------------- ویجت ---------------- #}
+{% macro block_view(b, edit=false) %}
+{% set d = b.data if b.data is mapping else {} %}
+{% set wcls = d.get('css_class') or '' %}
+{% set wid = d.get('css_id') or '' %}
+{% if edit %}<div class="pb-widget" data-wid="{{ b.id }}" data-type="{{ b.type }}" style="{{ widget_style(d) }}">
+  <div class="pb-widget-tools">
+    <span class="pb-grip" title="جابه‌جایی">⠿</span>
+    <span class="pb-widget-name">{{ WIDGETS[b.type].name if b.type in WIDGETS else b.type }}</span>
+    <button class="pb-tool" data-wid-up title="بالا">↑</button>
+    <button class="pb-tool" data-wid-down title="پایین">↓</button>
+    <button class="pb-tool" data-wid-copy title="کپی">⧉</button>
+    <button class="pb-tool pb-tool-del" data-wid-del title="حذف">🗑</button>
+  </div>
+  <div class="pb-widget-body">{{ _block_inner(b, d, edit) }}</div>
+</div>
+{% else %}
+  <div class="pb-widget-out {{ 'pb-hidden-m' if d.get('hide_mobile') }} {{ 'pb-hidden-d' if d.get('hide_desktop') }} {{ wcls }}" {% if wid %}id="{{ wid }}"{% endif %} style="{{ widget_style(d) }}">
+  {{ _block_inner(b, d, edit) }}
+  </div>
+{% endif %}
+{% endmacro %}
+
+{# ---------------- بدنه ویجت ---------------- #}
+{% macro _block_inner(b, d, edit=false) %}
+{% set t = b.type %}
+{% if t == 'heading' %}
+  <{{ d.tag or 'h2' }} class="pb-heading" style="text-align:{{ d.align or 'right' }};color:{{ d.color or '' }};margin-bottom:{{ d.mb or 0 }}px" {{ ('contenteditable="true" data-inline="text" spellcheck="false"' if edit)|safe }}>{{ rd(d.text or 'عنوان جدید') }}</{{ d.tag or 'h2' }}>
+
+{% elif t == 'text' %}
+  <div class="pb-text" style="text-align:{{ d.align or 'right' }};color:{{ d.color or '' }};font-size:{{ d.size or 15 }}px" {{ ('contenteditable="true" data-inline="content" spellcheck="false"' if edit)|safe }}>{{ nl2br(d.content) }}</div>
+
+{% elif t == 'button' %}
+  <div style="text-align:{{ d.align or 'right' }}">
+    {% set btn_s = d.btn_style or (d.style if d.style is string else '') or 'primary' %}
+    <a class="btn btn-{{ btn_s }} btn-{{ d.size or 'md' }} {{ 'btn-block' if d.full }} pb-btn-hover-{{ d.hover or 'lift' }}" href="{{ d.url or '#' }}">
+      {% if d.icon %}<span style="font-size:1.15em">{{ d.icon }}</span>{% endif %}<span {{ ('contenteditable="true" data-inline="text" spellcheck="false"' if edit)|safe }}>{{ rd(d.text or 'دکمه') }}</span>
+    </a>
+  </div>
+
+{% elif t == 'image' %}
+  <div style="text-align:center">
+    {% if d.link %}<a href="{{ d.link }}">{% endif %}
+    <img src="{{ img_url(d.src) }}" alt="{{ d.alt or '' }}"
+         style="border-radius:{{ d.radius or 0 }}px;width:{{ '100%' if d.width == '100' else (d.width ~ '%' if d.width|length <= 3 else d.width ~ 'px') }};{{ 'box-shadow:var(--shadow-lg);' if d.shadow }}opacity:{{ d.opacity or 100 }}%;filter:{{ {'none': 'none', 'grayscale': 'grayscale(1)', 'sepia': 'sepia(1)', 'blur': 'blur(3px)', 'bright': 'brightness(1.25)', 'contrast': 'contrast(1.4)'}.get(d.filter or 'none', 'none') }}">
+    {% if d.link %}</a>{% endif %}
+  </div>
+
+{% elif t == 'video' %}
+  <div class="pb-video" style="border-radius:{{ d.radius or 0 }}px;overflow:hidden">
+    {% if d.url and 'youtube' in d.url %}
+      <iframe src="{{ d.url.replace('watch?v=', 'embed/') }}" frameborder="0" allowfullscreen style="width:100%;aspect-ratio:16/9"></iframe>
+    {% elif d.url and 'vimeo' in d.url %}
+      <iframe src="https://player.vimeo.com/video/{{ d.url.split('/')[-1].split('?')[0] }}" frameborder="0" allowfullscreen style="width:100%;aspect-ratio:16/9"></iframe>
+    {% elif d.url and 'aparat' in d.url %}
+      <iframe src="https://www.aparat.com/video/video/embed/videohash/{{ d.url.split('/v/')[-1].split('?')[0] }}/vt/frame" frameborder="0" allowfullscreen style="width:100%;aspect-ratio:16/9"></iframe>
+    {% else %}
+      <video controls preload="none" poster="{{ img_url(d.poster) }}" {% if d.autoplay %}autoplay muted loop{% endif %} style="width:100%;aspect-ratio:16/9;background:#000">
+        <source src="{{ d.url or '/static/video/sample.mp4' }}">
+      </video>
+    {% endif %}
+  </div>
+
+{% elif t == 'divider' %}
+  {% set lstyle = d.line_style or (d.style if d.style is string else '') or 'solid' %}
+  <hr class="pb-divider" style="border:none;height:{{ d.height or 1 }}px;background:{{ d.color or 'var(--border)' if lstyle != 'gradient' else 'linear-gradient(90deg, transparent, var(--primary), transparent)' }};{% if lstyle == 'dashed' %}background:none;border-top:{{ d.height or 2 }}px dashed {{ d.color or 'var(--border-2)' }};height:0{% elif lstyle == 'dotted' %}background:none;border-top:{{ d.height or 2 }}px dotted {{ d.color or 'var(--border-2)' }};height:0{% endif %}width:{{ d.width or 100 }}%;margin:0 auto">
+
+{% elif t == 'spacer' %}
+  <div style="height:{{ d.height or 40 }}px"></div>
+
+{% elif t == 'html' %}
+  <div class="pb-html">{{ d.code|safe }}</div>
+
+{% elif t == 'countdown' %}
+  <div class="pb-countdown text-center" data-target="{{ d.target or '' }}">
+    {% if d.title %}<h3 class="mb-2" style="font-size:20px">{{ d.title }}</h3>{% endif %}
+    <div class="countdown" style="justify-content:center;margin-bottom:10px" data-countdown="3600000">
+      <div class="cd"><b class="cd-h">00</b><small>ساعت</small></div>
+      <div class="cd"><b class="cd-m">00</b><small>دقیقه</small></div>
+      <div class="cd"><b class="cd-s">00</b><small>ثانیه</small></div>
+    </div>
+    {% if d.text %}<p class="text-2" style="font-size:13px">{{ d.text }}</p>{% endif %}
+  </div>
+
+{% elif t == 'slider' %}
+  {% set sl_total = d.slides|length %}
+  <div class="pb-slider" data-autoplay="{{ '1' if d.autoplay else '' }}" data-interval="{{ d.interval or 5 }}" data-swipe="{{ '1' if d.swipe else '' }}"
+       style="height:{{ d.height or 420 }}px;border-radius:{{ d.radius or 0 }}px">
+    <div class="pb-slider-track">
+      {% for s in d.slides if s is mapping %}
+      <div class="pb-slide" data-align="{{ s.align or 'right' }}" style="background-image:url('{{ img_url(s.img) }}')">
+        <div class="pb-slide-overlay" style="opacity:{{ (d.overlay or 60)|int / 100 }}"></div>
+        <div class="pb-slide-content">
+          {% if s.title %}{% if loop.first %}<h1>{{ s.title }}</h1>{% else %}<h2>{{ s.title }}</h2>{% endif %}{% endif %}
+          {% if s.sub %}<p class="pb-slide-sub">{{ nl2br(s.sub) }}</p>{% endif %}
+          {% if s.btn_text %}<a class="btn btn-accent btn-lg pb-slide-btn" href="{{ s.btn_url or '#' }}">{{ s.btn_text }}</a>{% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% if d.arrows and sl_total > 1 %}<button class="pb-slide-arrow pb-arrow-prev" aria-label="اسلاید قبلی">❮</button><button class="pb-slide-arrow pb-arrow-next" aria-label="اسلاید بعدی">❯</button>{% endif %}
+    {% if d.dots and sl_total > 1 %}<div class="pb-slide-dots"></div>{% endif %}
+    {% if not sl_total %}<div class="pb-slider-empty">اسلایدر خالی است — از پنل سمت چپ اسلاید اضافه کنید</div>{% endif %}
+  </div>
+
+{% elif t == 'video_bg' %}
+  <div class="pb-video-bg" style="position:relative;border-radius:22px;overflow:hidden;min-height:340px;display:flex;align-items:center;justify-content:center;text-align:center">
+    <video autoplay muted loop playsinline style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">
+      <source src="{{ d.url or '/static/video/sample.mp4' }}">
+    </video>
+    <div style="position:absolute;inset:0;background:rgba(8,15,35,.62)"></div>
+    <div style="position:relative;z-index:2;padding:40px;max-width:640px">
+      {% if d.title %}<h1 style="color:#fff;font-size:clamp(22px,3vw,34px);font-weight:900;margin-bottom:10px">{{ d.title }}</h1>{% endif %}
+      {% if d.sub %}<p style="color:rgba(255,255,255,.85);margin-bottom:20px">{{ nl2br(d.sub) }}</p>{% endif %}
+      {% if d.btn_text %}<a class="btn btn-white btn-lg" href="{{ d.btn_url or '#' }}">{{ d.btn_text }}</a>{% endif %}
+    </div>
+  </div>
+
+{% elif t == 'user_dashboard' %}
+  {% set u = bc_cur_user() %}
+  {% if u %}
+  <div class="user-dash-widget" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px">
+    {% if d.get('courses') %}
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:18px">
+      <h3 style="font-size:14px;margin-bottom:12px">📚 دوره‌های من</h3>
+      {% for e in u.enrollments[:4] %}
+      <a href="{{ url_for('student.learn', course_id=e.course_id) }}" style="display:block;padding:6px 0;border-bottom:1px solid var(--border);font-size:12.5px">
+        {{ e.course.title[:40] if e.course else '' }}
+        <span style="float:left;color:var(--primary);font-weight:800">٪{{ fa(e.percent) }}</span>
+      </a>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% if d.get('wallet') %}
+    <div style="background:linear-gradient(135deg,#0d1f36,#1d4a75);color:#fff;border-radius:16px;padding:18px">
+      <h3 style="font-size:14px;margin-bottom:8px;color:#fff">💰 کیف پول</h3>
+      <div style="font-size:22px;font-weight:900">{{ fa('{:,.0f}'.format(u.wallet_balance or 0)) }} <small style="font-size:12px">تومان</small></div>
+      <a href="{{ url_for('features.wallet') }}" style="color:#ff8c3a;font-size:12px;font-weight:800">شارژ کیف پول ←</a>
+    </div>
+    {% endif %}
+    {% if d.get('tickets') %}
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:18px">
+      <h3 style="font-size:14px;margin-bottom:12px">🎫 تیکت‌های من</h3>
+      {% for t in u.tickets[:3] %}
+      <div style="padding:5px 0;font-size:12.5px">{{ t.subject[:35] }} <span class="badge badge-gray">{{ t.status }}</span></div>
+      {% endfor %}
+      <a href="{{ url_for('student.tickets') }}" style="color:var(--primary);font-size:12px;font-weight:800">همه تیکت‌ها ←</a>
+    </div>
+    {% endif %}
+    {% if d.get('orders') %}
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:18px">
+      <h3 style="font-size:14px;margin-bottom:12px">🧾 فاکتورهای اخیر</h3>
+      {% for o in u.orders[:3] %}
+      <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:12.5px">
+        <span dir="ltr">{{ o.code }}</span>
+        <span>{{ fa('{:,.0f}'.format(o.final_total)) }} — <b class="text-{{ 'success' if o.status == 'paid' else 'danger' }}">{{ o.status_fa }}</b></span>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+{% elif t == 'current_course' %}
+  {% set cc = bc_current_course() %}
+  {% if cc %}
+  <div class="current-course-box" style="background:var(--card);border:1px solid var(--border);border-radius:18px;overflow:hidden;box-shadow:var(--shadow-md)">
+    {% if d.get('image') %}<img src="/static/img/{{ cc.image }}" alt="{{ cc.title }}" style="width:100%;aspect-ratio:16/9;object-fit:cover">{% endif %}
+    <div style="padding:20px">
+      {% if d.get('title') %}<h2 style="font-size:18px;margin-bottom:8px">{{ cc.title }}</h2>{% endif %}
+      <p class="text-2" style="font-size:13.5px;margin-bottom:12px">{{ (cc.subtitle or '')[:120] }}</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+        <span class="badge badge-gray">⏱ {{ fa(cc.duration_hours) }} ساعت</span>
+        <span class="badge badge-gray">📚 {{ fa(cc.lesson_count) }} جلسه</span>
+        <span class="badge badge-gray">👥 {{ fa(cc.students_count) }} دانشجو</span>
+      </div>
+      {% if d.get('price') %}
+      <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:12px">
+        {% if cc.has_discount %}<span class="price-old">{{ fa('{:,.0f}'.format(cc.price)) }}</span>{% endif %}
+        <span class="price" style="font-size:22px">{{ fa('{:,.0f}'.format(cc.final_price)) }} <small style="font-size:12px">تومان</small></span>
+      </div>
+      {% endif %}
+      {% if cc.final_price >= 300000 and not cc.is_free() %}
+      <div style="margin-bottom:10px;background:var(--bg-2);border-radius:10px;padding:8px 12px;font-size:12px;color:var(--text-2)">
+        💳 پرداخت <b>اقساطی</b> هم داریم: ۲ قسط ماهانه از <b>{{ fa('{:,.0f}'.format(cc.final_price * 30 // 100)) }} تومان</b>
+      </div>
+      {% endif %}
+      {% if d.get('button') %}
+      <a class="btn btn-primary btn-lg btn-block" href="{{ url_for('site.course_detail', slug=cc.slug) }}">🛒 مشاهده و خرید دوره</a>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+{% elif t == 'current_teacher' %}
+  {% set ct = bc_current_teacher() %}
+  {% if ct %}
+  <div class="current-teacher-box" style="background:var(--card);border:1px solid var(--border);border-radius:18px;padding:24px;display:flex;gap:16px;align-items:center;flex-wrap:wrap;box-shadow:var(--shadow-md)">
+    {% if d.get('avatar') %}
+    <span class="avatar" style="background:{{ ct.avatar_color }};width:72px;height:72px;font-size:26px;border-radius:22px;flex-shrink:0">{{ ct.initials() }}</span>
+    {% endif %}
+    <div style="flex:1;min-width:220px">
+      {% if d.get('name') %}<h2 style="font-size:20px;margin-bottom:4px">{{ ct.name }}</h2>{% endif %}
+      {% if ct.bio %}<p class="text-2" style="font-size:13.5px">{{ (ct.bio or '')[:200] }}</p>{% endif %}
+      {% if d.get('courses') %}
+      <div style="margin-top:10px;display:flex;flex-direction:column;gap:6px">
+        {% for c in ct.courses_taught if c.status == 'published' %}
+        <a href="{{ url_for('site.course_detail', slug=c.slug) }}" style="font-size:13px;font-weight:700;color:var(--primary)">📚 {{ c.title }}</a>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+{% elif t == 'courses' %}
+  {% set cs = builder_courses(d) %}
+  <div class="pb-block-head">
+    {% if d.title %}<h2 style="font-size:clamp(20px,2.6vw,28px);font-weight:900">{{ d.title }}</h2>{% endif %}
+    {% if d.subtitle %}<p class="text-2" style="margin-top:6px">{{ d.subtitle }}</p>{% endif %}
+  </div>
+  <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax({{ {'2':'420','3':'280','4':'220'}.get(d.columns or '3', '280') }}px,1fr));gap:22px;margin-top:22px">
+    {% for c in cs %}{{ course_card(c) }}{% endfor %}
+  </div>
+
+{% elif t == 'categories' %}
+  {% set cats = builder_categories(d) %}
+  {% if d.title %}<div class="pb-block-head"><h2 style="font-size:clamp(20px,2.6vw,28px);font-weight:900">{{ d.title }}</h2></div>{% endif %}
+  <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax({{ {'3':'280','4':'220','6':'160'}.get(d.columns or '4', '220') }}px,1fr));gap:16px;margin-top:20px">
+    {% for c in cats %}
+    <a class="cat-chip" href="{{ url_for('site.courses', cat=c.slug) }}">
+      <span class="ic" style="background:{{ c.color }}">{{ c.icon }}</span>
+      <div><h3 style="font-size:14px">{{ c.name }}</h3><small>{{ fa(c.courses|length) }} دوره</small></div>
+      <span class="arrow">◂</span>
+    </a>
+    {% endfor %}
+  </div>
+
+{% elif t == 'posts' %}
+  {% set ps = builder_posts(d) %}
+  {% if d.title %}<div class="pb-block-head"><h2 style="font-size:clamp(20px,2.6vw,28px);font-weight:900">{{ d.title }}</h2></div>{% endif %}
+  <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:22px;margin-top:20px">
+    {% for p in ps %}
+    <article class="card card-hover post-card">
+      <a class="thumb" href="{{ url_for('site.blog_post', slug=p.slug) }}"><img src="/static/img/{{ p.image }}" alt="" loading="lazy" loading="lazy"></a>
+      <div class="body">
+        <div class="p-meta"><span class="badge badge-primary">{{ p.category }}</span><span>{{ p.created_at|jdate }}</span></div>
+        <h3 style="font-size:14.5px"><a href="{{ url_for('site.blog_post', slug=p.slug) }}">{{ p.title }}</a></h3>
+        <a class="more" href="{{ url_for('site.blog_post', slug=p.slug) }}">ادامه مطلب ◂</a>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+
+{% elif t == 'teachers' %}
+  {% set ts = builder_teachers(d) %}
+  {% if d.title %}<div class="pb-block-head"><h2 style="font-size:clamp(20px,2.6vw,28px);font-weight:900">{{ d.title }}</h2></div>{% endif %}
+  <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:22px;margin-top:20px">
+    {% for t2 in ts %}
+    <a class="card card-hover teacher-card" href="{{ url_for('site.teacher_detail', uid=t2.id) }}">
+      <span class="avatar avatar-lg" style="background:{{ t2.avatar_color }};margin:0 auto 12px">{{ t2.initials() }}</span>
+      <h3 style="font-size:15px">{{ t2.name }}</h3>
+      <div class="role">مدرس آکادمی</div>
+      <p style="font-size:12px;-webkit-line-clamp:3;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical">{{ t2.bio or '' }}</p>
+    </a>
+    {% endfor %}
+  </div>
+
+{% elif t == 'feature' %}
+  {% if not d.get('items') %}<div class="pb-empty-widget">✧ برای نمایش ویژگی‌ها، آیتم اضافه کنید</div>{% endif %}
+  <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax({{ {'2':'320','3':'240','4':'200','6':'150'}.get(d.columns or '3','240') }}px,1fr));gap:20px">
+    {% for it in d.get('items') or [] if it is mapping %}
+    <div class="card card-hover feature-card">
+      <div class="ic">{{ it.icon or '✨' }}</div>
+      <h3 style="font-size:15px">{{ it.title }}</h3>
+      <p>{{ it.text }}</p>
+    </div>
+    {% endfor %}
+  </div>
+
+{% elif t == 'stats' %}
+  {% set stt = site_stats() %}
+  {% set real_items = [] %}
+  {% if d.get('items') %}
+    {% for it in d.get('items') or [] if it is mapping %}
+      {% set v = (it.value or '')|string %}
+      {% if '{' in v %}
+        {% set v = v.replace('{students}', fa(stt.students or 0)).replace('{courses}', fa(stt.courses or 0)).replace('{lessons}', fa(stt.lessons or 0)).replace('{hours}', fa(stt.hours or 0)).replace('{reviews}', fa(stt.reviews or 0)).replace('{teachers}', fa(stt.teachers or 0)).replace('{enrollments}', fa(stt.enrollments or 0)).replace('{stories}', fa(stt.stories or 0)).replace('{satisfaction}', fa(stt.satisfaction or 90)) %}
+      {% endif %}
+      {% if v or it.label %}{% set _ = real_items.append({'value': v, 'label': it.label or ''}) %}{% endif %}
+    {% endfor %}
+  {% else %}
+    {% set _ = real_items.append({'value': fa(stt.courses or 0) ~ '+', 'label': 'دوره آموزشی'}) %}
+    {% set _ = real_items.append({'value': fa(stt.students or 0) ~ '+', 'label': 'دانشجوی فعال'}) %}
+    {% set _ = real_items.append({'value': fa(stt.hours or 0) ~ '+', 'label': 'ساعت آموزش'}) %}
+    {% set _ = real_items.append({'value': '٪' ~ fa(stt.satisfaction or 90), 'label': 'رضایت دانشجویان'}) %}
+  {% endif %}
+  <div class="card" style="background:var(--grad-brand);color:#fff;border:none;padding:36px 26px;border-radius:var(--radius-lg)">
+    <div class="grid" style="grid-template-columns:repeat({{ d.columns or 4 }}, 1fr);gap:20px">
+      {% for it in real_items %}
+      <div style="text-align:center;padding:14px">
+        <div style="font-size:clamp(22px,3vw,34px);font-weight:900">{{ it.value }}</div>
+        <div style="opacity:.85;font-size:13px">{{ it.label }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+{% elif t == 'testimonials' %}
+  {% if not d.get('items') %}<div class="pb-empty-widget">❝ برای نمایش نظرات، آیتم اضافه کنید</div>{% endif %}
+  <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax({{ {'1':'640','2':'320','3':'260'}.get(d.columns or '3','260') }}px,1fr));gap:22px">
+    {% for it in d.get('items') or [] if it is mapping %}
+    <div class="card card-hover testimonial-card">
+      <span class="quote">❝</span>
+      <div class="stars">{{ '★' * ((it.stars or 5)|int or 5) }}<span class="off">{{ '★' * (5 - ((it.stars or 5)|int or 5)) }}</span></div>
+      <p>{{ it.text }}</p>
+      <div class="who">
+        <span class="avatar" style="background:{{ it.color or 'var(--primary)' }}">{{ (it.name or '؟')[:1] }}</span>
+        <div><strong>{{ it.name }}</strong><small>{{ it.role }}</small></div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+{% elif t == 'reviews' %}
+  {% set revs = bc_reviews() %}
+  {% if not revs %}<div class="pb-empty-widget">⭐ هنوز نظری ثبت نشده — از صفحه دوره نظر دهید</div>{% endif %}
+  {% if d.get('title') %}<div class="pb-block-head"><h2 style="font-size:clamp(20px,2.6vw,28px);font-weight:900;text-align:center">{{ d.title }}</h2></div>{% endif %}
+  <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px">
+    {% for rv in revs[: (d.get('limit') or 6)|int] %}
+    <div class="card card-hover testimonial-card">
+      <span class="quote">❝</span>
+      <div class="stars">{{ '★' * (rv.rating or 5) }}<span class="off">{{ '★' * (5 - (rv.rating or 5)) }}</span></div>
+      <p>{{ rv.comment }}</p>
+      <div class="who">
+        <span class="avatar" style="background:{{ rv.user.avatar_color if rv.user else 'var(--primary)' }}">{{ (rv.user.name or 'دانشجو')[:1] if rv.user else 'د' }}</span>
+        <div><strong>{{ rv.user.name if rv.user else 'دانشجو' }}</strong><small>دانشجوی دوره {{ rv.course.title[:30] if rv.course else '' }}</small></div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+{% elif t == 'success_stories' %}
+  {% set stories = bc_success_stories() %}
+  {% if not stories %}<div class="pb-empty-widget">🌟 داستان موفقیتی هنوز ثبت نشده — از پنل مدیریت اضافه کنید</div>{% endif %}
+  {% if d.get('title') %}<div class="pb-block-head"><h2 style="font-size:clamp(20px,2.6vw,28px);font-weight:900;text-align:center">{{ d.title }}</h2></div>{% endif %}
+  <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px">
+    {% for s in stories[: (d.get('limit') or 3)|int] %}
+    <div class="card card-hover" style="padding:22px;border-radius:18px;display:flex;flex-direction:column;gap:10px">
+      <div class="flex" style="align-items:center;gap:12px">
+        <span style="width:44px;height:44px;border-radius:14px;background:{{ s.color }};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:17px">{{ s.name[:1] }}</span>
+        <div><strong style="font-size:14px">{{ s.name }}</strong><small class="text-3" style="display:block;font-size:11px">{{ s.role }}</small></div>
+      </div>
+      {% if s.result %}<div style="background:var(--primary-soft);border-radius:10px;padding:9px 13px;font-size:12.5px;font-weight:700;color:var(--primary)">🎯 {{ s.result }}</div>{% endif %}
+      {% if s.story %}<p class="text-2" style="font-size:12.8px;line-height:2;margin:0">{{ s.story[:150] }}{% if s.story|length > 150 %}...{% endif %}</p>{% endif %}
+      {% if s.course %}<a class="btn btn-ghost btn-sm" href="/course/{{ s.course.slug }}">دوره مرتبط ←</a>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  <div style="text-align:center;margin-top:18px">
+    <a class="btn btn-ghost btn-sm" href="/success-stories">مشاهده همه داستان‌ها ←</a>
+  </div>
+
+{% elif t == 'exam_cta' %}
+  <div class="card" style="padding:34px 26px;border-radius:20px;text-align:center;background:linear-gradient(135deg,var(--primary),var(--primary-2,#7c3aed));color:#fff">
+    <div style="font-size:36px">🎯</div>
+    {% if d.get('title') %}<h2 style="font-size:clamp(19px,2.4vw,26px);font-weight:900;margin:10px 0 8px">{{ d.title }}</h2>{% endif %}
+    {% if d.get('text') %}<p style="opacity:.92;font-size:13.5px;max-width:480px;margin:0 auto 18px">{{ d.text }}</p>{% endif %}
+    <a class="btn btn-lg" style="background:#fff;color:var(--primary);font-weight:900" href="/exam/practice">🚀 شروع آزمون تمرینی</a>
+  </div>
+
+{% elif t == 'faq' %}
+  {% if not d.get('items') %}<div class="pb-empty-widget">؟ برای نمایش سوالات متداول، آیتم اضافه کنید</div>{% endif %}
+  {% if d.title %}<div class="pb-block-head"><h2 style="font-size:clamp(20px,2.6vw,28px);font-weight:900;text-align:center">{{ d.title }}</h2></div>{% endif %}
+  <div class="mt-3" data-acc-group>
+    {% for it in d.get('items') or [] if it is mapping %}
+    <div class="faq-item {{ 'open' if loop.first }}">
+      <button class="fq-q"><span class="ic">❓</span>{{ it.q }}<span class="arrow">▼</span></button>
+      <div class="fq-a">{{ it.a }}</div>
+    </div>
+    {% endfor %}
+  </div>
+
+{% elif t == 'pricing' %}
+  <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:22px">
+    {% for it in d.get('items') or [] if it is mapping %}
+    <div class="card card-hover" style="padding:30px 24px;text-align:center;{{ 'border:2px solid var(--primary);position:relative' if it.featured }}">
+      {% if it.featured %}<span class="badge badge-accent" style="position:absolute;top:-12px;right:50%;transform:translateX(50%)">⭐ ویژه</span>{% endif %}
+      <h3 style="font-size:17px">{{ it.name }}</h3>
+      <div style="margin:16px 0"><span style="font-size:30px;font-weight:900;color:var(--primary)">{{ it.price }}</span> <small class="text-3">{{ it.period }}</small></div>
+      <ul class="learn-list" style="text-align:right;margin-bottom:20px">
+        {% for f in (it.features or '').split('\n') %}{% if f.strip() %}<li>{{ f.strip() }}</li>{% endif %}{% endfor %}
+      </ul>
+      <a class="btn btn-{{ 'primary' if it.featured else 'outline' }} btn-block" href="{{ it.btn_url or '#' }}">{{ it.btn_text or 'انتخاب' }}</a>
+    </div>
+    {% endfor %}
+  </div>
+
+{% elif t == 'cta' %}
+  {% set cstyle = d.cta_style or (d.style if d.style is string else '') %}
+  <div class="cta-band" style="{{ 'background:var(--footer-bg)' if cstyle == 'dark' }}">
+    <h2>{{ d.title }}</h2>
+    <p>{{ d.text }}</p>
+    <div class="actions"><a class="btn btn-white btn-lg" href="{{ d.btn_url or '#' }}">{{ d.btn_text or 'شروع کنید' }}</a></div>
+  </div>
+
+{% elif t == 'price_history' %}
+  {% set ph = builder_price_history(d) %}
+  <div class="card" style="padding:22px 24px;border-radius:18px">
+    <div class="flex between wrap gap-2" style="margin-bottom:14px">
+      <div>
+        <h3 style="font-size:17px;font-weight:900">{{ d.title or '📉 نمودار قیمت' }}</h3>
+        {% if d.subtitle %}<p class="text-3" style="font-size:12.5px;margin-top:4px">{{ d.subtitle }}</p>{% endif %}
+      </div>
+      {% if ph.item %}<a class="btn btn-outline btn-sm" href="{{ ph.url }}">مشاهده {{ 'دوره' if d.item_type=='course' else 'محصول' }} ←</a>{% endif %}
+    </div>
+    {% if ph.points and ph.points|length > 1 %}
+    <div style="display:flex;align-items:flex-end;gap:6px;height:120px;padding:10px 4px 0" dir="ltr">
+      {% set maxp = ph.points|map(attribute='price')|max %}
+      {% for pt in ph.points %}
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end">
+        <div style="width:100%;max-width:34px;border-radius:6px 6px 0 0;background:{{ 'var(--grad-brand)' if pt.price == ph.current else 'var(--bg-2)' }};height:{{ (pt.price / maxp * 100)|int }}%;min-height:8px" title="{{ pt.date_fa }} — {{ fa('{:,.0f}'.format(pt.price)) }}"></div>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="flex between" style="margin-top:8px;font-size:10.5px;color:var(--text-3)">
+      <span>{{ ph.points[0].date_fa }}</span><span>{{ ph.points[-1].date_fa }}</span>
+    </div>
+    {% else %}
+    <p class="text-3" style="font-size:13px">هنوز داده کافی برای نمودار ثبت نشده — قیمت‌ها هنگام خرید و ویرایش ثبت می‌شوند.</p>
+    {% endif %}
+    {% if d.show_compare %}
+    <div style="border-top:1px dashed var(--border);margin-top:16px;padding-top:14px">
+      <h4 style="font-size:13px;font-weight:900;margin-bottom:10px">⚖️ مقایسه با سایر پلتفرم‌ها</h4>
+      <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px">
+        {% for pl in ph.compare %}
+        <div style="background:var(--bg-2);border-radius:12px;padding:12px;text-align:center">
+          <b style="font-size:12.5px">{{ pl.name }}</b>
+          <div style="font-size:15px;font-weight:900;color:{{ 'var(--success)' if pl.price <= ph.current else 'var(--danger)' }};margin-top:4px">{{ fa('{:,.0f}'.format(pl.price)) }}</div>
+          <small style="font-size:10px;color:var(--text-3)">{{ 'ارزان‌تر از ما' if pl.price < ph.current else ('هم‌قیمت' if pl.price == ph.current else 'گران‌تر از ما') }}</small>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+{% elif t == 'amazing_offer' %}
+  {% set ao = builder_amazing_offer(d) %}
+  <div class="card" style="position:relative;overflow:hidden;border-radius:20px;background:linear-gradient(135deg,#0f172a,#1e293b);color:#fff;padding:34px 30px;text-align:center">
+    <div style="position:absolute;top:-60px;left:-60px;width:180px;height:180px;border-radius:50%;background:radial-gradient(circle,{{ 'rgba(250,204,21,.35)' if ao.discount >= 40 else 'rgba(244,63,94,.35)' }},transparent 70%);pointer-events:none"></div>
+    <span class="badge" style="background:linear-gradient(90deg,#f43f5e,#f97316);color:#fff;font-size:12px;padding:6px 18px;box-shadow:0 0 24px rgba(244,63,94,.6)">⚡ پیشنهاد شگفت‌انگیز</span>
+    <h3 style="font-size:22px;font-weight:900;margin:14px 0 6px;color:#fff">{{ d.title or 'شگفت‌انگیزترین تخفیف امروز' }}</h3>
+    <p style="color:rgba(255,255,255,.75);font-size:13px;margin-bottom:18px">{{ d.sub or 'فقط تا پایان وقت امروز!' }}</p>
+    {% if ao.item %}
+    <div style="font-size:15px;font-weight:800;margin-bottom:16px">{{ ao.item.title }}</div>
+    <div style="display:flex;gap:14px;justify-content:center;align-items:center;margin-bottom:20px">
+      <span style="color:rgba(255,255,255,.5);text-decoration:line-through;font-size:14px">{{ fa('{:,.0f}'.format(ao.item.price or 0)) }}</span>
+      <b style="font-size:26px;color:#fde047;text-shadow:0 0 18px rgba(250,204,21,.6)">{{ fa('{:,.0f}'.format(ao.item.final_price or 0)) }}</b>
+      <span class="badge" style="background:#f43f5e;font-size:12px">٪{{ fa(ao.discount) }} تخفیف</span>
+    </div>
+    {% endif %}
+    <div class="countdown" data-countdown="{{ (d.hours or 8) * 3600 }}" style="justify-content:center;gap:10px;margin-bottom:22px">
+      <div class="cd" style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:12px;padding:10px 16px;min-width:64px;box-shadow:0 0 16px rgba(250,204,21,.25)"><b class="cd-h" style="font-size:22px;color:#fde047">00</b><small style="color:rgba(255,255,255,.7)">ساعت</small></div>
+      <div class="cd" style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:12px;padding:10px 16px;min-width:64px"><b class="cd-m" style="font-size:22px;color:#fde047">00</b><small style="color:rgba(255,255,255,.7)">دقیقه</small></div>
+      <div class="cd" style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:12px;padding:10px 16px;min-width:64px"><b class="cd-s" style="font-size:22px;color:#fde047">00</b><small style="color:rgba(255,255,255,.7)">ثانیه</small></div>
+    </div>
+    <a class="btn btn-lg" href="{{ d.btn_url or (ao.url or '/courses') }}" style="background:linear-gradient(90deg,#f59e0b,#f43f5e);color:#fff;font-weight:900;box-shadow:0 8px 30px rgba(244,63,94,.5)">{{ d.btn_text or 'همین حالا بخر' }} 🚀</a>
+  </div>
+
+{% elif t == 'review_pro' %}
+  {% set rp = builder_review_pro(d) %}
+  <div class="card" style="padding:22px 24px;border-radius:18px">
+    <h3 style="font-size:17px;font-weight:900;margin-bottom:16px">{{ d.title or '⭐ نظرات دانشجویان' }}</h3>
+    {% if rp.reviews %}
+    <div style="display:flex;flex-direction:column;gap:14px">
+      {% for r in rp.reviews %}
+      <div style="border:1px solid var(--border);border-radius:16px;padding:16px 18px;background:#fff">
+        <div class="flex between wrap" style="gap:8px;margin-bottom:8px">
+          <div class="flex gap-1">
+            <span class="avatar" style="width:38px;height:38px;border-radius:50%;background:{{ r.user.avatar_color if r.user else 'var(--primary)' }};color:#fff;display:inline-flex;align-items:center;justify-content:center;font-weight:800">{{ r.user.initials() if r.user else '؟' }}</span>
+            <div>
+              <b style="font-size:13.5px">{{ r.user.name if r.user else 'کاربر' }}</b>
+              <div style="font-size:12px;color:var(--accent)">{{ '★' * r.rating }}<span style="color:var(--border-2)">{{ '★' * (5 - r.rating) }}</span></div>
+            </div>
+          </div>
+          {% if d.show_verified and r.buyer_verified %}<span class="badge badge-success" style="font-size:10.5px">✔ خرید تأییدشده</span>{% endif %}
+        </div>
+        <p style="font-size:13px;color:var(--text-2);line-height:2">{{ r.comment }}</p>
+        {% if d.show_pros and (r.pros or r.cons) %}
+        <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">
+          {% if r.pros %}<div style="background:var(--success-soft);border-radius:10px;padding:10px 14px;font-size:12px;color:var(--success)"><b>✅ نقاط قوت:</b><br>{{ r.pros.replace('\n','<br>')|safe }}</div>{% endif %}
+          {% if r.cons %}<div style="background:var(--danger-soft);border-radius:10px;padding:10px 14px;font-size:12px;color:var(--danger)"><b>⚠️ نقاط ضعف:</b><br>{{ r.cons.replace('\n','<br>')|safe }}</div>{% endif %}
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-3" style="font-size:13px">هنوز نظری ثبت نشده است.</p>
+    {% endif %}
+  </div>
+
+{% elif t == 'newsletter' %}
+  <div class="card" style="padding:36px;text-align:center;background:var(--card)">
+    <h3 style="font-size:20px;margin-bottom:6px">{{ d.title or 'عضویت در خبرنامه' }}</h3>
+    <p class="text-2" style="font-size:13.5px;margin-bottom:18px">{{ d.text or 'جدیدترین مطالب و تخفیف‌ها را از دست ندهید!' }}</p>
+    <form class="newsletter-box" action="{{ url_for('site.newsletter') }}" method="post">
+<input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+      <input type="email" name="email" placeholder="ایمیل شما..." required>
+      <button class="btn btn-primary" type="submit">عضویت</button>
+    </form>
+  </div>
+
+{% elif t == 'trust_badges' %}
+  <div class="pb-trust-badges" style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap;align-items:center">
+    {% for it in d.get('items') or [] if it is mapping %}
+    <a class="pb-badge" href="{{ '/faq#trust' if it.type == 'digi' else '/terms' }}" title="{{ {'enamad': 'نماد اعتماد الکترونیکی', 'samandehi': 'ساماندهی', 'etehadiye': 'اتحادیه کشوری', 'digi': 'نماد سفارشی'}.get(it.type, 'نماد') }}"
+       style="width:{{ d.size or 80 }}px;height:{{ d.size or 80 }}px;border-radius:12px;background:#fff;border:1px solid #e2e8f0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6px;text-align:center">
+      <img src="/static/img/badges/{{ it.type or 'enamad' }}.svg" alt="{{ {'enamad': 'نماد اعتماد الکترونیکی', 'samandehi': 'نماد ساماندهی', 'etehadiye': 'نماد اتحادیه کشوری', 'digi': 'نماد اعتماد'}.get(it.type, 'نماد اعتماد') }}" style="width:100%;height:auto;max-height:52px">
+      <small style="font-size:9px;color:#64748b;margin-top:2px;line-height:1.3">{{ {'enamad': 'نماد اعتماد', 'samandehi': 'ساماندهی', 'etehadiye': 'اتحادیه', 'digi': 'نماد سفارشی'}.get(it.type, '') }}</small>
+    </a>
+    {% endfor %}
+  </div>
+
+{% elif t == 'topbar' %}
+  {% set cu = bc_cur_user() %}
+  <div class="dk-topbar">
+    <div class="dk-topbar-right">
+      {% for it in (d.right or []) if it is mapping %}
+      <a href="{{ it.url or '#' }}" class="{{ it.cls or '' }}">{{ it.text }}</a>
+      {% endfor %}
+    </div>
+    <div class="dk-topbar-left">
+      {% for it in (d.left or []) if it is mapping %}
+        {% if it.cls == 'dk-top-login' and cu %}
+          <a href="{{ url_for('student.dashboard') }}" class="dk-top-login">👤 {{ cu.name.split()[0] }} — داشبورد</a>
+        {% else %}
+          <a href="{{ it.url or '#' }}" class="{{ it.cls or '' }}">{{ it.text }}</a>
+        {% endif %}
+      {% endfor %}
+    </div>
+  </div>
+
+{% elif t == 'logo' %}
+  <a class="dk-logo" href="/">
+    {% if bc_site().get('custom_logo') %}<img src="{{ bc_site().get('custom_logo') }}" alt="{{ d.text or 'لوگو' }}" style="height:44px;width:auto">{% else %}<span class="dk-logo-ic">{{ d.icon or '🎓' }}</span>{% endif %}
+    <span><b>{{ d.text or 'آکادمی آنلاین' }}</b><small>{{ d.sub or '' }}</small></span>
+  </a>
+
+{% elif t == 'search' %}
+  <form class="dk-search" action="{{ url_for('site.courses') }}" method="get">
+    {% if d.show_cat %}
+    <select name="cat" class="dk-search-cat" aria-label="انتخاب دسته دوره‌ها">
+      <option value="">همه دسته‌ها</option>
+      {% for c in bc_categories() %}<option value="{{ c.slug }}">{{ c.name }}</option>{% endfor %}
+    </select>
+    {% endif %}
+    <input type="text" name="q" placeholder="{{ d.placeholder or 'جستجو در دوره‌ها...' }}">
+    <button type="submit">🔍</button>
+  </form>
+
+{% elif t == 'category_mega' %}
+  <div class="dk-mega">
+    <button class="dk-mega-trigger" type="button"><span class="dk-mega-ic">☰</span> {{ (d.button or 'دسته‌بندی دوره‌ها') | replace('☰', '') | trim }}</button>
+    <div class="dk-mega-panel dk-mega-with-account">
+      <div class="dk-mega-cats" style="grid-template-columns:repeat({{ d.columns or 3 }}, 1fr)">
+        {% for c in bc_categories() %}
+        <div class="dk-mega-col">
+          <a class="dk-mega-head" href="{{ url_for('site.courses', cat=c.slug) }}"><span class="ic" style="background:{{ c.color }}">{{ c.icon }}</span>{{ c.name }}</a>
+          {% for cs in c.courses[:4] %}
+          <a class="dk-mega-link" href="{{ url_for('site.course_detail', slug=cs.slug) }}">{{ cs.title }}</a>
+          {% endfor %}
+          <a class="dk-mega-all" href="{{ url_for('site.courses', cat=c.slug) }}">مشاهده همه ←</a>
+        </div>
+        {% endfor %}
+      </div>
+      <aside class="dk-mega-account">
+        {% if bc_cur_user() %}
+        {% set u = bc_cur_user() %}
+        <div class="dk-acc-head">
+          {% if u.avatar %}
+          <img class="dk-acc-avatar" src="{{ u.avatar_url }}" alt="">
+          {% else %}
+          <span class="avatar" style="background:{{ u.avatar_color }}">{{ u.initials() }}</span>
+          {% endif %}
+          <strong>{{ u.name }}</strong>
+          <small>کد ملی: {{ u.national_code|mask_nc }}</small>
+          <small dir="ltr">{{ u.phone or '' }}</small>
+        </div>
+        <div class="dk-acc-links">
+          <a href="{{ url_for('student.dashboard') }}">📊 داشبورد</a>
+          <a href="{{ url_for('student.my_courses') }}">📚 دوره‌های من</a>
+          <a href="{{ url_for('student.favorites') }}">❤️ علاقه‌مندی‌ها</a>
+          <a href="{{ url_for('student.orders') }}">🧾 سفارش‌ها</a>
+          <a href="{{ url_for('student.tickets') }}">🎫 تیکت‌ها</a>
+          {% if u.is_admin %}<a href="{{ url_for('admin.overview') }}">⚙️ پنل مدیریت</a>{% endif %}
+          <a class="dk-user-exit" href="{{ url_for('auth.logout') }}">🚪 خروج</a>
+        </div>
+        {% else %}
+        <h5 style="font-size:13px;font-weight:800;margin-bottom:10px">🔐 ورود به حساب</h5>
+        <form class="dk-acc-form" action="{{ url_for('auth.phone_send') }}" method="post">
+<input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+          <input type="text" name="phone" placeholder="شماره موبایل 09..." aria-label="شماره موبایل" dir="ltr" pattern="09[0-9]{9}" required>
+          <button type="submit">📲 ورود با شماره تماس</button>
+        </form>
+        <div class="dk-acc-alt">
+          <a href="{{ url_for('auth.register') }}">✨ ثبت‌نام (کد ملی + موبایل)</a>
+          <a href="{{ url_for('auth.login') }}">📧 ورود با ایمیل</a>
+        </div>
+        {% endif %}
+      </aside>
+    </div>
+  </div>
+
+{% elif t == 'category_strip' %}
+  <div class="dk-strip">
+    <a class="dk-strip-all" href="{{ url_for('site.courses') }}">همه دوره‌ها</a>
+    {% for c in bc_categories()[:((d.limit or 8)|int or 8)] %}
+    <a href="{{ url_for('site.courses', cat=c.slug) }}">{{ c.icon }} {{ c.name }}</a>
+    {% endfor %}
+  </div>
+
+{% elif t == 'icon_link' %}
+  <a class="dk-icon-link" href="{{ d.url or '#' }}" title="{{ d.label }}">
+    <span class="dk-icon">{{ d.icon or '🔗' }}{% if d.badge == 'cart' %}{% set _n = bc_cart_count() %}<i class="dk-badge cart-count" style="{{ 'display:none' if not _n }}">{{ fa(_n) }}</i>{% elif d.badge == 'fav' %}{% set _n = bc_fav_ids()|length %}<i class="dk-badge fav-count" style="{{ 'display:none' if not _n }}">{{ fa(_n) }}</i>{% elif d.badge == 'ticket' %}{% set _n = bc_tickets_count() %}<i class="dk-badge" style="{{ 'display:none' if not _n }}">{{ fa(_n) }}</i>{% endif %}</span>
+    <small>{{ d.label }}</small>
+  </a>
+
+{% elif t == 'user_menu' %}
+  {% if bc_cur_user() %}
+  {% set u = bc_cur_user() %}
+  <div class="dk-user">
+    <div class="dk-user-chip">
+      {% if u.avatar %}<img class="avatar" src="{{ u.avatar_url }}" alt="">{% else %}<span class="avatar" style="background:{{ u.avatar_color }}">{{ u.initials() }}</span>{% endif %}
+      <span class="dk-user-name">{{ u.name.split()[0] }} <i>▼</i></span>
+    </div>
+    <div class="dk-user-dd">
+      <a href="{{ url_for('student.dashboard') }}">📊 داشبورد</a>
+      <a href="{{ url_for('student.my_courses') }}">📚 دوره‌های من</a>
+      <a href="{{ url_for('student.orders') }}">🧾 سفارش‌ها</a>
+      <a href="{{ url_for('student.tickets') }}">🎫 تیکت‌ها</a>
+      {% if bc_cur_user().is_admin %}<a href="{{ url_for('admin.overview') }}">⚙️ پنل مدیریت</a>{% endif %}
+      <a class="dk-user-exit" href="{{ url_for('auth.logout') }}">🚪 خروج</a>
+    </div>
+  </div>
+  {% else %}
+  <div class="dk-auth">
+    <a href="{{ url_for('auth.login') }}">ورود</a><span>|</span><a href="{{ url_for('auth.register') }}">ثبت‌نام</a>
+  </div>
+  {% endif %}
+
+{% elif t == 'nav_menu' %}
+  <ul class="dk-nav" style="justify-content:{{ 'center' if d.align == 'center' else 'flex-start' }}">
+    {% for it in (d.links or []) if it is mapping %}
+    <li><a href="{{ it.url or '#' }}">{{ it.text }}</a></li>
+    {% endfor %}
+  </ul>
+
+{% elif t == 'footer_about' %}
+  <div class="pb-f-about">
+    <a class="dk-logo" href="/" style="margin-bottom:14px">
+      <span class="dk-logo-ic">🎓</span><span><b style="color:#fff">{{ bc_site().get('site_name') or 'آکادمی آنلاین' }}</b></span>
+    </a>
+    <p>{{ d.desc or bc_site().get('site_desc') or '' }}</p>
+    <div class="pb-f-socials socials-grid">
+      <a href="https://t.me/{{ bc_site().get('telegram') or 'academy_ir' }}" target="_blank" rel="noopener" title="تلگرام" class="soc soc-tg"><img src="/static/img/social/telegram.svg" alt="تلگرام"></a>
+      <a href="https://instagram.com/{{ bc_site().get('instagram') or 'academy.ir' }}" target="_blank" rel="noopener" title="اینستاگرام" class="soc soc-ig"><img src="/static/img/social/instagram.svg" alt="اینستاگرام"></a>
+      <a href="https://wa.me/{{ bc_site().get('whatsapp') or '98910001234' }}" target="_blank" rel="noopener" title="واتساپ" class="soc soc-wa"><img src="/static/img/social/whatsapp.svg" alt="واتساپ"></a>
+      <a href="https://ble.ir/{{ bc_site().get('bale') or 'academy_ir' }}" target="_blank" rel="noopener" title="بله" class="soc soc-bale"><img src="/static/img/social/bale.svg" alt="بله"></a>
+      <a href="https://eitaa.com/{{ bc_site().get('eitaa') or 'academy_ir' }}" target="_blank" rel="noopener" title="ایتا" class="soc soc-eitaa"><img src="/static/img/social/eitaa.svg" alt="ایتا"></a>
+      <a href="https://rubika.ir/{{ bc_site().get('rubika') or 'academy_ir' }}" target="_blank" rel="noopener" title="روبیکا" class="soc soc-rubika"><img src="/static/img/social/rubika.svg" alt="روبیکا"></a>
+      <a href="https://sapp.ir/{{ bc_site().get('soroush') or 'academy_ir' }}" target="_blank" rel="noopener" title="سروش" class="soc soc-soroush"><img src="/static/img/social/soroush.svg" alt="سروش"></a>
+      <a href="https://aparat.com/{{ bc_site().get('aparat') or 'academy_ir' }}" target="_blank" rel="noopener" title="آپارات" class="soc soc-aparat"><img src="/static/img/social/aparat.svg" alt="آپارات"></a>
+      <a href="https://x.com/{{ bc_site().get('twitter') or 'academy_ir' }}" target="_blank" rel="noopener" title="ایکس" class="soc soc-x"><img src="/static/img/social/x.svg" alt="ایکس"></a>
+      <a href="https://linkedin.com/company/{{ bc_site().get('linkedin') or 'academy-ir' }}" target="_blank" rel="noopener" title="لینکدین" class="soc soc-li"><img src="/static/img/social/linkedin.svg" alt="لینکدین"></a>
+      <a href="https://youtube.com/@{{ bc_site().get('youtube') or 'academy' }}" target="_blank" rel="noopener" title="یوتیوب" class="soc soc-yt"><img src="/static/img/social/youtube.svg" alt="یوتیوب"></a>
+      <a href="https://github.com/{{ bc_site().get('github') or 'academy' }}" target="_blank" rel="noopener" title="گیت‌هاب" class="soc soc-gh"><img src="/static/img/social/github.svg" alt="گیت‌هاب"></a>
+    </div>
+  </div>
+
+{% elif t == 'link_list' %}
+  <div class="pb-f-links">
+    <h2 style="font-size:15px">{{ d.title or 'لینک‌ها' }}</h2>
+    <ul>
+      {% for it in (d.links or []) if it is mapping %}<li><a href="{{ it.url or '#' }}">{{ it.text }}</a></li>{% endfor %}
+    </ul>
+  </div>
+
+{% elif t == 'contact_info' %}
+  <div class="pb-f-contact">
+    <h2 style="font-size:15px">ارتباط با ما</h2>
+    <ul>
+      {% if d.address %}<li>📍 {{ d.address }}</li>{% endif %}
+      {% if d.phone %}<li>📞 {{ fa(d.phone) }}</li>{% endif %}
+      {% if d.email %}<li>✉️ {{ d.email }}</li>{% endif %}
+      {% if d.hours %}<li>🕘 {{ d.hours }}</li>{% endif %}
+    </ul>
+  </div>
+
+{% elif t == 'socials' %}
+  <div class="pb-f-socials" style="justify-content:center">
+    {% for it in d.get('items') or [] if it is mapping %}<a href="{{ it.url or '#' }}" target="_blank" rel="noopener">{{ it.icon or '🔗' }}</a>{% endfor %}
+  </div>
+
+{% elif t == 'mobile_item' %}
+  <a class="mb-item" href="{{ d.url or '#' }}">
+    <span class="mb-icon">{{ d.icon or '•' }}</span>
+    <span class="mb-label">{{ d.label }}</span>
+  </a>
+
+{% elif t == 'mobile_link' %}
+  <a class="mm-link" href="{{ d.url or '#' }}" data-close-mm>
+    <span class="mm-link-ic">{{ d.icon or '•' }}</span>
+    <span class="mm-link-label">{{ d.label }}</span>
+    {% if d.badge %}<span class="mm-link-badge">{{ d.badge }}</span>{% endif %}
+  </a>
+
+{% elif t == 'inner_section' %}
+  {% set ncols = d.get('cols')|length %}
+  {% if d.title %}<h4 class="pb-inner-title">{{ d.title }}</h4>{% endif %}
+  <div class="pb-inner" style="grid-template-columns:{{ d.widths or ('repeat(' ~ (ncols if ncols else 1) ~ ', 1fr)') }};gap:{{ d.gap or 16 }}px;background:{{ d.bg or 'transparent' }};border-radius:{{ d.radius or 0 }}px;padding:{{ d.py or 16 }}px">
+    {% for col in d.get('cols') or [] %}
+    <div class="pb-col pb-inner-col {{ 'pb-col-empty' if edit and not col }}" data-col="{{ loop.index0 }}">
+      {% for b in col %}{{ block_view(b, edit) }}{% endfor %}
+      {% if edit %}<div class="pb-drop-hint pb-col-drop {{ 'show' if not col }}">+ رها کردن ویجت در این ستون</div>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+
+{% elif t == 'text_editor' %}
+  <div class="pb-text-editor" style="text-align:{{ d.align or 'right' }};color:{{ d.color or '' }}">{{ rd(d.content or '')|safe }}</div>
+
+{% elif t == 'google_maps' %}
+  <div class="pb-map" style="border-radius:{{ d.radius or 0 }}px;overflow:hidden;box-shadow:var(--shadow-sm);position:relative">
+    <img src="/static/img/map-tehran.webp" alt="نقشه موقعیت — {{ d.query or 'تهران' }}"
+         style="width:100%;height:{{ d.height or 400 }}px;object-fit:cover;display:block" loading="lazy">
+    <a href="https://maps.google.com/?q={{ d.query or 'تهران' }}" target="_blank" rel="noopener"
+       style="position:absolute;bottom:12px;right:12px;background:#fff;color:#14283c;font-size:12px;font-weight:800;padding:7px 14px;border-radius:99px;box-shadow:0 4px 12px rgba(0,0,0,.16);text-decoration:none">
+      📍 مسیریابی
+    </a>
+  </div>
+
+{% elif t == 'icon' %}
+  <div style="text-align:{{ d.align or 'center' }}">
+    {% if d.link %}<a href="{{ d.link }}">{% endif %}
+    <span class="pb-icon" style="font-size:{{ d.size or 64 }}px;color:{{ d.color or 'var(--primary)' }};background:{{ d.bg or 'transparent' }};border-radius:{{ d.radius or 0 }}px;display:inline-flex;align-items:center;justify-content:center;width:{{ ((d.size or 64)|int or 64) + 40 }}px;height:{{ ((d.size or 64)|int or 64) + 40 }}px">{{ d.icon or '⭐' }}</span>
+    {% if d.link %}</a>{% endif %}
+  </div>
+
+{% elif t == 'image_box' %}
+  <div class="card card-hover pb-image-box" style="overflow:hidden;text-align:{{ d.align or 'center' }}">
+    {% if d.link %}<a href="{{ d.link }}">{% endif %}
+    <div class="pb-ib-img {{ 'pb-img-hover' if d.hover }}"><img src="/static/img/{{ d.image or 'hero.webp' }}" alt=""></div>
+    <div class="pb-ib-body">
+      <h3 style="font-size:16.5px;margin-bottom:8px">{{ d.title or 'عنوان' }}</h3>
+      <p class="text-2" style="font-size:13.5px">{{ nl2br(d.text) }}</p>
+      {% if d.link %}<span class="pb-ib-link">بیشتر ←</span>{% endif %}
+    </div>
+    {% if d.link %}</a>{% endif %}
+  </div>
+
+{% elif t == 'icon_box' %}
+  <div class="card card-hover pb-icon-box" style="padding:28px 22px;text-align:{{ d.align or 'center' }};background:{{ d.bg or 'var(--card)' }}">
+    <span class="pb-ibx-icon" style="font-size:38px;color:{{ d.icon_color or 'var(--primary)' }};display:inline-block;margin-bottom:12px">{{ d.icon or '✨' }}</span>
+    <h3 style="font-size:16px;margin-bottom:8px">{{ d.title or 'عنوان' }}</h3>
+    <p class="text-2" style="font-size:13.5px">{{ nl2br(d.text) }}</p>
+    {% if d.link %}<a class="pb-ibx-link" href="{{ d.link }}" style="display:inline-block;margin-top:12px;font-weight:800;color:var(--primary)">بیشتر ←</a>{% endif %}
+  </div>
+
+{% elif t == 'progress_bar' %}
+  <div class="pb-progress-group">
+    {% for it in d.get('items') or [] if it is mapping %}
+    <div class="pb-progress">
+      <div class="pb-progress-head"><span>{{ it.label }}</span><span>{{ fa(it.percent or 0) }}٪</span></div>
+      <div class="progress" style="height:{{ d.height or 8 }}px"><div class="bar" data-pct="{{ it.percent or 0 }}" style="width:0;background:{{ it.color or '' }}"></div></div>
+    </div>
+    {% endfor %}
+  </div>
+
+{% elif t == 'counter' %}
+  {% if not d.get('items') %}<div class="pb-empty-widget">🔢 برای نمایش شمارنده، از پنل تنظیمات «آیتم اضافه کنید»</div>{% endif %}
+  <div class="grid" style="grid-template-columns:repeat({{ d.columns or 4 }}, 1fr);gap:20px">
+    {% for it in d.get('items') or [] if it is mapping %}
+    <div class="pb-counter" style="text-align:center">
+      <div class="pb-counter-num" style="font-size:clamp(24px,3vw,38px);font-weight:900;color:{{ d.color or 'var(--primary)' }}">
+        <span data-counter="{{ it.target or 0 }}" data-prefix="{{ it.prefix or '' }}" data-suffix="{{ it.suffix or '' }}">0</span>
+      </div>
+      <div class="pb-counter-label" style="color:var(--text-2);font-size:13px;margin-top:4px">{{ it.label }}</div>
+    </div>
+    {% endfor %}
+  </div>
+
+{% elif t == 'icon_list' %}
+  {% if not d.get('items') %}<div class="pb-empty-widget">☰ برای نمایش لیست، آیتم اضافه کنید</div>{% endif %}
+  <div class="grid" style="grid-template-columns:repeat({{ d.columns or 1 }}, 1fr);gap:8px 24px">
+    {% for it in d.get('items') or [] if it is mapping %}
+    <div class="pb-icon-list-item">
+      {% if it.url %}<a href="{{ it.url }}">{% endif %}
+      <span style="color:{{ d.icon_color or 'var(--primary)' }}">{{ it.icon or '✓' }}</span>
+      <span>{{ it.text }}</span>
+      {% if it.url %}</a>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+
+{% elif t == 'tabs' %}
+  <div class="pb-tabs {{ 'pb-tabs-vertical' if d.orientation == 'vertical' }}">
+    <div class="pb-tabs-head">
+      {% for it in d.get('items') or [] if it is mapping %}
+      <button type="button" class="{{ 'active' if loop.index0 == ((d.active or 0)|int or 0) }}" data-tab="{{ loop.index0 }}">{{ it.title }}</button>
+      {% endfor %}
+    </div>
+    <div class="pb-tabs-body">
+      {% for it in d.get('items') or [] if it is mapping %}
+      <div class="pb-tab-pane {{ 'active' if loop.index0 == ((d.active or 0)|int or 0) }}">{{ nl2br(it.content) }}</div>
+      {% endfor %}
+    </div>
+  </div>
+
+{% elif t == 'accordion' %}
+  <div class="pb-accordion" data-multi="{{ '1' if d.multi }}">
+    {% for it in d.get('items') or [] if it is mapping %}
+    <div class="pb-acc-item {{ 'open' if d.first_open and loop.first }}">
+      <button type="button" class="pb-acc-head">{{ it.title }}<span class="arrow">▼</span></button>
+      <div class="pb-acc-body">{{ nl2br(it.content) }}</div>
+    </div>
+    {% endfor %}
+  </div>
+
+{% elif t == 'toggle' %}
+  <div class="pb-toggle">
+    {% for it in d.get('items') or [] if it is mapping %}
+    <div class="pb-acc-item">
+      <button type="button" class="pb-acc-head">{{ it.title }}<span class="arrow">▼</span></button>
+      <div class="pb-acc-body">{{ nl2br(it.content) }}</div>
+    </div>
+    {% endfor %}
+  </div>
+
+{% elif t == 'alert' %}
+  <div class="pb-alert pb-alert-{{ d.type or 'info' }}">
+    <div class="pb-alert-inner">
+      {% if d.title %}<strong>{{ d.title }}</strong>{% endif %}
+      {% if d.content %}<span>{{ nl2br(d.content) }}</span>{% endif %}
+    </div>
+    {% if d.dismiss %}<button type="button" class="pb-alert-close">✕</button>{% endif %}
+  </div>
+
+{% elif t == 'soundcloud' %}
+  <div class="pb-soundcloud" style="border-radius:14px;overflow:hidden">
+    <iframe width="100%" height="{{ d.height or 166 }}" scrolling="no" frameborder="no" allow="autoplay"
+            src="https://w.soundcloud.com/player/?url={{ d.url or '' }}&amp;auto_play={{ 'true' if d.autoplay else 'false' }}&amp;color=%230e9488"></iframe>
+  </div>
+
+{% elif t == 'shortcode' %}
+  <div class="pb-shortcode">{{ rshort(d.code) }}</div>
+
+{% elif t == 'menu_anchor' %}
+  <div class="pb-anchor" id="{{ d.id or ('anchor-' ~ b.id) }}"></div>
+  {% if d.title %}<h3 class="pb-anchor-title">{{ d.title }}</h3>{% endif %}
+
+{% elif t == 'social_icons' %}
+  {% set nets = {'telegram': ('✈️', '#229ED9'), 'instagram': ('📸', '#E4405F'), 'whatsapp': ('💬', '#25D366'), 'youtube': ('▶️', '#FF0000'), 'linkedin': ('💼', '#0A66C2'), 'twitter': ('🐦', '#1DA1F2'), 'facebook': ('📘', '#1877F2')} %}
+  <div class="pb-social-icons" style="justify-content:{{ 'center' if d.align == 'center' else 'flex-start' }}">
+    {% for it in d.get('items') or [] if it is mapping %}
+    {% set n = nets.get(it.network, ('🔗', 'var(--primary)')) %}
+    <a href="{{ it.url or '#' }}" target="_blank" rel="noopener" title="{{ it.network }}"
+       style="width:{{ d.size or 44 }}px;height:{{ d.size or 44 }}px;background:{{ n[1] }}">{{ n[0] }}</a>
+    {% endfor %}
+  </div>
+
+{% elif t == 'form' %}
+  <form class="pb-form" data-to="{{ d.to or 'contact' }}" data-success="{{ d.success_msg or 'پیام شما با موفقیت ارسال شد ✅' }}">
+    {% for fld in (d.get('fields') or []) if fld is mapping %}
+    <div class="pb-form-row">
+      <label>{{ fld.label }}{% if fld.required %}<span class="req">*</span>{% endif %}</label>
+      {% if fld.type == 'textarea' %}
+      <textarea name="field{{ loop.index0 }}" placeholder="{{ fld.label }}" {% if fld.required %}required{% endif %}></textarea>
+      {% elif fld.type == 'select' %}
+      <select name="field{{ loop.index0 }}" {% if fld.required %}required{% endif %}>
+        <option value="">— انتخاب —</option>
+        {% for opt in (fld.options or '').split(',') %}{% if opt.strip() %}<option value="{{ opt.strip() }}">{{ opt.strip() }}</option>{% endif %}{% endfor %}
+      </select>
+      {% else %}
+      <input type="{{ fld.type or 'text' }}" name="field{{ loop.index0 }}" placeholder="{{ fld.label }}" {% if fld.required %}required{% endif %}>
+      {% endif %}
+    </div>
+    {% endfor %}
+    <div style="text-align:{{ d.align or 'right' }}">
+      <button class="btn btn-primary btn-lg" type="submit">{{ d.button_text or 'ارسال' }}</button>
+    </div>
+    <div class="pb-form-msg"></div>
+  </form>
+
+{% elif t == 'portfolio' %}
+  <div class="pb-portfolio" data-filterable="{{ '1' if d.filter }}">
+    {% set pcats = uniq_cats(d.get('items')) %}
+    {% if d.filter and pcats %}
+    <div class="pb-portfolio-filters">
+      <button type="button" class="active" data-pf="all">همه</button>
+      {% for c in pcats %}<button type="button" data-pf="{{ c }}">{{ c }}</button>{% endfor %}
+    </div>
+    {% endif %}
+    <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax({{ {'2':'420','3':'280','4':'220'}.get(d.columns or '3','280') }}px,1fr));gap:20px">
+      {% for it in d.get('items') or [] if it is mapping %}
+      <div class="pb-pf-item" data-cat="{{ it.category or '' }}">
+        <img src="/static/img/{{ it.image or 'cover-python.webp' }}" alt="{{ it.title }}">
+        <div class="pb-pf-overlay">
+          <h4>{{ it.title }}</h4>
+          {% if it.desc %}<p>{{ it.desc }}</p>{% endif %}
+          {% if it.url %}<a class="btn btn-accent btn-sm" href="{{ it.url }}">مشاهده</a>{% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+{% elif t == 'gallery' %}
+  <div class="pb-gallery {{ 'pb-gallery-lb' if d.lightbox }}" style="grid-template-columns:repeat({{ d.columns or 3 }}, 1fr);gap:12px">
+    {% for it in d.get('items') or [] if it is mapping %}
+    <figure class="pb-gal-item" style="border-radius:{{ d.radius or 0 }}px">
+      <img src="/static/img/{{ it.image or 'hero.webp' }}" alt="{{ it.caption or '' }}" loading="lazy">
+      {% if it.caption %}<figcaption>{{ it.caption }}</figcaption>{% endif %}
+    </figure>
+    {% endfor %}
+  </div>
+
+{% elif t == 'price_list' %}
+  {% if not d.get('items') %}<div class="pb-empty-widget">₺ برای نمایش لیست قیمت، آیتم اضافه کنید</div>{% endif %}
+  <div class="grid" style="grid-template-columns:repeat({{ d.columns or 1 }}, 1fr);gap:14px">
+    {% for it in d.get('items') or [] if it is mapping %}
+    <div class="pb-price-list">
+      {% if it.image %}<img src="/static/img/{{ it.image }}" alt="" loading="lazy">{% endif %}
+      <div class="pb-pl-info">
+        <div class="pb-pl-head"><strong>{{ it.title }}</strong><span class="pb-pl-line"></span><b>{{ it.price }}</b></div>
+        {% if it.desc %}<p>{{ it.desc }}</p>{% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+{% elif t == 'flip_box' %}
+  <div class="pb-flip" style="height:{{ d.height or 300 }}px">
+    <div class="pb-flip-inner">
+      <div class="pb-flip-front" style="background:{{ d.front_bg or 'var(--grad-brand)' }}">
+        {% if d.front_icon %}<div class="pb-flip-icon">{{ d.front_icon }}</div>{% endif %}
+        <h3>{{ d.front_title }}</h3>
+        <p>{{ nl2br(d.front_text) }}</p>
+      </div>
+      <div class="pb-flip-back" style="background:{{ d.back_bg or 'var(--footer-bg)' }}">
+        <h3>{{ d.back_title }}</h3>
+        <p>{{ nl2br(d.back_text) }}</p>
+        {% if d.btn_text %}<a class="btn btn-accent btn-sm" href="{{ d.btn_url or '#' }}">{{ d.btn_text }}</a>{% endif %}
+      </div>
+    </div>
+  </div>
+
+{% elif t == 'animated_heading' %}
+  <{{ d.tag or 'h2' }} class="pb-anim-head" style="text-align:{{ d.align or 'right' }}">
+    {{ rd(d.text or '') }}
+    <span class="pb-aw-words" data-words="{{ (d.words or 'یادگیری، پیشرفت، موفقیت')|tojson }}" data-color="{{ d.color or 'var(--primary)' }}"><span class="pb-aw-word">...</span></span>
+  </{{ d.tag or 'h2' }}>
+
+{% elif t == 'share_buttons' %}
+  {% set snets = {'telegram': ('✈️', 'تلگرام'), 'whatsapp': ('💬', 'واتساپ'), 'twitter': ('🐦', 'توییتر'), 'facebook': ('📘', 'فیسبوک'), 'linkedin': ('💼', 'لینکدین'), 'email': ('✉️', 'ایمیل'), 'copy': ('🔗', 'کپی لینک')} %}
+  <div class="pb-share" style="justify-content:{{ 'center' if d.align == 'center' else 'flex-start' }}">
+    {% for it in d.get('items') or [] if it is mapping %}
+    {% set sn = snets.get(it.network, ('🔗', it.network)) %}
+    <button type="button" class="pb-share-btn" data-share="{{ it.network }}" title="{{ sn[1] }}">{{ sn[0] }}<small>{{ sn[1] }}</small></button>
+    {% endfor %}
+  </div>
+
+{% elif t == 'code_highlight' %}
+  <div class="pb-code-block">
+    <div class="pb-code-head">{{ {'python': '🐍 پایتون', 'javascript': '🟨 جاوااسکریپت', 'html': '🟠 HTML', 'css': '🔵 CSS', 'sql': '🗄 SQL', 'text': '📄 متن'}.get(d.language or 'text', d.language) }}</div>
+    <pre class="pb-code {{ 'pb-code-num' if d.numbers }}" data-lang="{{ d.language or 'text' }}"><code>{{ d.code or '' }}</code></pre>
+  </div>
+
+{% elif t == 'dynamic_data' %}
+  <div class="grid" style="grid-template-columns:repeat({{ d.columns or 3 }}, 1fr);gap:14px">
+    {% for it in d.get('items') or [] if it is mapping %}
+    <div class="card pb-dyn" style="padding:18px;text-align:center">
+      <div class="pb-dyn-val" style="font-size:20px;font-weight:900;color:var(--primary)">{{ rd('{' ~ (it.key or 'site_name') ~ '}') }}</div>
+      <div class="text-3" style="font-size:12px">{{ {'site_name': 'نام سایت', 'site_desc': 'شعار سایت', 'course_count': 'تعداد دوره‌ها', 'student_count': 'تعداد دانشجویان', 'teacher_count': 'تعداد اساتید', 'user_name': 'نام کاربر', 'user_phone': 'شماره کاربر', 'user_email': 'ایمیل کاربر', 'year': 'سال جاری', 'date': 'تاریخ امروز'}.get(it.key, it.key) }}</div>
+    </div>
+    {% endfor %}
+  </div>
+
+{% elif t == 'site_logo' %}
+  <a class="dk-logo" href="/">
+    <span class="dk-logo-ic">{{ d.icon or '🎓' }}</span>
+    <span><b>{{ bc_site().get('site_name') or 'آکادمی آنلاین' }}</b><small>{{ d.sub or bc_site().get('site_desc') or '' }}</small></span>
+  </a>
+
+{% elif t == 'site_title' %}
+  <{{ d.tag or 'h2' }} style="text-align:{{ d.align or 'right' }};color:{{ d.color or '' }}">{{ bc_site().get('site_name') or 'آکادمی آنلاین' }}</{{ d.tag or 'h2' }}>
+
+{% elif t == 'post_title' %}
+  {% set cp = bc_current_post() %}
+  <{{ d.tag or 'h2' }} style="text-align:{{ d.align or 'right' }}">{{ cp.title if cp else (d.fallback or 'عنوان پست') }}</{{ d.tag or 'h2' }}>
+
+{% elif t == 'post_content' %}
+  {% set cp = bc_current_post() %}
+  <div class="pb-text-editor">{{ ((cp.excerpt if d.excerpt else cp.body)) if cp else (d.fallback or '') }}</div>
+
+{% elif t == 'featured_image' %}
+  {% set cp = bc_current_post() %}
+  <img src="/static/img/{{ cp.image if cp else (d.fallback or 'hero.webp') }}" alt="" style="width:100%;border-radius:{{ d.radius or 0 }}px">
+
+{% elif t == 'post_info' %}
+  {% set cp = bc_current_post() %}
+  <div class="pb-post-info">
+    {% if d.show_date %}<span>🗓 {{ (cp.created_at|jdate) if cp else '—' }}</span>{% endif %}
+    {% if d.show_author %}<span>✍️ {{ cp.author.name if cp and cp.author else 'تیم آکادمی' }}</span>{% endif %}
+    {% if d.show_readtime %}<span>⏱ {{ fa(cp.read_time) if cp else '—' }} دقیقه مطالعه</span>{% endif %}
+    {% if d.show_views %}<span>👁 {{ fa(cp.views) if cp else '—' }} بازدید</span>{% endif %}
+  </div>
+
+{% elif t == 'post_comments' %}
+  {% set cp = bc_current_post() %}
+  {% if cp %}
+  <div class="pb-comments" id="comments">
+    <h4 style="font-size:16px;margin-bottom:14px">💬 دیدگاه‌ها ({{ fa(cp.comments|length) }})</h4>
+    {% for cm in cp.comments %}
+    <div class="pb-comment"><span class="avatar" style="background:var(--primary)">{{ (cm.name or '؟')[:1] }}</span><div><strong>{{ cm.name }}</strong><p>{{ cm.comment }}</p><small>{{ cm.created_at|jdatetime }}</small></div></div>
+    {% endfor %}
+    {% if d.show_form %}
+    <form class="pb-comment-form" method="post" action="/blog/{{ cp.slug }}">
+<input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+      <input name="name" placeholder="نام شما *" required>
+      <textarea name="comment" placeholder="دیدگاه شما *" required></textarea>
+      <button class="btn btn-primary btn-sm" type="submit">ثبت دیدگاه</button>
+    </form>
+    {% endif %}
+  </div>
+  {% else %}
+  <p class="text-3">{{ d.fallback or 'این ویجت در صفحه مقالات نمایش داده می‌شود.' }}</p>
+  {% endif %}
+
+{% elif t == 'author_box' %}
+  {% set cp = bc_current_post() %}
+  {% set au = cp.author if cp and cp.author else None %}
+  {% if au %}
+  <div class="pb-author-box">
+    <span class="avatar avatar-lg" style="background:{{ au.avatar_color }}">{{ au.initials() }}</span>
+    <div>
+      <strong>{{ au.name }}</strong>
+      <p>{{ au.bio or '' }}</p>
+    </div>
+  </div>
+  {% else %}
+  <p class="text-3">{{ d.fallback or 'این ویجت در صفحه مقالات نمایش داده می‌شود.' }}</p>
+  {% endif %}
+
+{% elif t == 'products' %}
+  {% set ps = builder_products(d) %}
+  {% if d.title %}<div class="pb-block-head"><h2 style="font-size:clamp(20px,2.6vw,28px);font-weight:900">{{ d.title }}</h2></div>{% endif %}
+  <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax({{ {'2':'420','3':'280','4':'220'}.get(d.columns or '3', '280') }}px,1fr));gap:22px;margin-top:20px">
+    {% for c in ps %}{{ course_card(c) }}{% endfor %}
+  </div>
+
+{% elif t == 'add_to_cart' %}
+  {% set cc = courses_by_id((d.course or 0)|int) %}
+  <div style="text-align:{{ d.align or 'right' }}">
+    {% if cc %}
+    <button class="btn btn-{{ d.btn_style or (d.style if d.style is string else '') or 'primary' }} btn-lg" data-add-cart="{{ cc.id }}">🛒 {{ d.text or ('خرید دوره') }}</button>
+    {% else %}
+    <button class="btn btn-{{ d.btn_style or (d.style if d.style is string else '') or 'primary' }} btn-lg" data-add-cart="">🛒 {{ d.text or 'افزودن به سبد خرید' }}</button>
+    {% endif %}
+  </div>
+
+{% elif t == 'cart_widget' %}
+  <div class="card" style="padding:22px">
+    <h4 style="font-size:15px;margin-bottom:12px">🧺 {{ d.title or 'سبد خرید شما' }}</h4>
+    <div class="s-row"><span>تعداد دوره‌ها</span><span>{{ fa(bc_cart_count()) }}</span></div>
+    {% if d.show_total %}<div class="s-row total"><span>مبلغ کل</span><span class="price">{{ fa('{:,.0f}'.format(bc_cart_total())) }} <small class="text-3" style="font-size:11px">تومان</small></span></div>{% endif %}
+    <a class="btn btn-primary btn-block mt-2" href="/cart">مشاهده سبد خرید</a>
+  </div>
+
+{% elif t == 'checkout_widget' %}
+  <div class="card" style="padding:26px;text-align:center;background:var(--grad-brand);color:#fff;border:none">
+    <h4 style="font-size:17px;margin-bottom:6px">💳 {{ d.title or 'تسویه حساب سریع' }}</h4>
+    {% if d.text %}<p style="opacity:.85;font-size:13px;margin-bottom:14px">{{ d.text }}</p>{% endif %}
+    {% if bc_cur_user() %}
+    <a class="btn btn-white btn-lg" href="/checkout">ادامه و پرداخت {{ fa('{:,.0f}'.format(bc_cart_total())) }} تومان</a>
+    {% else %}
+    <a class="btn btn-white btn-lg" href="/auth/login">ورود برای پرداخت</a>
+    {% endif %}
+  </div>
+
+{% elif t == 'my_account' %}
+  {% if bc_cur_user() %}
+  {% set u = bc_cur_user() %}
+  <div class="card" style="padding:24px">
+    <h4 style="font-size:15px;margin-bottom:12px">👥 {{ d.title or 'حساب کاربری' }}</h4>
+    <div class="dk-acc-head" style="margin-bottom:12px">
+      {% if u.avatar %}<img class="dk-acc-avatar" src="{{ u.avatar_url }}" alt="">{% else %}<span class="avatar" style="background:{{ u.avatar_color }}">{{ u.initials() }}</span>{% endif %}
+      <strong>{{ u.name }}</strong>
+      <small dir="ltr">{{ u.phone or '' }}</small>
+    </div>
+    <div class="dk-acc-links">
+      <a href="/dashboard">📊 داشبورد</a>
+      <a href="/dashboard/my-courses">📚 دوره‌های من</a>
+      <a href="/dashboard/orders">🧾 سفارش‌ها</a>
+      <a href="/auth/logout">🚪 خروج</a>
+    </div>
+  </div>
+  {% else %}
+  <div class="card" style="padding:24px;text-align:center">
+    <h4 style="font-size:15px;margin-bottom:10px">👥 {{ d.title or 'حساب کاربری' }}</h4>
+    <div class="flex gap-1" style="justify-content:center">
+      <a class="btn btn-primary" href="/auth/login">ورود</a>
+      <a class="btn btn-outline" href="/auth/register">ثبت‌نام</a>
+    </div>
+  </div>
+  {% endif %}
+
+{% elif t == 'product_details' %}
+  {% set cc = courses_by_id((d.course or 0)|int) %}
+  {% if cc %}
+  <div class="card" style="padding:24px">
+    <h4 style="font-size:15.5px;margin-bottom:12px">🏷 {{ cc.title }}</h4>
+    <div class="pb-prod-details">
+      {% if d.show_price %}<div class="s-row"><span>قیمت</span><span class="price">{{ fa('{:,.0f}'.format(cc.final_price)) }} <small class="text-3" style="font-size:11px">تومان</small></span></div>{% endif %}
+      {% if d.show_teacher %}<div class="s-row"><span>مدرس</span><span>{{ cc.teacher.name if cc.teacher else '—' }}</span></div>{% endif %}
+      {% if d.show_rating %}<div class="s-row"><span>امتیاز</span><span>⭐ {{ fa(cc.rating) if cc.rating else '—' }} ({{ fa(cc.reviews|length) }})</span></div>{% endif %}
+      {% if d.show_students %}<div class="s-row"><span>دانشجویان</span><span>{{ fa(cc.students_count) }} نفر</span></div>{% endif %}
+      {% if d.show_meta %}
+      <div class="s-row"><span>سطح</span><span>{{ cc.level }}</span></div>
+      <div class="s-row"><span>مدت</span><span>{{ fa(cc.duration_hours) }} ساعت</span></div>
+      <div class="s-row"><span>دسته</span><span>{{ cc.category.name if cc.category else '—' }}</span></div>
+      {% endif %}
+    </div>
+    <a class="btn btn-primary btn-block mt-2" href="/course/{{ cc.slug }}">مشاهده دوره</a>
+  </div>
+  {% else %}
+  <p class="text-3">یک دوره انتخاب کنید.</p>
+  {% endif %}
+
+{% else %}
+  <div class="pb-unknown">ویجت ناشناخته: {{ t }}</div>
+{% endif %}
+{% endmacro %}

@@ -1,0 +1,19 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}صفحات پربازدید{% endblock %}
+{% block acontent %}
+<div class="dash-head"><div><h1>👁 صفحات پربازدید</h1><p>۵۰ صفحه برتر بر اساس بازدید</p></div><a class="btn btn-ghost" href="{{ url_for('admin.overview') }}">← داشبورد</a></div>
+<div class="card" style="padding:20px">
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>#</th><th>صفحه</th><th>بازدید</th></tr></thead>
+    <tbody>
+      {% for p in pages %}
+      <tr>
+        <td>{{ fa(loop.index) }}</td>
+        <td><a href="{{ p.url }}" target="_blank"><strong>{{ p.title[:50] }}</strong> <small class="text-3" dir="ltr">{{ p.url }}</small></a></td>
+        <td>{{ fa(p.views) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+</div>
+{% endblock %}

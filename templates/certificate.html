@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block title %}{{ seo.title or "گواهینامه" }}{% endblock %}
+
+{% block content %}
+<div class="certificate-page">
+  <div class="certificate">
+    <div class="c-top">
+      <div class="c-logo"><span class="ic">🎓</span>{{ site.site_name or 'آکادمی آنلاین' }}</div>
+      <div class="c-code">کد: <span dir="ltr">{{ code }}</span></div>
+    </div>
+    <div class="c-body">
+      <div class="c-title">گواهینامه پایان دوره</div>
+      <p class="c-text">این گواهینامه به این‌وسیله به</p>
+      <div class="c-name">{{ cur_user.name }}</div>
+      <p class="c-text">اعطا می‌شود؛ زیرا با موفقیت دوره</p>
+      <div class="c-course">«<span>{{ course.title }}</span>»</div>
+      <p class="c-text">را به مدت {{ fa(course.duration_hours) }} ساعت آموزش گذرانده و تمام جلسات آن را با موفقیت تکمیل کرده است.</p>
+      <div class="c-meta">تاریخ صدور: {{ enrollment.completed_at|jdate if enrollment.completed_at else utcnow()|jdate }} — میانگین امتیاز دوره: ⭐ {{ fa(course.rating) if course.rating else '—' }} از ۵</div>
+    </div>
+    <div class="c-foot">
+      <div class="sign"><div class="line"></div>مدیر آکادمی</div>
+      <div class="seal">تایید<br>آکادمی</div>
+      <div class="sign"><div class="line"></div>مدرس دوره<br>{{ course.teacher.name if course.teacher else '—' }}</div>
+    </div>
+  </div>
+</div>
+<div class="text-center" style="padding:24px">
+  <button class="btn btn-primary btn-lg" onclick="window.print()">🖨 چاپ گواهینامه</button>
+  <a class="btn btn-ghost btn-lg" href="{{ url_for('student.my_courses') }}">← بازگشت به دوره‌های من</a>
+</div>
+{% endblock %}

@@ -1,0 +1,103 @@
+{% extends 'base.html' %}
+{% block title %}🎡 گردونه شانس | {{ site.site_name or 'آکادمی آنلاین' }}{% endblock %}
+{% block content %}
+<style>
+  .spin-wrap{max-width:640px;margin:0 auto;text-align:center}
+  .wheel-box{position:relative;width:min(420px,90vw);margin:0 auto}
+  .wheel{width:100%;aspect-ratio:1;border-radius:50%;position:relative;
+    background:conic-gradient(#e11d48 0 51deg,#f59e0b 51deg 102deg,#10b981 102deg 153deg,#6366f1 153deg 204deg,#e11d48 204deg 255deg,#f59e0b 255deg 306deg,#10b981 306deg 357deg,#64748b 357deg 360deg);
+    border:10px solid var(--primary);box-shadow:0 20px 60px rgba(0,0,0,.25);transition:transform 4s cubic-bezier(.12,.8,.2,1)}
+  .wheel.pulse{animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{box-shadow:0 20px 60px rgba(0,0,0,.25)}50%{box-shadow:0 20px 80px color-mix(in srgb,var(--accent) 45%,transparent)}}
+  .wheel-seg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+  .wheel-seg span{transform:rotate(var(--rot)) translateY(-150px) rotate(calc(-1*var(--rot)));font-size:12.5px;font-weight:900;color:#fff;text-shadow:0 2px 6px rgba(0,0,0,.4);white-space:nowrap}
+  .wheel-pin{position:absolute;top:-8px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:16px solid transparent;border-right:16px solid transparent;border-top:26px solid var(--danger);z-index:5;filter:drop-shadow(0 4px 8px rgba(0,0,0,.3))}
+  .spin-btn{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:92px;height:92px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--primary-2));color:#fff;font-weight:900;font-size:15px;border:5px solid #fff;box-shadow:0 10px 30px rgba(0,0,0,.35);z-index:6;cursor:pointer;transition:transform .15s}
+  .spin-btn:hover{transform:translate(-50%,-50%) scale(1.06)}
+  .spin-btn:disabled{opacity:.7;cursor:not-allowed}
+  .prize-box{margin-top:26px;background:var(--card);border:2px solid var(--accent);border-radius:16px;padding:18px 22px;display:none;animation:fadeInUp .4s ease both}
+  .prize-box.show{display:block}
+  .prize-box b{font-size:17px;color:var(--primary)}
+  .coupon-code{display:inline-block;margin-top:8px;background:var(--bg-2);border:2px dashed var(--accent);border-radius:10px;padding:8px 18px;font-family:monospace;font-size:15px;font-weight:900;letter-spacing:1px}
+</style>
+
+<div class="section">
+<div class="container">
+<div class="spin-wrap">
+  <span class="badge badge-accent">🎁 شانس روزانه — هر ۲۴ ساعت یک بار</span>
+  <h1 style="font-size:26px;font-weight:900;margin:14px 0 8px">گردونه شانس آکادمی</h1>
+  <p class="text-2" style="margin-bottom:30px">بچرخون و کوپن تخفیف یا اعتبار کیف پول بگیر — مثل دیجی‌کالا!</p>
+
+  <div class="wheel-box">
+    <div class="wheel-pin"></div>
+    <div class="wheel" id="wheel">
+      {% for p in prizes %}
+      <div class="wheel-seg" style="--rot:{{ loop.index0 * 45 }}deg"><span>{{ p }}</span></div>
+      {% endfor %}
+    </div>
+    <button class="spin-btn" id="spin-btn" {% if not can %}disabled{% endif %}>
+      {% if can %}بچرخان!{% else %}فردا بیا{% endif %}
+    </button>
+  </div>
+
+  <div class="prize-box" id="prize-box">
+    <div style="font-size:38px">🎉</div>
+    <b id="prize-text">جایزه شما!</b>
+    <div id="prize-code"></div>
+  </div>
+
+  {% if last_prize %}
+  <div class="card" style="padding:14px 18px;margin-top:24px;text-align:right">
+    <b style="font-size:13.5px">📋 نتیجه امروز شما:</b>
+    <p class="text-2" style="font-size:13px;margin-top:6px">
+      {% if last_prize.type == 'wallet' %}
+      💰 {{ fa('{:,.0f}'.format(last_prize.value)) }} تومان به کیف پول واریز شد
+      {% elif last_prize.type == 'coupon' %}
+      🎟 کوپن {{ fa(last_prize.value) }}٪ — کد: <code>{{ last_prize.code }}</code>
+      {% else %}
+      🍀 متأسفانه جایزه‌ای نبردید — فردا دوباره!
+      {% endif %}
+    </p>
+  </div>
+  {% endif %}
+</div>
+</div>
+</div>
+
+<script>
+(function(){
+  var btn=document.getElementById('spin-btn');
+  var wheel=document.getElementById('wheel');
+  var box=document.getElementById('prize-box');
+  var txt=document.getElementById('prize-text');
+  var code=document.getElementById('prize-code');
+  var spinning=false;
+  btn.addEventListener('click',function(){
+    if(spinning)return;
+    spinning=true;
+    btn.disabled=true;
+    wheel.classList.remove('pulse');
+    var spins=5+Math.floor(Math.random()*4);
+    var deg=spins*360+Math.floor(Math.random()*360);
+    wheel.style.transform='rotate('+deg+'deg)';
+    fetch('/api/spin',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})
+      .then(function(r){return r.json()})
+      .then(function(d){
+        setTimeout(function(){
+          spinning=false;
+          box.classList.add('show');
+          txt.textContent=d.msg;
+          if(d.coupon_code){code.innerHTML='<span class="coupon-code">'+d.coupon_code+'</span>';}
+          else{code.innerHTML='';}
+          if(d.prize_type!=='none'){btn.textContent='فردا بیا';}
+          else{btn.disabled=false;btn.textContent='دوباره بچرخان!';}
+          wheel.classList.add('pulse');
+        },4200);
+      })
+      .catch(function(){
+        setTimeout(function(){spinning=false;btn.disabled=false;},4200);
+      });
+  });
+})();
+</script>
+{% endblock %}

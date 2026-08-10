@@ -1,0 +1,98 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}درگاه‌های پرداخت{% endblock %}
+{% block acontent %}
+<div class="dash-head">
+  <div><h1>💳 درگاه‌های پرداخت</h1><p>شناسه‌های دریافتی از بانک/درگاه را اینجا وارد کنید — بدون کدنویسی</p></div>
+</div>
+
+<form method="post">
+  <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+  <div style="display:flex;flex-direction:column;gap:16px">
+
+    <!-- بانک‌ها -->
+    <div class="card" style="padding:22px;border-right:4px solid #1d4a75">
+      <h2 style="font-size:15px;margin-bottom:4px">🏦 درگاه‌های مستقیم بانکی</h2>
+      <p class="text-3" style="font-size:12px;margin-bottom:14px">نیازمند ثبت IP سرور در پنل بانک + قرارداد شاپرک</p>
+      <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px">
+        <div class="card" style="padding:16px;background:var(--bg-2);border:none">
+          <strong>بانک ملی (به‌پرداخت)</strong>
+          <div class="form-group" style="margin-top:10px"><label>شماره ترمینال</label><input class="form-control" dir="ltr" name="melli_terminal" value="{{ site.melli_terminal or '' }}"></div>
+          <div class="form-group"><label>نام کاربری</label><input class="form-control" dir="ltr" name="melli_username" value="{{ site.melli_username or '' }}"></div>
+          <div class="form-group"><label>رمز عبور</label><input class="form-control" dir="ltr" type="password" name="melli_password" value="{{ site.melli_password or '' }}"></div>
+          <button class="btn btn-ghost btn-sm" formaction="{{ url_for('admin.gateway_test', gw='melli') }}">🔌 تست اتصال</button>
+        </div>
+        <div class="card" style="padding:16px;background:var(--bg-2);border:none">
+          <strong>بانک سپه</strong>
+          <div class="form-group" style="margin-top:10px"><label>شماره ترمینال</label><input class="form-control" dir="ltr" name="sepah_terminal" value="{{ site.sepah_terminal or '' }}"></div>
+          <div class="form-group"><label>کد مرچنت (اختیاری)</label><input class="form-control" dir="ltr" name="sepah_merchant" value="{{ site.sepah_merchant or '' }}"></div>
+          <div class="form-group"><label>نام کاربری</label><input class="form-control" dir="ltr" name="sepah_username" value="{{ site.sepah_username or '' }}"></div>
+          <div class="form-group"><label>رمز عبور</label><input class="form-control" dir="ltr" type="password" name="sepah_password" value="{{ site.sepah_password or '' }}"></div>
+          <button class="btn btn-ghost btn-sm" formaction="{{ url_for('admin.gateway_test', gw='sepah') }}">🔌 تست اتصال</button>
+        </div>
+        <div class="card" style="padding:16px;background:var(--bg-2);border:none">
+          <strong>بانک صادرات (سداد)</strong>
+          <div class="form-group" style="margin-top:10px"><label>کد مرچنت</label><input class="form-control" dir="ltr" name="sadad_merchant" value="{{ site.sadad_merchant or '' }}"></div>
+          <div class="form-group"><label>شماره ترمینال</label><input class="form-control" dir="ltr" name="sadad_terminal" value="{{ site.sadad_terminal or '' }}"></div>
+          <div class="form-group"><label>کلید ترمینال (RSA)</label><textarea class="form-control" dir="ltr" name="sadad_key" rows="3" placeholder="-----BEGIN PRIVATE KEY-----">{{ site.sadad_key or '' }}</textarea></div>
+          <button class="btn btn-ghost btn-sm" formaction="{{ url_for('admin.gateway_test', gw='saderat') }}">🔌 تست اتصال</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- اقساطی -->
+    <div class="card" style="padding:22px;border-right:4px solid #7c3aed">
+      <h2 style="font-size:15px;margin-bottom:4px">🛍 درگاه‌های اقساطی و اعتباری</h2>
+      <p class="text-3" style="font-size:12px;margin-bottom:14px">فروش اقساطی از طریق اسنپ‌پی، دیجی‌پی و API ترب</p>
+      <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px">
+        <div class="card" style="padding:16px;background:var(--bg-2);border:none">
+          <strong>🛵 اسنپ‌پی</strong>
+          <div class="form-group" style="margin-top:10px"><label>Client ID</label><input class="form-control" dir="ltr" name="snapp_client_id" value="{{ site.snapp_client_id or '' }}"></div>
+          <div class="form-group"><label>Client Secret</label><input class="form-control" dir="ltr" type="password" name="snapp_client_secret" value="{{ site.snapp_client_secret or '' }}"></div>
+          <div class="form-group"><label>کد مرچنت</label><input class="form-control" dir="ltr" name="snapp_merchant" value="{{ site.snapp_merchant or '' }}"></div>
+          <button class="btn btn-ghost btn-sm" formaction="{{ url_for('admin.gateway_test', gw='snapppay') }}">🔌 تست اتصال</button>
+        </div>
+        <div class="card" style="padding:16px;background:var(--bg-2);border:none">
+          <strong>🛍 دیجی‌پی</strong>
+          <div class="form-group" style="margin-top:10px"><label>API Key</label><input class="form-control" dir="ltr" name="digipay_api_key" value="{{ site.digipay_api_key or '' }}"></div>
+          <div class="form-group"><label>کد مرچنت</label><input class="form-control" dir="ltr" name="digipay_merchant" value="{{ site.digipay_merchant or '' }}"></div>
+          <button class="btn btn-ghost btn-sm" formaction="{{ url_for('admin.gateway_test', gw='digipay') }}">🔌 تست اتصال</button>
+        </div>
+        <div class="card" style="padding:16px;background:var(--bg-2);border:none">
+          <strong>🛒 کارت اعتباری ترب</strong>
+          <div class="form-group" style="margin-top:10px"><label>آدرس API</label><input class="form-control" dir="ltr" name="tarb_api_url" value="{{ site.tarb_api_url or 'https://api.tarb.example.ir' }}"></div>
+          <div class="form-group"><label>API Key</label><input class="form-control" dir="ltr" name="tarb_api_key" value="{{ site.tarb_api_key or '' }}"></div>
+          <div class="form-group"><label>کد مرچنت</label><input class="form-control" dir="ltr" name="tarb_merchant" value="{{ site.tarb_merchant or '' }}"></div>
+          <button class="btn btn-ghost btn-sm" formaction="{{ url_for('admin.gateway_test', gw='tarb') }}">🔌 تست اتصال</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- واسط‌ها -->
+    <div class="card" style="padding:22px;border-right:4px solid #0891b2">
+      <h2 style="font-size:15px;margin-bottom:4px">🔄 درگاه‌های واسط (PSP)</h2>
+      <p class="text-3" style="font-size:12px;margin-bottom:14px">شناسه‌ها را از پنل هر سرویس دریافت کنید</p>
+      <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px">
+        <div class="card" style="padding:16px;background:var(--bg-2);border:none">
+          <strong>🅉 زرین‌پال</strong>
+          <div class="form-group" style="margin-top:10px"><label>مرچنت کد</label><input class="form-control" dir="ltr" name="zarinpal_merchant" value="{{ site.zarinpal_merchant or '' }}" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"></div>
+          <button class="btn btn-ghost btn-sm" formaction="{{ url_for('admin.gateway_test', gw='zarinpal') }}">🔌 تست اتصال</button>
+        </div>
+        <div class="card" style="padding:16px;background:var(--bg-2);border:none">
+          <strong>🅸 آیدی‌پی</strong>
+          <div class="form-group" style="margin-top:10px"><label>API Key</label><input class="form-control" dir="ltr" name="idpay_api_key" value="{{ site.idpay_api_key or '' }}"></div>
+          <button class="btn btn-ghost btn-sm" formaction="{{ url_for('admin.gateway_test', gw='idpay') }}">🔌 تست اتصال</button>
+        </div>
+        <div class="card" style="padding:16px;background:var(--bg-2);border:none">
+          <strong>🅵 زیبال</strong>
+          <div class="form-group" style="margin-top:10px"><label>مرچنت کد</label><input class="form-control" dir="ltr" name="zibal_merchant" value="{{ site.zibal_merchant or '' }}"></div>
+          <button class="btn btn-ghost btn-sm" formaction="{{ url_for('admin.gateway_test', gw='zibal') }}">🔌 تست اتصال</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <div style="margin-top:18px">
+    <button class="btn btn-primary btn-lg" type="submit">💾 ذخیره همه تنظیمات درگاه‌ها</button>
+  </div>
+</form>
+{% endblock %}

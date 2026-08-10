@@ -1,0 +1,72 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}جزئیات سفارش{% endblock %}
+{% block acontent %}
+<div class="dash-head">
+  <div><h1 dir="ltr" style="text-align:right">{{ order.code }}</h1><p>{{ order.created_at|jdatetime }}</p></div>
+  <a class="btn btn-ghost" href="{{ url_for('admin.orders') }}">← سفارش‌ها</a>
+</div>
+
+<div class="grid" style="grid-template-columns:1fr 320px;gap:22px;align-items:start">
+  <div class="card" style="padding:22px">
+    <h3 style="font-size:16px;margin-bottom:14px">دوره‌های سفارش</h3>
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>دوره</th><th>مدرس</th><th>قیمت</th></tr></thead>
+        <tbody>
+          {% for item in order.items %}
+          <tr>
+            <td><strong>{{ item.course.title }}</strong></td>
+            <td>{{ item.course.teacher.name if item.course.teacher else '—' }}</td>
+            <td>{{ fa('{:,.0f}'.format(item.price)) }} تومان</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="card" style="padding:22px">
+    <h3 style="font-size:16px;margin-bottom:14px">خلاصه</h3>
+    <div class="s-row"><span>کاربر</span><span>{{ order.user.name }}</span></div>
+    <div class="s-row"><span>ایمیل</span><span dir="ltr">{{ order.user.email }}</span></div>
+    <div class="s-row"><span>جمع</span><span>{{ fa('{:,.0f}'.format(order.total)) }} تومان</span></div>
+    {% if order.discount %}<div class="s-row" style="color:var(--success)"><span>تخفیف</span><span>{{ fa('{:,.0f}'.format(order.discount)) }} تومان</span></div>{% endif %}
+    <div class="s-row total"><span>نهایی</span><span>{{ fa('{:,.0f}'.format(order.final_total)) }} تومان</span></div>
+    <div class="s-row"><span>درگاه</span><span>{{ order.gateway or '—' }}</span></div>
+    <div class="s-row"><span>رهگیری</span><span dir="ltr">{{ order.ref_id or '—' }}</span></div>
+    <div class="s-row"><span>وضعیت</span><span>{% if order.status == 'paid' %}<span class="badge badge-success">پرداخت‌شده</span>{% elif order.status == 'pending_verify' %}<span class="badge badge-accent">در انتظار تایید فیش</span>{% elif order.status == 'pending' %}<span class="badge badge-accent">در انتظار</span>{% else %}<span class="badge badge-danger">{{ order.status_fa }}</span>{% endif %}</span></div>
+  </div>
+</div>
+
+{% if proofs %}
+<div class="card mt-3" style="padding:22px">
+  <h3 style="font-size:16px;margin-bottom:14px">🧾 فیش‌های واریزی</h3>
+  {% for pr in proofs %}
+  <div class="card" style="padding:16px 20px;margin-bottom:14px;background:var(--bg-2);border:none">
+    <div class="grid" style="grid-template-columns:1fr auto;gap:14px;align-items:center">
+      <div style="font-size:13.5px">
+        <div><b>{{ pr.payer_name }}</b> — شماره پیگیری: <b dir="ltr">{{ pr.ref_number }}</b></div>
+        <div class="text-3" style="font-size:12px">مبلغ: {{ fa('{:,.0f}'.format(pr.amount)) }} تومان | ثبت: {{ pr.created_at|jdatetime }} | وضعیت: <b>{{ {'pending':'⏳ در انتظار','approved':'✅ تایید شده','rejected':'❌ رد شده'}.get(pr.status, pr.status) }}</b></div>
+        {% if pr.note %}<div class="text-2" style="font-size:12px">توضیح: {{ pr.note }}</div>{% endif %}
+        {% if pr.admin_note %}<div class="text-2" style="font-size:12px">یادداشت ادمین: {{ pr.admin_note }}</div>{% endif %}
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        {% if pr.file %}<a class="btn btn-ghost btn-sm" href="/uploads/proofs/{{ pr.file }}" target="_blank">👁 فیش</a>{% endif %}
+        {% if pr.status == 'pending' %}
+        <form method="post" action="{{ url_for('admin.proof_verify', pid=pr.id) }}" style="display:flex;gap:6px">
+          <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+          <input type="hidden" name="action" value="approve">
+          <button class="btn btn-success btn-sm" type="submit">✓ تایید و فعال‌سازی</button>
+        </form>
+        <form method="post" action="{{ url_for('admin.proof_verify', pid=pr.id) }}" style="display:flex;gap:6px">
+          <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+          <input type="hidden" name="action" value="reject">
+          <button class="btn btn-danger btn-sm" type="submit">✕ رد</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,365 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}تنظیمات سوپر{% endblock %}
+{% block acontent %}
+<style>
+  .ss-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:8px}
+  .ss-tab{padding:10px 18px;border-radius:10px;font-size:13px;font-weight:800;color:var(--text-2);transition:all .2s;display:flex;align-items:center;gap:7px}
+  .ss-tab:hover{background:var(--bg-2);color:var(--text)}
+  .ss-tab.active{background:var(--primary);color:#fff;box-shadow:0 6px 16px color-mix(in srgb,var(--primary) 35%,transparent)}
+  .ss-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:22px 24px;margin-bottom:18px;box-shadow:var(--shadow-sm)}
+  .ss-card h3{font-size:15px;font-weight:900;margin-bottom:16px;display:flex;align-items:center;gap:8px;padding-bottom:10px;border-bottom:1px dashed var(--border)}
+  .ss-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+  .ss-field label{display:block;font-size:12px;font-weight:800;color:var(--text-2);margin-bottom:6px}
+  .ss-field input,.ss-field select,.ss-field textarea{width:100%;padding:10px 13px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;background:#fff;color:var(--text)}
+  .ss-field input:focus,.ss-field select:focus,.ss-field textarea:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-soft)}
+  .ss-hint{font-size:11px;color:var(--text-3);margin-top:4px;line-height:1.8}
+  .ss-save{position:sticky;bottom:14px;display:flex;justify-content:flex-end;gap:10px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px 18px;box-shadow:var(--shadow-lg);z-index:20}
+  .ss-save .btn{padding:12px 28px;font-size:14px}
+  .ss-redirect-row{display:flex;gap:8px;align-items:center;background:var(--bg-2);border-radius:12px;padding:10px 14px;margin-bottom:8px;flex-wrap:wrap}
+  .ss-redirect-row input{flex:1;min-width:130px}
+  .ss-badge-code{font-size:10.5px;background:var(--primary-soft);color:var(--primary);border-radius:99px;padding:3px 10px;font-weight:800}
+  .ss-notfound{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:#fff;border:1px solid var(--border);border-radius:11px;margin-bottom:7px;flex-wrap:wrap}
+  .ss-notfound code{direction:ltr;display:inline-block;font-size:11.5px;color:var(--danger);background:var(--danger-soft);padding:3px 10px;border-radius:8px}
+  .ss-count{background:var(--primary-soft);color:var(--primary);border-radius:99px;padding:2px 10px;font-size:11px;font-weight:800}
+</style>
+
+<div class="dash-head">
+  <div>
+    <h1>⚙️ پنل تنظیمات سوپر</h1>
+    <p>مدیریت کامل سایت: برند، سئو و ریدایرکت‌ها، فروش و درگاه‌ها، پیامک، مارکت‌پلیس و امنیت</p>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center">
+    <span class="ss-count">{{ fa(settings_count) }} تنظیم</span>
+    <span class="ss-count">{{ fa(redirect_count) }} ریدایرکت</span>
+    <a class="btn btn-ghost" href="/" target="_blank">👁 سایت</a>
+  </div>
+</div>
+
+<!-- تب‌ها -->
+<div class="ss-tabs">
+  <a class="ss-tab {{ 'active' if tab=='general' }}" href="?tab=general">⚙️ عمومی و برند</a>
+  <a class="ss-tab {{ 'active' if tab=='seo' }}" href="?tab=seo">🔍 سئو و ریدایرکت</a>
+  <a class="ss-tab {{ 'active' if tab=='pay' }}" href="?tab=pay">💳 فروش و درگاه‌ها</a>
+  <a class="ss-tab {{ 'active' if tab=='sms' }}" href="?tab=sms">📲 پیامک و ایمیل</a>
+  <a class="ss-tab {{ 'active' if tab=='market' }}" href="?tab=market">🏪 مارکت‌پلیس و سرویس‌ها</a>
+  <a class="ss-tab {{ 'active' if tab=='security' }}" href="?tab=security">🛡 امنیت و نگهداری</a>
+</div>
+
+<form method="post" enctype="multipart/form-data">
+<input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+<input type="hidden" name="tab" value="{{ tab }}">
+
+<!-- ═══════════ ۱) عمومی و برند ═══════════ -->
+{% if tab == 'general' %}
+<div class="ss-card">
+  <h3>🏷 اطلاعات عمومی</h3>
+  <div class="ss-grid">
+    <div class="ss-field"><label>نام سایت</label><input name="site_name" value="{{ vals.get('site_name','') }}"></div>
+    <div class="ss-field"><label>شعار سایت</label><input name="site_desc" value="{{ vals.get('site_desc','') }}"></div>
+    <div class="ss-field"><label>تلفن تماس</label><input name="phone" value="{{ vals.get('phone','') }}"></div>
+    <div class="ss-field"><label>ایمیل</label><input name="email" value="{{ vals.get('email','') }}"></div>
+    <div class="ss-field"><label>آدرس</label><input name="address" value="{{ vals.get('address','') }}"></div>
+    <div class="ss-field"><label>ساعات پشتیبانی</label><input name="support_hours" value="{{ vals.get('support_hours','') }}"></div>
+  </div>
+</div>
+
+<div class="ss-card">
+  <h3>🎨 برند و ظاهر</h3>
+  <div class="ss-grid">
+    <div class="ss-field"><label>رنگ اصلی (Primary)</label><input type="color" name="brand_color" value="{{ vals.get('brand_color','#2563eb') }}"></div>
+    <div class="ss-field"><label>رنگ دوم (Secondary)</label><input type="color" name="brand_color2" value="{{ vals.get('brand_color2','#1d4ed8') }}"></div>
+    <div class="ss-field"><label>آپلود لوگو</label><input type="file" name="custom_logo_file" accept="image/*"></div>
+    <div class="ss-field"><label>عرض محتوا (kit_container)</label><input name="kit_container" value="{{ vals.get('kit_container','') }}" placeholder="مثلا 1240"></div>
+    <div class="ss-field"><label>گردی گوشه (kit_radius)</label><input name="kit_radius" value="{{ vals.get('kit_radius','') }}" placeholder="مثلا 14"></div>
+    <div class="ss-field"><label>متن درباره ما</label><textarea rows="3" name="about_text">{{ vals.get('about_text','') }}</textarea></div>
+  </div>
+  <p class="ss-hint">💡 لوگوی فعلی: <code>{{ vals.get('custom_logo','—') }}</code> — آپلود جدید جایگزین می‌شود.</p>
+</div>
+
+<div class="ss-card">
+  <h3>🌐 شبکه‌های اجتماعی</h3>
+  <div class="ss-grid">
+    {% for k, label, ph in [('telegram','تلگرام','academy_ir'),('instagram','اینستاگرام','academy.ir'),('whatsapp','واتساپ','98910001234'),('bale','بله','academy_ir'),('eitaa','ایتا','academy_ir'),('rubika','روبیکا','academy_ir'),('soroush','سروش','academy_ir'),('aparat','آپارات','academy_ir'),('twitter','ایکس','academy_ir'),('linkedin','لینکدین','academy-ir'),('youtube','یوتیوب','academy'),('github','گیت‌هاب','academy')] %}
+    <div class="ss-field"><label>{{ label }}</label><input name="{{ k }}" value="{{ vals.get(k,'') }}" placeholder="{{ ph }}"></div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<!-- ═══════════ ۲) سئو و ریدایرکت ═══════════ -->
+{% if tab == 'seo' %}
+<div class="ss-card">
+  <h3>🔍 سئوی سراسری</h3>
+  <div class="ss-grid">
+    <div class="ss-field"><label>عنوان سئو (Title)</label><input name="seo_title" value="{{ vals.get('seo_title','') }}"></div>
+    <div class="ss-field"><label>توضیحات متا (Description)</label><textarea rows="2" name="seo_desc">{{ vals.get('seo_desc','') }}</textarea></div>
+    <div class="ss-field"><label>کلمات کلیدی (Keywords)</label><input name="seo_keywords" value="{{ vals.get('seo_keywords','') }}"></div>
+    <div class="ss-field"><label>نویسنده (Author)</label><input name="seo_author" value="{{ vals.get('seo_author','') }}"></div>
+    <div class="ss-field"><label>تصویر اشتراک (OG Image)</label><input name="seo_og_image" value="{{ vals.get('seo_og_image','hero.webp') }}"></div>
+    <div class="ss-field"><label>روبوت‌ها (Robots)</label>
+      <select name="seo_robots_main">
+        <option value="index,follow" {{ 'selected' if vals.get('seo_robots_main')=='index,follow' }}>index,follow</option>
+        <option value="noindex,nofollow" {{ 'selected' if vals.get('seo_robots_main')=='noindex,nofollow' }}>noindex,nofollow</option>
+      </select></div>
+    <div class="ss-field"><label>ایکس (Twitter)</label><input name="seo_twitter" value="{{ vals.get('seo_twitter','@academy_ir') }}"></div>
+    <div class="ss-field"><label>کد گوگل آنالیتیکس (GA)</label><input name="ga_code" value="{{ vals.get('ga_code','') }}" placeholder="G-XXXXXXX"></div>
+  </div>
+</div>
+
+<div class="ss-card">
+  <h3>🔗 ریدایرکت‌های 301/302 <span class="ss-count">{{ fa(redirect_count) }} مورد</span></h3>
+  <p class="ss-hint">برای تغییر آدرس صفحات قدیمی — کاربر و گوگل به‌صورت خودکار به مسیر جدید هدایت می‌شوند (مهم برای سئو).</p>
+  <div style="margin:14px 0">
+    <div class="ss-redirect-row" style="background:var(--primary-soft);border:1.5px dashed var(--primary)">
+      <input name="source" placeholder="/old-page (مسیر قدیمی)" style="border:1.5px solid var(--border);border-radius:9px;padding:9px 12px">
+      <span style="color:var(--primary);font-weight:900">←</span>
+      <input name="target" placeholder="/new-page (مسیر جدید)" style="border:1.5px solid var(--border);border-radius:9px;padding:9px 12px">
+      <select name="code" style="border:1.5px solid var(--border);border-radius:9px;padding:9px 8px">
+        <option value="301">301 دائمی</option>
+        <option value="302">302 موقت</option>
+      </select>
+      <button class="btn btn-primary btn-sm" name="action" value="redirect_add">+ افزودن</button>
+    </div>
+  </div>
+  {% if rules %}
+    {% for r in rules %}
+    <div class="ss-redirect-row" style="{{ 'opacity:.55' if not r.is_active }}">
+      <span class="ss-badge-code">{{ r.code }}</span>
+      <code dir="ltr" style="font-size:12px;color:var(--primary);background:var(--primary-soft);padding:5px 10px;border-radius:8px">{{ r.source }}</code>
+      <span style="color:var(--text-3)">←</span>
+      <code dir="ltr" style="font-size:12px;padding:5px 10px;background:var(--bg-2);border-radius:8px">{{ r.target }}</code>
+      <span style="display:flex;gap:5px;margin-right:auto">
+        <a class="btn btn-ghost btn-sm" href="#" onclick="event.preventDefault();fillEdit({{ r.id }},'{{ r.source|replace("'","&#39;") }}','{{ r.target|replace("'","&#39;") }}',{{ r.code }})">✏️</a>
+        <button class="btn btn-ghost btn-sm" name="action" value="redirect_toggle" formaction="?tab=seo">{{ '🔴 غیرفعال' if r.is_active else '🟢 فعال' }}</button>
+        <button class="btn btn-ghost btn-sm" name="action" value="redirect_delete" formaction="?tab=seo" onclick="return confirm('حذف شود؟')">🗑</button>
+        <input type="hidden" name="rid" value="{{ r.id }}">
+      </span>
+    </div>
+    {% endfor %}
+  {% else %}
+    <p class="ss-hint">هنوز ریدایرکتی ثبت نشده — از فرم بالا اولین را اضافه کنید.</p>
+  {% endif %}
+</div>
+
+<!-- فرم ویرایش ریدایرکت (پنهان) -->
+<div class="ss-card" id="edit-redirect-box" style="display:none">
+  <h3>✏️ ویرایش ریدایرکت</h3>
+  <div class="ss-redirect-row">
+    <input id="er-id" type="hidden" name="rid">
+    <input id="er-source" name="source" placeholder="/old-page">
+    <span>←</span>
+    <input id="er-target" name="target" placeholder="/new-page">
+    <select id="er-code" name="code"><option value="301">301</option><option value="302">302</option></select>
+    <button class="btn btn-primary btn-sm" name="action" value="redirect_edit" formaction="?tab=seo">💾 ذخیره</button>
+    <button class="btn btn-ghost btn-sm" type="button" onclick="document.getElementById('edit-redirect-box').style.display='none'">✕</button>
+  </div>
+</div>
+
+<div class="ss-card">
+  <h3>📉 صفحات ۴۰۴ ثبت‌شده <span class="ss-count">{{ fa(notfound|length) }} مورد</span></h3>
+  <p class="ss-hint">آدرس‌های شکسته — با «تبدیل به ریدایرکت» آن‌ها را به صفحات درست هدایت کنید.</p>
+  {% if notfound %}
+    {% for nf in notfound %}
+    <div class="ss-notfound">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <code dir="ltr">{{ nf.path }}</code>
+        <span class="ss-count">👁 {{ fa(nf.count or 1) }} بار</span>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <input name="target" placeholder="مسیر درست..." style="border:1.5px solid var(--border);border-radius:9px;padding:7px 10px;font-size:12px;width:180px" form="nf-form-{{ loop.index }}">
+        <button class="btn btn-sm btn-primary" name="action" value="notfound_to_redirect" form="nf-form-{{ loop.index }}">⇄ تبدیل</button>
+        <input type="hidden" name="path" value="{{ nf.path }}" form="nf-form-{{ loop.index }}">
+      </div>
+    </div>
+    <form id="nf-form-{{ loop.index }}" method="post" style="display:none"><input type="hidden" name="_csrf_token" value="{{ csrf_token }}"></form>
+    {% endfor %}
+    <div style="margin-top:12px;text-align:left">
+      <button class="btn btn-ghost btn-sm" name="action" value="notfound_clear" onclick="return confirm('همه لاگ ۴۰۴ پاک شود؟')">🧹 پاک‌سازی لاگ</button>
+    </div>
+  {% else %}
+    <p class="ss-hint">هیچ ۴۰۴ ثبت نشده — عالی! 🎉</p>
+  {% endif %}
+</div>
+{% endif %}
+
+<!-- ═══════════ ۳) فروش و درگاه‌ها ═══════════ -->
+{% if tab == 'pay' %}
+<div class="ss-card">
+  <h3>💳 تنظیمات عمومی فروش</h3>
+  <div class="ss-grid">
+    <div class="ss-field"><label>واحد پول</label><input name="currency" value="{{ vals.get('currency','تومان') }}"></div>
+    <div class="ss-field"><label>پیش‌شماره فاکتور</label><input name="invoice_prefix" value="{{ vals.get('invoice_prefix','AC') }}"></div>
+    <div class="ss-field"><label>حالت آزمایشی درگاه‌ها</label>
+      <select name="sandbox_mode"><option value="1" {{ 'selected' if vals.get('sandbox_mode')=='1' }}>فعال (آزمایشی)</option><option value="0" {{ 'selected' if vals.get('sandbox_mode')=='0' }}>غیرفعال (واقعی)</option></select></div>
+    <div class="ss-field"><label>واترمارک ویدیو</label>
+      <select name="watermark_enabled"><option value="1" {{ 'selected' if vals.get('watermark_enabled')=='1' }}>فعال</option><option value="0" {{ 'selected' if vals.get('watermark_enabled')=='0' }}>غیرفعال</option></select></div>
+  </div>
+</div>
+
+<div class="ss-card">
+  <h3>🏦 درگاه‌های آنلاین</h3>
+  <div class="ss-grid">
+    <div class="ss-field"><label>زرین‌پال — Merchant</label><input name="zarinpal_merchant" value="{{ vals.get('zarinpal_merchant','') }}" placeholder="xxxx-xxxx-xxxx-xxxx"></div>
+    <div class="ss-field"><label>آیدی‌پی — API Key</label><input name="idpay_api_key" value="{{ vals.get('idpay_api_key','') }}"></div>
+    <div class="ss-field"><label>زیبال — Merchant</label><input name="zibal_merchant" value="{{ vals.get('zibal_merchant','') }}"></div>
+    <div class="ss-field"><label>ملی (به‌پرداخت) — Terminal</label><input name="melli_terminal" value="{{ vals.get('melli_terminal','') }}"></div>
+    <div class="ss-field"><label>ملی — Username</label><input name="melli_username" value="{{ vals.get('melli_username','') }}"></div>
+    <div class="ss-field"><label>ملی — Password</label><input type="password" name="melli_password" value="{{ vals.get('melli_password','') }}"></div>
+    <div class="ss-field"><label>سپه — Terminal</label><input name="sepah_terminal" value="{{ vals.get('sepah_terminal','') }}"></div>
+    <div class="ss-field"><label>سپه — Merchant</label><input name="sepah_merchant" value="{{ vals.get('sepah_merchant','') }}"></div>
+    <div class="ss-field"><label>سپه — Username</label><input name="sepah_username" value="{{ vals.get('sepah_username','') }}"></div>
+    <div class="ss-field"><label>سپه — Password</label><input type="password" name="sepah_password" value="{{ vals.get('sepah_password','') }}"></div>
+    <div class="ss-field"><label>سداد — Merchant</label><input name="sadad_merchant" value="{{ vals.get('sadad_merchant','') }}"></div>
+    <div class="ss-field"><label>سداد — Terminal</label><input name="sadad_terminal" value="{{ vals.get('sadad_terminal','') }}"></div>
+    <div class="ss-field"><label>سداد — Key</label><input name="sadad_key" value="{{ vals.get('sadad_key','') }}"></div>
+  </div>
+</div>
+
+<div class="ss-card">
+  <h3>💳 اقساطی (BNPL) و Cashback</h3>
+  <div class="ss-grid">
+    <div class="ss-field"><label>اسنپ‌پی — Client ID</label><input name="snapp_client_id" value="{{ vals.get('snapp_client_id','') }}"></div>
+    <div class="ss-field"><label>اسنپ‌پی — Secret</label><input type="password" name="snapp_client_secret" value="{{ vals.get('snapp_client_secret','') }}"></div>
+    <div class="ss-field"><label>اسنپ‌پی — Merchant</label><input name="snapp_merchant" value="{{ vals.get('snapp_merchant','') }}"></div>
+    <div class="ss-field"><label>دیجی‌پی — API Key</label><input name="digipay_api_key" value="{{ vals.get('digipay_api_key','') }}"></div>
+    <div class="ss-field"><label>دیجی‌پی — Merchant</label><input name="digipay_merchant" value="{{ vals.get('digipay_merchant','') }}"></div>
+    <div class="ss-field"><label>ترب — API URL</label><input name="tarb_api_url" value="{{ vals.get('tarb_api_url','') }}"></div>
+    <div class="ss-field"><label>ترب — API Key</label><input name="tarb_api_key" value="{{ vals.get('tarb_api_key','') }}"></div>
+    <div class="ss-field"><label>ترب — Merchant</label><input name="tarb_merchant" value="{{ vals.get('tarb_merchant','') }}"></div>
+    <div class="ss-field"><label>حداکثر تعداد قسط</label><input type="number" name="bnpl_max_installments" value="{{ vals.get('bnpl_max_installments','4') }}"></div>
+    <div class="ss-field"><label>درصد Cashback پس از خرید</label><input type="number" name="cashback_percent" value="{{ vals.get('cashback_percent','2') }}"> <p class="ss-hint">مثلا ۲ = ۲٪ از مبلغ خرید به کیف پول برمی‌گردد</p></div>
+  </div>
+</div>
+
+<div class="ss-card">
+  <h3>🎖 گواهینامه</h3>
+  <div class="ss-grid">
+    <div class="ss-field"><label>متن گواهینامه</label><textarea rows="2" name="certificate_text">{{ vals.get('certificate_text','') }}</textarea></div>
+    <div class="ss-field"><label>امضا/سمت</label><input name="certificate_sign" value="{{ vals.get('certificate_sign','') }}"></div>
+  </div>
+</div>
+{% endif %}
+
+<!-- ═══════════ ۴) پیامک و ایمیل ═══════════ -->
+{% if tab == 'sms' %}
+<div class="ss-card">
+  <h3>📲 سامانه پیامک (OTP)</h3>
+  <div class="ss-grid">
+    <div class="ss-field"><label>ارائه‌دهنده</label>
+      <select name="sms_provider">
+        <option value="demo" {{ 'selected' if vals.get('sms_provider','demo')=='demo' }}>دمو (تست)</option>
+        <option value="kavenegar" {{ 'selected' if vals.get('sms_provider')=='kavenegar' }}>کاوه‌نگار</option>
+        <option value="smsir" {{ 'selected' if vals.get('sms_provider')=='smsir' }}>SMS.ir</option>
+      </select></div>
+    <div class="ss-field"><label>شماره تست (در حالت دمو)</label><input name="sms_test_phone" value="{{ vals.get('sms_test_phone','') }}"></div>
+    <div class="ss-field"><label>کاوه‌نگار — API Key</label><input name="sms_kavenegar_key" value="{{ vals.get('sms_kavenegar_key','') }}"></div>
+    <div class="ss-field"><label>کاوه‌نگار — خط ارسال</label><input name="sms_kavenegar_sender" value="{{ vals.get('sms_kavenegar_sender','') }}"></div>
+    <div class="ss-field"><label>کاوه‌نگار — نام الگو</label><input name="sms_kavenegar_template" value="{{ vals.get('sms_kavenegar_template','') }}"></div>
+    <div class="ss-field"><label>SMS.ir — API Key</label><input name="sms_ir_api_key" value="{{ vals.get('sms_ir_api_key','') }}"></div>
+    <div class="ss-field"><label>SMS.ir — خط ارسال</label><input name="sms_ir_line" value="{{ vals.get('sms_ir_line','') }}"></div>
+  </div>
+  <p class="ss-hint">💡 در حالت دمو، کد OTP در صفحه نمایش داده می‌شود — برای ارسال واقعی، کاوه‌نگار یا SMS.ir را پیکربندی کنید.</p>
+</div>
+
+<div class="ss-card">
+  <h3>📧 ایمیل (SMTP)</h3>
+  <div class="ss-grid">
+    <div class="ss-field"><label>SMTP Host</label><input name="smtp_host" value="{{ vals.get('smtp_host','') }}" placeholder="mail.academy.ir"></div>
+    <div class="ss-field"><label>SMTP Port</label><input name="smtp_port" value="{{ vals.get('smtp_port','587') }}"></div>
+    <div class="ss-field"><label>Username</label><input name="smtp_user" value="{{ vals.get('smtp_user','') }}"></div>
+    <div class="ss-field"><label>Password</label><input type="password" name="smtp_pass" value="{{ vals.get('smtp_pass','') }}"></div>
+    <div class="ss-field"><label>From (فرستنده)</label><input name="smtp_from" value="{{ vals.get('smtp_from','') }}"></div>
+    <div class="ss-field"><label>TLS</label>
+      <select name="smtp_tls"><option value="1" {{ 'selected' if vals.get('smtp_tls')!='0' }}>فعال</option><option value="0" {{ 'selected' if vals.get('smtp_tls')=='0' }}>غیرفعال</option></select></div>
+  </div>
+</div>
+{% endif %}
+
+<!-- ═══════════ ۵) مارکت‌پلیس و سرویس‌ها ═══════════ -->
+{% if tab == 'market' %}
+<div class="ss-card">
+  <h3>🏪 مارکت‌پلیس‌ها</h3>
+  <div class="ss-grid">
+    <div class="ss-field"><label>دیجی‌کالا — API Base</label><input name="dk_api_base" value="{{ vals.get('dk_api_base','https://seller.digikala.com/api/v1') }}"></div>
+    <div class="ss-field"><label>دیجی‌کالا — Access Token</label><input type="password" name="dk_access_token" value="{{ vals.get('dk_access_token','') }}"></div>
+    <div class="ss-field"><label>باسلام — Webhook Secret</label><input type="password" name="basalam_webhook_secret" value="{{ vals.get('basalam_webhook_secret','') }}"></div>
+    <div class="ss-field"><label>ایمالز — Seller ID</label><input name="emalls_seller_id" value="{{ vals.get('emalls_seller_id','') }}"></div>
+    <div class="ss-field"><label>قیمت‌های رقابتی (JSON)</label><textarea rows="3" name="competitive_prices" placeholder='{"1": {"ترب": 850000, "دیجی‌کالا": 900000}}'>{{ vals.get('competitive_prices','') }}</textarea>
+      <p class="ss-hint">برای نمودار مقایسه قیمت ویجت‌ها — کلید = آی‌دی دوره/محصول</p></div>
+  </div>
+</div>
+
+<div class="ss-card">
+  <h3>🌐 سرویس‌های رایگان (از .env)</h3>
+  <div style="background:var(--bg-2);border-radius:12px;padding:16px 20px;font-size:13px;line-height:2.2">
+    <p>این کلیدها از فایل <code>.env</code> در سرور خوانده می‌شوند (نه دیتابیس):</p>
+    <code style="display:block;direction:ltr;text-align:left;background:#0f172a;color:#a5f3fc;padding:14px 18px;border-radius:12px;font-size:12px;margin-top:8px">
+CLARITY_ID=...        ← مایکروسافت کلریتی (تحلیل رفتار)<br>
+CRISP_WEBSITE_ID=...  ← کریسپ چت (پشتیبانی آنلاین)<br>
+GROQ_API_KEY=...      ← گروک (نویسنده هوشمند AI)<br>
+BING_API_KEY=...      ← بینگ (ایندکس سریع سئو)<br>
+BING_KEY_LOCATION=... ← آدرس فایل کلید IndexNow<br>
+SECRET_KEY=...        ← کلید امنیتی سشن
+    </code>
+  </div>
+</div>
+
+<div class="ss-card">
+  <h3>🗺 نقشه و ارسال</h3>
+  <div class="ss-grid">
+    <div class="ss-field"><label>Map.ir — API Key</label><input name="mapir_api_key" value="{{ vals.get('mapir_api_key','') }}"></div>
+    <div class="ss-field"><label>آدرس پایه سایت (Base URL)</label><input name="base_url" value="{{ vals.get('base_url','') }}" placeholder="https://academy.example.com"></div>
+  </div>
+</div>
+{% endif %}
+
+<!-- ═══════════ ۶) امنیت و نگهداری ═══════════ -->
+{% if tab == 'security' %}
+<div class="ss-card">
+  <h3>🛡 وضعیت سایت</h3>
+  <div class="ss-grid">
+    <div class="ss-field"><label>حالت نگهداری (Maintenance)</label>
+      <select name="maintenance"><option value="1" {{ 'selected' if vals.get('maintenance')=='1' }}>فعال</option><option value="0" {{ 'selected' if vals.get('maintenance','0')=='0' }}>غیرفعال</option></select>
+      <p class="ss-hint">در حالت فعال، فقط ادمین‌ها سایت را می‌بینند.</p></div>
+    <div class="ss-field"><label>ثبت‌نام کاربران</label>
+      <select name="allow_register"><option value="1" {{ 'selected' if vals.get('allow_register','1')=='1' }}>باز</option><option value="0" {{ 'selected' if vals.get('allow_register')=='0' }}>بسته</option></select></div>
+    <div class="ss-field"><label>ورود با شماره تماس</label>
+      <select name="allow_phone_login"><option value="1" {{ 'selected' if vals.get('allow_phone_login','1')=='1' }}>فعال</option><option value="0" {{ 'selected' if vals.get('allow_phone_login')=='0' }}>غیرفعال</option></select></div>
+  </div>
+</div>
+
+<div class="ss-card">
+  <h3>🧰 وضعیت سیستم</h3>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px">
+    <div style="background:var(--bg-2);border-radius:12px;padding:14px 16px"><b style="color:var(--success)">●</b> دیتابیس: <b>{{ 'WAL' if True else '—' }}</b></div>
+    <div style="background:var(--bg-2);border-radius:12px;padding:14px 16px"><b style="color:var(--success)">●</b> ایندکس‌ها: <b>۳۳+</b></div>
+    <div style="background:var(--bg-2);border-radius:12px;padding:14px 16px"><b style="color:var(--success)">●</b> CSRF: <b>فعال</b></div>
+    <div style="background:var(--bg-2);border-radius:12px;padding:14px 16px"><b style="color:var(--success)">●</b> Rate Limit: <b>فعال</b></div>
+  </div>
+</div>
+
+<div class="ss-card">
+  <h3>🗄 پشتیبان‌گیری</h3>
+  <p class="ss-hint">برای دانلود بکاپ فوری دیتابیس از دکمه زیر استفاده کنید. بکاپ‌های خودکار روزانه در پوشه instance/backups ذخیره می‌شوند.</p>
+  <a class="btn btn-primary" href="{{ url_for('admin.backup') }}">⬇ دانلود بکاپ دیتابیس</a>
+  <a class="btn btn-ghost" href="{{ url_for('admin.backup_list') }}">📋 فهرست بکاپ‌ها</a>
+</div>
+{% endif %}
+
+<!-- دکمه ذخیره -->
+<div class="ss-save">
+  <button class="btn btn-primary" type="submit" name="action" value="save">💾 ذخیره همه تنظیمات</button>
+</div>
+</form>
+
+<script>
+function fillEdit(id, source, target, code){
+  document.getElementById('er-id').value = id;
+  document.getElementById('er-source').value = source;
+  document.getElementById('er-target').value = target;
+  document.getElementById('er-code').value = code;
+  document.getElementById('edit-redirect-box').style.display = 'block';
+  document.getElementById('edit-redirect-box').scrollIntoView({behavior:'smooth'});
+}
+</script>
+{% endblock %}

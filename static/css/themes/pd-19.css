@@ -1,0 +1,46 @@
+/* باغ ایرانی — طبیعت - شاد | تولیدشده از pd-19 */
+:root{
+--primary:#1B7A4A;--primary-2:#145E39;--primary-soft:#368a60;
+--on-primary:#FFFFFF;--on-accent:#14202E;
+--accent:#F2EFE7;--accent-2:#D8D3C9;--accent-soft:#f4f1ea;
+--success:#15803d;--success-soft:#f0fdf4;--danger:#dc2626;--danger-soft:#fef2f2;--warning:#F2EFE7;--info:#1B7A4A;
+--bg:#FAFCF7;--bg-2:#EFF5EC;--card:#FFFFFF;--card-2:#FFFFFF;
+--border:#445348;--border-2:#5d6b61;
+--text:#26382C;--text-2:#a9b2aa;--text-3:#7f8a81;
+--header-bg:rgba(255,255,255,.92);--header-border:#445348;--header-text:#26382C;--header-text-2:#a9b2aa;
+--hero-bg:linear-gradient(135deg,#1B7A4A 0%,#115733 55%,#104a2d 100%);--hero-text:#FFFFFF;--hero-text-2:rgba(255,255,255,.88);--hero-card:rgba(255,255,255,.12);
+--footer-bg:#0F4A2C;--footer-text:#C3DCCB;--footer-text-2:#8FB5A2;--footer-head:#FFFFFF;
+--grad-brand:linear-gradient(135deg,#1B7A4A,#145E39);--grad-accent:linear-gradient(135deg,#F2EFE7,#D8D3C9);
+--radius-sm:8px;--radius-md:14px;--radius-lg:16px;
+--shadow-sm:rgba(38,56,44,.05);--shadow-md:rgba(38,56,44,.08);--shadow-lg:rgba(38,56,44,.12);
+}
+.builder-site-header .dk-logo-ic{background:linear-gradient(135deg,#1B7A4A,#145E39);border-radius:12px;box-shadow:0 6px 16px rgba(38,56,44,.08)}
+.builder-site-header .dk-search{border:2px solid #1B7A4A}
+.builder-site-header .dk-search:focus-within{box-shadow:0 0 0 4px #368a60}
+.builder-site-header .dk-search button{background:#1B7A4A;color:#FFFFFF}
+.builder-site-header .dk-search button:hover{background:#145E39}
+.builder-site-header .dk-icon-link:hover{background:#368a60;color:#1B7A4A}
+.builder-site-header .dk-badge{background:#1B7A4A}
+.builder-site-header .dk-auth a{background:#1B7A4A;color:#FFFFFF}
+.builder-site-header .dk-auth a:hover{background:#145E39}
+.builder-site-header .dk-user-dd{border-top:3px solid #1B7A4A}
+.builder-site-header .dk-mega-trigger{background:#1B7A4A;color:#FFFFFF;box-shadow:0 6px 16px rgba(38,56,44,.08)}
+.builder-site-header .dk-nav a:hover{color:#1B7A4A;background:#368a60}
+.builder-site-header .dk-mega-panel{border-top:3px solid #1B7A4A}
+.builder-site-header .dk-mega-head:hover,.builder-site-header .dk-mega-link:hover{color:#1B7A4A;background:#368a60}
+.builder-site-header .dk-mega-all{color:#1B7A4A}
+.builder-site-footer{background:radial-gradient(700px 300px at 90% -20%,#f4f1ea,transparent 60%),linear-gradient(180deg,#0F4A2C 0%,#0F4A2C 50%,#000000 100%);border-top:3px solid #1B7A4A}
+.builder-site-footer .pb-f-links h2::after,.builder-site-footer .pb-f-contact h2::after{background:#1B7A4A}
+.builder-site-footer .pb-f-links ul a::before{color:#1B7A4A}
+.builder-site-footer .pb-f-about .dk-logo-ic{background:linear-gradient(135deg,#1B7A4A,#145E39)}
+.builder-site-footer .pb-f-about .pb-f-socials a:hover{background:#1B7A4A;border-color:#1B7A4A}
+.builder-site-footer .pb-f-contact ul li span{color:#1B7A4A}
+.builder-site-footer .newsletter-box .btn{background:#1B7A4A;color:#FFFFFF}
+.builder-site-footer .pb-trust-badges a:hover{border-color:#1B7A4A}
+.pb-slide-overlay{background:linear-gradient(120deg,rgba(8,15,35,.88),#1B7A4A 75%)}
+.pb-slide-content h1,.pb-slide-content h2{color:#fff}
+.dk-topbar a:hover{color:#F2EFE7}
+.btn-primary{color:#FFFFFF}
+.btn-accent{background:linear-gradient(135deg,#F2EFE7,#D8D3C9);color:#14202E}
+.pb-slide-arrow{color:#1B7A4A}
+.chart-bar span{background:linear-gradient(135deg,#1B7A4A,#145E39)}

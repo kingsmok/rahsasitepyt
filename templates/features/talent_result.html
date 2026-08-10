@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block title %}نتیجه استعدادیابی — آکادمی آنلاین{% endblock %}
+{% block content %}
+<section class="section" style="padding-top:36px">
+  <div class="container" style="max-width:720px">
+    <div class="card" style="padding:36px;border-radius:20px;text-align:center;margin-bottom:22px">
+      <div style="font-size:56px">{{ path.icon }}</div>
+      <h1 style="font-size:24px;margin:10px 0 6px">مسیر پیشنهادی: <span style="color:{{ path.color }}">{{ path.name }}</span></h1>
+      <p class="text-2" style="font-size:14px;max-width:460px;margin:0 auto">{{ path.desc }}</p>
+      <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:16px">
+        {% for k, v in scores.items() %}
+        <span class="badge {{ 'badge-primary' if k == best else 'badge-gray' }}">{{ {'web':'💻 وب','design':'🎨 طراحی','marketing':'📈 مارکتینگ','ai':'🤖 هوش مصنوعی'}[k] }}: {{ fa(v) }}</span>
+        {% endfor %}
+      </div>
+    </div>
+    <h2 style="font-size:16px;margin-bottom:14px">📚 دوره‌های پیشنهادی برای این مسیر</h2>
+    <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px">
+      {% for c in courses %}
+      <a class="card card-hover" href="{{ url_for('site.course_detail', slug=c.slug) }}" style="overflow:hidden">
+        <img src="/static/img/{{ c.image }}" alt="" style="width:100%;aspect-ratio:16/9;object-fit:cover">
+        <div style="padding:14px">
+          <strong style="font-size:13px;display:block">{{ c.title[:40] }}</strong>
+          <small class="text-3">{{ fa(c.duration_hours) }} ساعت — {{ fa(c.students_count) }} دانشجو</small>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}

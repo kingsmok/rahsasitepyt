@@ -1,0 +1,76 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}تیکت‌های پشتیبانی{% endblock %}
+{% block acontent %}
+<div class="dash-head">
+  <div><h1>🎫 تیکت‌های پشتیبانی</h1><p>{{ fa(tickets|length) }} تیکت — <a href="{{ url_for('admin.tickets_report') }}" style="color:var(--primary)">📊 گزارش عملکرد</a></p></div>
+</div>
+<div class="flex gap-1" style="margin-bottom:14px;flex-wrap:wrap">
+  <a class="btn btn-sm {{ 'btn-primary' if not status else 'btn-ghost' }}" href="{{ url_for('admin.tickets') }}">همه</a>
+  <a class="btn btn-sm {{ 'btn-primary' if status == 'open' else 'btn-ghost' }}" href="{{ url_for('admin.tickets', status='open') }}">باز</a>
+  <a class="btn btn-sm {{ 'btn-primary' if status == 'answered' else 'btn-ghost' }}" href="{{ url_for('admin.tickets', status='answered') }}">پاسخ داده</a>
+  <a class="btn btn-sm {{ 'btn-primary' if status == 'closed' else 'btn-ghost' }}" href="{{ url_for('admin.tickets', status='closed') }}">بسته</a>
+  <span style="width:1px;background:var(--border);margin:0 6px"></span>
+  <a class="btn btn-sm {{ 'btn-primary' if prio == 'urgent' else 'btn-ghost' }}" href="{{ url_for('admin.tickets', priority='urgent') }}">🔴 فوری</a>
+  <a class="btn btn-sm {{ 'btn-primary' if prio == 'high' else 'btn-ghost' }}" href="{{ url_for('admin.tickets', priority='high') }}">🟠 زیاد</a>
+  <a class="btn btn-sm {{ 'btn-primary' if prio == 'normal' else 'btn-ghost' }}" href="{{ url_for('admin.tickets', priority='normal') }}">🟡 معمولی</a>
+</div>
+
+{% for t in tickets %}
+<div class="card" style="padding:20px;margin-bottom:14px;border-right:4px solid {{ {'urgent':'var(--danger)','high':'var(--warning)','normal':'var(--primary)'}.get(t.priority, 'var(--primary)') }}">
+  <div class="flex between wrap gap-2">
+    <div>
+      <a href="{{ url_for('admin.ticket_detail', tid=t.id) }}" style="font-weight:800">{{ t.subject }}</a>
+      <div class="text-3" style="font-size:12px;margin-top:2px">{{ t.user.name if t.user else '—' }} — {{ t.created_at|jdatetime }}</div>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <span class="badge badge-gray">{{ t.category or 'عمومی' }}</span>
+      <span class="badge {{ {'urgent':'badge-danger','high':'badge-accent','normal':'badge-gray'}.get(t.priority, 'badge-gray') }}">
+        {{ {'urgent':'🔴 فوری','high':'🟠 زیاد','normal':'🟡 معمولی','low':'🟢 کم'}.get(t.priority, t.priority) }}
+      </span>
+      {% if t.status == 'open' %}<span class="badge badge-accent">باز</span>
+      {% elif t.status == 'answered' %}<span class="badge badge-success">پاسخ داده شده</span>
+      {% else %}<span class="badge badge-gray">بسته</span>{% endif %}
+      {% if t.assigned_to %}<span class="badge badge-primary">👤 ارجاع: {{ (supports|selectattr('id','equalto',t.assigned_to)|list|first).name if supports|selectattr('id','equalto',t.assigned_to)|list|first else t.assigned_to }}</span>{% endif %}
+    </div>
+  </div>
+  <div style="background:var(--bg-2);border-radius:10px;padding:12px 16px;margin-top:10px;font-size:13.5px">{{ t.body }}</div>
+  {% if t.attachment %}<a class="btn btn-ghost btn-sm mt-1" href="/uploads/tickets/{{ t.attachment }}" target="_blank">📎 پیوست کاربر</a>{% endif %}
+
+  <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;align-items:center">
+    <a class="btn btn-primary btn-sm" href="{{ url_for('admin.ticket_detail', tid=t.id) }}">💬 باز کردن مکالمه</a>
+    <form method="post" style="display:inline">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="tid" value="{{ t.id }}">
+      <input type="hidden" name="action" value="assign">
+      <select class="form-control" name="assigned_to" style="width:auto;display:inline-block;padding:6px;margin-left:4px">
+        <option value="">— ارجاع به —</option>
+        {% for su in supports %}<option value="{{ su.id }}" {{ 'selected' if t.assigned_to == su.id }}>{{ su.name }}</option>{% endfor %}
+      </select>
+      <button class="btn btn-ghost btn-sm" type="submit">ارجاع</button>
+    </form>
+    <form method="post" style="display:inline">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="tid" value="{{ t.id }}">
+      <input type="hidden" name="action" value="priority">
+      <select class="form-control" name="priority" style="width:auto;display:inline-block;padding:6px;margin-left:4px">
+        <option value="low" {{ 'selected' if t.priority == 'low' }}>🟢 کم</option>
+        <option value="normal" {{ 'selected' if t.priority == 'normal' }}>🟡 معمولی</option>
+        <option value="high" {{ 'selected' if t.priority == 'high' }}>🟠 زیاد</option>
+        <option value="urgent" {{ 'selected' if t.priority == 'urgent' }}>🔴 فوری</option>
+      </select>
+      <button class="btn btn-ghost btn-sm" type="submit">اولویت</button>
+    </form>
+    {% if t.status != 'closed' %}
+    <form method="post" style="display:inline">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="tid" value="{{ t.id }}">
+      <input type="hidden" name="action" value="close">
+      <button class="btn btn-danger btn-sm" type="submit">بستن</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+{% else %}
+<div class="card text-center" style="padding:50px"><p class="text-3">تیکتی یافت نشد.</p></div>
+{% endfor %}
+{% endblock %}

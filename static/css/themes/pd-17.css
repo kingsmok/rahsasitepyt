@@ -1,0 +1,46 @@
+/* خلیج فارس — ساحلی - روشن | تولیدشده از pd-17 */
+:root{
+--primary:#0077B6;--primary-2:#005E93;--primary-soft:#1f87bf;
+--on-primary:#FFFFFF;--on-accent:#14202E;
+--accent:#48CAE4;--accent-2:#1FA8C4;--accent-soft:#62d1e8;
+--success:#15803d;--success-soft:#f0fdf4;--danger:#dc2626;--danger-soft:#fef2f2;--warning:#48CAE4;--info:#0077B6;
+--bg:#F5FAFD;--bg-2:#E9F2F9;--card:#FFFFFF;--card-2:#FFFFFF;
+--border:#3a4d5a;--border-2:#546571;
+--text:#1C3140;--text-2:#a3aeb5;--text-3:#77858f;
+--header-bg:rgba(255,255,255,.92);--header-border:#3a4d5a;--header-text:#1C3140;--header-text-2:#a3aeb5;
+--hero-bg:linear-gradient(135deg,#0077B6 0%,#00507E 55%,#02446b 100%);--hero-text:#FFFFFF;--hero-text-2:rgba(255,255,255,.88);--hero-card:rgba(255,255,255,.12);
+--footer-bg:#0B3A5C;--footer-text:#C3D9E8;--footer-text-2:#8AAFC8;--footer-head:#FFFFFF;
+--grad-brand:linear-gradient(135deg,#0077B6,#005E93);--grad-accent:linear-gradient(135deg,#48CAE4,#1FA8C4);
+--radius-sm:8px;--radius-md:14px;--radius-lg:16px;
+--shadow-sm:rgba(28,49,64,.05);--shadow-md:rgba(28,49,64,.08);--shadow-lg:rgba(28,49,64,.12);
+}
+.builder-site-header .dk-logo-ic{background:linear-gradient(135deg,#0077B6,#005E93);border-radius:12px;box-shadow:0 6px 16px rgba(28,49,64,.08)}
+.builder-site-header .dk-search{border:2px solid #0077B6}
+.builder-site-header .dk-search:focus-within{box-shadow:0 0 0 4px #1f87bf}
+.builder-site-header .dk-search button{background:#0077B6;color:#FFFFFF}
+.builder-site-header .dk-search button:hover{background:#005E93}
+.builder-site-header .dk-icon-link:hover{background:#1f87bf;color:#0077B6}
+.builder-site-header .dk-badge{background:#0077B6}
+.builder-site-header .dk-auth a{background:#0077B6;color:#FFFFFF}
+.builder-site-header .dk-auth a:hover{background:#005E93}
+.builder-site-header .dk-user-dd{border-top:3px solid #0077B6}
+.builder-site-header .dk-mega-trigger{background:#0077B6;color:#FFFFFF;box-shadow:0 6px 16px rgba(28,49,64,.08)}
+.builder-site-header .dk-nav a:hover{color:#0077B6;background:#1f87bf}
+.builder-site-header .dk-mega-panel{border-top:3px solid #0077B6}
+.builder-site-header .dk-mega-head:hover,.builder-site-header .dk-mega-link:hover{color:#0077B6;background:#1f87bf}
+.builder-site-header .dk-mega-all{color:#0077B6}
+.builder-site-footer{background:radial-gradient(700px 300px at 90% -20%,#62d1e8,transparent 60%),linear-gradient(180deg,#0B3A5C 0%,#0B3A5C 50%,#000000 100%);border-top:3px solid #0077B6}
+.builder-site-footer .pb-f-links h2::after,.builder-site-footer .pb-f-contact h2::after{background:#0077B6}
+.builder-site-footer .pb-f-links ul a::before{color:#0077B6}
+.builder-site-footer .pb-f-about .dk-logo-ic{background:linear-gradient(135deg,#0077B6,#005E93)}
+.builder-site-footer .pb-f-about .pb-f-socials a:hover{background:#0077B6;border-color:#0077B6}
+.builder-site-footer .pb-f-contact ul li span{color:#0077B6}
+.builder-site-footer .newsletter-box .btn{background:#0077B6;color:#FFFFFF}
+.builder-site-footer .pb-trust-badges a:hover{border-color:#0077B6}
+.pb-slide-overlay{background:linear-gradient(120deg,rgba(8,15,35,.88),#0077B6 75%)}
+.pb-slide-content h1,.pb-slide-content h2{color:#fff}
+.dk-topbar a:hover{color:#48CAE4}
+.btn-primary{color:#FFFFFF}
+.btn-accent{background:linear-gradient(135deg,#48CAE4,#1FA8C4);color:#14202E}
+.pb-slide-arrow{color:#0077B6}
+.chart-bar span{background:linear-gradient(135deg,#0077B6,#005E93)}

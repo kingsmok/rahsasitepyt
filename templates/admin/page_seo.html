@@ -1,0 +1,27 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}SEO صفحه{% endblock %}
+{% block acontent %}
+<div class="dash-head"><div><h1>🔍 SEO «{{ page.title }}»</h1><p dir="ltr">/page/{{ page.slug }}</p></div><a class="btn btn-ghost" href="{{ url_for('admin.pages') }}">← صفحات</a></div>
+<div class="card" style="padding:24px;max-width:640px">
+  <form method="post">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+    <div class="form-group">
+      <label>عنوان (Title)</label>
+      <input class="form-control" name="title" value="{{ meta.title if meta else '' }}" placeholder="تا ۶۰ کاراکتر">
+      <p class="form-hint" dir="ltr">{{ (meta.title if meta else '')|length }}/60</p>
+    </div>
+    <div class="form-group">
+      <label>توضیحات (Description)</label>
+      <textarea class="form-control" name="description" rows="3">{{ meta.description if meta else '' }}</textarea>
+    </div>
+    <div class="form-group">
+      <label>کلمه کلیدی</label>
+      <input class="form-control" name="focus_keyword" value="{{ meta.focus_keyword if meta else '' }}">
+    </div>
+    <div class="form-check mb-3">
+      <label><input type="checkbox" name="noindex" {{ 'checked' if meta and meta.noindex }}> عدم ایندکس (noindex)</label>
+    </div>
+    <button class="btn btn-primary" type="submit">💾 ذخیره SEO</button>
+  </form>
+</div>
+{% endblock %}

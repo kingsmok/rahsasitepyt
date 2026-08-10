@@ -1,0 +1,25 @@
+{% extends 'teacher/base.html' %}
+{% block tcontent %}
+<div class="dash-head"><div><h1 style="font-size:20px">📌 تکالیف</h1><p>نمره‌دهی و بازخورد به دانشجویان</p></div></div>
+{% for s in subs %}
+<div class="card" style="padding:18px;margin-bottom:12px">
+  <div style="display:flex;justify-content:space-between;flex-wrap:wrap;margin-bottom:8px">
+    <div><strong>{{ s.user.name if s.user else '—' }}</strong> — {{ s.assignment.title }} <span class="badge {{ 'badge-success' if s.status == 'graded' else 'badge-accent' }}">{{ 'نمره‌داده‌شده' if s.status == 'graded' else 'در انتظار' }}</span></div>
+    <small class="text-3">{{ s.created_at|jdatetime }}</small>
+  </div>
+  {% if s.text %}<p style="font-size:13px;background:var(--bg-2);padding:10px;border-radius:10px">{{ s.text[:300] }}</p>{% endif %}
+  {% if s.file %}<a class="btn btn-ghost btn-sm" href="/uploads/submissions/{{ s.file }}" target="_blank">📎 فایل</a>{% endif %}
+  {% if s.status == 'graded' %}<div style="margin-top:8px;font-size:13px">نمره: <b>{{ fa(s.score) }}</b>{% if s.feedback %} — {{ s.feedback }}{% endif %}</div>{% endif %}
+  {% if s.status == 'submitted' %}
+  <form method="post" action="{{ url_for('teacher.grade', sid=s.id) }}" class="flex gap-1 mt-2">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+    <input class="form-control" name="score" type="number" min="0" max="{{ s.assignment.max_score or 100 }}" placeholder="نمره از {{ s.assignment.max_score or 100 }}" style="max-width:130px" required>
+    <input class="form-control" name="feedback" placeholder="بازخورد..." style="flex:1">
+    <button class="btn btn-primary btn-sm">✓ ثبت نمره</button>
+  </form>
+  {% endif %}
+</div>
+{% else %}
+<div class="card text-center" style="padding:40px"><p class="text-3">تکلیفی ثبت نشده است.</p></div>
+{% endfor %}
+{% endblock %}

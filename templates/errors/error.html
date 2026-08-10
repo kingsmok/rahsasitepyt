@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% block title %}{% if err_code == 404 %}صفحه مورد نظر پیدا نشد (خطای ۴۰۴) — آکادمی آنلاین{% elif err_code == 403 %}دسترسی غیرمجاز (خطای ۴۰۳) — آکادمی آنلاین{% else %}خطای {{ err_code }} — آکادمی آنلاین{% endif %}{% endblock %}
+{% block description %}صفحه درخواستی شما در دسترس نیست. به صفحه اصلی بازگردید یا از بخش دوره‌های آموزشی دیدن کنید.{% endblock %}
+
+{% block content %}
+<div class="error-page">
+  <div>
+    <div class="e-code">{{ fa(err_code) if err_code else '۴۰۴' }}</div>
+    <h1 style="font-size:clamp(26px,3vw,34px)">{{ err_title }}</h1>
+    <p>{{ err_msg }}</p>
+    <div class="flex gap-2" style="justify-content:center">
+      <a class="btn btn-primary btn-lg" href="{{ url_for('site.index') }}">🏠 بازگشت به خانه</a>
+      <a class="btn btn-outline btn-lg" href="{{ url_for('site.courses') }}">📚 مشاهده دوره‌ها</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

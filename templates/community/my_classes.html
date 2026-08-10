@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block title %}{{ seo.title or "کلاس‌های من" }}{% endblock %}
+{% block content %}
+<section class="section" style="padding-top:30px">
+  <div class="container" style="max-width:760px">
+    <nav class="breadcrumb" aria-label="مسیر صفحه">
+      <a href="{{ url_for('student.dashboard') }}">داشبورد</a><span class="sep">/</span>
+      <span>کلاس‌های من</span>
+    </nav>
+    <div class="card" style="padding:26px;border-radius:20px">
+      <h1 style="font-size:20px;margin-bottom:16px">📅 برنامه کلاسی شما</h1>
+      <h2 style="font-size:14px;margin-bottom:10px">🎥 کلاس‌های پیش‌رو (دوره‌های شما)</h2>
+      {% if upcoming %}
+      {% for l in upcoming %}
+      <div class="card" style="padding:14px 18px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <div>
+          <strong style="font-size:13.5px">{{ l.title }}</strong>
+          <small class="text-3" style="display:block;font-size:11.5px">🗓 {{ l.starts_at|jdatetime }} — ⏱ {{ fa(l.duration_min) }} دقیقه</small>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <form method="post" action="{{ url_for('community.live_book', sid=l.id) }}">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+            <button class="btn btn-primary btn-sm">📝 رزرو</button>
+          </form>
+          {% if l.link %}<a class="btn btn-ghost btn-sm" href="{{ l.link }}" target="_blank" rel="noopener">🔗 ورود</a>{% endif %}
+        </div>
+      </div>
+      {% endfor %}
+      {% else %}
+      <p class="text-3" style="font-size:13px;margin-bottom:16px">کلاس پیش‌رویی برای دوره‌های شما نیست.</p>
+      {% endif %}
+      <h2 style="font-size:14px;margin:16px 0 10px">📋 رزروهای اخیر شما</h2>
+      {% for b in booked %}
+      <div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:12.5px">🎥 {{ b.detail.replace('رزرو کلاس ', '') }} — {{ b.created_at|jdatetime }}</div>
+      {% else %}<p class="text-3" style="font-size:13px">رزروی ثبت نشده.</p>{% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,36 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}سفارش‌ها{% endblock %}
+{% block acontent %}
+<div class="dash-head">
+  <div><h1>🧾 سفارش‌ها</h1><p>{{ fa(orders|length) }} سفارش</p></div>
+  <div class="flex gap-1">
+    {% for st, label in [('', 'همه'), ('paid', 'پرداخت‌شده'), ('pending', 'در انتظار'), ('failed', 'ناموفق'), ('canceled', 'لغو شده')] %}
+    <a class="btn btn-sm {{ 'btn-primary' if status == st else 'btn-ghost' }}" href="{{ url_for('admin.orders', status=st) }}">{{ label }}</a>
+    {% endfor %}
+  </div>
+</div>
+<div class="table-wrap">
+  <table class="table">
+    <thead><tr><th>کد</th><th>کاربر</th><th>دوره‌ها</th><th>مبلغ</th><th>درگاه</th><th>تاریخ</th><th>وضعیت</th><th></th></tr></thead>
+    <tbody>
+      {% for o in orders %}
+      <tr>
+        <td dir="ltr" style="font-weight:700">{{ o.code }}</td>
+        <td>{{ o.user.name }}</td>
+        <td>{{ fa(o.items|length) }} دوره</td>
+        <td><strong>{{ fa('{:,.0f}'.format(o.final_total)) }}</strong> <small class="text-3">تومان</small></td>
+        <td>{{ {'zarinpal': 'زرین‌پال', 'idpay': 'آیدی پی', 'zibal': 'زیبال', 'sandbox': 'آزمایشی'}.get(o.gateway, '—') }}</td>
+        <td>{{ o.created_at|jdate }}</td>
+        <td>
+          {% if o.status == 'paid' %}<span class="badge badge-success">پرداخت‌شده</span>
+          {% elif o.status == 'pending' %}<span class="badge badge-accent">در انتظار</span>
+          {% elif o.status == 'failed' %}<span class="badge badge-danger">ناموفق</span>
+          {% else %}<span class="badge badge-gray">لغو شده</span>{% endif %}
+        </td>
+        <td><a class="btn btn-ghost btn-sm" href="{{ url_for('admin.order_detail', oid=o.id) }}">مشاهده</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

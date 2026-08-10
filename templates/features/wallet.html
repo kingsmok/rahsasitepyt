@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block title %}{{ seo.title or "کیف پول" }}{% endblock %}
+{% block content %}
+<section class="section" style="padding-top:30px">
+  <div class="container" style="max-width:680px">
+    <nav class="breadcrumb" aria-label="مسیر صفحه">
+      <a href="{{ url_for('student.dashboard') }}">داشبورد</a><span class="sep">/</span>
+      <span>کیف پول</span>
+    </nav>
+    <div class="card" style="padding:32px;border-radius:20px;text-align:center;background:linear-gradient(135deg, var(--navy, #0d1f36), #1d4a75);color:#fff;margin-bottom:20px">
+      <div style="font-size:15px;opacity:.85">موجودی کیف پول</div>
+      <div style="font-size:34px;font-weight:900;margin:6px 0">{{ fa('{:,.0f}'.format(cur_user.wallet_balance or 0)) }} <small style="font-size:14px">تومان</small></div>
+      <small style="opacity:.7">از کیف پول برای خرید دوره‌ها و استفاده از پاداش‌های ارجاع استفاده کنید</small>
+    </div>
+
+    <div class="card" style="padding:26px;border-radius:20px;margin-bottom:20px">
+      <h2 style="font-size:16px;margin-bottom:14px">💳 شارژ کیف پول</h2>
+      <form method="post" class="flex gap-1">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+        <input class="form-control" name="amount" type="number" min="10000" step="10000" placeholder="مبلغ به تومان (حداقل ۱۰,۰۰۰)" dir="ltr" style="flex:1" required>
+        <button class="btn btn-primary" type="submit">شارژ</button>
+      </form>
+      <div class="flex gap-1 mt-2" style="flex-wrap:wrap">
+        {% for a in [50000, 100000, 200000, 500000] %}
+        <button class="btn btn-ghost btn-sm" type="button" onclick="this.form.elements['amount'].value='{{ a }}'">{{ fa('{:,.0f}'.format(a)) }}</button>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="card" style="padding:26px;border-radius:20px">
+      <h2 style="font-size:16px;margin-bottom:12px">📒 تراکنش‌های اخیر</h2>
+      {% if txns %}
+      {% for t in txns %}
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);font-size:13px">
+        <div>
+          <strong>{{ {'charge':'شارژ کیف پول','spend':'خرید دوره','bonus':'پاداش ارجاع','refund':'بازگشت وجه'}.get(t.type, t.type) }}</strong>
+          <small class="text-3" style="display:block;font-size:11px">{{ t.detail }} — {{ t.created_at|jdatetime }}</small>
+        </div>
+        <span style="font-weight:800;color:{{ 'var(--success)' if t.amount > 0 else 'var(--danger)' }}">{{ '+' if t.amount > 0 else '−' }}{{ fa('{:,.0f}'.format(t.amount|abs)) }}</span>
+      </div>
+      {% endfor %}
+      {% else %}
+      <p class="text-3" style="font-size:13px">تراکنشی ثبت نشده است.</p>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endblock %}

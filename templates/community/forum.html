@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+{% block title %}{{ seo.title or "انجمن گفتگو" }}{% endblock %}
+{% block content %}
+<section class="section" style="padding-top:36px">
+  <div class="container" style="max-width:860px">
+    <div class="dash-head" style="margin-bottom:18px">
+      <div>
+        <h1 style="font-size:22px">💬 انجمن گفتگو</h1>
+        <p class="text-2" style="font-size:13px">پرسش، تبادل تجربه و گفتگو بین دانشجویان</p>
+      </div>
+      <div class="flex gap-1" style="flex-wrap:wrap">
+        <a class="btn btn-ghost btn-sm" href="{{ url_for('community.live') }}">🎥 کلاس‌های آنلاین</a>
+      </div>
+    </div>
+    <div class="flex gap-1" style="margin-bottom:16px;flex-wrap:wrap">
+      <a class="btn btn-sm {{ 'btn-primary' if not course_id else 'btn-ghost' }}" href="{{ url_for('community.forum') }}">همه</a>
+      {% for c in courses %}
+      <a class="btn btn-sm {{ 'btn-primary' if course_id == c.id else 'btn-ghost' }}" href="{{ url_for('community.forum', course=c.id) }}">{{ c.title[:20] }}</a>
+      {% endfor %}
+    </div>
+    <div class="card" style="padding:20px;margin-bottom:16px">
+      <form method="post" action="{{ url_for('community.topic_new') }}">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+        <div class="flex gap-1" style="flex-wrap:wrap">
+          <input class="form-control" name="title" placeholder="موضوع تاپیک خود را بنویسید..." style="flex:2;min-width:220px" required>
+          <select class="form-control" name="course_id" style="max-width:180px">
+            <option value="">عمومی</option>
+            {% for c in courses %}<option value="{{ c.id }}">{{ c.title[:25] }}</option>{% endfor %}
+          </select>
+          {% if cur_user %}
+          <button class="btn btn-primary">📝 ایجاد تاپیک</button>
+          {% else %}
+          <a class="btn btn-primary" href="{{ url_for('auth.login', next=url_for('community.forum')) }}">برای پرسیدن وارد شوید</a>
+          {% endif %}
+        </div>
+        <textarea class="form-control mt-1" name="body" rows="2" placeholder="توضیح بیشتر (اختیاری)"></textarea>
+      </form>
+    </div>
+    {% for t in topics %}
+    <a href="{{ url_for('community.topic_view', tid=t.id) }}" class="card card-hover" style="padding:18px 20px;margin-bottom:10px;display:block">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        {% if t.is_pinned %}<span class="badge badge-accent">📌 پین</span>{% endif %}
+        <strong style="font-size:14.5px;flex:1">{{ t.title }}</strong>
+        <span class="badge badge-gray">{{ fa(post_counts.get(t.id, 0)) }} پاسخ</span>
+        <span class="badge badge-gray">👁 {{ fa(t.views) }}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:12px;color:var(--text-3);flex-wrap:wrap">
+        <span>👤 {{ t.user.name if t.user else '—' }}{% if t.course %} — 📚 {{ t.course.title[:25] }}{% endif %}</span>
+        <span>{{ t.created_at|jdatetime }}</span>
+      </div>
+    </a>
+    {% else %}
+    <div class="card text-center" style="padding:50px"><p class="text-3">اولین تاپیک را شما بسازید! 🚀</p></div>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

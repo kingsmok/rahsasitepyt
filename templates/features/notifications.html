@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% block title %}{{ seo.title or "اعلان‌ها" }}{% endblock %}
+{% block content %}
+<section class="section" style="padding-top:30px">
+  <div class="container" style="max-width:720px">
+    <nav class="breadcrumb" aria-label="مسیر صفحه">
+      <a href="{{ url_for('student.dashboard') }}">داشبورد</a><span class="sep">/</span>
+      <span>اعلان‌ها</span>
+    </nav>
+    <div class="card" style="padding:26px;border-radius:20px">
+      <h1 style="font-size:20px;margin-bottom:16px">🔔 اعلان‌های شما</h1>
+      {% if items %}
+      <div style="display:flex;flex-direction:column;gap:10px">
+        {% for n in items %}
+        <a href="{{ n.link or '#' }}" class="card" style="padding:16px 18px;display:flex;gap:12px;align-items:flex-start;{{ '' if n.is_read else 'background:var(--primary-soft);border-color:var(--primary)' }}">
+          <span style="font-size:22px">{{ n.icon or '🔔' }}</span>
+          <div style="flex:1;min-width:0">
+            <strong style="font-size:13.5px">{{ n.title }}</strong>
+            {% if n.body %}<p class="text-2" style="font-size:12.5px;margin:2px 0 0">{{ n.body }}</p>{% endif %}
+            <small class="text-3" style="font-size:11px">{{ n.created_at|jdatetime }}</small>
+          </div>
+          {% if not n.is_read %}<span class="badge badge-primary">جدید</span>{% endif %}
+        </a>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="empty-state"><div class="es-icon">🔕</div><h3>اعلانی ندارید</h3><p>پاسخ تیکت، نمره تمرین، گواهی و تخفیف‌ها اینجا نمایش داده می‌شوند.</p></div>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block title %}نتیجه آزمون — {{ quiz.title }}{% endblock %}
+{% block content %}
+<section class="section" style="padding-top:36px">
+  <div class="container" style="max-width:760px">
+    <div class="card" style="padding:36px;border-radius:20px;text-align:center">
+      <div style="width:110px;height:110px;border-radius:50%;margin:0 auto 18px;display:flex;align-items:center;justify-content:center;font-size:34px;font-weight:900;color:#fff;background:{{ 'var(--success)' if passed else 'var(--danger)' }}">{{ fa(score) }}٪</div>
+      <h1 style="font-size:22px;margin-bottom:8px">{{ '🎉 آفرین، قبول شدی!' if passed else '💪 تلاش دوباره!' }}</h1>
+      <p class="text-2" style="font-size:13.5px;margin-bottom:20px">آزمون «{{ quiz.title }}» — پاسخ صحیح: {{ fa(answers|selectattr('correct')|list|length) }} از {{ fa(answers|length) }}</p>
+      <div class="flex gap-2" style="justify-content:center;flex-wrap:wrap">
+        <a class="btn btn-primary" href="{{ url_for('site.course_detail', slug=quiz.course.slug) }}">بازگشت به دوره</a>
+        {% if not passed %}<a class="btn btn-ghost" href="{{ url_for('features.quiz_start', qid=quiz.id) }}">🔄 تلاش مجدد</a>{% endif %}
+      </div>
+    </div>
+    <div style="margin-top:22px">
+      <h2 style="font-size:16px;margin-bottom:12px">📋 بررسی پاسخ‌ها</h2>
+      {% for a in answers %}
+      {% set q = quiz.questions|selectattr('id','equalto',a.q)|list|first %}
+      <div class="card" style="padding:16px 20px;margin-bottom:10px;border-right:4px solid {{ 'var(--success)' if a.correct else 'var(--danger)' }}">
+        <div style="font-size:13.5px;font-weight:700;margin-bottom:6px">{{ q.text if q else 'سوال' }}</div>
+        <div style="font-size:12.5px;color:var(--text-2)">{{ '✅ پاسخ شما درست بود' if a.correct else '❌ پاسخ درست: گزینه ' ~ (a.right + 1) }}</div>
+        {% if a.explain %}<div style="font-size:12.5px;color:var(--text-2);margin-top:4px">💡 {{ a.explain }}</div>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}

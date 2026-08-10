@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% block title %}{{ seo.title or "تایید شماره" }}{% endblock %}
+
+{% block content %}
+<div class="auth-wrap">
+  <div class="auth-card">
+    <a class="a-logo" href="{{ url_for('site.index') }}"><span class="ic">🎓</span>{{ site.site_name or 'آکادمی آنلاین' }}</a>
+    <h1>تایید شماره تماس</h1>
+    <p class="a-sub">کد تایید ارسال‌شده به <b dir="ltr">{{ fa(phone) }}</b> را وارد کنید</p>
+
+    <form method="post">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+
+      <div class="form-group" style="text-align:center">
+        <label for="f_code_1">کد تایید (۵ رقم)</label>
+        <input id="f_code_1" class="form-control" name="code" placeholder="•••••" dir="ltr" required
+               pattern="[0-9]{5}" maxlength="5" autofocus
+               style="text-align:center;letter-spacing:8px;font-weight:900;font-size:20px">
+      </div>
+      <button class="btn btn-primary btn-lg btn-block" type="submit">✓ تایید و ورود</button>
+    </form>
+
+    <form method="post" action="{{ url_for('auth.phone_send') }}" style="text-align:center;margin-top:14px">
+<input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="phone" value="{{ phone }}">
+      <button class="btn btn-ghost btn-sm" type="submit">↺ ارسال مجدد کد</button>
+    </form>
+
+    <p class="form-hint" style="text-align:center;margin-top:14px">
+      🧪 در حالت دمو، کد تایید در پیام قبلی نمایش داده شده است.
+    </p>
+  </div>
+</div>
+{% endblock %}

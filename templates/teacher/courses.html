@@ -1,0 +1,23 @@
+{% extends 'teacher/base.html' %}
+{% block tcontent %}
+<div class="dash-head"><div><h1 style="font-size:20px">📚 دوره‌های من</h1><p>{{ fa(courses|length) }} دوره</p></div></div>
+<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px">
+  {% for c in courses %}
+  <div class="card" style="overflow:hidden">
+    <img src="/static/img/{{ c.image }}" alt="" style="width:100%;aspect-ratio:16/9;object-fit:cover">
+    <div style="padding:16px">
+      <strong style="font-size:13.5px">{{ c.title }}</strong>
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-2);margin:8px 0">
+        <span>👥 {{ fa(c.students_count) }} دانشجو</span>
+        <span>📊 {{ fa(c.lesson_count) }} جلسه</span>
+      </div>
+      <div class="flex gap-1">
+        <a class="btn btn-ghost btn-sm" href="{{ url_for('teacher.course_students', cid=c.id) }}">دانشجویان</a>
+        <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.course_edit', cid=c.id) }}">✏️ ویرایش</a>
+        <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.course_lessons', cid=c.id) }}">جلسات</a>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

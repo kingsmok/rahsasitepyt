@@ -1,0 +1,35 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}پاسخ تمرین‌ها{% endblock %}
+{% block acontent %}
+<div class="dash-head">
+  <div><h1>📥 پاسخ‌های دانشجویان</h1><p>نمره‌دهی تمرین‌ها</p></div>
+  <div class="flex gap-1">
+    <a class="btn btn-sm {{ 'btn-primary' if not status else 'btn-ghost' }}" href="{{ url_for('admin.submissions') }}">همه</a>
+    <a class="btn btn-sm {{ 'btn-primary' if status == 'submitted' else 'btn-ghost' }}" href="{{ url_for('admin.submissions', status='submitted') }}">در انتظار</a>
+    <a class="btn btn-sm {{ 'btn-primary' if status == 'graded' else 'btn-ghost' }}" href="{{ url_for('admin.submissions', status='graded') }}">نمره‌داده‌شده</a>
+  </div>
+</div>
+{% for s in items %}
+<div class="card" style="padding:20px;margin-bottom:14px">
+  <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px">
+    <div><strong>{{ s.user.name if s.user else '—' }}</strong> — <span class="badge badge-primary">{{ s.assignment.title }}</span></div>
+    <small class="text-3">{{ s.created_at|jdatetime }} — {{ '✅ نمره‌داده‌شده' if s.status == 'graded' else '⏳ در انتظار' }}</small>
+  </div>
+  {% if s.text %}<p style="font-size:13.5px;background:var(--bg-2);padding:12px;border-radius:10px">{{ s.text }}</p>{% endif %}
+  {% if s.file %}<a class="btn btn-ghost btn-sm" href="/uploads/submissions/{{ s.file }}" target="_blank">📎 فایل</a>{% endif %}
+  {% if s.status == 'graded' and s.score is not none %}
+  <div style="margin-top:10px;font-size:13px">نمره: <b>{{ fa(s.score) }}</b>{% if s.feedback %} — بازخورد: {{ s.feedback }}{% endif %}</div>
+  {% endif %}
+  {% if s.status == 'submitted' %}
+  <form method="post" action="{{ url_for('admin.submission_grade', sid=s.id) }}" class="flex gap-1 mt-2">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+    <input class="form-control" name="score" type="number" min="0" max="{{ s.assignment.max_score or 100 }}" placeholder="نمره از {{ s.assignment.max_score or 100 }}" style="max-width:140px" required>
+    <input class="form-control" name="feedback" placeholder="بازخورد (اختیاری)" style="flex:1">
+    <button class="btn btn-primary btn-sm" type="submit">✓ ثبت نمره</button>
+  </form>
+  {% endif %}
+</div>
+{% else %}
+<div class="card text-center" style="padding:40px"><p class="text-3">پاسخی یافت نشد.</p></div>
+{% endfor %}
+{% endblock %}

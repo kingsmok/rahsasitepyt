@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+{% block title %}{{ seo.title or "برنامه مطالعاتی" }}{% endblock %}
+{% block content %}
+<section class="section" style="padding-top:30px">
+  <div class="container" style="max-width:720px">
+    <nav class="breadcrumb" aria-label="مسیر صفحه">
+      <a href="{{ url_for('student.dashboard') }}">داشبورد</a><span class="sep">/</span>
+      <span>برنامه مطالعاتی</span>
+    </nav>
+    <div class="card" style="padding:30px;border-radius:20px;margin-bottom:20px">
+      <div style="font-size:36px">📅</div>
+      <h1 style="font-size:21px;margin:8px 0 6px">برنامه مطالعاتی شخصی</h1>
+      <p class="text-2" style="font-size:13.5px">بگو روزی چقدر وقت داری؛ ما بر اساس دوره‌هایت برنامه پیشنهاد می‌دهیم.</p>
+      <form method="post" class="mt-3">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+        <div class="grid" style="grid-template-columns:1fr 2fr;gap:14px">
+          <div class="form-group">
+            <label for="sp_min">مطالعه روزانه (دقیقه)</label>
+            <input id="sp_min" class="form-control" type="number" name="daily_minutes" min="15" max="480" value="{{ plan.daily_minutes if plan else (cur_user.study_daily_minutes or 60) }}" required>
+          </div>
+          <div class="form-group">
+            <label for="sp_goal">هدف شما</label>
+            <input id="sp_goal" class="form-control" name="goal" placeholder="مثلاً: استخدام به‌عنوان توسعه‌دهنده وب تا ۶ ماه" value="{{ plan.goal if plan else '' }}">
+          </div>
+        </div>
+        <button class="btn btn-primary" type="submit">💾 ذخیره برنامه</button>
+      </form>
+    </div>
+
+    {% if enrolled %}
+    <div class="card" style="padding:26px;border-radius:20px">
+      <h2 style="font-size:16px;margin-bottom:14px">📊 پیشنهاد برنامه شما</h2>
+      <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:18px">
+        <div class="card" style="padding:14px;text-align:center;background:var(--bg-2);border:none"><small class="text-3">کل زمان دوره‌ها</small><div style="font-size:20px;font-weight:900">{{ fa(total_hours) }} ساعت</div></div>
+        <div class="card" style="padding:14px;text-align:center;background:var(--bg-2);border:none"><small class="text-3">مطالعه روزانه</small><div style="font-size:20px;font-weight:900">{{ fa(plan.daily_minutes if plan else (cur_user.study_daily_minutes or 60)) }} دقیقه</div></div>
+        <div class="card" style="padding:14px;text-align:center;background:var(--bg-2);border:none"><small class="text-3">تخمین تکمیل</small><div style="font-size:20px;font-weight:900">{{ fa(days_needed) }} روز</div></div>
+      </div>
+      <p class="text-2" style="font-size:13px">با این سرعت، حدود <b>{{ fa(days_needed) }} روز</b> ({{ fa((days_needed + 6) // 7) }} هفته) طول می‌کشد تا همه دوره‌های فعلی شما کامل شود. 🔥</p>
+      <div style="margin-top:16px">
+        <h3 style="font-size:14px;margin-bottom:10px">دوره‌های در حال پیشرفت:</h3>
+        {% for e in enrolled %}
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+          <span style="flex:1;font-size:13px">{{ e.course.title }}</span>
+          <div style="width:140px;height:8px;background:var(--bg-2);border-radius:99px;overflow:hidden"><div style="width:{{ e.percent }}%;height:100%;background:var(--grad-brand)"></div></div>
+          <small class="text-3">{{ fa(e.percent) }}٪</small>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% else %}
+    <div class="card text-center" style="padding:40px;border-radius:20px">
+      <p class="text-3">هنوز دوره‌ای ثبت‌نام نکرده‌اید. اول یک دوره بخر تا برنامه‌ات را بسازیم!</p>
+      <a class="btn btn-primary mt-2" href="{{ url_for('site.courses') }}">مشاهده دوره‌ها</a>
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

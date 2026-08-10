@@ -1,0 +1,30 @@
+# ============================================================
+# Phusion Passenger — .htaccess برای هاست‌های اشتراکی
+# این فایل را با نام .htaccess در ریشه پروژه (کنار passenger_wsgi.py)
+# کپی کنید و مسیرها را با مسیر واقعی هاست خود جایگزین کنید.
+#
+# مسیر واقعی را از پنل هاست ببینید، مثلاً:
+#   هاستینگر:  /home/username/domain.com
+#   سی‌پنل:    /home/username/public_html (یا زیرپوشه پروژه)
+# ============================================================
+
+# پوشه ریشه پروژه (جایی که passenger_wsgi.py هست)
+PassengerAppRoot /home/username/domain.com
+
+# پایتون محیط مجازی پروژه — حتماً venv بسازید:
+#   python3 -m venv venv && ./venv/bin/pip install -r requirements.txt
+PassengerPython /home/username/domain.com/venv/bin/python
+
+# حالت اجرا: production | development
+PassengerAppEnv production
+
+# اگر برنامه در زیرپوشه نصب شده (مثلاً /app) این خط را فعال کنید:
+# PassengerBaseURI /app
+
+# خطاهای دوستانه خاموش (پیام واقعی خطا در لاگ‌ها)
+PassengerFriendlyErrorPages off
+
+# افزایش سقف حجم آپلود (هماهنگ با MAX_CONTENT_LENGTH اپ)
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+</IfModule>

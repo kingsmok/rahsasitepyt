@@ -1,0 +1,39 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}بانک سوال{% endblock %}
+{% block acontent %}
+<div class="dash-head"><div><h1>🗃 بانک سوال</h1><p>سوالات مشترک برای استفاده در همه آزمون‌ها</p></div></div>
+<div class="grid" style="grid-template-columns:1fr 1.5fr;gap:18px;align-items:start">
+  <div class="card" style="padding:20px">
+    <h2 style="font-size:14px;margin-bottom:12px">+ سوال جدید</h2>
+    <form method="post">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+      <div class="form-group"><label>متن سوال *</label><input class="form-control" name="text" required></div>
+      <div class="form-group"><label>گزینه‌ها (با کاما) *</label><input class="form-control" name="choices" dir="rtl" placeholder="گزینه۱, گزینه۲, گزینه۳, گزینه۴" required></div>
+      <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px">
+        <div class="form-group"><label>گزینه درست (۰-شروع)</label><input class="form-control" type="number" name="correct_index" value="0" min="0"></div>
+        <div class="form-group"><label>دسته</label><input class="form-control" name="category" value="عمومی"></div>
+      </div>
+      <div class="form-group"><label>توضیح (اختیاری)</label><input class="form-control" name="explanation"></div>
+      <button class="btn btn-primary" type="submit">💾 افزودن به بانک</button>
+    </form>
+  </div>
+  <div class="card" style="padding:20px">
+    <h2 style="font-size:14px;margin-bottom:12px">سوالات بانک ({{ fa(items|length) }})</h2>
+    {% for q in items %}
+    <div style="padding:10px 0;border-bottom:1px solid var(--border)">
+      <strong style="font-size:13px">{{ q.text }}</strong>
+      <small class="text-3" style="display:block;font-size:11.5px">{{ q.choices_list()|join(' — ') }} | پاسخ درست: {{ q.correct_index + 1 }}</small>
+      <form method="post" action="{{ url_for('admin.question_bank_add_to_quiz', qid=q.id) }}" class="flex gap-1 mt-1">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+        <select class="form-control" name="quiz_id" style="max-width:220px;padding:6px" required>
+          {% for qz in quizzes %}
+          <option value="{{ qz.id }}">📝 {{ qz.title }}</option>
+          {% endfor %}
+        </select>
+        <button class="btn btn-ghost btn-sm">➕ افزودن به آزمون</button>
+      </form>
+    </div>
+    {% else %}<p class="text-3" style="font-size:13px">سوالی در بانک نیست.</p>{% endfor %}
+  </div>
+</div>
+{% endblock %}

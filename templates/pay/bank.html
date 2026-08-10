@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+{% block title %}{{ seo.title or "درگاه پرداخت" }}{% endblock %}
+
+{% block content %}
+<div class="bank-screen">
+  <div class="bank-card">
+    <div class="bank-top">
+      <div class="bank-logo">{{ gw_meta.get('icon') or '🏦' }}</div>
+      <h3>درگاه آزمایشی {{ gw_meta.get('name') or 'بانک آکادمی' }}</h3>
+      {% if gw != 'sandbox' %}
+      <div style="font-size:11.5px;color:var(--warning);background:rgba(217,119,6,.12);border-radius:8px;padding:6px 10px;margin-top:8px">
+        ⚠️ پیکربندی واقعی «{{ gw_meta.get('name') }}» ثبت نشده — این شبیه‌ساز فقط برای تست جریان پرداخت است.
+      </div>
+      {% endif %}
+      <div class="amount">{% if wallet_mode %}{{ fa('{:,.0f}'.format(wallet_amount)) }} تومان{% else %}{{ fa('{:,.0f}'.format(order.final_total)) }} تومان{% endif %}</div>
+      <div style="opacity:.8;font-size:12px;margin-top:4px">{% if wallet_mode %}شارژ کیف پول — کد: <span dir="ltr">{{ wallet_code }}</span>{% else %}سفارش: <span dir="ltr">{{ order.code }}</span>{% endif %}</div>
+    </div>
+    <div class="bank-body">
+      <div class="bank-cards">
+        <span class="active">کارت شتاب</span><span>کارت هدیه</span><span>موبایل بانک</span>
+      </div>
+      <div class="form-group">
+        <label>شماره کارت</label>
+        <input class="form-control" id="card-number" placeholder="0000-0000-0000-0000" dir="ltr" style="text-align:center;letter-spacing:2px;font-weight:700">
+      </div>
+      <div class="grid" style="grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group">
+          <label>تاریخ انقضا</label>
+          <input class="form-control" placeholder="MM/YY" dir="ltr" style="text-align:center" maxlength="5">
+        </div>
+        <div class="form-group">
+          <label>CVV2</label>
+          <input class="form-control" placeholder="•••" dir="ltr" style="text-align:center" maxlength="4" type="password">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>رمز دوم (اینترنتی)</label>
+        <input class="form-control" type="password" placeholder="••••••" dir="ltr" style="text-align:center">
+      </div>
+      <p style="font-size:11.5px;color:var(--text-3);margin-bottom:16px">
+        🧪 این یک درگاه آزمایشی است — برای شبیه‌سازی پرداخت موفق، دکمه «پرداخت» را بزنید. هیچ مبلغی کسر نمی‌شود.
+      </p>
+      <form method="post" action="{{ url_for('features.wallet_confirm') if wallet_mode else url_for('shop.bank', code=order.code) }}">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+        <button class="btn btn-primary btn-lg btn-block" name="decision" value="ok" type="submit">✓ پرداخت {{ fa('{:,.0f}'.format(wallet_amount if wallet_mode else order.final_total)) }} تومان</button>
+        <button class="btn btn-ghost btn-block mt-2" name="decision" value="cancel" type="submit">✕ انصراف از پرداخت</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

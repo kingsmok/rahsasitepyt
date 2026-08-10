@@ -1,0 +1,22 @@
+{% extends 'teacher/base.html' %}
+{% block tcontent %}
+<div class="dash-head"><div><h1 style="font-size:20px">👥 دانشجویان من</h1><p>همه دانشجویان دوره‌های شما با پیشرفت هر دوره</p></div></div>
+<div class="card" style="padding:22px">
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>دانشجو</th><th>دوره</th><th>پیشرفت</th><th>تاریخ ثبت‌نام</th><th>گواهی</th></tr></thead>
+    <tbody>
+      {% for e in rows %}
+      <tr>
+        <td><strong>{{ e.user.name if e.user else '—' }}</strong><br><small class="text-3" dir="ltr">{{ e.user.phone if e.user else '' }}</small></td>
+        <td><a href="{{ url_for('site.course_detail', slug=e.course.slug) }}" class="text-primary">{{ e.course.title[:40] if e.course else '—' }}</a></td>
+        <td><div style="display:flex;align-items:center;gap:8px"><div style="width:100px;height:7px;background:var(--bg-2);border-radius:99px;overflow:hidden"><div style="width:{{ e.percent }}%;height:100%;background:var(--grad-brand)"></div></div><small>{{ fa(e.percent) }}٪</small></div></td>
+        <td>{{ e.created_at|jdate }}</td>
+        <td>{{ e.completed_at|jdate if e.completed_at else '—' }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" class="text-3" style="text-align:center;padding:24px">هنوز دانشجویی در دوره‌های شما ثبت‌نام نکرده است.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+</div>
+{% endblock %}

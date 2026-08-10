@@ -1,0 +1,37 @@
+{% set _err_code = err_code or 500 %}
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% if _err_code == 404 %}صفحه پیدا نشد (۴۰۴){% elif _err_code == 403 %}دسترسی غیرمجاز (۴۰۳){% else %}خطای سرور ({{ _err_code }}){% endif %} — آکادمی آنلاین</title>
+<link rel="icon" href="/static/img/favicon.svg" type="image/svg+xml">
+<style>
+@font-face{font-family:'Vazirmatn';src:url('/static/fonts/Vazirmatn-Variable.woff2') format('woff2-variations');font-weight:100 900;font-display:swap}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Vazirmatn',Tahoma,sans-serif;background:linear-gradient(160deg,#0f2557,#1d4ed8 60%,#2563eb);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;color:#0f172a}
+.card{background:#fff;border-radius:22px;padding:44px 38px;max-width:480px;width:100%;text-align:center;box-shadow:0 30px 80px rgba(2,8,30,.4);animation:fadeIn .35s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.ic{font-size:52px;margin-bottom:10px}
+.code{font-size:64px;font-weight:900;background:linear-gradient(135deg,#2563eb,#7c3aed);-webkit-background-clip:text;background-clip:text;color:transparent;line-height:1.2}
+h1{font-size:20px;font-weight:800;margin:6px 0 10px}
+p{color:#64748b;font-size:13.5px;line-height:2;margin-bottom:22px}
+.btn{display:inline-block;padding:12px 26px;border-radius:12px;font-weight:800;font-size:14px;text-decoration:none;background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;box-shadow:0 8px 22px rgba(37,99,235,.3);transition:all .2s}
+.btn:hover{transform:translateY(-2px);box-shadow:0 12px 30px rgba(37,99,235,.4)}
+.btn2{background:#f1f5f9;color:#475569;box-shadow:none;margin-right:8px}
+.btn2:hover{background:#e2e8f0;box-shadow:none}
+.hint{margin-top:18px;font-size:11px;color:#94a3b8}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="ic">{% if _err_code == 404 %}🔍{% elif _err_code == 403 %}🔒{% else %}⚠️{% endif %}</div>
+  <div class="code">{{ _err_code }}</div>
+  <h1>{{ err_title or ('صفحه پیدا نشد' if _err_code == 404 else ('دسترسی غیرمجاز' if _err_code == 403 else 'خطای سرور')) }}</h1>
+  <p>{{ err_msg or 'مشکلی رخ داده است. لطفاً کمی بعد تلاش کنید.' }}</p>
+  <a class="btn" href="/">🏠 بازگشت به خانه</a>
+  <a class="btn btn2" href="/courses">📚 دوره‌ها</a>
+  <div class="hint">آکادمی آنلاین</div>
+</div>
+</body>
+</html>

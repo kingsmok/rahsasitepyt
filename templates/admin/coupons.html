@@ -1,0 +1,54 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}کدهای تخفیف{% endblock %}
+{% block acontent %}
+<div class="dash-head">
+  <div><h1>🎟 کدهای تخفیف</h1><p>کوپن‌های فعال و تاریخچه استفاده</p></div>
+</div>
+<div class="grid" style="grid-template-columns:1fr 340px;gap:22px;align-items:start">
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>کد</th><th>نوع</th><th>مقدار</th><th>استفاده</th><th>حداقل خرید</th><th>انقضا</th><th>وضعیت</th><th></th></tr></thead>
+      <tbody>
+        {% for c in coupons %}
+        <tr>
+          <td><strong dir="ltr">{{ c.code }}</strong></td>
+          <td>{{ 'درصدی' if c.type == 'percent' else 'مبلغی' }}</td>
+          <td>{{ fa(c.value) }}{{ '٪' if c.type == 'percent' else ' تومان' }}</td>
+          <td>{{ fa(c.used_count) }}{% if c.max_uses %} / {{ fa(c.max_uses) }}{% endif %}</td>
+          <td>{{ fa('{:,.0f}'.format(c.min_amount)) }}</td>
+          <td>{{ c.expires_at|jdate if c.expires_at else '—' }}</td>
+          <td>{% if c.is_valid %}<span class="badge badge-success">فعال</span>{% else %}<span class="badge badge-danger">غیرفعال</span>{% endif %}</td>
+          <td>
+            <form method="post" onsubmit="return confirm('حذف شود؟')">
+<input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+              <input type="hidden" name="action" value="delete">
+              <input type="hidden" name="cid" value="{{ c.id }}">
+              <button class="btn btn-danger btn-sm" type="submit">🗑</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="card" style="padding:22px">
+    <h4 class="mb-2" style="font-size:15px">➕ کوپن جدید</h4>
+    <form method="post">
+<input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="action" value="add">
+      <div class="form-group"><label for="f_code_1">کد</label><input id="f_code_1" class="form-control" name="code" placeholder="SUMMER30" dir="ltr" required></div>
+      <div class="form-group"><label for="f_type_1">نوع</label>
+        <select id="f_type_1" class="form-control" name="type">
+          <option value="percent">درصدی</option>
+          <option value="fixed">مبلغی (تومان)</option>
+        </select>
+      </div>
+      <div class="form-group"><label for="f_value_1">مقدار</label><input id="f_value_1" class="form-control" type="number" name="value" value="10" required></div>
+      <div class="form-group"><label for="f_max_uses_1">حداکثر استفاده</label><input id="f_max_uses_1" class="form-control" type="number" name="max_uses" value="100"></div>
+      <div class="form-group"><label for="f_min_amount_1">حداقل مبلغ خرید</label><input id="f_min_amount_1" class="form-control" type="number" name="min_amount" value="0"></div>
+      <div class="form-group"><label for="f_expires_at_1">تاریخ انقضا</label><input id="f_expires_at_1" class="form-control" type="date" name="expires_at" data-jalali value="{{ coupon.expires_at.strftime('%Y-%m-%d') if coupon and coupon.expires_at else '' }}"></div>
+      <button class="btn btn-primary btn-block" type="submit">ساخت کوپن</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,122 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}{{ 'ویرایش دوره' if course else 'دوره جدید' }}{% endblock %}
+{% block acontent %}
+<div class="dash-head">
+  <div>
+    <h1>{{ '✏️ ویرایش دوره' if course else '➕ دوره جدید' }}</h1>
+    <p>اطلاعات دوره را وارد کنید</p>
+  </div>
+  <a class="btn btn-ghost" href="{{ url_for('admin.courses') }}">← بازگشت</a>
+</div>
+
+<form method="post" class="card" style="padding:26px;max-width:900px">
+<input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+  <div class="grid" style="grid-template-columns:1fr 1fr;gap:16px">
+    <div class="form-group">
+      <label for="f_title_1">عنوان دوره <span class="req">*</span></label>
+      <input id="f_title_1" class="form-control" name="title" value="{{ course.title if course else '' }}" required>
+    </div>
+    <div class="form-group">
+      <label for="f_subtitle_1">زیرعنوان</label>
+      <input id="f_subtitle_1" class="form-control" name="subtitle" value="{{ course.subtitle if course else '' }}">
+    </div>
+    <div class="form-group">
+      <label for="f_category_id_1">دسته‌بندی</label>
+      <select id="f_category_id_1" class="form-control" name="category_id">
+        <option value="">— انتخاب —</option>
+        {% for c in categories %}
+        <option value="{{ c.id }}" {{ 'selected' if course and course.category_id == c.id }}>{{ c.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="f_teacher_id_1">مدرس</label>
+      <select id="f_teacher_id_1" class="form-control" name="teacher_id">
+        <option value="">— انتخاب —</option>
+        {% for t in teachers %}
+        <option value="{{ t.id }}" {{ 'selected' if course and course.teacher_id == t.id }}>{{ t.name }}</option>
+        {% endfor %}
+      </select>
+    </div><div class="form-group">
+        <label>مدرس‌های کمکی (چند مدرس — Ctrl+click)</label>
+        <select class="form-control" name="co_teacher_ids" multiple size="3">
+          {% for t in teachers %}
+          <option value="{{ t.id }}" {{ 'selected' if course and t.id in course.co_teacher_ids }}>{{ t.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    <div class="form-group">
+      <label for="f_price_1">قیمت (تومان)</label>
+      <input id="f_price_1" class="form-control" type="number" name="price" value="{{ course.price if course else 0 }}" min="0">
+    </div>
+    <div class="form-group">
+      <label for="f_discount_price_1">قیمت با تخفیف (تومان)</label>
+      <input id="f_discount_price_1" class="form-control" type="number" name="discount_price" value="{{ course.discount_price if course else 0 }}" min="0">
+    </div>
+    <div class="form-group">
+      <label for="f_level_1">سطح</label>
+      <select id="f_level_1" class="form-control" name="level">
+        {% for lv in ['مقدماتی', 'متوسط', 'پیشرفته'] %}
+        <option {{ 'selected' if course and course.level == lv }}>{{ lv }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="f_duration_hours_1">مدت (ساعت)</label>
+      <input id="f_duration_hours_1" class="form-control" type="number" name="duration_hours" value="{{ course.duration_hours if course else 10 }}" min="1">
+    </div>      <div class="form-group">
+        <label>مدت دسترسی (روز — 0 = مادام‌العمر)</label>
+        <input class="form-control" type="number" name="access_days" value="{{ course.access_days if course else 0 }}" min="0">
+      </div>
+    <div class="form-group">
+      <label for="f_intro_1">لینک ویدئوی معرفی دوره</label>
+      <input id="f_intro_1" class="form-control" name="intro_video" value="{{ course.intro_video if course else '' }}" placeholder="https://youtube.com/watch?v=... یا https://aparat.com/v/... یا لینک مستقیم mp4">
+      <small class="muted">در تب «معرفی» صفحه دوره پخش می‌شود (یوتیوب / آپارات / فایل مستقیم).</small>
+    </div>
+    <div class="form-group">
+      <label for="f_audience_1">مناسب برای چه افرادی؟</label>
+      <input id="f_audience_1" class="form-control" name="audience" value="{{ course.audience if course else '' }}" placeholder="مثال: دانشجویان کامپیوتر، برنامه‌نویسان تازه‌کار، مدیران فنی">
+    </div>
+    <div class="form-group">
+      <label for="f_status_1">وضعیت</label>
+      <select id="f_status_1" class="form-control" name="status">
+        <option value="published" {{ 'selected' if course and course.status == 'published' }}>منتشر شده</option>
+        <option value="draft" {{ 'selected' if course and course.status == 'draft' }}>پیش‌نویس</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="f_tags_1">برچسب‌ها (با کاما جدا کنید)</label>
+      <input id="f_tags_1" class="form-control" name="tags" value="{{ course.tags if course else '' }}" placeholder="پایتون, وب, جنگو">
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label for="f_description_1">توضیحات دوره</label>
+    <textarea id="f_description_1" class="form-control" name="description" style="min-height:110px">{{ course.description if course else '' }}</textarea>
+  </div>
+  <div class="form-group">
+    <label for="f_what_you_learn_1">چیزهایی که یاد می‌گیرید (هر خط یک مورد)</label>
+    <textarea id="f_what_you_learn_1" class="form-control" name="what_you_learn" style="min-height:110px">{{ course.what_you_learn if course else '' }}</textarea>
+  </div>
+  <div class="form-group">
+    <label for="f_requirements_1">پیش‌نیازها (هر خط یک مورد)</label>
+    <textarea id="f_requirements_1" class="form-control" name="requirements" style="min-height:70px">{{ course.requirements if course else '' }}</textarea>
+  </div>
+
+  <div class="form-group">
+    <label>تصویر دوره</label>
+    <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:10px">
+      {% for img in images %}
+      <img class="img-picker" data-src="{{ img }}" src="/static/img/{{ img }}" alt=""
+           style="border-radius:10px;cursor:pointer;aspect-ratio:16/10;object-fit:cover;outline:{{ '3px solid var(--primary)' if course and course.image == img else 'none' }}">
+      {% endfor %}
+    </div>
+    <input type="hidden" id="image-input" name="image" value="{{ course.image if course else 'cover-python.webp' }}">
+  </div>
+
+  <label class="form-check mb-2"><input type="checkbox" name="featured" {{ 'checked' if course and course.featured }}> دوره ویژه (نمایش در صفحه اصلی)</label>
+
+  <button class="btn btn-primary btn-lg" type="submit">💾 ذخیره دوره</button>
+  {% if course %}<a class="btn btn-ghost btn-lg" href="{{ url_for('admin.course_lessons', cid=course.id) }}" style="margin-right:10px">بعد: مدیریت جلسات ←</a>{% endif %}
+</form>
+{% endblock %}

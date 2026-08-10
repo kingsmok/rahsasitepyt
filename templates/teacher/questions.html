@@ -1,0 +1,20 @@
+{% extends 'teacher/base.html' %}
+{% block tcontent %}
+<div class="dash-head"><div><h1 style="font-size:20px">💬 پرسش‌های دانشجویان</h1><p>پاسخ دهید تا به دانشجو اعلان شود</p></div></div>
+{% for q in qs %}
+<div class="card" style="padding:18px;margin-bottom:12px">
+  <div style="display:flex;justify-content:space-between;flex-wrap:wrap;margin-bottom:8px">
+    <strong style="font-size:13.5px">{{ q.user.name if q.user else '—' }}</strong>
+    <small class="text-3">{{ q.lesson.title if q.lesson else '' }} — {{ q.created_at|jdatetime }}</small>
+  </div>
+  <p style="font-size:13.5px;background:var(--bg-2);padding:12px;border-radius:10px">{{ q.question }}</p>
+  <form method="post" action="{{ url_for('teacher.answer_question', qid=q.id) }}" class="flex gap-1 mt-2">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+    <input class="form-control" name="answer" placeholder="پاسخ شما..." style="flex:1" required>
+    <button class="btn btn-primary btn-sm">📤 ارسال پاسخ</button>
+  </form>
+</div>
+{% else %}
+<div class="card text-center" style="padding:40px"><p class="text-3">پرسش بی‌پاسخی نیست. 🎉</p></div>
+{% endfor %}
+{% endblock %}

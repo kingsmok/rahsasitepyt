@@ -1,0 +1,47 @@
+{% extends 'dashboard/base.html' %}
+{% block dtitle %}تیکت‌های پشتیبانی{% endblock %}
+{% block dcontent %}
+<div class="dash-head">
+  <div>
+    <h1>🎫 تیکت‌های پشتیبانی</h1>
+    <p>پیگیری سوالات و مشکلات شما</p>
+  </div>
+  <a class="btn btn-primary" href="{{ url_for('student.ticket_new') }}">+ تیکت جدید</a>
+</div>
+
+{% if tickets %}
+<div class="grid" style="gap:14px">
+  {% for t in tickets %}
+  <div class="card" style="padding:20px">
+    <div class="flex between wrap gap-2">
+      <div>
+        <strong style="font-size:14.5px">{{ t.subject }}</strong>
+        <div class="text-3" style="font-size:12px;margin-top:2px">{{ t.created_at|jdatetime }}</div>
+      </div>
+      <div>
+        {% if t.status == 'open' %}<span class="badge badge-accent">باز</span>
+        {% elif t.status == 'answered' %}<span class="badge badge-success">پاسخ داده شده</span>
+        {% else %}<span class="badge badge-gray">بسته شده</span>{% endif %}
+      </div>
+    </div>
+    <div style="background:var(--bg-2);border-radius:12px;padding:14px 16px;margin-top:12px;font-size:13.5px;color:var(--text-2)">
+      {{ t.body }}
+    </div>
+    {% if t.admin_reply %}
+    <div style="background:var(--success-soft);border-radius:12px;padding:14px 16px;margin-top:10px;font-size:13.5px;color:var(--text)">
+      <strong style="color:var(--success)">پاسخ پشتیبانی:</strong><br>{{ t.admin_reply }}
+      <div class="text-3 mt-1" style="font-size:11.5px">{{ t.answered_at|jdatetime }}</div>
+    </div>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card text-center" style="padding:70px 20px">
+  <div style="font-size:54px">🎫</div>
+  <h2 style="margin:14px 0 6px">تیکتی ندارید</h2>
+  <p class="text-2 mb-3">هر سوالی دارید، از طریق تیکت با پشتیبانی در میان بگذارید.</p>
+  <a class="btn btn-primary btn-lg" href="{{ url_for('student.ticket_new') }}">ثبت تیکت</a>
+</div>
+{% endif %}
+{% endblock %}

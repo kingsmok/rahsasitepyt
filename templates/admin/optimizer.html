@@ -1,0 +1,101 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}بهینه‌ساز تصویر{% endblock %}
+{% block acontent %}
+<style>
+  .opt-drop { border: 2px dashed var(--border-2); border-radius: 18px; padding: 40px 20px;
+    text-align: center; cursor: pointer; transition: all .2s; background: var(--bg-2); }
+  .opt-drop:hover, .opt-drop.over { border-color: var(--primary); background: var(--primary-soft); }
+  .opt-prev { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; margin-top: 16px; }
+  .opt-item { background: var(--card); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+  .opt-item img { width: 100%; height: 130px; object-fit: cover; display: block; }
+  .opt-item .b { padding: 10px 12px; font-size: 12px; }
+  .opt-item .sz { display: flex; justify-content: space-between; margin-top: 6px; font-size: 11.5px; }
+  .opt-item .old { color: var(--danger); text-decoration: line-through; }
+  .opt-item .new { color: var(--success); font-weight: 800; }
+</style>
+
+<div class="dash-head">
+  <div><h1>🖼 بهینه‌ساز تصویر</h1><p>تبدیل به WebP/JPEG با کیفیت دلخواه — کاهش حجم تا ۹۵٪</p></div>
+</div>
+
+<div class="grid" style="grid-template-columns:1.4fr 1fr;gap:18px;align-items:start">
+  <div class="card" style="padding:24px">
+    <h2 style="font-size:15px;margin-bottom:12px">۱) آپلود و بهینه‌سازی</h2>
+    <form method="post" enctype="multipart/form-data" id="opt-form">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+      <label class="opt-drop" id="opt-drop" for="opt-files">
+        <div style="font-size:38px">📤</div>
+        <strong>تصاویر را اینجا رها کنید یا کلیک کنید</strong>
+        <p class="text-3" style="font-size:12px;margin-top:4px">چند فایل مجاز است — jpg / png / webp</p>
+      </label>
+      <input type="file" name="images" id="opt-files" multiple accept=".jpg,.jpeg,.png,.webp" style="display:none" onchange="document.getElementById('opt-form').submit()">
+
+      <div class="grid" style="grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:16px">
+        <div class="form-group">
+          <label>فرمت خروجی</label>
+          <select class="form-control" name="fmt" onchange="document.getElementById('opt-form').submit()">
+            <option value="webp" {{ 'selected' if fmt == 'webp' }}>WebP (بهترین)</option>
+            <option value="jpeg" {{ 'selected' if fmt == 'jpeg' }}>JPEG</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>کیفیت: <b id="q-label">{{ quality }}</b></label>
+          <input type="range" name="quality" min="30" max="95" value="{{ quality }}" class="form-control" style="padding:0" oninput="document.getElementById('q-label').textContent=this.value;document.getElementById('opt-form').submit()">
+        </div>
+        <div class="form-group">
+          <label>عرض حداکثر (px)</label>
+          <select class="form-control" name="maxw" onchange="document.getElementById('opt-form').submit()">
+            {% for w in [0, 640, 800, 1024, 1280, 1920] %}
+            <option value="{{ w }}" {{ 'selected' if maxw == w }}>{{ w or 'بدون تغییر' }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <p class="form-hint" style="margin-top:8px">با تغییر هر گزینه، تصاویر انتخاب‌شده دوباره بهینه می‌شوند.</p>
+    </form>
+
+    {% if items %}
+    <div class="opt-prev">
+      {% for it in items %}
+      <div class="opt-item">
+        <img src="/static/uploads/opt/{{ it.fname }}" alt="">
+        <div class="b">
+          <strong style="font-size:12px">{{ it.name }}</strong>
+          <div class="sz">
+            <span class="old">{{ it.old_kb }}KB</span>
+            <span class="new">{{ it.new_kb }}KB (−{{ it.pct }}٪)</span>
+          </div>
+          <a class="btn btn-ghost btn-sm btn-block mt-1" href="/static/uploads/opt/{{ it.fname }}" download>⬇ دانلود</a>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+
+  <div>
+    <div class="card" style="padding:24px;margin-bottom:18px">
+      <h2 style="font-size:15px;margin-bottom:10px">۲) بهینه‌سازی پوشه پروژه</h2>
+      <p class="text-3" style="font-size:12px;margin-bottom:12px">همه تصاویر موجود در <code>static/img</code> را به WebP باکیفیت تبدیل می‌کند (کپی، نه حذف).</p>
+      <form method="post" action="{{ url_for('admin.optimizer_bulk') }}">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+        <button class="btn btn-accent btn-block" type="submit">⚙️ بهینه‌سازی کل پوشه</button>
+      </form>
+      {% if bulk %}
+      <div style="margin-top:14px;font-size:12.5px;max-height:220px;overflow-y:auto;background:var(--bg-2);border-radius:10px;padding:12px">
+        {% for line in bulk %}<div>{{ line }}</div>{% endfor %}
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="card" style="padding:24px">
+      <h2 style="font-size:15px;margin-bottom:10px">📊 آمار تصاویر فعلی</h2>
+      <div style="font-size:12.5px">
+        <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span>تعداد فایل‌های تصویری</span><b>{{ img_count }}</b></div>
+        <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span>حجم کل</span><b>{{ total_mb }}MB</b></div>
+        <div style="display:flex;justify-content:space-between;padding:6px 0"><span>صرفه‌جویی تخمینی با WebP</span><b style="color:var(--success)">~۷۵٪</b></div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

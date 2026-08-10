@@ -1,0 +1,215 @@
+{
+  "theme_id": "pd-02",
+  "theme_name": "زعفرانی قائنات",
+  "category": "مهارتی - پرانرژی",
+  "colors": {
+    "primary": "#C8912A",
+    "secondary": "#1F3A5F",
+    "accent": "#E8B54A",
+    "background": "#FDFAF3",
+    "text": "#2B2313"
+  },
+  "layout_components": {
+    "homepage": "<section dir=\"rtl\" style=\"font-family:Vazirmatn,Tahoma,sans-serif;background:#FDFAF3;color:#2B2313;padding:40px 20px;line-height:1.9\">\n  <div style=\"max-width:1100px;margin:0 auto;text-align:center\">\n    <span style=\"display:inline-block;background:#E8B54A22;color:#E8B54A;font-weight:800;border-radius:99px;padding:6px 18px;font-size:13px\">زعفرانی قائنات</span>\n    <h1 style=\"font-size:clamp(26px,4.5vw,44px);font-weight:900;margin:18px 0 12px;color:#2B2313\">مهارتت را طلایی کن</h1>\n    <p style=\"max-width:620px;margin:0 auto 26px;color:#2B231399;font-size:15px\">دوره‌های عملی و بازارمحور با رنگ زعفران — ارزشمند مثل طلای سرخ.</p>\n    <div style=\"display:flex;gap:12px;justify-content:center;flex-wrap:wrap\">\n      <a href=\"/courses\" style=\"background:#C8912A;color:#fff;text-decoration:none;font-weight:800;padding:13px 30px;border-radius:14px;box-shadow:0 10px 24px #C8912A44\">🚀 شروع مسیر مهارت</a>\n      <a href=\"/about\" style=\"border:2px solid #E8B54A;color:#E8B54A;text-decoration:none;font-weight:800;padding:12px 30px;border-radius:14px\">درباره ما</a>\n    </div>\n    <div style=\"display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-top:34px\">\n      <div style=\"background:#fff;border-radius:16px;padding:18px;border:1px solid #C8912A22\"><b style=\"font-size:22px;color:#C8912A\">۱۵۰+</b><div style=\"font-size:12.5px;color:#2B231388\">دوره آموزشی</div></div>\n      <div style=\"background:#fff;border-radius:16px;padding:18px;border:1px solid #C8912A22\"><b style=\"font-size:22px;color:#C8912A\">۵۰,۰۰۰+</b><div style=\"font-size:12.5px;color:#2B231388\">دانشجوی فعال</div></div>\n      <div style=\"background:#fff;border-radius:16px;padding:18px;border:1px solid #C8912A22\"><b style=\"font-size:22px;color:#C8912A\">۲,۰۰۰+</b><div style=\"font-size:12.5px;color:#2B231388\">ساعت آموزش</div></div>\n      <div style=\"background:#fff;border-radius:16px;padding:18px;border:1px solid #C8912A22\"><b style=\"font-size:22px;color:#C8912A\">٪۹۸</b><div style=\"font-size:12.5px;color:#2B231388\">رضایت</div></div>\n    </div>\n  </div></section>",
+    "course_card": "<section dir=\"rtl\" style=\"font-family:Vazirmatn,Tahoma,sans-serif;background:#FDFAF3;color:#2B2313;padding:40px 20px;line-height:1.9\">\n  <div style=\"max-width:380px;margin:0 auto;background:#fff;border-radius:20px;overflow:hidden;border:1px solid #C8912A22;box-shadow:0 14px 34px #2B231312\">\n    <div style=\"height:170px;background:linear-gradient(135deg,#C8912A,#1F3A5F)\"></div>\n    <div style=\"padding:20px\">\n      <span style=\"font-size:11px;color:#C8912A;font-weight:800;background:#C8912A14;padding:4px 12px;border-radius:99px\">دوره جامع</span>\n      <h3 style=\"font-size:17px;font-weight:900;margin:12px 0 8px;color:#2B2313\">عنوان دوره نمونه — زعفرانی قائنات</h3>\n      <p style=\"font-size:12.5px;color:#2B231388;margin-bottom:14px\">توضیح کوتاه درباره سرفصل‌ها و دستاوردهای این دوره آموزشی…</p>\n      <div style=\"display:flex;align-items:center;justify-content:space-between;border-top:1px dashed #C8912A33;padding-top:14px\">\n        <div><b style=\"font-size:18px;color:#C8912A\">۱,۲۵۰,۰۰۰</b> <small style=\"color:#2B231377\">تومان</small></div>\n        <a href=\"/courses\" style=\"background:#C8912A;color:#fff;text-decoration:none;font-weight:800;padding:10px 22px;border-radius:12px\">خرید سریع 🛒</a>\n      </div>\n    </div>\n  </div></section>",
+    "video_player": "<section dir=\"rtl\" style=\"font-family:Vazirmatn,Tahoma,sans-serif;background:#FDFAF3;color:#2B2313;padding:40px 20px;line-height:1.9\">\n  <div style=\"max-width:900px;margin:0 auto;display:grid;grid-template-columns:1fr 280px;gap:16px\" class=\"resp\">\n    <div style=\"border-radius:18px;overflow:hidden;background:#000;aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;color:#fff;font-size:52px\">▶</div>\n    <div style=\"background:#fff;border:1px solid #C8912A22;border-radius:18px;padding:14px\">\n      <h4 style=\"font-size:14px;font-weight:900;margin-bottom:10px;color:#2B2313\">🎬 لیست پخش</h4>\n      <div style=\"display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;background:#C8912A0d;margin-bottom:6px;font-size:12.5px\"><b style=\"color:#C8912A\">1</b> قسمت 1 — عنوان درس</div><div style=\"display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;background:#C8912A0d;margin-bottom:6px;font-size:12.5px\"><b style=\"color:#C8912A\">2</b> قسمت 2 — عنوان درس</div><div style=\"display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;background:#C8912A0d;margin-bottom:6px;font-size:12.5px\"><b style=\"color:#C8912A\">3</b> قسمت 3 — عنوان درس</div><div style=\"display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;background:#C8912A0d;margin-bottom:6px;font-size:12.5px\"><b style=\"color:#C8912A\">4</b> قسمت 4 — عنوان درس</div>\n      <div style=\"margin-top:12px;padding:10px;background:#E8B54A14;border-radius:12px;font-size:12px;color:#E8B54A;font-weight:700\">📝 یادداشت‌برداری و فایل ضمیمه این قسمت</div>\n    </div>\n  </div></section>",
+    "about_us": "<section dir=\"rtl\" style=\"font-family:Vazirmatn,Tahoma,sans-serif;background:#FDFAF3;color:#2B2313;padding:40px 20px;line-height:1.9\">\n  <div style=\"max-width:1000px;margin:0 auto\">\n    <h2 style=\"font-size:26px;font-weight:900;text-align:center;margin-bottom:8px;color:#2B2313\">داستان زعفرانی قائنات</h2>\n    <p style=\"text-align:center;color:#2B231388;max-width:640px;margin:0 auto 30px;font-size:14px\">ما با عشق به فرهنگ ایرانی و باور به آموزش باکیفیت، این آکادمی را بنا کردیم.</p>\n    <div style=\"display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px\">\n      <div style=\"background:#fff;border-radius:18px;padding:20px;border-top:4px solid #C8912A\"><b style=\"color:#C8912A\">🎯 مأموریت</b><p style=\"font-size:12.5px;color:#2B231388;margin-top:8px\">آموزش مهارت‌های واقعی به زبان ساده برای همه ایرانیان.</p></div>\n      <div style=\"background:#fff;border-radius:18px;padding:20px;border-top:4px solid #E8B54A\"><b style=\"color:#E8B54A\">👁 چشم‌انداز</b><p style=\"font-size:12.5px;color:#2B231388;margin-top:8px\">مرجع اول آموزش آنلاین با هویت ایرانی در منطقه.</p></div>\n      <div style=\"background:#fff;border-radius:18px;padding:20px;border-top:4px solid #C8912A\"><b style=\"color:#C8912A\">🏆 افتخارات</b><p style=\"font-size:12.5px;color:#2B231388;margin-top:8px\">بیش از ۵۰ هزار دانشجو و ۶ سال حضور مستمر.</p></div>\n    </div>\n  </div></section>",
+    "contact_us": "<section dir=\"rtl\" style=\"font-family:Vazirmatn,Tahoma,sans-serif;background:#FDFAF3;color:#2B2313;padding:40px 20px;line-height:1.9\">\n  <div style=\"max-width:1000px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:18px\" class=\"resp\">\n    <form style=\"background:#fff;border-radius:18px;padding:22px;border:1px solid #C8912A22\">\n      <h3 style=\"font-weight:900;margin-bottom:14px;color:#2B2313\">📨 فرم تماس</h3>\n      <input placeholder=\"نام و نام خانوادگی\" style=\"width:100%;padding:11px 14px;border:1.5px solid #C8912A33;border-radius:11px;margin-bottom:10px\">\n      <input placeholder=\"ایمیل\" style=\"width:100%;padding:11px 14px;border:1.5px solid #C8912A33;border-radius:11px;margin-bottom:10px\">\n      <textarea placeholder=\"پیام شما…\" rows=\"4\" style=\"width:100%;padding:11px 14px;border:1.5px solid #C8912A33;border-radius:11px;margin-bottom:12px\"></textarea>\n      <button style=\"background:#C8912A;color:#fff;border:none;font-weight:800;padding:12px 30px;border-radius:12px;cursor:pointer\">ارسال پیام</button>\n    </form>\n    <div style=\"background:#fff;border-radius:18px;padding:22px;border:1px solid #C8912A22;font-size:13px;color:#2B231388\">\n      <h3 style=\"font-weight:900;margin-bottom:14px;color:#2B2313\">📍 اطلاعات دسترسی</h3>\n      <div style=\"margin-bottom:10px\">🏢 تهران، خیابان آزادی، پلاک ۱۲۳</div>\n      <div style=\"margin-bottom:10px\">📞 ۰۲۱-۱۲۳۴۵۶۷۸</div>\n      <div style=\"margin-bottom:10px\">✉️ info@academy.ir</div>\n      <div style=\"height:140px;border-radius:14px;background:linear-gradient(135deg,#1F3A5F,#C8912A22);display:flex;align-items:center;justify-content:center;color:#C8912A;font-weight:800;margin-top:12px\">🗺 نقشه — شبکه سراسری پشتیبانی</div>\n    </div>\n  </div></section>"
+  },
+  "homepage_rows": [
+    {
+      "id": "sld",
+      "settings": {
+        "gap": 0,
+        "py": 0
+      },
+      "cols": [
+        [
+          {
+            "id": "w_sl",
+            "type": "slider",
+            "data": {
+              "height": "430",
+              "autoplay": true,
+              "interval": "5",
+              "dots": true,
+              "arrows": true,
+              "swipe": true,
+              "slides": [
+                {
+                  "img": "hero.webp",
+                  "title": "مهارتت را طلایی کن",
+                  "sub": "دوره‌های عملی و بازارمحور با رنگ زعفران — ارزشمند مثل طلای سرخ.",
+                  "btn_text": "🚀 شروع مسیر مهارت",
+                  "btn_url": "/courses",
+                  "align": "right"
+                },
+                {
+                  "img": "cover-marketing.webp",
+                  "title": "از صفر تا درآمد",
+                  "sub": "مهارت‌های پولساز را همین امروز یاد بگیر؛ آینده‌ات را خودت بساز.",
+                  "btn_text": "مشاهده دوره‌ها",
+                  "btn_url": "/courses",
+                  "align": "center"
+                }
+              ]
+            }
+          }
+        ]
+      ]
+    },
+    {
+      "id": "stt",
+      "settings": {
+        "gap": 0,
+        "py": 50
+      },
+      "cols": [
+        [
+          {
+            "id": "w_st",
+            "type": "stats",
+            "data": {
+              "columns": "4",
+              "items": [
+                {
+                  "value": "۱۵۰+",
+                  "label": "دوره آموزشی"
+                },
+                {
+                  "value": "۵۰,۰۰۰+",
+                  "label": "دانشجوی فعال"
+                },
+                {
+                  "value": "۲,۰۰۰+",
+                  "label": "ساعت آموزش"
+                },
+                {
+                  "value": "٪۹۸",
+                  "label": "رضایت دانشجویان"
+                }
+              ]
+            }
+          }
+        ]
+      ]
+    },
+    {
+      "id": "ftr",
+      "settings": {
+        "gap": 22,
+        "py": 60
+      },
+      "cols": [
+        [
+          {
+            "id": "w_ft",
+            "type": "feature",
+            "data": {
+              "columns": "3",
+              "items": [
+                {
+                  "icon": "💪",
+                  "title": "مهارت عملی",
+                  "text": "تمرین واقعی در هر جلسه"
+                },
+                {
+                  "icon": "📈",
+                  "title": "بازارمحور",
+                  "text": "مطابق نیاز روز بازار کار"
+                },
+                {
+                  "icon": "⏱",
+                  "title": "یادگیری سریع",
+                  "text": "مسیر آموزشی فشرده و هدفمند"
+                },
+                {
+                  "icon": "🏆",
+                  "title": "نتیجه‌گرا",
+                  "text": "پروژه پایانی با خروجی واقعی"
+                },
+                {
+                  "icon": "🤝",
+                  "title": "شبکه سازی",
+                  "text": "ارتباط با حرفه‌ای‌های صنعت"
+                },
+                {
+                  "icon": "💼",
+                  "title": "آماده استخدام",
+                  "text": "رزومه و نمونه‌کار حرفه‌ای"
+                }
+              ]
+            }
+          }
+        ]
+      ]
+    },
+    {
+      "id": "crs",
+      "settings": {
+        "gap": 24,
+        "py": 60
+      },
+      "cols": [
+        [
+          {
+            "id": "w_cr",
+            "type": "courses",
+            "data": {
+              "title": "⭐ دوره‌های مهارتی طلایی",
+              "subtitle": "پربازده‌ترین انتخاب‌ها",
+              "limit": "8",
+              "columns": "4",
+              "sort": "popular"
+            }
+          }
+        ]
+      ]
+    },
+    {
+      "id": "tst",
+      "settings": {
+        "gap": 22,
+        "py": 60,
+        "bg": "#ffffff",
+        "radius": 24
+      },
+      "cols": [
+        [
+          {
+            "id": "w_ts",
+            "type": "reviews",
+            "data": {
+              "title": "⭐ نظرات واقعی دانشجویان",
+              "limit": "6"
+            }
+          }
+        ]
+      ]
+    },
+    {
+      "id": "cta",
+      "settings": {
+        "gap": 0,
+        "py": 30
+      },
+      "cols": [
+        [
+          {
+            "id": "w_ct",
+            "type": "cta",
+            "data": {
+              "title": "وقت طلاست — همین امروز شروع کن!",
+              "text": "ثبت‌نام با تخفیف ویژه زعفرانی",
+              "btn_text": "ثبت‌نام و دریافت تخفیف",
+              "btn_url": "/register"
+            }
+          }
+        ]
+      ]
+    }
+  ],
+  "dark": false,
+  "container": "1280",
+  "radius": "10"
+}

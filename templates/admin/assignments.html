@@ -1,0 +1,33 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}تمرین‌ها{% endblock %}
+{% block acontent %}
+<div class="dash-head">
+  <div><h1>📌 تمرین‌ها</h1><p>تمرین‌های دوره‌ها و پاسخ‌های دانشجویان</p></div>
+  <a class="btn btn-primary" href="{{ url_for('admin.assignment_new') }}">+ تمرین جدید</a>
+</div>
+<div class="card" style="padding:22px">
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>عنوان</th><th>دوره</th><th>نمره</th><th>پاسخ‌ها</th><th>عملیات</th></tr></thead>
+      <tbody>
+        {% for a in items %}
+        <tr>
+          <td><strong>{{ a.title }}</strong></td>
+          <td>{{ a.course.title if a.course else '—' }}</td>
+          <td>{{ fa(a.max_score or 100) }}</td>
+          <td><a href="{{ url_for('admin.submissions') }}?aid={{ a.id }}">{{ fa(a.submissions|length) }}</a></td>
+          <td>
+            <form method="post" action="{{ url_for('admin.assignment_delete', aid=a.id) }}" style="display:inline">
+              <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+              <button class="btn btn-danger btn-sm" onclick="return confirm('حذف؟')">🗑</button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="text-center text-3">تمرینی ساخته نشده است.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

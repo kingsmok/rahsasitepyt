@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+{% block title %}{{ seo.title or "آزمون در حال اجرا" }}{% endblock %}
+{% block content %}
+<section class="section" style="padding-top:24px">
+  <div class="container" style="max-width:760px">
+    <div class="card" style="padding:16px 22px;border-radius:16px;margin-bottom:16px;background:var(--primary-soft);border:1px dashed var(--primary)">
+      <div class="flex between" style="align-items:center;gap:12px">
+        <div>
+          <strong style="font-size:14px">🎯 {{ exam.cat }} — {{ fa(questions|length) }} سوال</strong>
+          <small class="text-3" style="display:block;font-size:11px">۴۵ ثانیه برای هر سوال — پاسخ‌ها با ارسال خودکار ثبت می‌شوند</small>
+        </div>
+        <div id="exam-timer" style="font-size:26px;font-weight:900;letter-spacing:1px;font-family:ui-monospace,monospace;direction:ltr;color:var(--primary)">--:--</div>
+      </div>
+      <div style="height:6px;background:rgba(0,0,0,.08);border-radius:99px;margin-top:10px;overflow:hidden">
+        <div id="exam-timer-bar" style="height:100%;width:100%;background:var(--primary);border-radius:99px;transition:width .5s linear"></div>
+      </div>
+    </div>
+    <form method="post" action="{{ url_for('features.exam_practice_submit') }}" id="exam-form">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+      {% for q in questions %}
+      <div class="card" style="padding:20px;margin-bottom:14px;background:var(--bg-2);border:none">
+        <div style="font-weight:800;font-size:14.5px;margin-bottom:12px">{{ fa(loop.index) }}) {{ q.text }}</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          {% for c in q.choices_list() %}
+          <label class="quiz-opt">
+            <input type="radio" name="q_{{ q.id }}" value="{{ loop.index0 }}">
+            <span>{{ c }}</span>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+      {% endfor %}
+      <div class="flex gap-1" style="gap:10px">
+        <button class="btn btn-primary btn-lg" type="submit" style="flex:1">📤 پایان و ثبت پاسخ‌ها</button>
+        <a class="btn btn-ghost btn-lg" href="{{ url_for('features.exam_practice') }}" onclick="return confirm('آزمون را رها می‌کنید؟ پاسخ‌ها ثبت نمی‌شوند.')">✕ انصراف</a>
+      </div>
+    </form>
+  </div>
+</section>
+<script>
+(function(){
+  var total = {{ total_sec }};
+  var left = total;
+  var timerEl = document.getElementById('exam-timer');
+  var barEl = document.getElementById('exam-timer-bar');
+  var submitted = false;
+  function fmt(s){
+    var m = Math.floor(s / 60), ss = s % 60;
+    return (m < 10 ? '0' + m : m) + ':' + (ss < 10 ? '0' + ss : ss);
+  }
+  function tick(){
+    if (submitted) return;
+    left--;
+    if (left < 0) left = 0;
+    timerEl.textContent = fmt(left);
+    barEl.style.width = Math.round(left * 100 / total) + '%';
+    if (left <= 60) { timerEl.style.color = '#dc2626'; }
+    if (left <= 0) {
+      submitted = true;
+      clearInterval(iv);
+      timerEl.textContent = '00:00';
+      var btn = document.querySelector('#exam-form button[type=submit]');
+      btn.textContent = '⏰ زمان تمام شد — ثبت خودکار...';
+      btn.disabled = true;
+      document.getElementById('exam-form').submit();
+    }
+  }
+  timerEl.textContent = fmt(left);
+  var iv = setInterval(tick, 1000);
+  window.addEventListener('beforeunload', function(e){
+    if (!submitted) { e.preventDefault(); e.returnValue = ''; }
+  });
+})();
+</script>
+{% endblock %}

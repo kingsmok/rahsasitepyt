@@ -1,0 +1,34 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}آیکون‌ها{% endblock %}
+{% block acontent %}
+<div class="dash-head"><div><h1>🎨 کتابخانه آیکون — Tabler ({{ total }})</h1>
+<p>کلیک روی هر آیکون = کپی کد استفاده. در هر قالب بنویسید: <code dir="ltr">{{ '{{ icon(\'name\', 20, \'cls\') }}' }}</code></p>
+</div>
+<div><input class="form-control" id="icon-search" placeholder="جستجوی آیکون..." style="min-width:240px"></div></div>
+<div class="card" style="padding:18px">
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px" id="icon-grid">
+    {% for n in names %}
+    <div class="icon-cell" data-name="{{ n }}" style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 6px;border:1px solid var(--border);border-radius:10px;cursor:pointer;transition:all .15s" onclick="copyIcon('{{ n }}', this)" title="کلیک = کپی">
+      {{ icon(n, 26) }}
+      <code style="font-size:10px;color:var(--text-3);direction:ltr;word-break:break-all;text-align:center">{{ n }}</code>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+<script>
+function copyIcon(name, el) {
+  var code = "{{ '{{' }} icon('" + name + "') {{ '}}' }}";
+  navigator.clipboard.writeText(code).then(function() {
+    el.style.borderColor = 'var(--success)';
+    el.style.background = 'var(--success-soft)';
+    setTimeout(function(){ el.style.borderColor = 'var(--border)'; el.style.background = ''; }, 700);
+  });
+}
+document.getElementById('icon-search').addEventListener('input', function() {
+  var q = this.value.trim().toLowerCase();
+  document.querySelectorAll('.icon-cell').forEach(function(c) {
+    c.style.display = (!q || c.dataset.name.includes(q)) ? 'flex' : 'none';
+  });
+});
+</script>
+{% endblock %}

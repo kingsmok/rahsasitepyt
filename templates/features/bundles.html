@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% block title %}{{ seo.title or "بسته‌های آموزشی" }}{% endblock %}
+{% block content %}
+<section class="section" style="padding-top:36px">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="مسیر صفحه">
+      <a href="{{ url_for('site.index') }}">خانه</a><span class="sep">/</span>
+      <span>بسته‌های آموزشی</span>
+    </nav>
+    <div class="section-head">
+      <span class="tag">📦 باندل</span>
+      <h1 style="font-size:clamp(24px,3vw,32px)">بسته‌های آموزشی با تخفیف ویژه</h1>
+      <p>چند دوره را با هم بخرید و تا ۴۰٪ صرفه‌جویی کنید!</p>
+    </div>
+    <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:22px">
+      {% for b in bundles %}
+      <div class="card card-hover" style="overflow:hidden;display:flex;flex-direction:column">
+        <div style="aspect-ratio:16/9;overflow:hidden;position:relative">
+          <img src="/static/img/{{ b.image }}" alt="{{ b.title }}" style="width:100%;height:100%;object-fit:cover" loading="lazy">
+          {% if b.discount_price and b.discount_price < b.price %}
+          <span class="discount-flag" style="position:absolute;top:12px;right:12px">٪{{ fa(((b.price - b.discount_price) * 100 // b.price) if b.price else 0) }} تخفیف</span>
+          {% endif %}
+        </div>
+        <div class="body" style="padding:20px;display:flex;flex-direction:column;flex:1">
+          <h2 style="font-size:16px"><a href="{{ url_for('features.bundle_detail', slug=b.slug) }}">{{ b.title }}</a></h2>
+          <p class="text-2" style="font-size:12.5px;flex:1">{{ (b.description or '')[:100] }}{{ '…' if b.description and b.description|length > 100 }}</p>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px">
+            <div>
+              {% if b.discount_price and b.discount_price < b.price %}<span class="price-old">{{ fa('{:,.0f}'.format(b.price)) }}</span>{% endif %}
+              <span class="price" style="font-size:17px">{{ fa('{:,.0f}'.format(b.discount_price if b.discount_price and b.discount_price < b.price else b.price)) }} <small style="font-size:11px">تومان</small></span>
+            </div>
+            <a class="btn btn-primary btn-sm" href="{{ url_for('features.bundle_detail', slug=b.slug) }}">مشاهده بسته</a>
+          </div>
+        </div>
+      </div>
+      {% else %}
+      <p class="text-3">بسته‌ای هنوز منتشر نشده است.</p>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}

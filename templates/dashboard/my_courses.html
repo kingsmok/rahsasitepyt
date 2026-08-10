@@ -1,0 +1,45 @@
+{% extends 'dashboard/base.html' %}
+{% block dtitle %}دوره‌های من{% endblock %}
+{% block dcontent %}
+<div class="dash-head">
+  <div>
+    <h1>📚 دوره‌های من</h1>
+    <p>{{ fa(enrollments|length) }} دوره در حساب شما</p>
+  </div>
+  <a class="btn btn-primary" href="{{ url_for('site.courses') }}">خرید دوره جدید</a>
+</div>
+
+{% if enrollments %}
+<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:22px">
+  {% for e in enrollments %}
+  <div class="card card-hover" style="overflow:hidden">
+    <div style="position:relative">
+      <img src="/static/img/{{ e.course.image }}" alt="" style="width:100%;aspect-ratio:16/8;object-fit:cover">
+      {% if e.is_completed %}<span class="badge badge-success" style="position:absolute;top:12px;right:12px">✓ تکمیل‌شده</span>{% endif %}
+    </div>
+    <div style="padding:18px">
+      <h3 style="font-size:15.5px;margin-bottom:8px">{{ e.course.title }}</h3>
+      <div class="progress mb-2"><div class="bar {{ 'gold' if e.is_completed }}" style="width:{{ e.percent }}%"></div></div>
+      <div class="flex between mb-2">
+        <span class="badge badge-primary">{{ fa(e.percent) }}٪ پیشرفت</span>
+        <span class="text-3" style="font-size:12px">{{ fa(e.course.lesson_count) }} جلسه</span>
+      </div>
+      <div class="flex gap-2">
+        <a class="btn btn-primary btn-sm" style="flex:1" href="{{ url_for('student.learn', course_id=e.course_id) }}">{{ '▶ ادامه' if not e.is_completed else '↺ مرور دوره' }}</a>
+        {% if e.is_completed %}
+        <a class="btn btn-accent btn-sm" href="{{ url_for('student.certificate', course_id=e.course_id) }}">🏅 گواهینامه</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card text-center" style="padding:70px 20px">
+  <div style="font-size:54px">📚</div>
+  <h2 style="margin:14px 0 6px">هنوز دوره‌ای نخریده‌اید!</h2>
+  <p class="text-2 mb-3">دوره‌های پرطرفدار آکادمی را ببینید و یادگیری را شروع کنید.</p>
+  <a class="btn btn-primary btn-lg" href="{{ url_for('site.courses') }}">مشاهده دوره‌ها</a>
+</div>
+{% endif %}
+{% endblock %}

@@ -370,8 +370,19 @@ def orders():
     query = Order.query
     if status:
         query = query.filter(Order.status == status)
-    all_orders = query.order_by(Order.created_at.desc()).all()
-    return render_template('admin/orders.html', orders=all_orders, status=status)
+    # صفحه‌بندی — قبلاً همه سفارش‌ها (هزاران ردیف) یکجا بارگذاری و رندر می‌شد
+    try:
+        page = max(1, request.args.get('page', 1, type=int))
+    except Exception:
+        page = 1
+    per_page = 50
+    total = query.count()
+    pages = max(1, (total + per_page - 1) // per_page)
+    page = min(page, pages)
+    all_orders = query.order_by(Order.created_at.desc()) \
+        .offset((page - 1) * per_page).limit(per_page).all()
+    return render_template('admin/orders.html', orders=all_orders, status=status,
+                           page=page, pages=pages, total=total)
 
 
 @admin_bp.route('/orders/<int:oid>')

@@ -19,7 +19,7 @@
     <span class="cat">{{ course.category.name if course.category else 'دوره' }}</span>
     <h3><a href="{{ url_for('site.course_detail', slug=course.slug) }}">{{ course.title }}</a></h3>
     <div class="meta">
-      <span>⭐ {{ fa(course.rating) if course.rating else '—' }} ({{ fa(course.reviews|length) }})</span>
+      <span>⭐ {{ fa(course.rating) if course.rating else '—' }} ({{ fa(course.review_count) }})</span>
       <span>👥 {{ fa(course.students_count) }} دانشجو</span>
       <span>⏱ {{ fa(course.duration_hours) }} ساعت</span>
     </div>

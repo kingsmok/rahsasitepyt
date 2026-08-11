@@ -17,7 +17,7 @@
         <div class="role">مدرس آکادمی</div>
         <p style="-webkit-line-clamp:3;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical">{{ t.bio or '' }}</p>
         <div class="flex" style="justify-content:center;gap:14px;margin-top:14px;font-size:12.5px;color:var(--text-2)">
-          <span>📚 {{ fa(t.courses_taught|length) }} دوره</span>
+          <span>📚 {{ fa(teacher_courses.get(t.id, 0)) }} دوره</span>
           <span>⭐ {{ fa(ratings.get(t.id, 5) if ratings.get(t.id) else 5) }} امتیاز</span>
         </div>
       </a>

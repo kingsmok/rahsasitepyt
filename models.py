@@ -18,6 +18,60 @@ from werkzeug.security import generate_password_hash, check_password_hash
 db = SQLAlchemy()
 
 
+def ensure_indexes():
+    """ایجاد ایندکس‌های جاافتاده روی دیتابیس موجود (بدون نیاز به مهاجرت).
+    روی SQLite و MySQL امن است: فقط ایندکس‌هایی که وجود ندارند ساخته می‌شوند."""
+    from sqlalchemy import text as _text
+    _tables = {
+        'courses': [
+            ('idx_courses_status', 'status'),
+            ('idx_courses_cat', 'category_id'),
+            ('idx_courses_teacher', 'teacher_id'),
+            ('idx_courses_views', 'views'),
+        ],
+        'enrollments': [
+            ('idx_enroll_course', 'course_id'),
+        ],
+        'reviews': [
+            ('idx_reviews_user', 'user_id'),
+        ],
+        'favorites': [
+            ('idx_fav_user', 'user_id'),
+        ],
+        'live_sessions': [
+            ('idx_live_starts', 'starts_at'),
+        ],
+        'blog_comments': [
+            ('idx_bc_post', 'post_id'),
+        ],
+        'notfound_logs': [
+            ('idx_nf_path', 'path'),
+        ],
+        'price_history': [
+            ('idx_price_item', 'item_type, item_id'),
+        ],
+    }
+    try:
+        from sqlalchemy import inspect as _inspect
+        insp = _inspect(db.engine)
+        existing = {ix['name'] for ix in insp.get_indexes('courses')}
+        for tname, indexes in _tables.items():
+            try:
+                have = {ix['name'] for ix in insp.get_indexes(tname)}
+            except Exception:
+                continue
+            for name, col in indexes:
+                if name in have:
+                    continue
+                try:
+                    with db.engine.begin() as conn:
+                        conn.execute(_text(f'CREATE INDEX {name} ON {tname} ({col})'))
+                except Exception:
+                    pass
+    except Exception:
+        pass
+
+
 class User(db.Model):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
@@ -126,6 +180,10 @@ class Category(db.Model):
 
 class Course(db.Model):
     __tablename__ = 'courses'
+    __table_args__ = (db.Index('idx_courses_status', 'status'),
+                       db.Index('idx_courses_cat', 'category_id'),
+                       db.Index('idx_courses_teacher', 'teacher_id'),
+                       db.Index('idx_courses_views', 'views'),)
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200), nullable=False)
     slug = db.Column(db.String(220), unique=True, nullable=False)
@@ -191,14 +249,39 @@ class Course(db.Model):
 
     @property
     def rating(self):
-        rs = [r.rating for r in self.reviews]
-        if not rs:
+        """میانگین امتیاز — با کوئری تجمیعی (نه بارگذاری همه نظرات).
+        اگر در لیست‌ها مقدار `_agg_rating` از قبل ست شده باشد، همان استفاده می‌شود."""
+        if hasattr(self, '_agg_rating'):
+            return self._agg_rating
+        try:
+            from models import Review as _R
+            v = db.session.query(db.func.avg(_R.rating)) \
+                .filter(_R.course_id == self.id).scalar()
+            return round(float(v or 0), 1)
+        except Exception:
             return 0
-        return round(sum(rs) / len(rs), 1)
+
+    @property
+    def review_count(self):
+        """تعداد نظرات — کوئری تجمیعی سبک به‌جای بارگذاری همه رکوردها."""
+        if hasattr(self, '_agg_review_count'):
+            return self._agg_review_count
+        try:
+            from models import Review as _R
+            return _R.query.filter_by(course_id=self.id).count()
+        except Exception:
+            return 0
 
     @property
     def students_count(self):
-        return (self.seeded_students or 0) + len(self.enrollments)
+        """تعداد دانشجویان — کوئری تجمیعی به‌جای بارگذاری همه ثبت‌نام‌ها."""
+        if hasattr(self, '_agg_students'):
+            return self._agg_students
+        try:
+            from models import Enrollment as _E
+            return (self.seeded_students or 0) + _E.query.filter_by(course_id=self.id).count()
+        except Exception:
+            return self.seeded_students or 0
 
     def is_free(self):
         return self.final_price == 0
@@ -245,7 +328,8 @@ class Lesson(db.Model):
 
 class Review(db.Model):
     __tablename__ = 'reviews'
-    __table_args__ = (db.Index('idx_reviews_course', 'course_id', 'is_approved'),)
+    __table_args__ = (db.Index('idx_reviews_course', 'course_id', 'is_approved'),
+                       db.Index('idx_reviews_user', 'user_id'),)
     id = db.Column(db.Integer, primary_key=True)
     course_id = db.Column(db.Integer, db.ForeignKey('courses.id'))
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
@@ -262,6 +346,7 @@ class Review(db.Model):
 
 class Favorite(db.Model):
     __tablename__ = 'favorites'
+    __table_args__ = (db.Index('idx_fav_user', 'user_id'),)
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     course_id = db.Column(db.Integer, db.ForeignKey('courses.id'), nullable=False)
@@ -359,7 +444,8 @@ class Coupon(db.Model):
 
 class Enrollment(db.Model):
     __tablename__ = 'enrollments'
-    __table_args__ = (db.Index('idx_enroll_user_course', 'user_id', 'course_id'),)
+    __table_args__ = (db.Index('idx_enroll_user_course', 'user_id', 'course_id'),
+                       db.Index('idx_enroll_course', 'course_id'),)
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     course_id = db.Column(db.Integer, db.ForeignKey('courses.id'), nullable=False)
@@ -373,7 +459,8 @@ class Enrollment(db.Model):
 
     def progress_list(self):
         try:
-            return json.loads(self.progress or '[]')
+            v = json.loads(self.progress or '[]')
+            return v if isinstance(v, list) else []
         except Exception:
             return []
 
@@ -482,6 +569,7 @@ class NotFoundLog(db.Model):
 
 class BlogComment(db.Model):
     __tablename__ = 'blog_comments'
+    __table_args__ = (db.Index('idx_bc_post', 'post_id'),)
     id = db.Column(db.Integer, primary_key=True)
     post_id = db.Column(db.Integer, db.ForeignKey('blog_posts.id'), nullable=False)
     name = db.Column(db.String(120), nullable=False)
@@ -968,6 +1056,7 @@ class ForumPost(db.Model):
 # ================================================================
 class LiveSession(db.Model):
     __tablename__ = 'live_sessions'
+    __table_args__ = (db.Index('idx_live_starts', 'starts_at'),)
     id = db.Column(db.Integer, primary_key=True)
     course_id = db.Column(db.Integer, db.ForeignKey('courses.id'), nullable=True)
     title = db.Column(db.String(200), nullable=False)

@@ -939,6 +939,7 @@ def builder_price_history(d):
 
 def builder_amazing_offer(d):
     """داده باکس پیشنهاد شگفت‌انگیز — آیتم دارای بیشترین تخفیف"""
+    from cache_safe import CourseLite
     from models import Course as _C, Product as _P
     item = None
     try:
@@ -956,25 +957,30 @@ def builder_amazing_offer(d):
         url = url_for('products.product_detail', slug=item.slug) if hasattr(item, 'stock') \
             else url_for('site.course_detail', slug=item.slug)
     disc = item.discount_percent if item and hasattr(item, 'discount_percent') else 0
+    if item is not None and not hasattr(item, 'stock'):
+        # نسخهٔ سبک برای کش — فقط فیلدهای موردنیاز قالب
+        item = CourseLite(item, rating=0, review_count=0, students_count=0)
     return dict(item=item, url=url, discount=disc or 0)
 
 
 def builder_review_pro(d):
     """نظرات پیشرفته — از Review با pros/cons و تأیید خرید"""
-    from models import Review as _R, Course as _C, Product as _P
-    reviews = []
-    try:
-        if d.get('item_type') == 'product':
-            # محصولات فعلاً نظر ندارند — از دوره‌های مرتبط
-            pass
-        q = _R.query.filter_by(is_approved=True).order_by(_R.id.desc())
-        cid = int(d.get('item_id') or 0) if d.get('item_type') != 'product' else 0
+    cid = int(d.get('item_id') or 0) if d.get('item_type') != 'product' else 0
+    _lim = max(1, min(12, int(d.get('limit') or 6)))
+
+    def _q():
+        from models import Review as _R
+        from cache_safe import review_lite
+        q = _R.query.options(db.joinedload(_R.user), db.joinedload(_R.course)) \
+            .filter_by(is_approved=True).order_by(_R.id.desc())
         if cid:
             q = q.filter_by(course_id=cid)
-        reviews = q.limit(max(1, min(12, int(d.get('limit') or 6)))).all()
+        rows = q.limit(_lim).all()
+        return dict(reviews=[review_lite(r) for r in rows])
+    try:
+        return _b_cache(f'review_pro:{cid}:{_lim}', 60, _q)
     except Exception:
-        reviews = []
-    return dict(reviews=reviews)
+        return dict(reviews=[])
 
 
 def record_price(item_type, item_id, price, final_price):
@@ -991,17 +997,25 @@ def record_price(item_type, item_id, price, final_price):
 
 def builder_products(d):
     """محصولات/دوره‌ها با فیلترهای فروشگاهی"""
-    q = Course.query.filter_by(status='published')
     f = (d or {}).get('filter', 'all')
-    if f == 'sale':
-        q = q.filter(Course.discount_price > 0, Course.discount_price < Course.price)
-    elif f == 'featured':
-        q = q.filter(Course.featured == True)
-    elif f == 'popular':
-        q = q.order_by(Course.views.desc())
-    else:
-        q = q.order_by(Course.created_at.desc())
-    return q.limit(int((d or {}).get('limit') or 8)).all()
+    _lim = int((d or {}).get('limit') or 8)
+
+    def _q():
+        from cache_safe import course_lite
+        q = Course.query.options(db.joinedload(Course.category),
+                                 db.joinedload(Course.teacher)) \
+            .filter_by(status='published')
+        if f == 'sale':
+            q = q.filter(Course.discount_price > 0, Course.discount_price < Course.price)
+        elif f == 'featured':
+            q = q.filter(Course.featured == True)
+        elif f == 'popular':
+            q = q.order_by(Course.views.desc())
+        else:
+            q = q.order_by(Course.created_at.desc())
+        rows = _attach_course_aggs(q.limit(_lim).all())
+        return [course_lite(c) for c in rows]
+    return _b_cache(f'products:{f}:{_lim}', 60, _q)
 
 
 def render_shortcodes(text):
@@ -1078,39 +1092,83 @@ def _b_cache(key, ttl, fn):
     return val
 
 
+def _attach_course_aggs(courses):
+    """آمار تجمیعی دوره‌ها (نظر/امتیاز/دانشجو) — یک کوئری به‌جای بارگذاری همه رکوردها.
+    مقادیر روی خود اشیا ست می‌شود تا course_lite آن‌ها را بخواند."""
+    _ids = [c.id for c in courses]
+    if not _ids:
+        return courses
+    try:
+        from models import Review as _R, Enrollment as _E
+        _rev_rows = db.session.query(_R.course_id, db.func.count(_R.id),
+                                     db.func.avg(_R.rating)) \
+            .filter(_R.course_id.in_(_ids)).group_by(_R.course_id).all()
+        _rev_map = {r[0]: (r[1], round(float(r[2] or 0), 1)) for r in _rev_rows}
+        _enr_rows = db.session.query(_E.course_id, db.func.count(_E.id)) \
+            .filter(_E.course_id.in_(_ids)).group_by(_E.course_id).all()
+        _enr_map = dict(_enr_rows)
+        for c in courses:
+            _rc, _ra = _rev_map.get(c.id, (0, 0))
+            c._agg_review_count = _rc
+            c._agg_rating = _ra
+            c._agg_students = (c.seeded_students or 0) + _enr_map.get(c.id, 0)
+    except Exception:
+        pass
+    return courses
+
+
 def builder_courses(d):
     cat = (d or {}).get('category') or ''
     sort = (d or {}).get('sort', 'newest')
     _lim = int((d or {}).get('limit') or 8)
 
     def _q():
-        from sqlalchemy.orm import selectinload as _sil
+        from cache_safe import course_lite
         q = (Course.query
-             .options(db.joinedload(Course.category), db.joinedload(Course.teacher),
-                      _sil(Course.enrollments), _sil(Course.reviews))
+             .options(db.joinedload(Course.category), db.joinedload(Course.teacher))
              .filter_by(status='published'))
         if str(cat).isdigit():
             q = q.filter_by(category_id=int(cat))
         order = {'newest': Course.created_at.desc(), 'popular': Course.views.desc(),
                  'cheap': Course.discount_price.asc(), 'expensive': Course.discount_price.desc()}.get(sort, Course.created_at.desc())
-        return q.order_by(order).limit(_lim).all()
-    return _b_cache(f'courses:{cat}:{sort}:{_lim}', 30, _q)
+        rows = _attach_course_aggs(q.order_by(order).limit(_lim).all())
+        # نسخهٔ سبک غیر-ORM — ایمن برای کش بین درخواست‌ها
+        return [course_lite(c) for c in rows]
+    return _b_cache(f'courses:{cat}:{sort}:{_lim}', 60, _q)
 
 
 def builder_categories(d):
-    q = Category.query.order_by(Category.sort)
     lim = int((d or {}).get('limit') or 0)
-    return q.limit(lim).all() if lim else q.all()
+    def _q():
+        from cache_safe import category_lite, course_lite
+        q = Category.query.order_by(Category.sort)
+        cat_rows = q.limit(lim).all() if lim else q.all()
+        # دوره‌های منتشر هر دسته (عنوان/اسلاگ) — یک کوئری
+        course_rows = Course.query.filter_by(status='published').all()
+        by_cat = {}
+        for c in course_rows:
+            by_cat.setdefault(c.category_id, []).append(course_lite(c))
+        return [category_lite(c, by_cat.get(c.id, [])) for c in cat_rows]
+    return _b_cache(f'cats:{lim}', 120, _q)
 
 
 def builder_posts(d):
-    q = BlogPost.query.filter_by(published=True).order_by(BlogPost.created_at.desc())
-    return q.limit(int((d or {}).get('limit') or 3)).all()
+    lim = int((d or {}).get('limit') or 3)
+    def _q():
+        from cache_safe import post_lite
+        q = BlogPost.query.filter_by(published=True).order_by(BlogPost.created_at.desc())
+        rows = q.limit(lim).all()
+        return [post_lite(p) for p in rows]
+    return _b_cache(f'posts:{lim}', 60, _q)
 
 
 def builder_teachers(d):
-    q = User.query.filter(User.role == 'teacher')
-    return q.limit(int((d or {}).get('limit') or 4)).all()
+    lim = int((d or {}).get('limit') or 4)
+    def _q():
+        from cache_safe import TeacherLite
+        rows = User.query.filter(User.role == 'teacher').limit(lim).all()
+        return [TeacherLite(u.id, u.name, u.avatar_color, u.bio or '') for u in rows]
+    return _b_cache(f'teachers:{lim}', 120, _q)
 
 
 def builder_cat_options():

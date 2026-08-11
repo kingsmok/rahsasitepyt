@@ -462,24 +462,30 @@ def _tune_session(eng):
         pass
 
 
-def check_db_health():
+def check_db_health(engine=None):
     """سلامت دیتابیس فعلی (از .env یا پیش‌فرض) — خروجی (ok, message)
     برای گارد نصب: اگر مارکر هست ولی جدول‌ها نیستند → not ok → حالت تعمیر
+    پارامتر engine: اگر داده شود، همان Engine (مثلاً db.engine اپ) استفاده می‌شود —
+    تا در هر درخواست Engine جدید ساخته نشود (بهبود سرعت).
     """
     try:
         from sqlalchemy import create_engine, inspect
         from models import Setting
-        url = env_db_url()
-        if str(url).startswith('mysql'):
-            eng = _get_engine(url)
+        if engine is not None:
+            eng = engine
         else:
-            eng = create_engine(resolve_url(url))
+            url = env_db_url()
+            if str(url).startswith('mysql'):
+                eng = _get_engine(url)
+            else:
+                eng = create_engine(resolve_url(url))
         with eng.connect():
             pass
         # جدول‌های اصلی موجودند؟
         names = set(inspect(eng).get_table_names())
         missing = [t for t in ('settings', 'users', 'courses', 'pages') if t not in names]
-        eng.dispose()
+        if engine is None:
+            eng.dispose()
         if missing:
             return False, 'جدول‌های اصلی ناقص‌اند: ' + ', '.join(missing)
         return True, 'دیتابیس سالم است ✅'

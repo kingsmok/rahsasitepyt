@@ -157,6 +157,9 @@ def create_app():
     try:
         with app.app_context():
             db.create_all()
+            # ایندکس‌های جاافتاده روی دیتابیس موجود (ضد کندی کوئری‌ها)
+            from models import ensure_indexes as _ensure_idx
+            _ensure_idx()
     except Exception:
         _lexc('app.py')
 
@@ -179,8 +182,9 @@ def create_app():
     from validators import mask_nc
     app.jinja_env.filters['mask_nc'] = mask_nc
     # نسخه خودکار assetها — از آخرین زمان تغییر فایل‌های static (برای شکستن کش)
+    # ⚠️ قبلاً در هر رندر، کل پوشه static اسکن می‌شد (چند بار در هر صفحه!) — حالا ۶۰ ثانیه کش می‌شود
     def _asset_v():
-        try:
+        def _compute():
             import os as _os
             base = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), 'static')
             latest = 0.0
@@ -191,42 +195,41 @@ def create_app():
                     except OSError:
                         pass
             return str(int(latest))
+        try:
+            return _ttl_cache('asset_v', 60, _compute)
         except Exception:
             return '1'
     app.jinja_env.globals['asset_v'] = _asset_v
     app.jinja_env.globals.update(THEMES=THEMES, fa=fa, money=money,
                                  PERSIAN_THEMES=_PERSIAN_THEMES)
 
-    # آمار واقعی سایت — با کش کوتاه (۳۰ ثانیه) برای نمایش در قالب‌ها/ویجت‌ها
-    _stats_cache = {'t': 0, 'data': {}}
+    # آمار واقعی سایت — با کش کوتاه (۶۰ ثانیه) برای نمایش در قالب‌ها/ویجت‌ها
     def site_stats():
-        import time as _time
-        now = _time.time()
-        if now - _stats_cache['t'] < 30 and _stats_cache['data']:
-            return _stats_cache['data']
-        try:
-            from models import (User as _U, Course as _C, Lesson as _L, Section as _S,
+        def _compute():
+            from models import (User as _U, Course as _C, Lesson as _L,
                                 Review as _R, Enrollment as _E, BlogPost as _B,
-                                SuccessStory as _SS)
+                                SuccessStory as _SS, Order as _O)
             _avg_rating = db.session.query(db.func.avg(_R.rating)).filter(_R.is_approved == True).scalar() or 0
+            # ساعت‌ها با SUM در SQL — قبلاً همه دوره‌ها در پایتون بارگذاری می‌شدند
+            _hours = db.session.query(db.func.coalesce(db.func.sum(_C.duration_hours), 0)).scalar() or 0
             st = dict(
                 students=_U.query.filter_by(role='student').count(),
                 users=_U.query.count(),
                 teachers=_U.query.filter(_U.role.in_(['teacher', 'admin'])).count(),
                 courses=_C.query.filter_by(status='published').count(),
                 lessons=_L.query.count(),
-                hours=int(sum((c.duration_hours or 0) for c in _C.query.all())),
+                hours=int(_hours),
                 enrollments=_E.query.count(),
                 reviews=_R.query.filter_by(is_approved=True).count(),
                 avg_rating=round(float(_avg_rating), 2),
                 satisfaction=round(float(_avg_rating) / 5 * 100) if _avg_rating else 90,
                 posts=_B.query.filter_by(published=True).count(),
                 stories=_SS.query.count(),
-                paid_orders=__import__('models', fromlist=['Order']).Order.query.filter_by(status='paid').count(),
+                paid_orders=_O.query.filter_by(status='paid').count(),
             )
-            _stats_cache['data'] = st
-            _stats_cache['t'] = now
             return st
+        try:
+            return _ttl_cache('site_stats', 60, _compute)
         except Exception:
             _lexc('app.py')
             return {}
@@ -327,7 +330,15 @@ def create_app():
         if not _is_inst():
             return redirect(url_for('install.wizard'))
         # نصب شده — سلامت دیتابیس؟ (جلوگیری از حلقه 500 بعد از نصب ناقص)
-        ok, _msg = _cdh()
+        # ⚠️ قبلاً در هر درخواست یک Engine جدید ساخته و کل جدول‌ها inspect می‌شد!
+        # حالا نتیجه ۳۰ ثانیه کش می‌شود.
+        def _health():
+            ok, _msg = _cdh(engine=db.engine)
+            return ok
+        try:
+            ok = _ttl_cache('install_health', 30, _health)
+        except Exception:
+            ok = True
         if not ok:
             return redirect(url_for('install.wizard') + '?repair=1')
         return None
@@ -361,9 +372,29 @@ def create_app():
     from blueprints.builder import WIDGETS as _WIDGETS
     from models import Favorite, Ticket
 
+    def _get_all_categories():
+        """دسته‌ها + دوره‌های هر دسته — نسخهٔ سبک غیر-ORM (ایمن برای کش بین درخواست‌ها)"""
+        try:
+            from cache_safe import CatLite, CourseLite
+            cat_rows = Category.query.order_by(Category.sort, Category.id).all()
+            course_rows = Course.query.filter_by(status='published').all()
+            by_cat = {}
+            for c in course_rows:
+                by_cat.setdefault(c.category_id, []).append(CourseLite(c))
+            out = []
+            for cat in cat_rows:
+                out.append(CatLite(cat.name, cat.slug, cat.icon or '🎓',
+                                   cat.color or '#2563eb', cid=cat.id,
+                                   sort=cat.sort or 0,
+                                   courses=by_cat.get(cat.id, [])))
+            return out
+        except Exception:
+            _lexc('app.py')
+            return []
+
     def _bc_cats():
         try:
-            return Category.query.order_by(Category.sort).all()
+            return _ttl_cache('all_categories', 120, _get_all_categories)
         except Exception:
             return []
 
@@ -447,13 +478,19 @@ def create_app():
                 _cache_store.pop(key, None)
             elif not key:
                 _cache_store.clear()
+            if not key:
+                _html_cache.clear()
     app.jinja_env.globals['clear_cache'] = clear_cache
 
     def _load_success_stories():
         def _q():
             from models import SuccessStory
-            return SuccessStory.query.filter_by(is_active=True) \
+            from sqlalchemy.orm import joinedload as _jl
+            from cache_safe import story_lite
+            rows = SuccessStory.query.options(_jl(SuccessStory.course)) \
+                .filter_by(is_active=True) \
                 .order_by(SuccessStory.sort, SuccessStory.id.desc()).limit(6).all()
+            return [story_lite(s) for s in rows]
         try:
             g._success_stories = _ttl_cache('stories', 60, _q)
             return g._success_stories
@@ -463,8 +500,12 @@ def create_app():
     def _load_reviews():
         def _q():
             from models import Review
-            return Review.query.filter_by(is_approved=True) \
+            from sqlalchemy.orm import joinedload as _jl
+            from cache_safe import review_lite
+            rows = Review.query.options(_jl(Review.user), _jl(Review.course)) \
+                .filter_by(is_approved=True) \
                 .order_by(Review.created_at.desc()).limit(9).all()
+            return [review_lite(r) for r in rows]
         try:
             return _ttl_cache('reviews', 60, _q)
         except Exception:
@@ -496,6 +537,27 @@ def create_app():
     # ---------- هدرهای امنیتی + فشرده‌سازی ----------
     @app.after_request
     def security_headers(resp):
+        # ── ذخیره صفحه در کش مهمان (قبل از gzip — بدنه خام) ──
+        try:
+            if (resp.status_code == 200 and request.method == 'GET' and
+                    not getattr(g, 'user', None) and
+                    resp.content_type and resp.content_type.startswith('text/html')):
+                _key = _html_cache_key()
+                if _key:
+                    _ttl = 300 if request.path == '/' else 120
+                    with _cache_lock:
+                        if len(_html_cache) > 200:
+                            _html_cache.clear()
+                        _html_cache[_key] = (time.time(), _ttl, resp.get_data())
+        except Exception:
+            pass
+        # ── پاک‌سازی کش‌ها بعد از هر تغییر محتوا از پنل مدیریت/صفحه‌ساز ──
+        try:
+            if (request.method == 'POST' and resp.status_code in (200, 302) and
+                    (request.path.startswith('/admin') or request.path.startswith('/builder'))):
+                clear_cache()
+        except Exception:
+            pass
         resp.headers.setdefault('X-Content-Type-Options', 'nosniff')
         resp.headers.setdefault('X-Frame-Options', 'SAMEORIGIN')
         resp.headers.setdefault('X-XSS-Protection', '1; mode=block')
@@ -709,29 +771,55 @@ def create_app():
         except Exception:
             _lexc('app.py')
         # بکاپ خودکار دیتابیس: بررسی هر ۱ ساعت برای کاهش ترافیک دیسک
+        # ⚠️ کپی فایل دیتابیس در نخ پس‌زمینه انجام می‌شود تا درخواست را قفل نکند
         def _run_backup_check():
             try:
                 import os as _os
                 bk_dir = _os.path.join(app.instance_path, 'backups')
                 _os.makedirs(bk_dir, exist_ok=True)
                 import glob as _glob, shutil as _shutil
-                bks = sorted(_glob.glob(_os.path.join(bk_dir, 'academy-*.db')), key=_os.path.getmtime)
-                need = True
-                if bks:
-                    need = (time.time() - _os.path.getmtime(bks[-1])) > 86400
-                if need:
-                    from datetime import datetime as _dt
-                    _shutil.copy2(_os.path.join(app.instance_path, 'academy.db'),
-                                  _os.path.join(bk_dir, f'academy-{_dt.now():%Y%m%d-%H%M}.db'))
-                    for old_bk in bks[:-7]:
-                        try:
-                            _os.remove(old_bk)
-                        except Exception:
-                            _lexc('app.py')
+                _lock_f = None
+                try:
+                    import fcntl
+                    _lock_f = open(_os.path.join(app.instance_path, 'backup.lock'), 'w')
+                    fcntl.flock(_lock_f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                except OSError:
+                    return True
+                except Exception:
+                    pass
+                try:
+                    bks = sorted(_glob.glob(_os.path.join(bk_dir, 'academy-*.db')), key=_os.path.getmtime)
+                    need = True
+                    if bks:
+                        need = (time.time() - _os.path.getmtime(bks[-1])) > 86400
+                    if need:
+                        from datetime import datetime as _dt
+                        _shutil.copy2(_os.path.join(app.instance_path, 'academy.db'),
+                                      _os.path.join(bk_dir, f'academy-{_dt.now():%Y%m%d-%H%M}.db'))
+                        for old_bk in bks[:-7]:
+                            try:
+                                _os.remove(old_bk)
+                            except Exception:
+                                _lexc('app.py')
+                finally:
+                    try:
+                        _lock_f and _lock_f.close()
+                    except Exception:
+                        pass
             except Exception:
                 _lexc('app.py')
             return True
-        _ttl_cache('bk_daily_check', 3600, _run_backup_check)
+
+        def _start_backup():
+            import threading as _thr
+
+            def _runner():
+                with app.app_context():
+                    _run_backup_check()
+            _t = _thr.Thread(target=_runner, daemon=True)
+            _t.start()
+
+        _ttl_cache('bk_daily_check', 3600, _start_backup)
         # صفحات صفحه‌ساز (هدر، فوتر، منوی موبایل، خانه...)
         g.pages = {}
         g.page_custom_header = None
@@ -739,6 +827,7 @@ def create_app():
         def _get_all_pages():
             res = {}
             from models import Page
+            from cache_safe import page_lite
             try:
                 due = Page.query.filter(Page.publish_at.isnot(None),
                                         Page.publish_at <= utcnow()).all()
@@ -749,8 +838,9 @@ def create_app():
                     db.session.commit()
             except Exception:
                 _lexc('app.py')
+            # نسخهٔ سبک و غیر-ORM (ایمن برای کش بین درخواست‌ها)
             for p in Page.query.all():
-                res[p.ptype] = p
+                res[p.ptype] = page_lite(p)
             return res
         try:
             g.pages = _ttl_cache('all_pages', 60, _get_all_pages)
@@ -829,13 +919,17 @@ def create_app():
             # پاسخ ساده 403 — بدون قالب (context processor ها هنوز اجرا نشده‌اند)
             from flask import Response as _Resp
             return _Resp('دسترسی غیرمجاز', status=403)
-                # ریدایرکت‌های 301 (مدیریت‌شده از پنل سئو)
+                # ریدایرکت‌های 301 (مدیریت‌شده از پنل سئو) — با کش ۶۰ ثانیه
+        # ⚠️ قبلاً در هر درخواست یک کوئری دیتابیس می‌زد
         if not request.path.startswith('/static/') and not request.path.startswith('/builder/api'):
             try:
-                from models import RedirectRule
-                rule = RedirectRule.query.filter_by(source=request.path, is_active=True).first()
-                if rule:
-                    return redirect(rule.target, code=rule.code or 301)
+                def _get_rules():
+                    from models import RedirectRule
+                    return [(r.source, r.target, r.code or 301) for r in
+                            RedirectRule.query.filter_by(is_active=True).all()]
+                for _src, _tgt, _code in _ttl_cache('redirect_rules', 60, _get_rules):
+                    if _src == request.path:
+                        return redirect(_tgt, code=_code)
             except Exception:
                 _lexc('app.py')
         # حالت تعمیرات: فقط ادمین می‌تواند وارد شود
@@ -893,14 +987,23 @@ def create_app():
                      og_image='', og_type='website', schema=None)
         try:
             path = request.path
-            m = _ttl_cache(f'seo:{path[:80]}', 120, lambda: SeoMeta.query.filter_by(path=path).first())
+
+            def _get_seo():
+                row = SeoMeta.query.filter_by(path=path).first()
+                if not row:
+                    return None
+                # نسخهٔ صرف (غیر-ORM) — ایمن برای کش بین درخواست‌ها
+                return dict(title=row.title or '', description=row.description or '',
+                            keywords=row.keywords or '', canonical=row.canonical or '',
+                            noindex=bool(row.noindex), og_image=row.og_image or '')
+            m = _ttl_cache(f'seo:{path[:80]}', 120, _get_seo)
             if m:
-                g.seo['title'] = m.title or ''
-                g.seo['description'] = m.description or ''
-                g.seo['keywords'] = m.keywords or ''
-                g.seo['canonical'] = m.canonical or ''
-                g.seo['noindex'] = bool(m.noindex)
-                g.seo['og_image'] = m.og_image or ''
+                g.seo['title'] = m['title']
+                g.seo['description'] = m['description']
+                g.seo['keywords'] = m['keywords']
+                g.seo['canonical'] = m['canonical']
+                g.seo['noindex'] = m['noindex']
+                g.seo['og_image'] = m['og_image']
             if not g.seo['title']:
                 g.seo['title'] = g.settings.get('seo_title', '')
             if not g.seo['description']:
@@ -915,34 +1018,147 @@ def create_app():
                 g.seo['noindex'] = True
         except Exception:
             _lexc('app.py')
+
+    # ---------- کش صفحه (HTML) برای بازدیدکنندگان مهمان ----------
+    # صفحات عمومی (خانه، دوره‌ها، وبلاگ و...) برای کاربران بدون سشن کش می‌شوند.
+    # کلید شامل توکن CSRF سشن است تا محتوای شخصی‌سازی‌شده بین کاربران لو نرود.
+    # (باید بعد از load_globals ثبت شود تا g.user و سشن آماده باشند)
+    _html_cache = {}
+    _HTML_PUBLIC = ('/', '/course/', '/courses', '/blog', '/about', '/faq', '/contact',
+                    '/terms', '/privacy', '/teachers', '/bundles', '/success-stories',
+                    '/learning-paths', '/talent-test', '/products', '/product/',
+                    '/search', '/sitemap.xml', '/robots.txt', '/feed')
+
+    def _html_cache_key():
+        try:
+            if request.method != 'GET':
+                return None
+            p = request.path
+            for _x in ('/admin', '/builder', '/install', '/api', '/static', '/uploads',
+                       '/auth', '/dashboard', '/teacher-panel', '/student', '/community',
+                       '/exam', '/wallet', '/pay', '/cart', '/checkout', '/newsletter',
+                       '/feedback', '/form/'):
+                if p.startswith(_x):
+                    return None
+            if not any(p == x or p.startswith(x) for x in _HTML_PUBLIC):
+                return None
+            if session.get('uid') or session.get('_flashes'):
+                return None
+            _theme = request.cookies.get('lms_theme') or ''
+            _qs = request.query_string.decode('utf-8', 'replace')
+            return f'{p}?{_qs}|t={_theme}|c={session.get("_csrf_token", "")}|a={_asset_v()}'
+        except Exception:
+            return None
+
+    @app.before_request
+    def html_cache_serve():
+        if getattr(g, 'user', None):
+            return None
+        _key = _html_cache_key()
+        if not _key:
+            return None
+        _now = time.time()
+        with _cache_lock:
+            _hit = _html_cache.get(_key)
+            if _hit and _now - _hit[0] < _hit[1]:
+                from flask import Response as _Resp
+                return _Resp(_hit[2], status=200,
+                             mimetype='text/html',
+                             headers={'Content-Length': str(len(_hit[2]))})
+        return None
+
     def daily_reminders():
-        """یادآوری‌های روزانه: اجرای کنترل‌شده در بازه‌های ۱۵ دقیقه‌ای (ضد فشار کوئری)"""
+        """یادآوری‌های روزانه — در پس‌زمینه اجرا می‌شود تا درخواست را قفل نکند.
+
+        ⚠️ قبلاً روی اولین درخواست هر ۱۵ دقیقه اجرا می‌شد و برای هر دانشجو/سفارش
+        یک INSERT می‌زد (در دیتابیس بزرگ = هزاران INSERT در مسیر درخواست → کندی شدید
+        و قفل SQLite). حالا: نخ جدا + قفل بین‌پردازه‌ای + بدون اعلان تکراری."""
+        import threading as _thr
+
         def _run_reminders():
             try:
                 from datetime import timedelta as _td
-                from models import LiveSession, Quiz, Order, Notification, Enrollment
-                # کلاس‌های ۲۴ ساعت آینده
-                soon = LiveSession.query.filter(
-                    LiveSession.starts_at >= utcnow(),
-                    LiveSession.starts_at <= utcnow() + _td(hours=24)).all()
-                for ls in soon:
-                    students = Enrollment.query.filter_by(course_id=ls.course_id).all() if ls.course_id else []
-                    for en in students:
-                        Notification.notify(en.user_id, 'کلاس آنلاین به‌زودی 🎥',
-                                            f'«{ls.title}» شروع می‌شود — لینک ورود فعال است.', '🎥',
-                                            url_for('community.live'))
-                # سفارش‌های ناقص (۲۴+ ساعت)
-                pending = Order.query.filter(Order.status == 'pending',
-                                             Order.created_at <= utcnow() - _td(hours=24)).all()
-                for o in pending:
-                    Notification.notify(o.user_id, 'خرید شما ناتمام مانده 🛒',
-                                        f'سفارش {o.code} هنوز پرداخت نشده — با تخفیف فعلی تکمیلش کن!',
-                                        '🛒', url_for('shop.pay_start', code=o.code))
-                db.session.commit()
+                from models import LiveSession, Order, Notification, Enrollment
+                _lock_f = None
+                # قفل بین‌پردازه‌ای: فقط یک ورکر (از بین چند ورکر gunicorn) اجرا کند
+                try:
+                    import fcntl
+                    _lock_f = open(os.path.join(app.instance_path, 'reminders.lock'), 'w')
+                    fcntl.flock(_lock_f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                except OSError:
+                    return True  # ورکر دیگری در حال اجراست
+                except Exception:
+                    pass
+                try:
+                    new_notifs = []
+                    _title_live = 'کلاس آنلاین به‌زودی 🎥'
+                    _title_order = 'خرید شما ناتمام مانده 🛒'
+                    # کلاس‌های ۲۴ ساعت آینده
+                    soon = LiveSession.query.filter(
+                        LiveSession.starts_at >= utcnow(),
+                        LiveSession.starts_at <= utcnow() + _td(hours=24)).all()
+                    for ls in soon:
+                        if not ls.course_id:
+                            continue
+                        # فقط شناسه دانشجوها — نه بارگذاری همه رکوردها
+                        uids = [r[0] for r in db.session.query(Enrollment.user_id)
+                                .filter_by(course_id=ls.course_id).distinct().all()]
+                        if not uids:
+                            continue
+                        # در نخ پس‌زمینه request context وجود ندارد → آدرس مستقیم
+                        _link = '/community/live'
+                        # حذف کسانی که قبلاً اعلان گرفته‌اند (ضد تکرار هر ۱۵ دقیقه)
+                        seen = set(r[0] for r in db.session.query(Notification.user_id)
+                                   .filter(Notification.user_id.in_(uids),
+                                           Notification.title == _title_live).all())
+                        for uid in uids:
+                            if uid not in seen:
+                                new_notifs.append(Notification(
+                                    user_id=uid, title=_title_live,
+                                    body=f'«{ls.title}» شروع می‌شود — لینک ورود فعال است.',
+                                    icon='🎥', link=_link))
+                    # سفارش‌های ناقص (۲۴+ ساعت)
+                    pending = Order.query.filter(Order.status == 'pending',
+                                                 Order.created_at <= utcnow() - _td(hours=24)).all()
+                    if pending:
+                        # بررسی تکراری‌ها با یک کوئری گروهی (نه یکی‌یکی)
+                        _links = [f'/pay/{o.code}' for o in pending]
+                        _seen = set()
+                        for _row in db.session.query(Notification.link).filter(
+                                Notification.link.in_(_links),
+                                Notification.title == _title_order).all():
+                            _seen.add(_row[0])
+                        for o in pending:
+                            _link = f'/pay/{o.code}'
+                            if _link in _seen:
+                                continue
+                            new_notifs.append(Notification(
+                                user_id=o.user_id, title=_title_order,
+                                body=f'سفارش {o.code} هنوز پرداخت نشده — با تخفیف فعلی تکمیلش کن!',
+                                icon='🛒', link=_link))
+                    # درج یکجا (bulk) — نه یکی‌یکی
+                    if new_notifs:
+                        for _chunk_start in range(0, len(new_notifs), 500):
+                            db.session.add_all(new_notifs[_chunk_start:_chunk_start + 500])
+                            db.session.commit()
+                finally:
+                    try:
+                        _lock_f and _lock_f.close()
+                    except Exception:
+                        pass
             except Exception:
                 _lexc('app.py')
             return True
-        _ttl_cache('reminders_job', 900, _run_reminders)
+
+        def _start():
+            def _runner():
+                # نخ پس‌زمینه سشن/کانتکست خودش را ندارد — باید کانتکست بسازد
+                with app.app_context():
+                    _run_reminders()
+            _t = _thr.Thread(target=_runner, daemon=True)
+            _t.start()
+
+        _ttl_cache('reminders_job', 900, _start)
     @app.context_processor
     def inject_helpers():
         def log_activity(action, detail=''):
@@ -987,8 +1203,6 @@ def create_app():
         cats = []
         fav_ids = set()
         enrolled_ids = set()
-        def _get_all_categories():
-            return Category.query.order_by(Category.sort, Category.id).all()
         try:
             cats = _ttl_cache('all_categories', 120, _get_all_categories)
             if getattr(g, 'user', None):
@@ -1029,6 +1243,9 @@ def create_app():
                                                og_type='website', schema=None)))
 
     # ---------- خطاها ----------
+    _nf_log_throttle = {}
+    _nf_log_counts = {}
+
     @app.errorhandler(404)
     def not_found(e):
         # مسیرهای نصب: همیشه JSON (مرورگر نصب‌کننده هرگز HTML نمی‌گیرد)
@@ -1036,17 +1253,33 @@ def create_app():
             from flask import jsonify as _j
             return _j(ok=False, msg='مسیر نصب یافت نشد', code=404), 404
         # ثبت 404 در مانیتور (ردیابی لینک‌های شکسته)
+        # ⚠️ محدود به یک نوشتن در دقیقه برای هر مسیر — ربات‌ها که 404 می‌گیرند
+        # قبلاً باعث سیل INSERT/UPDATE و قفل SQLite (خطای 500) می‌شدند
         try:
             if not request.path.startswith('/static/') and not request.path.startswith('/api'):
-                from models import NotFoundLog
-                log = NotFoundLog.query.filter_by(path=request.path).first()
-                if log:
-                    log.count += 1
-                    log.referrer = request.referrer or log.referrer
+                _now = time.time()
+                _throttled = False
+                with _cache_lock:
+                    _last = _nf_log_throttle.get(request.path)
+                    if _last and _now - _last < 60:
+                        _throttled = True
+                    else:
+                        _nf_log_throttle[request.path] = _now
+                        if len(_nf_log_throttle) > 2000:
+                            _nf_log_throttle.clear()
+                if not _throttled:
+                    from models import NotFoundLog
+                    log = NotFoundLog.query.filter_by(path=request.path).first()
+                    if log:
+                        log.count += 1
+                        log.referrer = request.referrer or log.referrer
+                    else:
+                        db.session.add(NotFoundLog(path=request.path[:300],
+                                                   referrer=(request.referrer or '')[:400]))
+                    db.session.commit()
                 else:
-                    db.session.add(NotFoundLog(path=request.path[:300],
-                                               referrer=(request.referrer or '')[:400]))
-                db.session.commit()
+                    # حتی بدون نوشتن، بازدید 404 را با یک شمارنده حافظه‌ای ثبت کن
+                    _nf_log_counts[request.path] = _nf_log_counts.get(request.path, 0) + 1
         except Exception:
             _lexc('app.py')
         # اگر صفحه ۴۰۴ با صفحه‌ساز ساخته شده باشد

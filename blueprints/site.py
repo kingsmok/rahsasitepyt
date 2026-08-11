@@ -10,7 +10,7 @@ _FA_MAP = str.maketrans('0123456789', '۰۱۲۳۴۵۶۷۸۹')
 def fa_num2(n):
     return str(n).translate(_FA_MAP)
 from sqlalchemy.orm import joinedload
-from models import db, Course, Category, User, BlogPost, Review, Favorite, ContactMessage, NewsletterEmail, Section
+from models import db, Course, Category, User, BlogPost, Review, Favorite, ContactMessage, NewsletterEmail, Section, Enrollment
 from validators import log_exc as _lexc
 
 site_bp = Blueprint('site', __name__)
@@ -81,9 +81,7 @@ def courses():
 
     from sqlalchemy.orm import selectinload as _sil
     query = Course.query.options(joinedload(Course.category), joinedload(Course.teacher),
-                                 _sil(Course.sections).selectinload(Section.lessons),
-                                 _sil(Course.enrollments),
-                                 _sil(Course.reviews)) \
+                                 _sil(Course.sections).selectinload(Section.lessons)) \
         .filter_by(status='published')
     if q:
         like = f'%{q}%'
@@ -113,6 +111,26 @@ def courses():
     query = query.order_by(sort_map.get(sort, Course.created_at.desc()))
 
     items, page, pages, total = _pagination(page, per_page, query)
+    # آمار تجمیعی دوره‌ها: تعداد نظر + میانگین امتیاز + تعداد دانشجو
+    # ⚠️ قبلاً همه نظرات و ثبت‌نام‌های هر دوره در پایتون بارگذاری می‌شد (هزاران ردیف!)
+    _ids = [c.id for c in items]
+    if _ids:
+        try:
+            _rev_rows = db.session.query(Review.course_id,
+                                         db.func.count(Review.id),
+                                         db.func.avg(Review.rating)) \
+                .filter(Review.course_id.in_(_ids)).group_by(Review.course_id).all()
+            _rev_map = {r[0]: (r[1], round(float(r[2] or 0), 1)) for r in _rev_rows}
+            _enr_rows = db.session.query(Enrollment.course_id, db.func.count(Enrollment.id)) \
+                .filter(Enrollment.course_id.in_(_ids)).group_by(Enrollment.course_id).all()
+            _enr_map = dict(_enr_rows)
+            for _c in items:
+                _rc, _ra = _rev_map.get(_c.id, (0, 0))
+                _c._agg_review_count = _rc
+                _c._agg_rating = _ra
+                _c._agg_students = (_c.seeded_students or 0) + _enr_map.get(_c.id, 0)
+        except Exception:
+            _lexc('site.py')
     categories = Category.query.order_by(Category.sort).all()
     # متای سئوی پویا برای دسته‌بندی‌ها (لندینگ دسته)
     cat_obj = Category.query.filter_by(slug=cat).first() if cat else None
@@ -391,13 +409,9 @@ def robots():
 @site_bp.route('/teachers')
 def teachers():
     from sqlalchemy import func as _f
-    from sqlalchemy.orm import selectinload as _sil
     from models import Review, Course, Enrollment
-    # بارگذاری کارآمد: اساتید + دوره‌هایشان + ثبت‌نام‌ها (بدون N+1)
-    teachers = (User.query
-                .options(_sil(User.courses_taught).selectinload(Course.enrollments),
-                         _sil(User.courses_taught).joinedload(Course.category))
-                .filter(User.role == 'teacher').all())
+    # ⚠️ قبلاً همه ثبت‌نام‌های هر دوره بارگذاری می‌شد (هزاران ردیف) — حالا فقط شمارش
+    teachers = User.query.filter(User.role == 'teacher').all()
     # امتیاز هر استاد با یک کوئری تجمیعی (JOIN Course + Review)
     tids = [t.id for t in teachers]
     ratings = {}
@@ -416,8 +430,15 @@ def teachers():
             .filter(Course.teacher_id.in_(tids)) \
             .group_by(Course.teacher_id).all()
         students = {tid: n for tid, n in srows}
+    # تعداد دورهٔ منتشر هر استاد — یک کوئری به‌جای بارگذاری رابطه
+    course_counts = {}
+    if tids:
+        crows = db.session.query(Course.teacher_id, _f.count(Course.id)) \
+            .filter(Course.teacher_id.in_(tids), Course.status == 'published') \
+            .group_by(Course.teacher_id).all()
+        course_counts = {tid: n for tid, n in crows}
     return render_template('teachers.html', teachers=teachers, ratings=ratings,
-                           teacher_students=students)
+                           teacher_students=students, teacher_courses=course_counts)
 
 
 @site_bp.route('/teacher/<int:uid>')

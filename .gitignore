@@ -10,6 +10,8 @@ instance/backups/
 instance/uploads/
 instance/.installed
 instance/.install_progress.json
+instance/.update_progress.json
+instance/update_history.json
 
 # ── لاگ‌ها ──
 logs/

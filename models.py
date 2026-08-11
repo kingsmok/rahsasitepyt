@@ -220,7 +220,8 @@ class User(db.Model):
 
     @property
     def is_admin(self):
-        return self.role == 'admin'
+        """دسترسی پنل برای مدیر عادی و سوپر ادمین."""
+        return self.role in ('admin', 'super_admin')
 
     @property
     def is_teacher(self):

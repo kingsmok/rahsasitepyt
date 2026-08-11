@@ -105,7 +105,7 @@
       <li><b>روش ۲ (کلید SSH - Deploy Key):</b> کلید عمومی سرور (<code>~/.ssh/id_ed25519.pub</code>) را در تنظیمات مخزن (بخش Deploy Keys) اضافه کرده و آدرس SSH را وارد کنید:<br>
         <code dir="ltr" style="background:#fff;padding:2px 8px;border-radius:6px">git@github.com:username/repo.git</code>
       </li>
-      <li><b>به‌روزرسانی اتوماتیک دیتابیس چگونه کار می‌کند؟</b> پس از جایگزینی کدها (<code>git reset --hard</code>)، تابع <code>_migrate_db()</code> به‌صورت اتوماتیک اجرا شده، جدول‌های جدید را ایجاد کرده و ستون‌های جدید اضافه شده به <code>models.py</code> را با دستور <code>ALTER TABLE ADD COLUMN</code> به دیتابیس فعلی اضافه می‌کند بدون اینکه داده‌ای پاک شود.</li>
+      <li><b>به‌روزرسانی اتوماتیک دیتابیس چگونه کار می‌کند؟</b> پس از بررسی فایل‌های ضروری و جایگزینی commit، مایگریشن در یک Python process تازه اجرا می‌شود تا مدل‌های نسخهٔ جدید خوانده شوند؛ جدول‌ها و ستون‌های جدید و indexها اضافه می‌شوند و default ستون‌های تازه برای رکوردهای قدیمی تکمیل می‌شود، بدون اینکه رکورد موجودی حذف شود.</li>
     </ul>
   </div>
 </div>
@@ -163,6 +163,10 @@ function connectXamppPermanent(){
 function testGitRepo(){
   var url = document.getElementById('git-url-inp').value;
   if (!url){ showMsg(false, 'آدرس مخزن را وارد کنید'); return; }
+  if (url.indexOf('***@') !== -1){
+    showMsg(false, 'آدرس مخزن خصوصی ماسک شده است؛ برای تست، آدرس کامل را دوباره وارد کنید.');
+    return;
+  }
   var fd = new FormData();
   fd.append('repo_url', url);
   fd.append('_csrf_token', getCsrf());

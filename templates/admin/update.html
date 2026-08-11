@@ -31,12 +31,14 @@
   <h3>🌐 مخزن گیت</h3>
   <p class="text-3" style="font-size:12.5px;margin:6px 0 12px">
     آدرس مخزن (مثلاً <code dir="ltr">https://github.com/user/academy.git</code>) —
-    اگر خالی بماند از ریموت فعلی گیت استفاده می‌شود.
+    اگر خالی بماند از ریموت فعلی گیت استفاده می‌شود. آدرس‌های خصوصی در صفحه و تاریخچه ماسک می‌شوند.
   </p>
-  <form method="post" action="{{ url_for('admin.update_save_repo') }}" class="flex gap-1" style="max-width:560px">
+  <form method="post" action="{{ url_for('admin.update_save_repo') }}" class="flex gap-1 wrap" style="max-width:760px">
     <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
     <input class="form-control" type="text" name="repo_url" value="{{ repo_url }}" dir="ltr"
-           placeholder="https://github.com/user/academy.git">
+           placeholder="https://github.com/user/academy.git" style="flex:1;min-width:280px">
+    <input class="form-control" type="text" name="branch" value="{{ branch }}" dir="ltr"
+           placeholder="شاخه (خالی = تشخیص خودکار)" style="max-width:250px">
     <button class="btn btn-ghost" type="submit">💾 ذخیره</button>
   </form>
 </div>
@@ -44,12 +46,16 @@
 <div class="card" style="padding:20px">
   <h3>⚡ بروزرسانی</h3>
   <p class="text-3" style="font-size:12.5px;margin:6px 0 14px">
-    با کلیک، آخرین نسخه از گیت دریافت و جایگزین می‌شود. دیتابیس و فایل‌های محلی
-    (<code>.env</code>، آپلودها، بکاپ‌ها) دست نمی‌خورند. بعد از اتمام، ری‌استارت سرور
-    پیشنهاد می‌شود.
+    ابتدا می‌توانید نسخهٔ GitHub را بررسی کنید. سپس با اجرای دستی، آخرین commit دریافت می‌شود؛
+    کدها جایگزین، وابستگی‌های تغییرکرده نصب و دیتابیس با داده‌های قبلی مایگریت می‌شود.
+    فایل‌های محلی (<code>.env</code>، آپلودها، بکاپ‌ها) دست‌نخورده می‌مانند.
   </p>
   <div id="upd-msg" class="msg" style="display:none"></div>
-  <button class="btn btn-primary btn-lg" id="btn-update" onclick="runUpdate()">🔄 بروزرسانی از گیت</button>
+  <div id="upd-check" class="text-2" style="font-size:12.5px;margin-bottom:12px"></div>
+  <div class="flex gap-1 wrap">
+    <button class="btn btn-ghost" id="btn-check" onclick="checkUpdate()">🔍 بررسی نسخهٔ جدید</button>
+    <button class="btn btn-primary btn-lg" id="btn-update" onclick="runUpdate()">🔄 بروزرسانی دستی از GitHub</button>
+  </div>
 
   <div id="upd-progress" style="display:none;margin-top:18px">
     <div style="background:#f1f5f9;border-radius:12px;padding:16px;font-size:13px;line-height:2.4">
@@ -63,6 +69,13 @@
 </div>
 
 <div class="card" style="padding:20px;margin-top:16px">
+  <h3 style="margin-top:0">🤖 بروزرسانی اتوماتیک بعد از Push</h3>
+  <p class="text-3" style="font-size:12.5px;line-height:1.9">
+    برای اجرای اتوماتیک، در GitHub یک Webhook از نوع <b>push</b> بسازید و Secret آن را در
+    متغیر محیطی <code>GITHUB_WEBHOOK_SECRET</code> قرار دهید. آدرس Webhook:
+  </p>
+  <code dir="ltr" style="display:block;overflow:auto;padding:9px;background:var(--bg-2);border-radius:8px">{{ webhook_url }}</code>
+  <p class="text-3" style="font-size:11.5px;margin:8px 0 12px">بدون Secret هیچ Pushای اجازهٔ اجرای بروزرسانی ندارد.</p>
   <a href="{{ url_for('admin.update_log') }}" class="btn btn-ghost btn-sm">📜 تاریخچه بروزرسانی‌ها</a>
 </div>
 
@@ -84,6 +97,27 @@ function setStep(n){
     var el = document.getElementById('us-' + i);
     el.textContent = (i < n) ? '✅' : (i === n ? '⏳' : '');
   }
+}
+function checkUpdate(){
+  var b = document.getElementById('btn-check');
+  b.disabled = true;
+  document.getElementById('upd-check').textContent = 'در حال بررسی آخرین commit...';
+  fetch('/admin/update/check').then(parseResp).then(function(res){
+    var d = res.d || {};
+    if (d.ok){
+      document.getElementById('upd-check').textContent = d.msg +
+        ' شاخه: ' + (d.branch || '—') + ' | نسخه فعلی: ' + (d.local_short || '—') +
+        ' | نسخه مخزن: ' + (d.remote_short || '—');
+      umsg(true, d.available ? 'نسخهٔ جدید برای نصب آماده است.' : 'نسخهٔ سایت به‌روز است.');
+    } else {
+      document.getElementById('upd-check').textContent = d.msg || 'بررسی مخزن ناموفق بود.';
+      umsg(false, d.msg || 'خطا در بررسی مخزن');
+    }
+    b.disabled = false;
+  }).catch(function(e){
+    b.disabled = false;
+    document.getElementById('upd-check').textContent = 'خطا در بررسی مخزن: ' + e;
+  });
 }
 var updTimer = null;
 function pollUpdate(){
@@ -118,8 +152,11 @@ function runUpdate(){
   document.getElementById('upd-progress').style.display = 'block';
   setStep(0);
   document.getElementById('upd-log').textContent = 'در حال ارسال درخواست...';
-  fetch('/admin/update/run', {method: 'POST',
-        headers: {'X-CSRF-Token': document.querySelector('[name=_csrf_token]').value}})
+  var fd = new FormData();
+  fd.append('_csrf_token', document.querySelector('[name=_csrf_token]').value);
+  var branchInput = document.querySelector('[name=branch]');
+  if (branchInput && branchInput.value) fd.append('branch', branchInput.value);
+  fetch('/admin/update/run', {method: 'POST', body: fd})
     .then(parseResp)
     .then(function(res){
       if (res.d && res.d.ok){

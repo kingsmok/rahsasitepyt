@@ -669,12 +669,12 @@ def verify_certificate():
         from models import Enrollment, Course
         if not code.startswith('CRT-'):
             code = 'CRT-' + code
-        # جستجو در گواهی‌های صادرشده
+        # جستجو در گواهی‌های صادرشده — هم کد جدید (MD5) و هم کد قدیمی (SHA-1)
+        from models import certificate_code, certificate_code_legacy_sha1
         for e in Enrollment.query.filter(Enrollment.completed_at.isnot(None)).all():
             c = e.course
-            cert_code = 'CRT-' + __import__('hashlib').sha1(
-                f"{c.slug}|{e.user.email}|{e.id}".encode()).hexdigest()[:10].upper()
-            if cert_code == code:
+            cert_code = certificate_code(c.slug, e.user.email, e.id)
+            if cert_code == code or certificate_code_legacy_sha1(c.slug, e.user.email, e.id) == code:
                 result = {'code': cert_code, 'user': e.user.name, 'course': c.title,
                           'date': e.completed_at, 'valid': True}
                 break

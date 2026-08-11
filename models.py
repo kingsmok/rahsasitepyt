@@ -15,6 +15,47 @@ import json
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 
+# ═══════════════════════════════════════════════════════════════════════════
+# خط‌مشی هش‌گذاری رمز عبور (بخش هش‌گذاری)
+# ───────────────────────────────────────────────────────────────────────────
+# ۱) رمزهای جدید و تغییر رمزها → همیشه با الگوریتم قوی ورک‌زگ ذخیره می‌شوند
+#    (scrypt؛ در پایتون‌های قدیمی‌تر pbkdf2:sha256) — غیرقابل شکستن با روش‌های معمول
+# ۲) هش‌های قدیمی MD5 خام (۳۲ کاراکتر hex) فقط برای «ورود» پذیرفته می‌شوند و در
+#    همان ورود موفق، خودکار به هش قوی «ارتقا» می‌یابند. یعنی اگر در phpMyAdmin
+#    رمزی را دستی با MD5() ساختید، کاربر با همان رمز وارد می‌شود و سیستم خودش
+#    امنش می‌کند — بدون نیاز به دانستن رمز جدید.
+#    مثال phpMyAdmin:
+#      UPDATE users SET password_hash = MD5('رمزجدید') WHERE id = 5;
+# ۳) برای غیرفعال‌کردن پذیرش MD5 قدیمی، LEGACY_MD5 را False کنید.
+# ⚠️ چرا رمزهای جدید را مستقیم MD5 نمی‌کنیم؟ MD5 برای رمز عبور در چند ثانیه
+#    با جدول‌های رنگین‌کمانی شکسته می‌شود؛ حتی هش‌های قویِ ورک‌زگ هم روی
+#    هاست‌های معمولی فقط چند ده میلی‌ثانیه زمان می‌برند (تأثیری در سرعت ورود ندارد).
+# ═══════════════════════════════════════════════════════════════════════════
+LEGACY_MD5 = True
+
+import hashlib as _hashlib
+import re as _re
+
+_MD5_RE = _re.compile(r'^[0-9a-f]{32}$')
+
+
+def _md5_hex(text):
+    return _hashlib.md5((text or '').encode('utf-8')).hexdigest()
+
+
+def certificate_code(slug, email, enrollment_id):
+    """کد رهگیری گواهینامه — شناسهٔ عمومی و غیرحساس (MD5 طبق درخواست).
+    برای اینکه کدهای قبلاً چاپ‌شده (ساخته‌شده با SHA-1) هم معتبر بمانند،
+    استعلام‌کننده هر دو حالت را می‌پذیرد — این تابع فقط نسخهٔ جدید (MD5) را می‌سازد."""
+    seed = f"{slug}|{email}|{enrollment_id}"
+    return 'CRT-' + _md5_hex(seed)[:10].upper()
+
+
+def certificate_code_legacy_sha1(slug, email, enrollment_id):
+    """نسخهٔ قدیمی کد گواهینامه (SHA-1) — فقط برای استعلام کدهای چاپ‌شدهٔ قبل."""
+    seed = f"{slug}|{email}|{enrollment_id}"
+    return 'CRT-' + _hashlib.sha1(seed.encode('utf-8')).hexdigest()[:10].upper()
+
 db = SQLAlchemy()
 
 
@@ -136,12 +177,42 @@ class User(db.Model):
         return self.session_token
 
     def set_password(self, p):
+        # همیشه هش قوی — هرگز MD5 خام برای رمزهای جدید
         self.password_hash = generate_password_hash(p)
 
     def check_password(self, p):
+        """بررسی رمز عبور:
+        ۱) هش قوی استاندارد (scrypt/pbkdf2)
+        ۲) هش قدیمی MD5 خام — فقط با اجازهٔ LEGACY_MD5؛ در صورت درستی،
+           بلافاصله به هش قوی ارتقا می‌یابد (خودکار و بی‌سروصدا)"""
         if not self.password_hash:
             return False
-        return check_password_hash(self.password_hash, p)
+        # ۱) حالت استاندارد ورک‌زگ (شامل md5$salt$hash و sha1$salt$hash قدیمی فلاسک)
+        try:
+            if check_password_hash(self.password_hash, p):
+                return True
+        except ValueError:
+            pass  # قالب ناشناخته → بررسی حالت خام MD5 در ادامه
+        # ۲) هش خام MD5 (مثل UPDATE ... SET password_hash = MD5('...') در phpMyAdmin)
+        if LEGACY_MD5:
+            _h = (self.password_hash or '').strip().lower()
+            if _MD5_RE.match(_h):
+                if _h == _md5_hex(p):
+                    self._upgrade_hash(p)
+                    return True
+        return False
+
+    def _upgrade_hash(self, p):
+        """ارتقای خودکار هش قدیمی MD5 به هش قوی — در همان ورود موفق"""
+        try:
+            self.set_password(p)
+            db.session.add(self)
+            db.session.commit()
+        except Exception:
+            try:
+                db.session.rollback()
+            except Exception:
+                pass
 
     def initials(self):
         parts = (self.name or '؟').split()

@@ -179,9 +179,8 @@ def certificate(course_id):
     if not enrollment.is_completed:
         flash('برای دریافت گواهینامه باید تمام جلسات دوره را کامل کنید.', 'error')
         return redirect(url_for('student.learn', course_id=course.id))
-    import hashlib as _hl
-    _seed = f"{course.slug}|{g.user.email}|{enrollment.id}"
-    code = "CRT-" + _hl.sha1(_seed.encode('utf-8')).hexdigest()[:10].upper()
+    from models import certificate_code
+    code = certificate_code(course.slug, g.user.email, enrollment.id)
     return render_template('certificate.html', course=course, enrollment=enrollment, code=code)
 
 
@@ -190,8 +189,8 @@ def certificate(course_id):
         Notification.notify(g.user.id, 'گواهینامه شما صادر شد 🏅',
                             f'گواهی دوره «{course.title}» آماده دانلود است.',
                             '🏅', url_for('student.certificate', course_id=course_id))
-        import hashlib as _hl
-        cert_code = 'CRT-' + _hl.sha1(f"{course.slug}|{g.user.email}|{enrollment.id}".encode()).hexdigest()[:10].upper()
+        from models import certificate_code
+        cert_code = certificate_code(course.slug, g.user.email, enrollment.id)
         from email_service import send_certificate_email
         if g.user.email:
             send_certificate_email(g.user, course, cert_code, g.settings)

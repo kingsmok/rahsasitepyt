@@ -1974,9 +1974,9 @@ def certificates():
     items = Enrollment.query.filter(Enrollment.completed_at.isnot(None)) \
         .order_by(Enrollment.completed_at.desc()).all()
     certs = []
-    import hashlib
+    from models import certificate_code
     for e in items:
-        code = 'CRT-' + hashlib.sha1(f"{e.course.slug}|{e.user.email}|{e.id}".encode()).hexdigest()[:10].upper()
+        code = certificate_code(e.course.slug, e.user.email, e.id)
         certs.append({'id': e.id, 'user': e.user.name if e.user else '—',
                       'course': e.course.title if e.course else '—',
                       'date': e.completed_at, 'code': code, 'enroll': e})

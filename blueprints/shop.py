@@ -242,17 +242,26 @@ def pay_start(code):
 
     if request.method == 'POST':
         gateway = request.form.get('gateway', 'sandbox')
+        # امنیت: درگاه آزمایشی فقط وقتی sandbox_mode=1 باشد در دسترس است
+        # (جلوگیری از «خرید رایگان» در سایت واقعی)
+        _sandbox_on = str(g.settings.get('sandbox_mode', '0')) == '1'
+        if gateway == 'sandbox' and not _sandbox_on:
+            flash('درگاه آزمایشی غیرفعال است — یک درگاه پرداخت واقعی انتخاب کنید.', 'error')
+            return redirect(url_for('shop.pay_start', code=code))
         order.gateway = gateway
         db.session.commit()
 
         # کارت‌به‌کارت — ثبت فیش واریزی
         if gateway == 'card2card':
             return redirect(url_for('shop.card2card', code=code))
-        # درگاه آزمایشی — شبیه‌ساز
+        # درگاه آزمایشی — شبیه‌ساز (فقط در حالت sandbox_mode=1)
         if gateway == 'sandbox':
             return redirect(url_for('shop.bank', code=code))
-        # درگاه‌های واقعی — شروع پرداخت (اگر پیکربندی ناقص بود → حالت تست همان درگاه)
+        # درگاه‌های واقعی — شروع پرداخت (اگر پیکربندی ناقص بود → خطا، نه شبیه‌ساز!)
         if not gateway_ready(gateway, g.settings):
+            if not _sandbox_on:
+                flash('این درگاه هنوز پیکربندی نشده است. لطفاً کمی بعد تلاش کنید.', 'error')
+                return redirect(url_for('shop.pay_start', code=code))
             flash('پیکربندی این درگاه کامل نیست — وارد حالت آزمایشی شدید. شناسه‌ها را در پنل مدیریت ثبت کنید.', 'info')
             return redirect(url_for('shop.bank', code=code, gw=gateway))
         try:
@@ -264,7 +273,11 @@ def pay_start(code):
             flash(f'خطا در اتصال به درگاه {gateway_fa(gateway)}: {e}', 'error')
             return redirect(url_for('shop.pay_start', code=code))
 
-    return render_template('pay/gateway.html', order=order, gateways=GATEWAYS)
+    # درگاه آزمایشی فقط در حالت sandbox_mode=1 به کاربر نمایش داده می‌شود
+    _sandbox_on = str(g.settings.get('sandbox_mode', '0')) == '1'
+    _gws = [g for g in GATEWAYS if g['id'] != 'sandbox' or _sandbox_on]
+    return render_template('pay/gateway.html', order=order, gateways=_gws,
+                           sandbox_mode=_sandbox_on)
 
 
 @shop_bp.route('/pay/verify/<gw>')
@@ -355,12 +368,16 @@ def card2card(code):
 
 @shop_bp.route('/pay/bank/<code>', methods=['GET', 'POST'])
 def bank(code):
-    """شبیه‌ساز درگاه بانکی برای تست — هر درگاهی که پیکربندی نشده باشد اینجا تست می‌شود"""
+    """شبیه‌ساز درگاه بانکی برای تست — فقط در حالت sandbox_mode=1 قابل استفاده است"""
     from gateways import GATEWAY_MAP
     order = Order.query.filter_by(code=code).first_or_404()
     gw = request.args.get('gw') or order.gateway or 'sandbox'
     if order.status == 'paid':
         return redirect(url_for('shop.pay_result', code=code, status='success'))
+    # امنیت: در حالت غیرآزمایشی، هیچ مسیری به شبیه‌ساز پرداخت باز نیست
+    if str(g.settings.get('sandbox_mode', '0')) != '1':
+        flash('درگاه آزمایشی غیرفعال است.', 'error')
+        return redirect(url_for('shop.pay_start', code=code))
     if request.method == 'POST':
         decision = request.form.get('decision', 'ok')
         # شبیه‌سازی پاسخ درگاه

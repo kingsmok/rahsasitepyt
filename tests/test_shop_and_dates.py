@@ -21,8 +21,22 @@ def test_cart_add(client):
     assert r.get_json()['ok'] is True
 
 
-def test_full_purchase_flow(client):
+def _enable_sandbox(app):
+    """درگاه آزمایشی فقط با sandbox_mode=1 فعال است — برای تست باید روشن شود"""
+    from models import Setting, db
+    with app.app_context():
+        s = Setting.query.filter_by(key='sandbox_mode').first()
+        if not s:
+            s = Setting(key='sandbox_mode', value='1')
+            db.session.add(s)
+        else:
+            s.value = '1'
+        db.session.commit()
+
+
+def test_full_purchase_flow(client, app):
     """جریان کامل خرید: سبد → سفارش → درگاه sandbox → پرداخت → ثبت‌نام"""
+    _enable_sandbox(app)
     login(client, 'demo@test.ir', 'demo123')
     # سبد
     client.post('/api/cart/add', json={'course_id': 1})
@@ -51,9 +65,9 @@ def test_full_purchase_flow(client):
     assert enr is not None
 
 
-def test_double_payment_no_duplicate(client):
+def test_double_payment_no_duplicate(client, app):
     """پرداخت تکراری نباید لاگ/کوپن دوباره بسازد"""
-    test_full_purchase_flow(client)  # یک پرداخت کامل
+    test_full_purchase_flow(client, app)  # یک پرداخت کامل
     # تلاش دوباره روی سفارش paid → ریدایرکت به نتیجه بدون لاگ جدید
     from models import PaymentLog
     before = PaymentLog.query.count()

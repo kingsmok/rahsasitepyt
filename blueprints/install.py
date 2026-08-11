@@ -14,9 +14,8 @@ from flask import (Blueprint, render_template, request, redirect, url_for,
 from werkzeug.exceptions import HTTPException
 
 from installer import (is_installed, build_db_url, validate_mysql,
-                       test_connection, run_install, check_db_health,
-                       env_db_url, INSTANCE_DIR, start_background_install,
-                       install_progress)
+                       test_connection, check_db_health, env_db_url,
+                       INSTANCE_DIR, run_install_request, install_progress)
 
 install_bp = Blueprint('install', __name__)
 
@@ -40,7 +39,21 @@ def _install_json_error(e):
 
 def _already_installed_json():
     """پاسخ JSON وقتی نصب قبلاً انجام شده — ضد دوبار کلیک و درخواست تکراری"""
-    return jsonify(ok=True, msg='نصب قبلاً انجام شده است.', redirect='/')
+    return jsonify(ok=True, done=True, msg='نصب قبلاً انجام شده است.', redirect='/')
+
+
+def _login_installed_admin(email=''):
+    """ثبت سشن مدیر پس از آخرین تکه نصب؛ شکست آن نباید نصب را خراب کند."""
+    try:
+        from models import User
+        from flask import session
+        q = User.query.filter(User.role == 'super_admin')
+        adm = q.filter(User.email == email).first() if email else None
+        adm = adm or q.order_by(User.id).first()
+        if adm:
+            session['uid'] = adm.id
+    except Exception:
+        pass
 
 
 @install_bp.route('/install')
@@ -120,13 +133,26 @@ def run():
             if err:
                 return jsonify(ok=False, msg=err), 400
 
-        # نصب در پس‌زمینه — ضد «Request Timeout» هاست (هر درخواست کوتاه می‌ماند)
-        started, s_msg = start_background_install(db_url, admin, site, create_demo)
-        if not started:
-            return jsonify(ok=False, msg=s_msg), 400
-
-        # لاگین خودکار مدیر (پس از اتمام نصب — از status انجام می‌شود)
-        return jsonify(ok=True, started=True, msg='نصب شروع شد — در حال انجام...', redirect=None)
+        # نصب تکه‌ای داخل درخواست‌های کوتاه: هاست نمی‌تواند thread پس‌زمینه را
+        # بعد از پایان response متوقف کند. مرورگر تا done درخواست بعدی را می‌فرستد.
+        result, s_msg, prog = run_install_request(
+            db_url, admin, site, create_demo)
+        if result is False:
+            return jsonify(ok=False, done=False, msg=s_msg,
+                           install_status='error'), 400
+        if result is True:
+            _login_installed_admin(admin['email'])
+        return jsonify(
+            ok=True,
+            started=True,
+            done=result is True,
+            msg=s_msg,
+            install_status=prog.get('status'),
+            install_step=prog.get('step'),
+            install_steps=prog.get('steps'),
+            chunks=prog.get('chunks'),
+            redirect='/' if result is True else None,
+        )
     except Exception as e:
         current_app.logger.error('install run error: %s\n%s', e, _tb.format_exc())
         return jsonify(ok=False, msg='خطا در شروع نصب: ' + str(e)[:250]), 500
@@ -165,6 +191,8 @@ def status():
         'install_steps': prog.get('steps'),
         'install_msg': prog.get('msg'),
         'install_stale': prog.get('stale', False),
+        'install_mode': prog.get('mode'),
+        'install_chunks': prog.get('chunks', 0),
     }
     if prog.get('status') == 'done' and prog.get('ok'):
         # لاگین خودکار مدیر — یک بار بعد از اتمام نصب
@@ -203,11 +231,25 @@ def repair():
         }
         site = {}
         create_demo = d.get('demo_student') == '1'
-        # تعمیر هم پس‌زمینه — ضد Request Timeout (همان عملیات سنگین است)
-        started, s_msg = start_background_install(db_url, admin, site, create_demo)
-        if not started:
-            return jsonify(ok=False, msg=s_msg), 400
-        return jsonify(ok=True, started=True, msg='تعمیر شروع شد — در حال انجام...', redirect=None)
+        # تعمیر نیز تکه‌ای و idempotent است؛ مرورگر تا پایان درخواست بعدی می‌فرستد.
+        result, s_msg, prog = run_install_request(
+            db_url, admin, site, create_demo)
+        if result is False:
+            return jsonify(ok=False, done=False, msg=s_msg,
+                           install_status='error'), 400
+        if result is True:
+            _login_installed_admin(admin['email'])
+        return jsonify(
+            ok=True,
+            started=True,
+            done=result is True,
+            msg=s_msg,
+            install_status=prog.get('status'),
+            install_step=prog.get('step'),
+            install_steps=prog.get('steps'),
+            chunks=prog.get('chunks'),
+            redirect='/' if result is True else None,
+        )
     except Exception as e:
         current_app.logger.error('install repair error: %s\n%s', e, _tb.format_exc())
         return jsonify(ok=False, msg='خطا در تعمیر: ' + str(e)[:250]), 500

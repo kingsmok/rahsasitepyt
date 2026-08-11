@@ -86,7 +86,7 @@ h3{font-size:16px;font-weight:800;margin-bottom:4px}
       <div id="repair-box" style="display:none;margin-top:12px;background:#fef3c7;border:1px solid #fcd34d;border-radius:12px;padding:14px">
         <b style="font-size:13px">⚠️ نصب ناقص است — دیتابیس سالم نیست</b>
         <p style="font-size:12px;color:#92400e;margin:6px 0 10px">دکمه زیر جدول‌ها و داده‌های اولیه را دوباره می‌سازد (داده‌های موجود پاک نمی‌شوند).</p>
-        <button class="btn btn-p" style="width:auto;padding:10px 22px" onclick="runRepair()">🔧 تعمیر دیتابیس</button>
+        <button class="btn btn-p" style="width:auto;padding:10px 22px" onclick="runRepair(this)">🔧 تعمیر دیتابیس</button>
       </div>
     </div>
 
@@ -166,10 +166,14 @@ h3{font-size:16px;font-weight:800;margin-bottom:4px}
       <p class="sub" id="install-log">اتصال به دیتابیس...</p>
       <div style="background:#f1f5f9;border-radius:12px;padding:18px;font-size:13px;line-height:2.4" id="install-steps">
         <div>🔌 اتصال به دیتابیس <span id="lg-1"></span></div>
-        <div>🗄 ساخت جدول‌ها (۶۵ جدول) <span id="lg-2"></span></div>
+        <div>🗄 ساخت جدول‌ها <span id="lg-2"></span></div>
         <div>👑 ساخت حساب مدیر <span id="lg-3"></span></div>
         <div>📚 ساخت داده‌های اولیه (دسته‌ها، دوره نمونه، صفحه اصلی) <span id="lg-4"></span></div>
         <div>📝 ذخیره تنظیمات و فایل .env <span id="lg-5"></span></div>
+      </div>
+      <div class="btn-row" id="install-actions" style="display:none;margin-top:14px">
+        <button class="btn btn-g" type="button" onclick="go(3)">→ بازگشت به اطلاعات</button>
+        <button class="btn btn-p" type="button" id="btn-resume" onclick="runInstall()">↻ ادامه نصب</button>
       </div>
     </div>
   </div>
@@ -184,12 +188,14 @@ h3{font-size:16px;font-weight:800;margin-bottom:4px}
 /* ═══════════════════════════════════════════════
    نصب‌کننده — نسخه تمیز و تست‌شده
    همه پاسخ‌ها با parseResp (ضد JSON.parse شکستن)
-   نصب پس‌زمینه با polling + تشخیص stale
+   نصب تکه‌ای در درخواست‌های کوتاه (سازگار با Passenger/cPanel)
    ═══════════════════════════════════════════════ */
 var dbType = 'sqlite';
 var testAbort = null;
 var pollTimer = null;
 var installing = false;
+var repairing = false;
+var installRetryCount = 0;
 
 function $(id){ return document.getElementById(id); }
 
@@ -289,27 +295,34 @@ function testDb(){
   .finally(function(){ clearTimeout(tm); b.disabled = false; b.textContent = '🔌 تست اتصال'; });
 }
 
-/* ── تعمیر نصب ناقص (پس‌زمینه + polling) ── */
-function runRepair(){
-  var b = event.target;
-  b.disabled = true; b.innerHTML = '<span class="spin"></span> در حال تعمیر...';
+/* ── تعمیر نصب ناقص: چند درخواست کوتاه و قابل‌ادامه ── */
+function runRepair(b, continuing){
+  if (repairing && !continuing) return;
+  repairing = true;
+  if (b){ b.disabled = true; b.innerHTML = '<span class="spin"></span> در حال تعمیر...'; }
+  go(4);
+  $('install-actions').style.display = 'none';
   fetch('/install/repair', {method: 'POST', body: new FormData()})
     .then(parseResp)
     .then(function(res){
-      if (res.d && res.d.ok){
-        b.textContent = '🔧 در حال تعمیر...';
-        var box = $('repair-box');
-        if (box) box.innerHTML = '<b style="font-size:13px">🔧 تعمیر در حال انجام...</b><p style="font-size:12px;color:#92400e;margin-top:6px">لطفاً صبر کنید — پیشرفت پایین صفحه نمایش داده می‌شود.</p>';
-        go(4);
-        resetSteps();
-        $('install-log').textContent = 'تعمیر شروع شد — در حال انجام...';
-        pollTimer = setTimeout(pollInstall, 1500);
-      } else {
-        b.disabled = false; b.textContent = '🔧 تعمیر دیتابیس';
-        msg(false, (res.d && res.d.msg) || 'خطا در تعمیر');
+      var d = res.d || {};
+      if (!d.ok){ throw new Error(d.msg || 'خطا در تعمیر'); }
+      setStep(Math.max(1, Math.min(5, (d.install_step || 0) + 1)));
+      $('install-log').textContent = d.msg || 'تعمیر در حال انجام...';
+      if (d.done){
+        setStep(5);
+        $('install-log').textContent = '✅ تعمیر کامل شد — در حال انتقال به سایت...';
+        setTimeout(function(){ window.location.href = d.redirect || '/'; }, 700);
+        return;
       }
+      setTimeout(function(){ runRepair(b, true); }, 250);
     })
-    .catch(function(){ b.disabled = false; b.textContent = '🔧 تعمیر دیتابیس'; msg(false, 'خطا در ارتباط با سرور'); });
+    .catch(function(e){
+      repairing = false;
+      if (b){ b.disabled = false; b.textContent = '🔧 تعمیر دیتابیس'; }
+      $('install-log').textContent = (e && e.message) || 'خطا در ارتباط با سرور';
+      msg(false, $('install-log').textContent);
+    });
 }
 
 /* ── پنل سلامت سرور (خودکار هنگام باز شدن صفحه) ── */
@@ -332,14 +345,32 @@ function checkHealth(){
       row('Pillow', d.pillow || 'نصب نیست!', !!d.pillow);
       row('Cryptography', d.cryptography || 'نصب نیست!', !!d.cryptography);
 
-      /* نصب در حال اجراست (مثلاً بعد از رفرش) → ادامه polling */
+      /* اجرای قدیمیِ پس‌زمینه یا درخواست فعال در تب دیگر */
       if (d.install_status === 'running'){
         $('health-status').textContent = 'وضعیت: در حال نصب... ⏳';
         $('health-status').style.color = '#2563eb';
         go(4);
         resetSteps();
         $('install-log').textContent = (d.install_msg || 'در حال نصب...') + ' — لطفاً صبر کنید';
-        pollTimer = setTimeout(pollInstall, 1500);
+        pollTimer = setTimeout(pollInstall, 1200);
+        $('health-rows').innerHTML = rows;
+        return;
+      }
+      /* بین دو تکه یا پس از رفرش: کاربر اطلاعات حساس را دوباره تأیید کند. */
+      if (d.install_status === 'waiting'){
+        $('health-status').textContent = 'وضعیت: آماده ادامه نصب ↻';
+        $('health-status').style.color = '#d97706';
+        $('health-rows').innerHTML = rows;
+        go(3);
+        msg(false, 'بخشی از نصب انجام شده است. رمز مدیر را تأیید و «شروع نصب» را بزنید؛ از همان‌جا ادامه می‌یابد.');
+        return;
+      }
+      if (d.install_status === 'error' && d.install_msg && !d.installed){
+        $('health-status').textContent = 'وضعیت: نیازمند ادامه نصب ↻';
+        $('health-status').style.color = '#d97706';
+        $('health-rows').innerHTML = rows;
+        go(3);
+        msg(false, d.install_msg);
         return;
       }
       if (d.installed){
@@ -373,7 +404,7 @@ function checkHealth(){
     .catch(function(){ panel.style.display = 'none'; });
 }
 
-/* ── دکمه شروع نصب: پس‌زمینه + polling ── */
+/* ── نصب تکه‌ای: هر POST کوتاه است و خودش یک بخش را کامل می‌کند ── */
 function resetSteps(){
   for (var i=1; i<=5; i++) $('lg-'+i).textContent = '...';
 }
@@ -383,40 +414,19 @@ function setStep(n){
   }
 }
 function enableInstallBtn(){
+  installing = false;
   var btn = $('btn-install');
   btn.disabled = false;
   btn.textContent = '⚡ شروع نصب و ساخت داده‌ها';
+  var resume = $('btn-resume');
+  if (resume){ resume.disabled = false; resume.textContent = '↻ ادامه نصب'; }
 }
-function pollInstall(){
-  fetch('/install/status')
-    .then(parseResp)
-    .then(function(res){
-      var d = res.d || {};
-      var st = d.install_status || 'idle';
-      var step = d.install_step || 0;
-      if (st === 'running' || st === 'idle'){
-        setStep(Math.max(1, Math.min(5, step + 1)));
-        $('install-log').textContent = (d.install_msg || 'در حال نصب...') + ' — لطفاً صبر کنید';
-        pollTimer = setTimeout(pollInstall, 2000);
-      } else if (st === 'done'){
-        setStep(5);
-        $('install-log').textContent = '✅ نصب کامل شد — در حال انتقال به سایت...';
-        setTimeout(function(){ window.location.href = '/'; }, 800);
-      } else {
-        for (var i=1; i<=5; i++) $('lg-'+i).textContent = '❌';
-        $('install-log').textContent = d.install_msg || d.db_msg || 'خطا در نصب';
-        enableInstallBtn();
-        if (pollTimer) clearTimeout(pollTimer);
-      }
-    })
-    .catch(function(){
-      $('install-log').textContent = 'اتصال قطع شد — دوباره تلاش می‌کنم...';
-      pollTimer = setTimeout(pollInstall, 3000);
-    });
+function showInstallRetry(text){
+  enableInstallBtn();
+  $('install-log').textContent = text || 'نصب متوقف شد؛ دوباره ادامه دهید.';
+  $('install-actions').style.display = 'grid';
 }
-function runInstall(){
-  if (installing) return;
-  installing = true;
+function installFormData(){
   var data = new FormData();
   data.append('db_type', dbType);
   data.append('db_host', $('db_host').value.trim());
@@ -434,32 +444,98 @@ function runInstall(){
   data.append('site_phone', $('site_phone').value.trim());
   data.append('site_email', $('site_email').value.trim());
   data.append('site_url', $('site_url').value.trim());
+  return data;
+}
 
+/* فقط برای ادامه نصب قدیمی یا تب دیگری که هم‌اکنون درخواست فعال دارد. */
+function pollInstall(){
+  fetch('/install/status')
+    .then(parseResp)
+    .then(function(res){
+      var d = res.d || {};
+      var st = d.install_status || 'idle';
+      var step = d.install_step || 0;
+      setStep(Math.max(1, Math.min(5, step + 1)));
+      if (st === 'running'){
+        $('install-log').textContent = (d.install_msg || 'در حال نصب...') + ' — لطفاً صبر کنید';
+        pollTimer = setTimeout(pollInstall, 1200);
+      } else if (st === 'done' || d.installed){
+        setStep(5);
+        $('install-log').textContent = '✅ نصب کامل شد — در حال انتقال به سایت...';
+        setTimeout(function(){ window.location.href = '/'; }, 700);
+      } else if (st === 'waiting'){
+        go(3);
+        enableInstallBtn();
+        msg(false, 'نصب آماده ادامه است؛ رمز مدیر را تأیید و «شروع نصب» را بزنید.');
+      } else {
+        showInstallRetry(d.install_msg || d.db_msg || 'خطا در نصب');
+      }
+    })
+    .catch(function(){
+      $('install-log').textContent = 'اتصال موقتاً قطع شد — وضعیت را دوباره بررسی می‌کنم...';
+      pollTimer = setTimeout(pollInstall, 2500);
+    });
+}
+
+function runInstallChunk(){
+  fetch('/install/run', {method: 'POST', body: installFormData()})
+    .then(parseResp)
+    .then(function(res){
+      var d = res.d || {};
+      if (!d.ok){
+        showInstallRetry(d.msg || 'خطای ناشناخته در نصب');
+        return;
+      }
+      installRetryCount = 0;
+      setStep(Math.max(1, Math.min(5, (d.install_step || 0) + 1)));
+      $('install-log').textContent = d.msg || 'بخش بعدی نصب در حال اجراست...';
+      if (d.done || d.redirect){
+        setStep(5);
+        $('install-actions').style.display = 'none';
+        $('install-log').textContent = '✅ نصب کامل شد — در حال انتقال به سایت...';
+        setTimeout(function(){ window.location.href = d.redirect || '/'; }, 700);
+        return;
+      }
+      /* پاسخ تمام شد؛ حالا تکه بعدی در یک درخواست HTTP تازه اجرا می‌شود. */
+      setTimeout(runInstallChunk, 180);
+    })
+    .catch(function(){
+      installRetryCount += 1;
+      if (installRetryCount <= 3){
+        $('install-log').textContent = 'ارتباط موقتاً قطع شد — ادامه خودکار (' + installRetryCount + ' از ۳)...';
+        setTimeout(runInstallChunk, 1200 * installRetryCount);
+      } else {
+        showInstallRetry('ارتباط با سرور قطع شد. روی «ادامه نصب» بزنید؛ جدول‌های ساخته‌شده حفظ شده‌اند.');
+      }
+    });
+}
+
+function runInstall(){
+  if (installing) return;
+  if (dbType === 'mysql'){
+    var p = dbParams();
+    if (!p.host || !p.name || !p.user){ go(1); msg(false, 'اطلاعات MySQL را کامل کنید.'); return; }
+  }
+  if ($('admin_name').value.trim().length < 3 || $('admin_email').value.indexOf('@') < 0){
+    go(2); msg(false, 'نام و ایمیل مدیر را کامل کنید.'); return;
+  }
+  if ($('admin_pass').value.length < 8 || $('admin_pass').value !== $('admin_pass2').value){
+    go(2); msg(false, 'رمز مدیر باید حداقل ۸ کاراکتر و با تکرار آن یکسان باشد.'); return;
+  }
+  if (!$('site_name').value.trim()){ go(3); msg(false, 'نام سایت الزامی است.'); return; }
+
+  installing = true;
+  installRetryCount = 0;
   var btn = $('btn-install');
   btn.disabled = true;
   btn.innerHTML = '<span class="spin"></span> در حال نصب...';
+  var resume = $('btn-resume');
+  if (resume){ resume.disabled = true; resume.innerHTML = '<span class="spin"></span> در حال ادامه...'; }
+  $('install-actions').style.display = 'none';
   go(4);
   resetSteps();
-  $('install-log').textContent = 'در حال ارسال درخواست نصب...';
-
-  fetch('/install/run', {method: 'POST', body: data})
-    .then(parseResp)
-    .then(function(res){
-      if (res.d && res.d.ok){
-        $('install-log').textContent = 'نصب شروع شد — در حال انجام...';
-        pollTimer = setTimeout(pollInstall, 1500);
-      } else {
-        for (var i=1; i<=5; i++) $('lg-'+i).textContent = '❌';
-        $('install-log').textContent = (res.d && res.d.msg) ? res.d.msg : 'خطای ناشناخته در شروع نصب';
-        enableInstallBtn();
-        installing = false;
-      }
-    })
-    .catch(function(e){
-      $('install-log').textContent = 'خطا در ارتباط با سرور: ' + (e || '');
-      enableInstallBtn();
-      installing = false;
-    });
+  $('install-log').textContent = 'شروع نصب امن در چند درخواست کوتاه...';
+  runInstallChunk();
 }
 
 /* شروع: بررسی خودکار سلامت + اگر نصب در جریان است ادامه بده */

@@ -481,36 +481,81 @@ def _is_conn_lost(exc):
                                 'Connection refused'))
 
 
-def _create_tables_resilient(eng, max_tries=4):
-    """ساخت جدول‌ها جدول‌به‌جدول با retry جدول‌به‌جدول — ضد قطعی اتصال
-    - هر جدول در تلاش خودش؛ اگر یک جدول قطعی خورد فقط همان دوباره تلاش می‌شود
-    - بین تلاش‌ها اتصال تازه (dispose) + sleep کوتاه
+def _create_tables_resilient(eng, max_tries=4, max_tables=None,
+                             progress_cb=None):
+    """ساخت جدول‌ها به‌صورت idempotent و قابل‌ادامه.
+
+    ``max_tables`` تعداد جدول‌هایی است که در همین درخواست ساخته می‌شوند. با
+    محدودکردن آن، نصب‌کننده می‌تواند روی Passenger/cPanel در چند درخواست کوتاه
+    جلو برود و دیگر به زنده‌ماندن thread بعد از پایان درخواست وابسته نباشد.
+
+    خروجی دیکشنری شامل تعداد کل، ساخته‌شده در این فراخوانی و باقی‌مانده است.
     """
     from models import db as _db
-    db = _db
     from sqlalchemy import inspect as _insp
     import time as _time
-    for table in db.metadata.sorted_tables:
+
+    tables = list(_db.metadata.sorted_tables)
+    table_names = {table.name for table in tables}
+    existing = set(_insp(eng).get_table_names())
+    pending = [table for table in tables if table.name not in existing]
+    if max_tables is not None:
+        limit = max(1, int(max_tables))
+        current_batch = pending[:limit]
+    else:
+        current_batch = pending
+
+    made = 0
+    for table in current_batch:
         for attempt in range(1, max_tries + 1):
             try:
+                # ممکن است تلاش قبلی جدول را ساخته و فقط پاسخ اتصال قطع شده باشد.
                 if table.name in set(_insp(eng).get_table_names()):
+                    existing.add(table.name)
                     break
                 table.create(eng, checkfirst=True)
+                existing.add(table.name)
+                made += 1
+                if progress_cb:
+                    progress_cb(len(existing.intersection(table_names)),
+                                len(tables), table.name)
                 break
             except Exception as e:
+                # در retry هم‌زمان ممکن است worker دیگر همین جدول را ساخته باشد.
+                try:
+                    if table.name in set(_insp(eng).get_table_names()):
+                        existing.add(table.name)
+                        if progress_cb:
+                            progress_cb(len(existing.intersection(table_names)),
+                                        len(tables), table.name)
+                        break
+                except Exception:
+                    pass
                 if not _is_conn_lost(e):
                     raise
                 eng.dispose()
                 _time.sleep(1.5 * attempt)
                 if attempt >= max_tries:
-                    # تلاش آخر: اگر جدول با این‌حال ساخته شد (اتصال فقط قطع شده) ادامه بده
+                    # تلاش آخر: شاید CREATE انجام شده ولی پاسخ MySQL نرسیده است.
                     try:
                         if table.name in set(_insp(eng).get_table_names()):
+                            existing.add(table.name)
+                            if progress_cb:
+                                progress_cb(len(existing.intersection(table_names)),
+                                            len(tables), table.name)
                             break
                     except Exception:
                         pass
                     raise
-    return True
+
+    # یک inspect تازه، نتیجه قطعی را حتی پس از reconnect نشان می‌دهد.
+    existing = set(_insp(eng).get_table_names())
+    return {
+        'total': len(tables),
+        'existing': len(existing.intersection(table_names)),
+        'created': made,
+        'remaining': len([t for t in tables if t.name not in existing]),
+    }
 
 
 # ════════════════════════════════════════════════════════════
@@ -538,14 +583,28 @@ _INSTALL_STALE_SECONDS = 120  # ۲ دقیقه بدون پیشرفت = thread م�
 
 
 def _save_state():
+    """ذخیره اتمیک state تا worker دیگر هرگز JSON نیمه‌نوشته نخواند."""
     global _install_state
     _install_state['_updated'] = time.time()
     try:
         os.makedirs(INSTANCE_DIR, exist_ok=True)
-        with open(_INSTALL_STATE_FILE, 'w', encoding='utf-8') as f:
-            json.dump(_install_state, f, ensure_ascii=False)
+        snapshot = dict(_install_state)
+        tmp = '{}.{}.{}.tmp'.format(
+            _INSTALL_STATE_FILE, os.getpid(), _bg_thr.get_ident())
+        with open(tmp, 'w', encoding='utf-8') as f:
+            json.dump(snapshot, f, ensure_ascii=False)
+            f.flush()
+            try:
+                os.fsync(f.fileno())
+            except OSError:
+                pass
+        os.replace(tmp, _INSTALL_STATE_FILE)
     except Exception:
-        pass
+        try:
+            if 'tmp' in locals() and os.path.exists(tmp):
+                os.remove(tmp)
+        except Exception:
+            pass
 
 
 def _load_state_file():
@@ -571,8 +630,8 @@ def install_progress():
         if time.time() - upd > _INSTALL_STALE_SECONDS:
             st['status'] = 'error'
             st['stale'] = True
-            st['msg'] = ('نصب قطع شد (سرور/هاست درخواست پس‌زمینه را متوقف کرد). '
-                         'روی «شروع نصب» دوباره بزنید — از همان‌جا ادامه می‌دهد.')
+            st['msg'] = ('یکی از درخواست‌های نصب توسط سرور/هاست متوقف شد. '
+                         'روی «ادامه نصب» بزنید — جدول‌های ساخته‌شده حفظ شده‌اند.')
             with _install_lock:
                 _install_state['status'] = 'error'
                 _install_state['msg'] = st['msg']
@@ -641,17 +700,18 @@ def start_background_install(db_url, admin, site, create_demo_student=False):
     return True, 'نصب در پس‌زمینه شروع شد'
 
 
-def run_install(db_url, admin, site, create_demo_student=False, progress_cb=None):
+def run_install(db_url, admin, site, create_demo_student=False, progress_cb=None,
+                table_limit=None):
     """
-    اجرای کامل نصب — نسخه فوق‌سریع (برای هاست‌های اشتراکی با سقف زمانی):
-    - یک اتصال واحد برای کل نصب (بدون pool، بدون reconnect بین مراحل)
-    - batch insert (executemany) به‌جای ORM تکی — داده‌ها در چند کوئری
-    - FOREIGN_KEY_CHECKS=0 هنگام درج (چند برابر سریع‌تر)
-    - جدول‌ها جدول‌به‌جدول با تلاش مجدد
-    admin: dict(name, email, password)
-    site:  dict(name, desc, phone, email, base_url)
-    progress_cb: تابع اختیاری (step, msg)
-    خروجی: (ok, message)
+    اجرای idempotent نصب.
+
+    در اجرای عادی ``table_limit=None`` همه کار انجام می‌شود. در نصب وب، مقدار
+    محدودی برای ``table_limit`` داده می‌شود تا هر درخواست فقط چند جدول بسازد؛
+    در این حالت اگر هنوز جدول باقی باشد خروجی ``(None, message)`` است و درخواست
+    بعدی دقیقاً از جدول‌های باقی‌مانده ادامه می‌دهد. بنابراین قطع worker یا
+    ممنوع‌بودن background thread روی هاست باعث ازبین‌رفتن نصب نمی‌شود.
+
+    خروجی: ``True``=کامل، ``False``=خطا، ``None``=نیازمند درخواست بعدی.
     """
     def _prog(step, msg):
         if progress_cb:
@@ -675,16 +735,27 @@ def run_install(db_url, admin, site, create_demo_student=False, progress_cb=None
                                './venv/bin/pip install PyMySQL  (یا: pip install -r requirements.txt)')
             ensure_mysql_db(db_url)
 
-        # ── ۱) اتصال سریع (TCP یا سوکت محلی) + ساخت جدول‌ها ──
+        # ── ۱) اتصال سریع + ساخت جدول‌های باقی‌مانده ──
         t0 = _t.time()
         if is_mysql:
             eng = _get_engine(db_url)
-            _create_tables_resilient(eng)
         else:
             from sqlalchemy import create_engine
             eng = create_engine(resolve_url(db_url))
-            db.metadata.create_all(eng)
-        _prog(1, f'جدول‌ها ساخته شدند ({_t.time()-t0:.1f}ث)')
+
+        def _table_progress(done, total, _name):
+            _prog(1, f'ساخت جدول‌ها: {done} از {total}')
+
+        table_result = _create_tables_resilient(
+            eng, max_tables=table_limit, progress_cb=_table_progress)
+        if table_result['remaining']:
+            done = table_result['existing']
+            total = table_result['total']
+            msg = f'{done} از {total} جدول ساخته شد — ادامه خودکار...'
+            _prog(1, msg)
+            eng.dispose()
+            return None, msg
+        _prog(2, f'همه {table_result["total"]} جدول آماده‌اند ({_t.time()-t0:.1f}ث)')
 
         # ── ۲) کپی فوق‌سریع داده‌ها — یک اتصال + batch + FK off ──
         t1 = _t.time()
@@ -841,3 +912,67 @@ def run_install(db_url, admin, site, create_demo_student=False, progress_cb=None
                            '۳) یا از پشتیبانی هاست بخواهید max_statement_time را روی 0 بگذارد. '
                            'جزئیات: ' + msg[-120:])
         return False, 'خطا در نصب: ' + msg[-300:]
+
+
+# ════════════════════════════════════════════════════════════
+# نصب وب تکه‌ای — هر مرحله داخل خود درخواست HTTP اجرا می‌شود
+# ════════════════════════════════════════════════════════════
+def run_install_request(db_url, admin, site, create_demo_student=False,
+                        tables_per_request=None):
+    """اجرای یک تکه کوتاه از نصب و ثبت state مشترک بین workerها.
+
+    برخلاف ``start_background_install`` این تابع thread نمی‌سازد؛ Passenger و
+    بسیاری از هاست‌های اشتراکی thread را بلافاصله بعد از پاسخ HTTP می‌کشند.
+    مرورگر این تابع را با درخواست‌های متوالی صدا می‌زند و چون ساخت جدول و seed
+    idempotent است، هر بار از همان‌جایی که مانده ادامه پیدا می‌کند.
+    """
+    global _install_state
+
+    if tables_per_request is None:
+        try:
+            tables_per_request = int(os.environ.get(
+                'INSTALL_TABLES_PER_REQUEST', '8'))
+        except (TypeError, ValueError):
+            tables_per_request = 8
+    tables_per_request = max(1, min(int(tables_per_request), 20))
+
+    previous = _load_state_file() or {}
+    chunks = int(previous.get('chunks') or 0) + 1
+    with _install_lock:
+        _install_state = {
+            'status': 'running', 'mode': 'request',
+            'step': int(previous.get('step') or 0), 'steps': 5,
+            'msg': 'ادامه نصب در درخواست کوتاه...', 'ok': False,
+            'chunks': chunks,
+        }
+    _save_state()
+
+    def _prog(step, msg):
+        with _install_lock:
+            _install_state['step'] = step
+            _install_state['msg'] = msg
+        _save_state()
+
+    try:
+        result, msg = run_install(
+            db_url, admin, site, create_demo_student,
+            progress_cb=_prog, table_limit=tables_per_request)
+    except Exception as e:
+        result, msg = False, 'خطای غیرمنتظره: ' + str(e)[:250]
+
+    with _install_lock:
+        if result is True:
+            _install_state['status'] = 'done'
+            _install_state['step'] = 5
+            _install_state['ok'] = True
+        elif result is None:
+            # «waiting» یعنی threadی در پس‌زمینه وجود ندارد؛ مرورگر باید
+            # درخواست کوتاه بعدی را بفرستد.
+            _install_state['status'] = 'waiting'
+            _install_state['ok'] = False
+        else:
+            _install_state['status'] = 'error'
+            _install_state['ok'] = False
+        _install_state['msg'] = msg
+    _save_state()
+    return result, msg, dict(_install_state)

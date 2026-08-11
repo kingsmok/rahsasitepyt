@@ -24,6 +24,26 @@ from jdates import fa
 GATEWAYS = _GW
 
 
+def _sandbox_allowed():
+    """آیا شبیه‌ساز پرداخت مجاز است؟
+
+    شرط ۱: حالت آزمایشی در تنظیمات روشن باشد (sandbox_mode=1)
+    شرط ۲: اپ در حالت production نباشد، مگر اینکه مدیر صریحاً
+            ALLOW_SANDBOX_IN_PRODUCTION=1 را ست کرده باشد.
+
+    دلیل شرط ۲: صفحه شبیه‌ساز روی یک سایت واقعیِ در دسترس عموم،
+    توسط Google Safe Browsing به‌عنوان صفحه فیشینگ بانکی شناسایی
+    می‌شود و کل دامنه با پیام «Dangerous site» در کروم مسدود می‌گردد.
+    """
+    if str(g.settings.get('sandbox_mode', '0')) != '1':
+        return False
+    _prod = (os.environ.get('FLASK_ENV') == 'production' or
+             os.environ.get('APP_ENV') == 'production')
+    if _prod and os.environ.get('ALLOW_SANDBOX_IN_PRODUCTION', '0') != '1':
+        return False
+    return True
+
+
 def _cart_courses():
     """دوره‌های سبد (برای سازگاری با کدهای قبلی)"""
     return [o for k, o in _cart_items() if k == 'course']
@@ -196,7 +216,7 @@ def pay_installment(code, num):
         flash('این قسط قبلاً پرداخت شده.', 'info')
         return redirect(url_for('student.orders'))
     # امنیت: در حالت غیرآزمایشی، پرداخت فقط از طریق درگاه انجام می‌شود (نه POST ساده)
-    if str(g.settings.get('sandbox_mode', '0')) != '1':
+    if not _sandbox_allowed():
         flash('پرداخت قسط از طریق درگاه انجام می‌شود — در حال انتقال...', 'info')
         return redirect(url_for('shop.pay_start', code=code))
     inst.status = 'paid'
@@ -244,7 +264,7 @@ def pay_start(code):
         gateway = request.form.get('gateway', 'sandbox')
         # امنیت: درگاه آزمایشی فقط وقتی sandbox_mode=1 باشد در دسترس است
         # (جلوگیری از «خرید رایگان» در سایت واقعی)
-        _sandbox_on = str(g.settings.get('sandbox_mode', '0')) == '1'
+        _sandbox_on = _sandbox_allowed()
         if gateway == 'sandbox' and not _sandbox_on:
             flash('درگاه آزمایشی غیرفعال است — یک درگاه پرداخت واقعی انتخاب کنید.', 'error')
             return redirect(url_for('shop.pay_start', code=code))
@@ -274,7 +294,7 @@ def pay_start(code):
             return redirect(url_for('shop.pay_start', code=code))
 
     # درگاه آزمایشی فقط در حالت sandbox_mode=1 به کاربر نمایش داده می‌شود
-    _sandbox_on = str(g.settings.get('sandbox_mode', '0')) == '1'
+    _sandbox_on = _sandbox_allowed()
     _gws = [g for g in GATEWAYS if g['id'] != 'sandbox' or _sandbox_on]
     return render_template('pay/gateway.html', order=order, gateways=_gws,
                            sandbox_mode=_sandbox_on)
@@ -375,7 +395,7 @@ def bank(code):
     if order.status == 'paid':
         return redirect(url_for('shop.pay_result', code=code, status='success'))
     # امنیت: در حالت غیرآزمایشی، هیچ مسیری به شبیه‌ساز پرداخت باز نیست
-    if str(g.settings.get('sandbox_mode', '0')) != '1':
+    if not _sandbox_allowed():
         flash('درگاه آزمایشی غیرفعال است.', 'error')
         return redirect(url_for('shop.pay_start', code=code))
     if request.method == 'POST':

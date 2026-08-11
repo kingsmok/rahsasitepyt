@@ -101,9 +101,13 @@
   <div class="form-group">
     <label for="f_sandbox_mode_1">حالت آزمایشی پرداخت</label>
     <select id="f_sandbox_mode_1" class="form-control" name="sandbox_mode" style="max-width:220px">
-      <option value="1" {{ 'selected' if (site.sandbox_mode or '1') == '1' }}>فعال (شبیه‌ساز پرداخت)</option>
-      <option value="0" {{ 'selected' if (site.sandbox_mode or '1') == '0' }}>غیرفعال</option>
+      <option value="0" {{ 'selected' if (site.sandbox_mode or '0') == '0' }}>غیرفعال (توصیه‌شده برای سایت واقعی)</option>
+      <option value="1" {{ 'selected' if (site.sandbox_mode or '0') == '1' }}>فعال (شبیه‌ساز پرداخت — فقط تست محلی)</option>
     </select>
+    <p class="form-hint" style="color:var(--danger)">
+      ⚠️ روی سایت آنلاین حتماً «غیرفعال» بماند. صفحه شبیه‌ساز پرداخت اگر برای عموم باز باشد،
+      ممکن است توسط Google Safe Browsing به‌عنوان فیشینگ شناسایی و کل دامنه در کروم مسدود شود.
+    </p>
   </div>
 
   <h3 style="font-size:16px;margin:22px 0 16px">🧩 تنظیمات صفحه‌ساز (Kit)</h3>

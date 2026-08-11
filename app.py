@@ -1020,6 +1020,14 @@ def create_app():
             if request.endpoint and (request.endpoint.startswith('admin') or
                                      request.endpoint.startswith('builder')):
                 g.seo['noindex'] = True
+            # صفحات پرداخت/سبد/حساب هرگز نباید ایندکس شوند.
+            # (ایندکس‌شدن صفحه شبیه‌ساز پرداخت باعث فلگ‌شدن دامنه توسط
+            #  Google Safe Browsing با عنوان «Dangerous site» می‌شود)
+            _p = request.path or ''
+            if (_p.startswith('/pay') or _p.startswith('/checkout') or
+                    _p.startswith('/cart') or _p.startswith('/dashboard') or
+                    _p.startswith('/auth')):
+                g.seo['noindex'] = True
         except Exception:
             _lexc('app.py')
 

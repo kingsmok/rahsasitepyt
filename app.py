@@ -164,7 +164,17 @@ def create_app():
             # ایندکس‌های جاافتاده روی دیتابیس موجود (ضد کندی کوئری‌ها)
             from models import ensure_indexes as _ensure_idx
             _ensure_idx()
-    except Exception:
+    except Exception as _db_boot_err:
+        # ⚠️ این خطا قبلاً فقط یک خط warning می‌شد و علت واقعی ارور ۵۰۰ با
+        # MySQL (دسترسی، انکودینگ، سقف اتصال) پنهان می‌ماند. حالا کل traceback
+        # ثبت می‌شود تا در لاگ هاست قابل دیدن باشد.
+        import traceback as _tbm
+        try:
+            app.logger.error(
+                'DB init failed on boot (%s): %s\n%s',
+                type(_db_boot_err).__name__, _db_boot_err, _tbm.format_exc())
+        except Exception:
+            pass
         _lexc('app.py')
 
     # ---------- فیلترها ----------

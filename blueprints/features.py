@@ -417,7 +417,11 @@ def wallet():
         if not amount.isdigit() or int(amount) < 10000:
             flash('حداقل مبلغ شارژ ۱۰,۰۰۰ تومان است.', 'error')
         else:
-            # شارژ با شبیه‌ساز پرداخت
+            # شارژ با شبیه‌ساز پرداخت — فقط در حالت آزمایشی و خارج از production
+            from blueprints.shop import _sandbox_allowed
+            if not _sandbox_allowed():
+                flash('شارژ کیف پول موقتاً در دسترس نیست — درگاه پرداخت پیکربندی نشده است.', 'error')
+                return redirect(url_for('features.wallet'))
             code = f"WAL-{datetime.now():%y%m%d}-{random.randint(1000, 9999)}"
             session['wallet_amount'] = int(amount)
             session['wallet_code'] = code
@@ -436,6 +440,13 @@ def wallet_confirm():
     decision = request.form.get('decision', 'ok')
     amount = int(session.get('wallet_amount') or 0)
     code = session.get('wallet_code') or ''
+    # امنیت: تایید شارژ شبیه‌سازی‌شده فقط در حالت آزمایشی مجاز است
+    from blueprints.shop import _sandbox_allowed
+    if decision == 'ok' and not _sandbox_allowed():
+        session.pop('wallet_amount', None)
+        session.pop('wallet_code', None)
+        flash('شارژ کیف پول در دسترس نیست.', 'error')
+        return redirect(url_for('features.wallet'))
     if decision == 'ok' and amount > 0:
         wallet_charge(g.user, amount, f'شارژ کیف پول ({code})')
         award_points(g.user, 5, 'شارژ کیف پول')

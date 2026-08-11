@@ -70,6 +70,10 @@ VALID_THEMES = [t['id'] for t in THEMES]
 # ------------------------------------------------------------------
 # ساخت اپلیکیشن
 # ------------------------------------------------------------------
+class _SkipBootDDL(Exception):
+    """علامت داخلی: از ساخت جدول‌ها هنگام بوت صرف‌نظر شد (MySQL نصب‌شده)."""
+
+
 def create_app():
     app = Flask(__name__)
     # ---------- لاگ ساختاریافته: کنسول + فایل چرخشی ----------
@@ -124,6 +128,13 @@ def create_app():
             'connect_args': {
                 'charset': 'utf8mb4',
                 'use_unicode': True,
+                # ⚠️ بدون این تایم‌اوت‌ها، اگر هاست پورت 3306 را فیلتر کرده باشد
+                # یا سرور MySQL جواب handshake ندهد، هر درخواست ~۳۰ ثانیه هنگ
+                # می‌کرد و بعد با «2013 Lost connection» می‌مرد (ارور ۵۰۰ کند).
+                # حالا سریع شکست می‌خورد و پیام واضح در لاگ می‌آید.
+                'connect_timeout': int(os.environ.get('MYSQL_CONNECT_TIMEOUT', 10)),
+                'read_timeout': int(os.environ.get('MYSQL_READ_TIMEOUT', 60)),
+                'write_timeout': int(os.environ.get('MYSQL_WRITE_TIMEOUT', 60)),
             },
         }
         from sqlalchemy import event
@@ -158,13 +169,40 @@ def create_app():
     db.init_app(app)
     # ساخت خودکار جدول‌ها در اولین اجرا (SQLite تازه یا MySQL خالی)
     # — idempotent است: فقط جدول‌های موجود را بررسی و ایجاد می‌کند
+    #
+    # ⚠️ روی MySQL این کار در هر بوت انجام نمی‌شود: create_all() برای ۶۰ جدول
+    # ده‌ها کوئری متادیتا می‌زند و روی هاست اشتراکی کند/ناپایدار است
+    # (خطای 2013 Lost connection). چون نصب‌کننده جدول‌ها را می‌سازد، در حالت
+    # «نصب‌شده + MySQL» از این مرحله عبور می‌کنیم مگر با SCHEMA_SYNC_ON_BOOT=1.
+    _skip_boot_ddl = False
+    if str(app.config['SQLALCHEMY_DATABASE_URI']).startswith('mysql') and \
+            os.environ.get('SCHEMA_SYNC_ON_BOOT', '0') != '1':
+        try:
+            from installer import is_installed as _ii
+            _skip_boot_ddl = _ii()
+        except Exception:
+            _skip_boot_ddl = False
     try:
+        if _skip_boot_ddl:
+            raise _SkipBootDDL()
         with app.app_context():
             db.create_all()
             # ایندکس‌های جاافتاده روی دیتابیس موجود (ضد کندی کوئری‌ها)
             from models import ensure_indexes as _ensure_idx
             _ensure_idx()
-    except Exception:
+    except _SkipBootDDL:
+        pass
+    except Exception as _db_boot_err:
+        # ⚠️ این خطا قبلاً فقط یک خط warning می‌شد و علت واقعی ارور ۵۰۰ با
+        # MySQL (دسترسی، انکودینگ، سقف اتصال) پنهان می‌ماند. حالا کل traceback
+        # ثبت می‌شود تا در لاگ هاست قابل دیدن باشد.
+        import traceback as _tbm
+        try:
+            app.logger.error(
+                'DB init failed on boot (%s): %s\n%s',
+                type(_db_boot_err).__name__, _db_boot_err, _tbm.format_exc())
+        except Exception:
+            pass
         _lexc('app.py')
 
     # ---------- فیلترها ----------
@@ -1020,6 +1058,14 @@ def create_app():
             if request.endpoint and (request.endpoint.startswith('admin') or
                                      request.endpoint.startswith('builder')):
                 g.seo['noindex'] = True
+            # صفحات پرداخت/سبد/حساب هرگز نباید ایندکس شوند.
+            # (ایندکس‌شدن صفحه شبیه‌ساز پرداخت باعث فلگ‌شدن دامنه توسط
+            #  Google Safe Browsing با عنوان «Dangerous site» می‌شود)
+            _p = request.path or ''
+            if (_p.startswith('/pay') or _p.startswith('/checkout') or
+                    _p.startswith('/cart') or _p.startswith('/dashboard') or
+                    _p.startswith('/auth')):
+                g.seo['noindex'] = True
         except Exception:
             _lexc('app.py')
 
@@ -1334,8 +1380,15 @@ def create_app():
 app = create_app()
 
 if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()
+    # ساخت جدول‌ها هنگام اجرای مستقیم — اگر دیتابیس در دسترس نبود، به‌جای
+    # کرش با تریس‌بک خام، پیام فارسی روشن نشان بده (خطای 2013 روی هاست).
+    try:
+        with app.app_context():
+            db.create_all()
+    except Exception as _e:
+        print('\n⚠️  اتصال به دیتابیس برقرار نشد — جدول‌ها ساخته نشدند.')
+        print('   علت: %s: %s' % (type(_e).__name__, str(_e)[:300]))
+        print('   برای عیب‌یابی اجرا کنید:  python scripts/diagnose_db.py\n')
     # debug فقط در محیط توسعه — در production هرگز
     _debug = os.environ.get('FLASK_ENV', 'development') != 'production'
     app.run(host='0.0.0.0', port=5000, debug=_debug)

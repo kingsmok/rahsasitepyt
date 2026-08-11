@@ -223,8 +223,25 @@ def test_connection(db_url):
         return False, 'خطای اتصال: ' + _friendly_db_error(e, db_url)
 
 
+def _persisted_db_url(db_url):
+    """URLی که باید در .env ذخیره شود.
+
+    اگر اتصال فقط از راه «سوکت محلی» برقرار شده باشد (هاست‌هایی که MySQL روی
+    TCP گوش نمی‌دهد)، باید unix_socket داخل خود URL بماند؛ وگرنه بعد از
+    ری‌استارت، اپ با TCP تلاش می‌کند، شکست می‌خورد و کل سایت ارور ۵۰۰ می‌دهد.
+    """
+    if not db_url or not str(db_url).startswith('mysql'):
+        return db_url
+    mode = _best_conn_cache.get(db_url)
+    if isinstance(mode, tuple) and 'unix_socket=' not in str(db_url):
+        return str(db_url) + ('&' if '?' in str(db_url) else '?') + \
+            'unix_socket=' + mode[1]
+    return db_url
+
+
 def write_env_file(db_url, secret_key):
     """به‌روزرسانی .env — حفظ کلیدهای موجود + افزودن دیتابیس/کلید"""
+    db_url = _persisted_db_url(db_url)
     env_path = os.path.join(BASE_DIR, '.env')
     lines = {}
     if os.path.exists(env_path):
@@ -233,7 +250,20 @@ def write_env_file(db_url, secret_key):
             if ln and not ln.startswith('#') and '=' in ln:
                 k, v = ln.split('=', 1)
                 lines[k.strip()] = v.strip()
+    # SECRET_KEY: اگر از قبل یک کلید امن در .env هست، همان را نگه دار.
+    # چرخاندن کلید در پایان نصب باعث می‌شد سشن ادمینی که همین الان لاگین کرده
+    # بعد از ری‌استارت بی‌اعتبار شود (و کاربر آن را «کرش/ارور» می‌دید).
+    _old_sk = (lines.get('SECRET_KEY') or '').strip()
+    if _old_sk and 'dev-only' not in _old_sk and len(_old_sk) >= 32:
+        secret_key = _old_sk
     lines['SECRET_KEY'] = secret_key
+    # کلید را در همین پروسه هم فعال کن تا قبل و بعد از ری‌استارت یکی باشد
+    try:
+        os.environ['SECRET_KEY'] = secret_key
+        from flask import current_app as _ca
+        _ca.config['SECRET_KEY'] = secret_key
+    except Exception:
+        pass
     lines['FLASK_ENV'] = 'production'
     lines['APP_ENV'] = 'production'
     if db_url:
@@ -950,24 +980,59 @@ def run_install(db_url, admin, site, create_demo_student=False, progress_cb=None
         eng.dispose()
 
         # ── ۳) سوئیچ اپ به دیتابیس جدید (بدون ری‌استارت) — ضد-خطا ──
+        # ⚠️ نکته حیاتی (علت ارور ۵۰۰ بعد از پایان نصب):
+        # قبلاً اول engineهای قدیمی dispose و map پاک می‌شد و بعد engine جدید
+        # ساخته می‌شد. اگر ساخت engine جدید شکست می‌خورد (درایور، URL، آپشن
+        # نامعتبر)، خطا با «except: pass» بلعیده می‌شد و map خالی می‌ماند →
+        # هر درخواست بعدی با UnboundExecutionError: Bind key 'None' is not in
+        # 'SQLALCHEMY_BINDS' کرش می‌کرد (ارور ۵۰۰ دائمی تا ری‌استارت).
+        # حالا: اول engine جدید ساخته و تست می‌شود، و فقط در صورت موفقیت
+        # جایگزین می‌گردد. در صورت شکست، engine قبلی دست‌نخورده می‌ماند.
         try:
             from flask import current_app
             app = current_app._get_current_object()
-            app.config['SQLALCHEMY_DATABASE_URI'] = resolve_url(db_url)
+            _new_uri = resolve_url(db_url)
             try:
                 from sqlalchemy import create_engine as _ce
                 _opts = dict(app.config.get('SQLALCHEMY_ENGINE_OPTIONS') or {})
                 _opts.setdefault('pool_pre_ping', True)
                 if str(db_url).startswith('mysql'):
                     _opts.setdefault('pool_recycle', 280)
+                    # اگر اتصال فقط از راه سوکت محلی برقرار شده، همان را در
+                    # URL نگه دار تا اپ بعد از نصب هم بتواند وصل شود
+                    _mode = _best_conn_cache.get(db_url)
+                    if isinstance(_mode, tuple) and 'unix_socket=' not in _new_uri:
+                        _new_uri += ('&' if '?' in _new_uri else '?') + \
+                            'unix_socket=' + _mode[1]
+                # ۱) اول بساز و واقعاً تست کن — قبل از دست‌زدن به engine فعلی
+                _new_engine = _ce(_new_uri, **_opts)
+                with _new_engine.connect():
+                    pass
+                # ۲) حالا که مطمئنیم سالم است، جایگزین کن
+                app.config['SQLALCHEMY_DATABASE_URI'] = _new_uri
                 _engines = db._app_engines.get(app)
-                if _engines:
-                    for _e in _engines.values():
-                        _e.dispose()
-                    _engines.clear()
-                    _engines[None] = _ce(resolve_url(db_url), **_opts)
-            except Exception:
-                pass
+                if _engines is not None:
+                    _old = list(_engines.values())
+                    _engines[None] = _new_engine
+                    for _e in _old:
+                        try:
+                            _e.dispose()
+                        except Exception:
+                            pass
+                else:
+                    try:
+                        _new_engine.dispose()
+                    except Exception:
+                        pass
+            except Exception as _sw_err:
+                # سوئیچ زنده ناموفق — engine قبلی سالم باقی می‌ماند و .env
+                # مقدار درست را دارد؛ بعد از ری‌استارت اپ با DB جدید بالا می‌آید
+                try:
+                    app.logger.error(
+                        'switch-engine failed (app keeps old engine, '
+                        'restart required): %s', _sw_err)
+                except Exception:
+                    pass
         except Exception:
             pass
 

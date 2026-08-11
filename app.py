@@ -741,7 +741,8 @@ def create_app():
         # بررسی POST های حساس (بدون API که JSON دارد؛ نصب‌کننده هم گارد خودش را دارد)
         if request.method == 'POST' and not request.path.startswith('/api') and \
                 not request.path.startswith('/builder/api') and \
-                not request.path.startswith('/install'):
+                not request.path.startswith('/install') and \
+                request.path != '/admin/update/webhook':
             token = request.form.get('_csrf_token') or request.headers.get('X-CSRF-Token')
             if not token or token != session.get('_csrf_token'):
                 abort(400, description='توکن CSRF نامعتبر است. صفحه را رفرش کنید.')

@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 """بخش‌های تکمیلی پنل ادمین — گزارش‌ها، رسانه، داستان موفقیت، اعلان گروهی، مشاوره‌ها
 (تقسیم‌شده از admin_bp.py برای نگهداری بهتر)"""
+import hashlib
+import hmac
+import json
 import os
 import uuid
 from datetime import datetime
@@ -451,8 +454,8 @@ def icons_browser():
 @admin_bp.route('/update')
 @admin_required
 def update_page():
-    """صفحه بروزرسانی — دکمه + وضعیت + آدرس گیت قابل تنظیم"""
-    from updater import get_repo_url
+    """صفحه بروزرسانی — بررسی نسخه، اجرای دستی و تنظیم شاخهٔ Git."""
+    from updater import _display_repo, get_repo_url, get_update_branch
     repo = get_repo_url()
     if not repo:
         import subprocess as _sp
@@ -463,34 +466,81 @@ def update_page():
                 repo = r.stdout.strip()
         except Exception:
             pass
-    return render_template('admin/update.html', repo_url=repo,
+    return render_template('admin/update.html',
+                           repo_url=_display_repo(repo),
+                           branch=get_update_branch(),
+                           webhook_url=request.url_root.rstrip('/') +
+                           url_for('admin.github_update_webhook'),
                            is_super=g.user.role in ('super_admin', 'admin'))
 
 
 @admin_bp.route('/update/save-repo', methods=['POST'])
 @admin_required
 def update_save_repo():
-    """ذخیره آدرس مخزن گیت در تنظیمات"""
+    """ذخیرهٔ آدرس مخزن و شاخهٔ هدف؛ URL ماسک‌شده توکن قبلی را حفظ می‌کند."""
     from models import Setting as _S
+    from updater import _validate_repo_url
     url = (request.form.get('repo_url') or '').strip()
-    st = db.session.get(_S, 'git_repo_url')
-    if st:
-        st.value = url
+    branch = (request.form.get('branch') or '').strip()
+    current = db.session.get(_S, 'git_repo_url')
+    # اگر URL شامل ***@ است، کاربر همان مقدار قبلی را submit کرده است.
+    if '***@' in url:
+        if current and current.value:
+            url = current.value.strip()
+        else:
+            # توکن از محیط آمده و مقدار ماسک‌شده نباید به‌عنوان URL واقعی ذخیره شود.
+            url = ''
+    if url:
+        try:
+            _validate_repo_url(url)
+        except Exception as exc:
+            flash(str(exc), 'error')
+            return redirect(url_for('admin.update_page'))
+    if current:
+        current.value = url
     else:
         db.session.add(_S(key='git_repo_url', value=url))
+    branch_row = db.session.get(_S, 'git_branch')
+    if branch:
+        if branch.startswith('refs/heads/'):
+            branch = branch[len('refs/heads/'):]
+        if ('..' in branch or '//' in branch or
+                not all(ch.isalnum() or ch in '._/-' for ch in branch) or
+                (not branch or not branch[0].isalnum())):
+            flash('نام شاخهٔ گیت نامعتبر است.', 'error')
+            return redirect(url_for('admin.update_page'))
+    if branch_row:
+        branch_row.value = branch
+    elif branch:
+        db.session.add(_S(key='git_branch', value=branch))
     db.session.commit()
-    flash('آدرس مخزن گیت ذخیره شد ✅', 'success')
+    flash('تنظیمات مخزن گیت ذخیره شد ✅', 'success')
     return redirect(url_for('admin.update_page'))
+
+
+@admin_bp.route('/update/check')
+@admin_required
+def update_check():
+    """بررسی وجود نسخهٔ جدید، بدون reset یا تغییر دیتابیس."""
+    from updater import UpdateError, check_for_update
+    try:
+        return jsonify(check_for_update())
+    except Exception as exc:
+        msg = str(exc)
+        if isinstance(exc, UpdateError):
+            return jsonify(ok=False, msg=msg), 400
+        return jsonify(ok=False, msg='خطا در بررسی مخزن: ' + msg[:300]), 500
 
 
 @admin_bp.route('/update/run', methods=['POST'])
 @admin_required
 def update_run():
-    """شروع بروزرسانی در پس‌زمینه — فقط super_admin"""
+    """شروع بروزرسانی در پس‌زمینه — فقط مدیر مجاز به تغییر کد."""
     if g.user.role not in ('super_admin', 'admin'):
         return jsonify(ok=False, msg='فقط مدیر کل می‌تواند بروزرسانی کند.'), 403
     from updater import start_update
-    started, msg = start_update()
+    branch = (request.form.get('branch') or '').strip() or None
+    started, msg = start_update(branch=branch)
     if not started:
         return jsonify(ok=False, msg=msg), 400
     return jsonify(ok=True, msg=msg)
@@ -499,10 +549,45 @@ def update_run():
 @admin_bp.route('/update/status')
 @admin_required
 def update_status():
-    """وضعیت بروزرسانی (polling)"""
+    """وضعیت بروزرسانی (polling)."""
     from updater import update_progress
     p = update_progress()
     return jsonify(**p)
+
+
+@admin_bp.route('/update/webhook', methods=['POST'])
+def github_update_webhook():
+    """Webhook رسمی GitHub برای بروزرسانی خودکار پس از push.
+
+    امنیت فقط با GITHUB_WEBHOOK_SECRET محیط انجام می‌شود؛ بدون secret این مسیر
+    عمداً غیرفعال است و هیچ‌کس نمی‌تواند از بیرون reset اجرا کند.
+    """
+    secret = os.environ.get('GITHUB_WEBHOOK_SECRET', '')
+    if not secret:
+        return jsonify(ok=False, msg='Webhook بروزرسانی فعال نشده است.'), 503
+    signature = request.headers.get('X-Hub-Signature-256', '')
+    expected = 'sha256=' + hmac.new(secret.encode('utf-8'), request.get_data(),
+                                    hashlib.sha256).hexdigest()
+    if not signature or not hmac.compare_digest(signature, expected):
+        return jsonify(ok=False, msg='امضای Webhook نامعتبر است.'), 401
+    event = request.headers.get('X-GitHub-Event', '')
+    if event == 'ping':
+        return jsonify(ok=True, ignored=True, msg='Webhook آماده است ✅')
+    if event != 'push':
+        return jsonify(ok=True, ignored=True, msg='این نوع رویداد نادیده گرفته شد.')
+    payload = request.get_json(silent=True) or {}
+    ref = payload.get('ref', '')
+    branch = ref[len('refs/heads/'):] if ref.startswith('refs/heads/') else ''
+    from updater import get_update_branch, start_update
+    configured = get_update_branch()
+    if configured and configured.startswith('refs/heads/'):
+        configured = configured[len('refs/heads/'):]
+    if configured and branch != configured:
+        return jsonify(ok=True, ignored=True, msg='Push روی شاخهٔ هدف نبود.')
+    if not branch:
+        return jsonify(ok=True, ignored=True, msg='شاخهٔ Push قابل تشخیص نیست.')
+    started, msg = start_update(branch=branch)
+    return jsonify(ok=started, started=started, msg=msg), (202 if started else 409)
 
 
 @admin_bp.route('/update/log')
@@ -530,7 +615,7 @@ def update_log():
 def install_manager():
     """صفحه جامع مدیریت نصب، اتصال زمپ (XAMPP)، گیت و وضعیت دیتابیس"""
     from installer import is_installed, check_db_health, env_db_url
-    from updater import get_git_info, get_repo_url
+    from updater import _display_repo, get_git_info, get_repo_url
     db_url_str = str(env_db_url() or '')
     db_type = 'mysql' if db_url_str.startswith('mysql') else 'sqlite'
     # پنهان‌سازی رمز در نمایش URL
@@ -549,7 +634,7 @@ def install_manager():
                            db_ok=ok_health,
                            db_msg=msg_health,
                            git_info=git_info,
-                           repo_url=repo_url,
+                           repo_url=_display_repo(repo_url),
                            is_super=g.user.role in ('super_admin', 'admin'))
 
 

@@ -33,8 +33,8 @@ h3{font-size:16px;font-weight:800;margin-bottom:4px}
 .fg input{width:100%;padding:10px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13.5px;font-family:inherit;transition:all .2s}
 .fg input:focus{outline:none;border-color:#2563eb;box-shadow:0 0 0 4px #eff6ff}
 .fg-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.db-choice{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
-.dbc{border:2px solid #e2e8f0;border-radius:14px;padding:14px;cursor:pointer;text-align:center;transition:all .2s}
+.db-choice{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+.dbc{border:2px solid #e2e8f0;border-radius:14px;padding:12px 10px;cursor:pointer;text-align:center;transition:all .2s}
 .dbc .ic{font-size:24px;margin-bottom:6px}
 .dbc b{display:block;font-size:13.5px}
 .dbc small{color:#64748b;font-size:11px}
@@ -96,10 +96,13 @@ h3{font-size:16px;font-weight:800;margin-bottom:4px}
       <p class="sub">دیتابیس جایی است که اطلاعات سایت (کاربران، دوره‌ها، سفارش‌ها) ذخیره می‌شود.</p>
       <div class="db-choice">
         <div class="dbc sel" id="dbc-sqlite" onclick="pickDb('sqlite')">
-          <div class="ic">💾</div><b>SQLite</b><small>بدون نیاز به تنظیم — مناسب شروع</small>
+          <div class="ic">💾</div><b>SQLite</b><small>بدون نیاز به تنظیم — محلی</small>
         </div>
         <div class="dbc" id="dbc-mysql" onclick="pickDb('mysql')">
-          <div class="ic">🗄</div><b>MySQL</b><small>دیتابیس هاست — برای سایت جدی</small>
+          <div class="ic">🗄</div><b>MySQL</b><small>دیتابیس هاست / سرور</small>
+        </div>
+        <div class="dbc" id="dbc-xampp" onclick="pickDb('xampp')">
+          <div class="ic">⚡</div><b style="color:#d97706">زمپ (XAMPP)</b><small>اتصال فوری محلی</small>
         </div>
       </div>
       <div id="mysql-fields" style="display:none">
@@ -107,7 +110,7 @@ h3{font-size:16px;font-weight:800;margin-bottom:4px}
           <div class="fg"><label>آدرس (Host)</label><input id="db_host" placeholder="localhost" dir="ltr"></div>
           <div class="fg"><label>پورت</label><input id="db_port" placeholder="3306" dir="ltr"></div>
         </div>
-        <div class="fg"><label>نام دیتابیس</label><input id="db_name" placeholder="academy" dir="ltr"></div>
+        <div class="fg"><label>نام دیتابیس</label><input id="db_name" placeholder="academy_db" dir="ltr"></div>
         <div class="fg-row">
           <div class="fg"><label>نام کاربری</label><input id="db_user" placeholder="username" dir="ltr"></div>
           <div class="fg"><label>رمز عبور</label><input id="db_pass" type="password" dir="ltr"></div>
@@ -132,7 +135,7 @@ h3{font-size:16px;font-weight:800;margin-bottom:4px}
         <div class="fg"><label>رمز عبور (حداقل ۸ کاراکتر)</label><input id="admin_pass" type="password" dir="ltr"></div>
         <div class="fg"><label>تکرار رمز عبور</label><input id="admin_pass2" type="password" dir="ltr"></div>
       </div>
-      <label class="check" style="margin-bottom:14px"><input type="checkbox" id="demo_student" checked> ساخت حساب دانشجویی نمونه (demo@academy.ir / demo123)</label>
+      <label class="check" style="margin-bottom:14px"><input type="checkbox" id="demo_student"> ساخت حساب دانشجویی نمونه (demo@academy.ir / demo123)</label>
       <div class="btn-row">
         <button class="btn btn-g" onclick="prev(1)">→ بازگشت</button>
         <button class="btn btn-p" onclick="next(2)">ادامه ←</button>
@@ -202,10 +205,20 @@ function parseResp(r){
 }
 
 function pickDb(t){
-  dbType = t;
+  dbType = (t === 'xampp' ? 'mysql' : t);
   $('dbc-sqlite').classList.toggle('sel', t==='sqlite');
   $('dbc-mysql').classList.toggle('sel', t==='mysql');
-  $('mysql-fields').style.display = (t==='mysql') ? 'block' : 'none';
+  var xEl = $('dbc-xampp');
+  if (xEl) xEl.classList.toggle('sel', t==='xampp');
+  $('mysql-fields').style.display = (t==='mysql' || t==='xampp') ? 'block' : 'none';
+  if (t === 'xampp'){
+    if (!$('db_host').value) $('db_host').value = 'localhost';
+    if (!$('db_port').value) $('db_port').value = '3306';
+    if (!$('db_user').value) $('db_user').value = 'root';
+    $('db_pass').value = '';
+    if (!$('db_name').value) $('db_name').value = 'academy_db';
+    msg(true, '✨ تنظیمات اتصال به زمپ (XAMPP) به‌صورت خودکار پر شد (root بدون رمز). اگر دیتابیس وجود نداشته باشد، به صورت خودکار ساخته می‌شود.');
+  }
 }
 
 function msg(ok, text){

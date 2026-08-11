@@ -31,16 +31,19 @@ def icon(name, size=20, cls='', title=''):
     svg = _ICONS.get(name, _ICONS.get('circle-check', ''))
     if not svg:
         return Markup('')
-    # حذف ابعاد ثابت و کلاس‌های تبلر
-    svg = re.sub(r'\s(width|height)="\d+"', '', svg, count=2)
-    svg = re.sub(r'\sclass="[^"]*"', '', svg, count=1)
-    svg = svg.replace('<svg ', f'<svg width="{size}" height="{size}" ', 1)
+    # حذف ابعاد، کلاس‌ها و ویژگی‌های تکراری
+    svg = re.sub(r'\s+(width|height)="[^"]*"', '', svg)
+    svg = re.sub(r'\s+class="[^"]*"', '', svg)
+    svg = re.sub(r'\s+(role|aria-label|aria-hidden)="[^"]*"', '', svg)
+    # تزریق ابعاد و کلاس و ویژگی‌های دسترس‌پذیری به تگ <svg> (مستقل از فاصله‌ها و شکست خط)
+    attrs = f' width="{size}" height="{size}"'
     if cls:
-        svg = svg.replace('<svg ', f'<svg class="{cls}" ', 1)
+        attrs += f' class="{cls}"'
     if title:
-        svg = svg.replace('<svg ', f'<svg role="img" aria-label="{title}" ', 1)
+        attrs += f' role="img" aria-label="{title}"'
     else:
-        svg = svg.replace('<svg ', '<svg aria-hidden="true" ', 1)
+        attrs += ' aria-hidden="true"'
+    svg = re.sub(r'<svg\b', f'<svg{attrs}', svg, count=1)
     return Markup(svg)
 
 

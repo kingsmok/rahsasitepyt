@@ -520,3 +520,91 @@ def update_log():
         rows = []
     return render_template('admin/update.html', repo_url='', is_super=True,
                            history=rows, view='log')
+
+
+# ════════════════════════════════════════════════════════════
+# 🛠 مدیریت نصب و اتصالات (زمپ / گیت / دیتابیس)
+# ════════════════════════════════════════════════════════════
+@admin_bp.route('/install-manager')
+@admin_required
+def install_manager():
+    """صفحه جامع مدیریت نصب، اتصال زمپ (XAMPP)، گیت و وضعیت دیتابیس"""
+    from installer import is_installed, check_db_health, env_db_url
+    from updater import get_git_info, get_repo_url
+    db_url_str = str(env_db_url() or '')
+    db_type = 'mysql' if db_url_str.startswith('mysql') else 'sqlite'
+    # پنهان‌سازی رمز در نمایش URL
+    safe_db_url = db_url_str
+    if '@' in safe_db_url and ':' in safe_db_url.split('@')[0]:
+        parts = safe_db_url.split('@')
+        user_pass = parts[0].rsplit(':', 1)
+        safe_db_url = f"{user_pass[0]}:***@{parts[1]}"
+    ok_health, msg_health = check_db_health()
+    git_info = get_git_info()
+    repo_url = get_repo_url()
+    return render_template('admin/install_manager.html',
+                           is_installed=is_installed(),
+                           db_type=db_type,
+                           safe_db_url=safe_db_url or 'sqlite:///instance/academy.db (پیش‌فرض محلی)',
+                           db_ok=ok_health,
+                           db_msg=msg_health,
+                           git_info=git_info,
+                           repo_url=repo_url,
+                           is_super=g.user.role in ('super_admin', 'admin'))
+
+
+@admin_bp.route('/install-manager/test-xampp', methods=['POST'])
+@admin_required
+def install_test_xampp():
+    """تست اتصال به زمپ (XAMPP MySQL) + ساخت خودکار دیتابیس"""
+    from installer import test_connection
+    db_name = (request.form.get('db_name') or 'academy_db').strip()
+    xampp_url = f"mysql+pymysql://root:@localhost:3306/{db_name}?charset=utf8mb4"
+    ok, msg = test_connection(xampp_url)
+    return jsonify(ok=ok, msg=msg, url=xampp_url)
+
+
+@admin_bp.route('/install-manager/connect-xampp', methods=['POST'])
+@admin_required
+def install_connect_xampp():
+    """اتصال پروژه به زمپ (XAMPP MySQL) و بروزرسانی فایل .env"""
+    if g.user.role not in ('super_admin', 'admin'):
+        return jsonify(ok=False, msg='فقط مدیر کل می‌تواند اتصال دیتابیس را تغییر دهد.'), 403
+    from installer import test_connection, write_env_file, ensure_mysql_db
+    from flask import current_app as _app
+    db_name = (request.form.get('db_name') or 'academy_db').strip()
+    xampp_url = f"mysql+pymysql://root:@localhost:3306/{db_name}?charset=utf8mb4"
+    ok, msg = test_connection(xampp_url)
+    if not ok:
+        return jsonify(ok=False, msg=msg), 400
+    try:
+        ensure_mysql_db(xampp_url)
+        write_env_file(xampp_url, _app.config.get('SECRET_KEY', 'academy-secret-key-1403'))
+        return jsonify(ok=True, msg=f'اتصال به زمپ (دیتابیس `{db_name}`) برقرار شد و در .env ذخیره گردید ✅. لطفاً سرور را ری‌استارت کنید.')
+    except Exception as e:
+        return jsonify(ok=False, msg='خطا در اتصال به زمپ: ' + str(e)), 500
+
+
+@admin_bp.route('/install-manager/test-git', methods=['POST'])
+@admin_required
+def install_test_git():
+    """تست دسترسی به مخزن گیت (عمومی یا خصوصی)"""
+    from updater import test_git_repo
+    url = (request.form.get('repo_url') or '').strip()
+    ok, msg = test_git_repo(url)
+    return jsonify(ok=ok, msg=msg)
+
+
+@admin_bp.route('/install-manager/migrate-db', methods=['POST'])
+@admin_required
+def install_migrate_db():
+    """اجرای دستی مایگریشن خودکار دیتابیس"""
+    if g.user.role not in ('super_admin', 'admin'):
+        return jsonify(ok=False, msg='دسترسی غیرمجاز'), 403
+    from updater import _migrate_db
+    try:
+        msg = _migrate_db()
+        return jsonify(ok=True, msg='بروزرسانی ساختار دیتابیس انجام شد ✅ ' + msg)
+    except Exception as e:
+        return jsonify(ok=False, msg='خطا در مایگریشن دیتابیس: ' + str(e)), 500
+

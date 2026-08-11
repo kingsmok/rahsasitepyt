@@ -28,6 +28,19 @@ def is_installed():
     """آیا نصب انجام شده؟ (فایل نشانگر + رکورد setting)"""
     if os.path.exists(MARKER):
         return True
+    try:
+        from models import Setting
+        st = Setting.query.filter_by(key='site_name').first()
+        if st and st.value:
+            try:
+                os.makedirs(INSTANCE_DIR, exist_ok=True)
+                with open(MARKER, 'w', encoding='utf-8') as f:
+                    f.write('{"seeded": true}')
+            except Exception:
+                pass
+            return True
+    except Exception:
+        pass
     return False
 
 
@@ -137,6 +150,30 @@ def _dns_quick_check(host, timeout=6):
     return True, ''
 
 
+def ensure_mysql_db(db_url):
+    """تلاش برای ساخت خودکار دیتابیس در زمپ / MySQL در صورتی که دیتابیس وجود نداشته باشد"""
+    if not str(db_url).startswith('mysql'):
+        return True, ''
+    try:
+        from sqlalchemy import create_engine, text
+        parts = db_url.split('://', 1)[-1].split('/')
+        if len(parts) >= 2:
+            db_name_part = parts[1].split('?')[0]
+            if db_name_part:
+                server_url = db_url.split(f'/{db_name_part}', 1)[0] + '/'
+                if '?' in db_url:
+                    server_url += '?' + db_url.split('?', 1)[1]
+                engine = create_engine(server_url, connect_args={'connect_timeout': 5})
+                with engine.connect() as conn:
+                    conn.execute(text(f"CREATE DATABASE IF NOT EXISTS `{db_name_part}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"))
+                    conn.commit()
+                engine.dispose()
+                return True, f'دیتابیس {db_name_part} به صورت خودکار ساخته شد.'
+    except Exception as e:
+        return False, str(e)
+    return True, ''
+
+
 def test_connection(db_url):
     """تست اتصال دیتابیس — سریع و ضد-hang — خروجی (ok, message)"""
     try:
@@ -149,12 +186,27 @@ def test_connection(db_url):
                                '(اکثر هاست‌ها: localhost). جزئیات: ' + msg_dns[-100:])
         from sqlalchemy import create_engine
         if str(db_url).startswith('mysql'):
-            eng = _get_engine(db_url)   # TCP → fallback سوکت محلی
+            try:
+                eng = _get_engine(db_url)   # TCP → fallback سوکت محلی
+                with eng.connect():
+                    pass
+                eng.dispose()
+            except Exception as e:
+                err_str = str(e).lower()
+                if '1049' in err_str or 'unknown database' in err_str:
+                    ok_mk, mk_msg = ensure_mysql_db(db_url)
+                    if ok_mk:
+                        eng = _get_engine(db_url)
+                        with eng.connect():
+                            pass
+                        eng.dispose()
+                        return True, 'اتصال به MySQL برقرار شد و دیتابیس به صورت خودکار ساخته شد ✅'
+                raise e
         else:
             eng = create_engine(resolve_url(db_url))
-        with eng.connect():
-            pass
-        eng.dispose()
+            with eng.connect():
+                pass
+            eng.dispose()
         mode = _best_conn_cache.get(db_url)
         extra = ' (از طریق سوکت محلی)' if isinstance(mode, tuple) else ''
         return True, 'اتصال برقرار شد ✅' + extra
@@ -231,8 +283,8 @@ DEFAULT_SETTINGS = {
     'address': 'تهران، خیابان ولیعصر',
     'support_hours': 'شنبه تا پنجشنبه — ۹ تا ۲۱',
     'home_design': 'builder',
-    'sandbox_mode': '1',
-    'sms_provider': 'demo',
+    'sandbox_mode': '0',
+    'sms_provider': '',
     'allow_register': '1',
     'allow_phone_login': '1',
     'maintenance': '0',
@@ -545,7 +597,7 @@ def _mark_bg_logged_in():
         _bg_auto_login_done = True
 
 
-def start_background_install(db_url, admin, site, create_demo_student=True):
+def start_background_install(db_url, admin, site, create_demo_student=False):
     """شروع نصب در پس‌زمینه — بدون مسدود کردن درخواست HTTP
     خروجی: (started, message)
     """
@@ -589,7 +641,7 @@ def start_background_install(db_url, admin, site, create_demo_student=True):
     return True, 'نصب در پس‌زمینه شروع شد'
 
 
-def run_install(db_url, admin, site, create_demo_student=True, progress_cb=None):
+def run_install(db_url, admin, site, create_demo_student=False, progress_cb=None):
     """
     اجرای کامل نصب — نسخه فوق‌سریع (برای هاست‌های اشتراکی با سقف زمانی):
     - یک اتصال واحد برای کل نصب (بدون pool، بدون reconnect بین مراحل)
@@ -621,6 +673,7 @@ def run_install(db_url, admin, site, create_demo_student=True, progress_cb=None)
             except ImportError:
                 return False, ('ماژول PyMySQL نصب نیست! در ترمینال هاست اجرا کنید: '
                                './venv/bin/pip install PyMySQL  (یا: pip install -r requirements.txt)')
+            ensure_mysql_db(db_url)
 
         # ── ۱) اتصال سریع (TCP یا سوکت محلی) + ساخت جدول‌ها ──
         t0 = _t.time()

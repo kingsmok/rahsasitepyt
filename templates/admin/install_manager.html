@@ -1,0 +1,223 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}مدیریت نصب و اتصالات (زمپ / گیت / دیتابیس){% endblock %}
+{% block acontent %}
+<div class="dash-head">
+  <div>
+    <h1>🛠 مدیریت نصب و اتصالات پروژه</h1>
+    <p>کنترل وضعیت دیتابیس، اتصال فوری به زمپ (XAMPP)، تنظیم مخزن گیت (عمومی و خصوصی) و به‌روزرسانی خودکار کدها و دیتابیس</p>
+  </div>
+</div>
+
+<div id="im-msg" class="msg" style="display:none;margin-bottom:16px"></div>
+
+<!-- کارت ۱: وضعیت کلی دیتابیس و نصب -->
+<div class="card" style="padding:22px;margin-bottom:18px">
+  <div class="flex between wrap" style="gap:12px;margin-bottom:14px">
+    <h3 style="margin:0;font-size:16.5px">🗄 وضعیت فعلی دیتابیس و نصب</h3>
+    <div>
+      {% if db_ok %}
+      <span class="badge badge-success">✅ اتصال دیتابیس برقرار است</span>
+      {% else %}
+      <span class="badge badge-danger">⚠️ خطای اتصال یا دیتابیس ناقص</span>
+      {% endif %}
+      <span class="badge badge-primary">{{ 'MySQL (هاست / سرور)' if db_type == 'mysql' else 'SQLite (محلی)' }}</span>
+    </div>
+  </div>
+  <div style="background:var(--bg-2);border-radius:12px;padding:14px;font-size:13px;line-height:2.1;margin-bottom:16px" dir="ltr">
+    <b>DATABASE_URL:</b> <code>{{ safe_db_url }}</code><br>
+    <b>وضیعت نصب:</b> <span style="color:var(--success);font-weight:bold">{{ 'نصب‌شده ✅' if is_installed else 'نیازمند نصب ⏳' }}</span> | <b>سلامت:</b> {{ db_msg or 'سالم' }}
+  </div>
+  <div class="flex gap-1 wrap">
+    <a href="{{ url_for('install.wizard') }}" target="_blank" class="btn btn-outline btn-sm">🚀 اجرای نصب‌کننده وب (/install)</a>
+    <button class="btn btn-ghost btn-sm" onclick="testCurrentDb()">🔌 تست مجدد اتصال</button>
+  </div>
+</div>
+
+<!-- کارت ۲: راهکار جذاب اتصال به زمپ (XAMPP) -->
+<div class="card" style="padding:22px;margin-bottom:18px;border:1.5px solid #f59e0b;background:linear-gradient(180deg, #fffbeb 0%, #ffffff 100%)">
+  <div class="flex between wrap" style="gap:12px;margin-bottom:12px">
+    <h3 style="margin:0;color:#d97706;font-size:17px">⚡ راهکار جذاب و فوری اتصال به زمپ (XAMPP)</h3>
+    <span class="badge badge-accent">ویژه ویندوز و توسعه محلی</span>
+  </div>
+  <p class="text-2" style="font-size:13.5px;line-height:1.9;margin-bottom:16px">
+    برای اجرای پروژه روی <b>زمپ (XAMPP)</b>، نیازی به ساخت دستی دیتابیس در phpMyAdmin یا پیکربندی پیچیده ندارید!
+    نام دیتابیس دلخواه خود را وارد کنید؛ سیستم به‌صورت خودکار به MySQL زمپ (<code>root@localhost:3306</code> بدون رمز) متصل می‌شود و
+    در صورت عدم وجود، دیتابیس را اتوماتیک ایجاد می‌کند.
+  </p>
+  <div class="flex gap-1 wrap" style="max-width:540px;margin-bottom:14px">
+    <input type="hidden" id="csrf-tok" value="{{ csrf_token }}">
+    <input class="form-control" type="text" id="xampp-dbname" value="academy_db" dir="ltr" placeholder="academy_db" style="max-width:220px">
+    <button class="btn btn-accent" onclick="testXamppConnection()">🔌 تست و ساخت خودکار دیتابیس در زمپ</button>
+    <button class="btn btn-primary" onclick="connectXamppPermanent()">💾 ذخیره و اتصال دائمی به زمپ</button>
+  </div>
+  <div style="font-size:12px;color:#92400e;background:#fef3c7;border:1px dashed #fcd34d;border-radius:10px;padding:10px 14px;line-height:1.8">
+    💡 <b>نکته:</b> مطمئن شوید در کنترل‌پنل XAMPP، سرویس‌های <b>Apache</b> و <b>MySQL</b> روشن (Start) باشند.
+  </div>
+</div>
+
+<!-- کارت ۳: اتصال به گیت، مخازن پرایوت (Private) و به‌روزرسانی کامل -->
+<div class="card" style="padding:22px;margin-bottom:18px">
+  <h3 style="margin-top:0;font-size:17px">🌐 اتصال به گیت (GitHub) و به‌روزرسانی خودکار</h3>
+  <p class="text-2" style="font-size:13.5px;line-height:1.9;margin-bottom:14px">
+    این سیستم قادر است کدهای پروژه را به‌صورت کامل از گیت‌هاب (مخازن عمومی یا خصوصی) دریافت و با کدهای محلی جایگزین کند.
+    همچنین دیتابیس به‌طور خودکار (افزودن جدول‌ها و ستون‌های جدید) مایگریت می‌شود.
+  </p>
+
+  <div style="background:var(--bg-2);border-radius:12px;padding:14px;font-size:13px;line-height:2.2;margin-bottom:18px">
+    <div class="flex between wrap">
+      <span><b>شاخه فعال (Branch):</b> <code dir="ltr">{{ git_info.branch }}</code></span>
+      <span><b>آخرین کامیت:</b> <code dir="ltr">{{ git_info.commit_hash or '—' }}</code> ({{ git_info.commit_msg or 'بدون کامیت' }})</span>
+    </div>
+    <div style="margin-top:4px" dir="ltr">
+      <b>Remote Origin:</b> <code>{{ git_info.remote or repo_url or 'تنظیم نشده' }}</code>
+    </div>
+  </div>
+
+  <form method="post" action="{{ url_for('admin.update_save_repo') }}" class="flex gap-1 wrap" style="margin-bottom:16px">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+    <input class="form-control" type="text" id="git-url-inp" name="repo_url" value="{{ repo_url or git_info.remote }}" dir="ltr"
+           placeholder="https://github.com/username/repo.git" style="flex:1;min-width:260px">
+    <button class="btn btn-ghost" type="button" onclick="testGitRepo()">🔍 تست دسترسی به مخزن</button>
+    <button class="btn btn-primary" type="submit">💾 ذخیره آدرس مخزن</button>
+  </form>
+
+  <div class="flex gap-1 wrap" style="margin-bottom:18px">
+    <button class="btn btn-primary btn-lg" id="btn-run-update" onclick="runGitUpdate()">
+      🔄 دریافت کامل به‌روزرسانی از GitHub (git fetch + reset)
+    </button>
+    <button class="btn btn-outline btn-lg" onclick="runAutoMigrate()">
+      🗄 اجرای مایگریشن خودکار دیتابیس
+    </button>
+  </div>
+
+  <div id="im-upd-progress" style="display:none;background:#f8fafc;border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px">
+    <b style="font-size:14px;color:var(--primary)">⏳ پیشرفت به‌روزرسانی:</b>
+    <p id="im-upd-log" style="margin:8px 0 0;font-size:13px" dir="ltr"></p>
+  </div>
+
+  <!-- راهنمای مخازن خصوصی (Private / گرایوت) -->
+  <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:14px;padding:16px;font-size:13px;line-height:2">
+    <b style="color:#1e40af;font-size:14px">🔒 راهنمای اتصال به مخازن خصوصی (Private / گرایوت) در GitHub:</b>
+    <ul style="margin:8px 18px 0 0;list-style:disc">
+      <li><b>روش ۱ (توکن شخصی PAT):</b> در گیت‌هاب یک Personal Access Token (یا Fine-grained token) با دسترسی Read ایجاد کنید و آدرس مخزن را به شکل زیر وارد نمایید:<br>
+        <code dir="ltr" style="background:#fff;padding:2px 8px;border-radius:6px">https://YOUR_TOKEN@github.com/username/repo.git</code>
+      </li>
+      <li><b>روش ۲ (کلید SSH - Deploy Key):</b> کلید عمومی سرور (<code>~/.ssh/id_ed25519.pub</code>) را در تنظیمات مخزن (بخش Deploy Keys) اضافه کرده و آدرس SSH را وارد کنید:<br>
+        <code dir="ltr" style="background:#fff;padding:2px 8px;border-radius:6px">git@github.com:username/repo.git</code>
+      </li>
+      <li><b>به‌روزرسانی اتوماتیک دیتابیس چگونه کار می‌کند؟</b> پس از جایگزینی کدها (<code>git reset --hard</code>)، تابع <code>_migrate_db()</code> به‌صورت اتوماتیک اجرا شده، جدول‌های جدید را ایجاد کرده و ستون‌های جدید اضافه شده به <code>models.py</code> را با دستور <code>ALTER TABLE ADD COLUMN</code> به دیتابیس فعلی اضافه می‌کند بدون اینکه داده‌ای پاک شود.</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+function showMsg(ok, text){
+  var m = document.getElementById('im-msg');
+  m.className = 'msg ' + (ok ? 'ok' : 'err');
+  m.style.display = 'block';
+  m.textContent = text;
+  window.scrollTo({top: 0, behavior: 'smooth'});
+}
+
+function getCsrf(){
+  return document.getElementById('csrf-tok').value;
+}
+
+function testCurrentDb(){
+  fetch('/install/test-db', {method: 'POST',
+        headers: {'X-CSRF-Token': getCsrf(), 'Content-Type': 'application/json'},
+        body: JSON.stringify({db_type: '{{ db_type }}'})})
+    .then(r => r.json())
+    .then(d => showMsg(d.ok, d.msg || (d.ok ? 'اتصال برقرار است ✅' : 'خطا در اتصال')))
+    .catch(e => showMsg(false, 'خطا در تست اتصال: ' + e));
+}
+
+function testXamppConnection(){
+  var dbName = document.getElementById('xampp-dbname').value || 'academy_db';
+  var fd = new FormData();
+  fd.append('db_name', dbName);
+  fd.append('_csrf_token', getCsrf());
+  fetch('/admin/install-manager/test-xampp', {method: 'POST', body: fd})
+    .then(r => r.json())
+    .then(d => {
+      showMsg(d.ok, d.msg + (d.url ? ' (' + d.url + ')' : ''));
+    })
+    .catch(e => showMsg(false, 'خطا در برقراری ارتباط با زمپ: ' + e));
+}
+
+function connectXamppPermanent(){
+  if (!confirm('آیا مطمئن هستید؟ فایل .env به دیتابیس زمپ متصل شده و پروژه روی آن راه‌اندازی می‌شود.')) return;
+  var dbName = document.getElementById('xampp-dbname').value || 'academy_db';
+  var fd = new FormData();
+  fd.append('db_name', dbName);
+  fd.append('_csrf_token', getCsrf());
+  fetch('/admin/install-manager/connect-xampp', {method: 'POST', body: fd})
+    .then(r => r.json())
+    .then(d => {
+      showMsg(d.ok, d.msg);
+      if (d.ok) setTimeout(() => location.reload(), 2000);
+    })
+    .catch(e => showMsg(false, 'خطا: ' + e));
+}
+
+function testGitRepo(){
+  var url = document.getElementById('git-url-inp').value;
+  if (!url){ showMsg(false, 'آدرس مخزن را وارد کنید'); return; }
+  var fd = new FormData();
+  fd.append('repo_url', url);
+  fd.append('_csrf_token', getCsrf());
+  fetch('/admin/install-manager/test-git', {method: 'POST', body: fd})
+    .then(r => r.json())
+    .then(d => showMsg(d.ok, d.msg))
+    .catch(e => showMsg(false, 'خطا در تست مخزن: ' + e));
+}
+
+function runAutoMigrate(){
+  var fd = new FormData();
+  fd.append('_csrf_token', getCsrf());
+  fetch('/admin/install-manager/migrate-db', {method: 'POST', body: fd})
+    .then(r => r.json())
+    .then(d => showMsg(d.ok, d.msg))
+    .catch(e => showMsg(false, 'خطا در مایگریشن: ' + e));
+}
+
+var imTimer = null;
+function pollGitUpdate(){
+  fetch('/admin/update/status').then(r => r.json()).then(d => {
+    var st = d.status || 'idle';
+    document.getElementById('im-upd-log').textContent = d.msg || 'در حال انجام...';
+    if (st === 'running'){
+      imTimer = setTimeout(pollGitUpdate, 1500);
+    } else {
+      document.getElementById('btn-run-update').disabled = false;
+      showMsg(d.ok, d.msg);
+    }
+  }).catch(() => { imTimer = setTimeout(pollGitUpdate, 2500); });
+}
+
+function runGitUpdate(){
+  if (!confirm('آیا از دریافت کامل به‌روزرسانی از گیت و جایگزینی کدها مطمئن هستید؟')) return;
+  var b = document.getElementById('btn-run-update');
+  b.disabled = true;
+  document.getElementById('im-upd-progress').style.display = 'block';
+  document.getElementById('im-upd-log').textContent = 'در حال ارسال درخواست...';
+  var fd = new FormData();
+  fd.append('_csrf_token', getCsrf());
+  fetch('/admin/update/run', {method: 'POST', body: fd})
+    .then(r => r.json())
+    .then(d => {
+      if (d.ok){
+        document.getElementById('im-upd-log').textContent = 'به‌روزرسانی شروع شد...';
+        imTimer = setTimeout(pollGitUpdate, 1200);
+      } else {
+        b.disabled = false;
+        showMsg(false, d.msg || 'خطا در شروع به‌روزرسانی');
+      }
+    })
+    .catch(e => {
+      b.disabled = false;
+      showMsg(false, 'خطا: ' + e);
+    });
+}
+</script>
+{% endblock %}

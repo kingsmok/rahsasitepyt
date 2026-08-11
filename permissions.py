@@ -100,6 +100,7 @@ def menu_for(user):
             ('admin.backup_list', '🗄 بکاپ‌ها'),
             ('admin.icons_browser', '🎨 آیکون‌ها'),
             ('admin.update_page', '🔄 بروزرسانی'),
+            ('admin.install_manager', '🛠 مدیریت نصب و اتصالات'),
             ('admin.super_settings', '⚙️ تنظیمات سوپر'),
         ]
     elif role == 'teacher':

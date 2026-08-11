@@ -83,15 +83,16 @@ ALLOWED_FILE_EXT = ALLOWED_IMAGE_EXT | {'.pdf', '.doc', '.docx', '.zip', '.rar',
 
 def safe_filename(filename, allowed_ext=None):
     """نام امن + پسوند مجاز؛ در غیر این صورت None"""
-    if not filename:
+    if not filename or '\x00' in filename:
         return None
+    filename = os.path.basename(filename.replace('\\', '/'))
     ext = os.path.splitext(filename)[1].lower()
     allowed = allowed_ext or ALLOWED_FILE_EXT
     if ext not in allowed:
         return None
-    # فقط نام پایه (بدون مسیر) و حذف کاراکترهای خطرناک
-    base = os.path.basename(filename)
-    base = ''.join(c for c in base if c.isalnum() or c in '._-') or 'file'
+    base = ''.join(c for c in filename if c.isalnum() or c in '._-') or 'file'
+    while '..' in base:
+        base = base.replace('..', '.')
     return base
 
 

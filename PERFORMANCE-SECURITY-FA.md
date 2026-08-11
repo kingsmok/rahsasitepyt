@@ -132,3 +132,24 @@
 9. **صفحه‌بندی سفارش‌های ادمین** (۵۰ در هر صفحه).
 
 > همهٔ ۵۴ تست خودکار پروژه (`pytest`) پس از اصلاحات سبز هستند.
+
+---
+
+# 🐬 بهینه‌سازی دیتابیس MySQL (phpMyAdmin)
+
+بعد از اصلاحات کد، نوبت بهینه‌سازی سمت دیتابیس MySQL است — راهنمای کامل در
+**`docs/MYSQL-OPTIMIZE-FA.md`** و فایل‌های آماده:
+
+| فایل | کاربرد |
+|---|---|
+| `deploy/mysql-optimize.sql` | اجرا در phpMyAdmin: ایندکس‌های جاافتاده + ANALYZE + OPTIMIZE + پاک‌سازی لاگ 404 |
+| `deploy/mysql-recommended.cnf` | تنظیمات پیشنهادی سرور MySQL (بافر، لاگ تراکنش، اتصال‌ها) |
+| `docs/MYSQL-OPTIMIZE-FA.md` | راهنمای گام‌به‌گام + تست EXPLAIN + نگهداری ماهانه |
+
+خلاصهٔ مهم:
+- **ایندکس‌های جدید**: `tickets(user_id,status)`، `orders(user_id,created_at)`،
+  `notifications(title,link)`، `users(role)`، `reviews(is_approved,created_at)` —
+  هم در `models.ensure_indexes()` (خودکار هنگام اجرای اپ) و هم در اسکریپت phpMyAdmin.
+- **کاهش اتصال‌های MySQL پول**: از ۳۰ به ۱۵ اتصال برای هر ورکر (قابل تنظیم با
+  `MYSQL_POOL_SIZE` / `MYSQL_MAX_OVERFLOW` در `.env`) — جلوگیری از
+  «Too many connections» و خطای 500 در هاست اشتراکی.

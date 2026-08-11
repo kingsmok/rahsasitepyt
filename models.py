@@ -50,6 +50,23 @@ def ensure_indexes():
         'price_history': [
             ('idx_price_item', 'item_type, item_id'),
         ],
+        'users': [
+            ('idx_users_role', 'role'),
+        ],
+        'orders': [
+            ('idx_orders_user_created', 'user_id, created_at'),
+        ],
+        'reviews': [
+            ('idx_reviews_created', 'is_approved, created_at'),
+        ],
+        'tickets': [
+            ('idx_tickets_user_status', 'user_id, status'),
+        ],
+        'notifications': [
+            # روی SQLite و MySQL 5.7+/8 کار می‌کند؛
+            # MySQL قدیمی‌تر را اسکریپت deploy/mysql-optimize.sql (نسخه پیشوندی) پوشش می‌دهد
+            ('idx_notif_title_link', 'title, link'),
+        ],
     }
     try:
         from sqlalchemy import inspect as _inspect
@@ -74,6 +91,7 @@ def ensure_indexes():
 
 class User(db.Model):
     __tablename__ = 'users'
+    __table_args__ = (db.Index('idx_users_role', 'role'),)
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(120), nullable=False, default='')
     email = db.Column(db.String(160), unique=True, nullable=True, index=True)
@@ -329,7 +347,8 @@ class Lesson(db.Model):
 class Review(db.Model):
     __tablename__ = 'reviews'
     __table_args__ = (db.Index('idx_reviews_course', 'course_id', 'is_approved'),
-                       db.Index('idx_reviews_user', 'user_id'),)
+                       db.Index('idx_reviews_user', 'user_id'),
+                       db.Index('idx_reviews_created', 'is_approved', 'created_at'),)
     id = db.Column(db.Integer, primary_key=True)
     course_id = db.Column(db.Integer, db.ForeignKey('courses.id'))
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
@@ -357,7 +376,8 @@ class Favorite(db.Model):
 class Order(db.Model):
     __tablename__ = 'orders'
     __table_args__ = (db.Index('idx_orders_user_status', 'user_id', 'status'),
-                       db.Index('idx_orders_status_created', 'status', 'created_at'),)
+                       db.Index('idx_orders_status_created', 'status', 'created_at'),
+                       db.Index('idx_orders_user_created', 'user_id', 'created_at'),)
     id = db.Column(db.Integer, primary_key=True)
     code = db.Column(db.String(40), unique=True, nullable=False, index=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
@@ -482,6 +502,7 @@ class Enrollment(db.Model):
 
 class Ticket(db.Model):
     __tablename__ = 'tickets'
+    __table_args__ = (db.Index('idx_tickets_user_status', 'user_id', 'status'),)
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     subject = db.Column(db.String(200), nullable=False)
@@ -836,7 +857,8 @@ class PageRevision(db.Model):
 # ================================================================
 class Notification(db.Model):
     __tablename__ = 'notifications'
-    __table_args__ = (db.Index('idx_notif_user_read', 'user_id', 'is_read'),)
+    __table_args__ = (db.Index('idx_notif_user_read', 'user_id', 'is_read'),
+                       db.Index('idx_notif_title_link', 'title', 'link'),)
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
     title = db.Column(db.String(200), nullable=False)

@@ -111,11 +111,15 @@ def create_app():
         if 'charset=' not in _db_url:
             _db_url += ('&' if '?' in _db_url else '?') + 'charset=utf8mb4'
         # pool_pre_ping و تنظیمات استخر اتصال برای ترافیک ۵۰۰ هزارتایی (ضد کمبود اتصال)
+        # ⚠️ هشدار: ۳ ورکر × (۱۰+۲۰) = ۹۰ اتصال همزمان — در هاست اشتراکی با
+        # max_connections پایین (اغلب ۱۰۰–۱۵۰) باعث «Too many connections» و خطای 500 می‌شد!
+        # حالا پیش‌فرض امن: ۵+۱۰ = ۱۵ اتصال برای هر ورکر (جمعاً ۴۵) — قابل تنظیم با متغیر محیطی:
+        #   MYSQL_POOL_SIZE / MYSQL_MAX_OVERFLOW
         app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
             'pool_pre_ping': True,
             'pool_recycle': 280,
-            'pool_size': 10,
-            'max_overflow': 20,
+            'pool_size': int(os.environ.get('MYSQL_POOL_SIZE', 5)),
+            'max_overflow': int(os.environ.get('MYSQL_MAX_OVERFLOW', 10)),
             'pool_timeout': 15,
             'connect_args': {
                 'charset': 'utf8mb4',

@@ -61,3 +61,14 @@ def test_request_install_resumes_without_background_thread(tmp_path, monkeypatch
             "SELECT COUNT(*) FROM settings WHERE key='site_name'"
         )).scalar() == 1
     engine.dispose()
+
+
+def test_mysql_table_options_utf8mb4():
+    """بررسی اینکه تمام جدول‌ها مشخصات utf8mb4 و InnoDB مای‌اسکیول را دارند."""
+    from models import db
+    assert len(db.metadata.tables) > 0
+    for name, tbl in db.metadata.tables.items():
+        assert tbl.kwargs.get('mysql_charset') == 'utf8mb4', f"جدول {name} فاقد mysql_charset=utf8mb4 است"
+        assert tbl.kwargs.get('mysql_collate') == 'utf8mb4_unicode_ci', f"جدول {name} فاقد mysql_collate=utf8mb4_unicode_ci است"
+        assert tbl.kwargs.get('mysql_engine') == 'InnoDB', f"جدول {name} فاقد mysql_engine=InnoDB است"
+

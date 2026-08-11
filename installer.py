@@ -121,6 +121,11 @@ def _friendly_db_error(e, db_url):
     if 'unknown database' in low or '1049' in low or '1044' in low:
         return ('دیتابیس با این نام وجود ندارد — اول در پنل هاست (مثلاً cPanel → MySQL Databases) '
                 'آن را بسازید. جزئیات: ' + msg[-120:])
+    if 'duplicate entry' in low and ('?' in msg or 'slug' in low):
+        return ('خطا در انکودینگ دیتابیس (Charset): انکودینگ دیتابیس MySQL شما با utf8mb4 مغایرت دارد '
+                'و کاراکترهای فارسی به علامت سؤال (????) تبدیل شده‌اند. '
+                'راه‌حل: در phpMyAdmin یا پنل هاست دیتابیس را با Collation utf8mb4_unicode_ci تنظیم کنید '
+                'یا جدول‌های ناقص قبلی را Drop (حذف) کرده و مجدداً امتحان نمایید.')
     if 'timed out' in low or 'timeout' in low:
         return 'زمان اتصال به پایان رسید — آدرس یا پورت را بررسی کنید (پورت پیش‌فرض: 3306).'
     return msg[-250:]
@@ -151,7 +156,7 @@ def _dns_quick_check(host, timeout=6):
 
 
 def ensure_mysql_db(db_url):
-    """تلاش برای ساخت خودکار دیتابیس در زمپ / MySQL در صورتی که دیتابیس وجود نداشته باشد"""
+    """تلاش برای ساخت خودکار دیتابیس در زمپ / MySQL یا تنظیم انکودینگ utf8mb4"""
     if not str(db_url).startswith('mysql'):
         return True, ''
     try:
@@ -163,12 +168,16 @@ def ensure_mysql_db(db_url):
                 server_url = db_url.split(f'/{db_name_part}', 1)[0] + '/'
                 if '?' in db_url:
                     server_url += '?' + db_url.split('?', 1)[1]
-                engine = create_engine(server_url, connect_args={'connect_timeout': 5})
+                engine = create_engine(server_url, connect_args={'connect_timeout': 5, 'charset': 'utf8mb4'})
                 with engine.connect() as conn:
                     conn.execute(text(f"CREATE DATABASE IF NOT EXISTS `{db_name_part}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"))
+                    try:
+                        conn.execute(text(f"ALTER DATABASE `{db_name_part}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"))
+                    except Exception:
+                        pass
                     conn.commit()
                 engine.dispose()
-                return True, f'دیتابیس {db_name_part} به صورت خودکار ساخته شد.'
+                return True, f'دیتابیس {db_name_part} به صورت خودکار ساخته و تنظیم شد.'
     except Exception as e:
         return False, str(e)
     return True, ''
@@ -307,6 +316,12 @@ CATEGORIES = [
 
 
 _SESSION_TUNE_SQL = (
+    'SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci',
+    'SET CHARACTER SET utf8mb4',
+    'SET character_set_connection=utf8mb4',
+    'SET character_set_results=utf8mb4',
+    'SET character_set_client=utf8mb4',
+    'SET collation_connection=utf8mb4_unicode_ci',
     'SET SESSION wait_timeout=600',
     'SET SESSION net_read_timeout=120',
     'SET SESSION net_write_timeout=120',
@@ -343,13 +358,24 @@ def _fast_engine(db_url, unix_socket=None):
     """
     from sqlalchemy import create_engine, event as _event
     from sqlalchemy.pool import NullPool
-    c_args = {'connect_timeout': 5, 'read_timeout': 60, 'write_timeout': 60}
+    
+    url = resolve_url(db_url)
+    if str(url).startswith('mysql') and 'charset=' not in str(url):
+        url += ('&' if '?' in str(url) else '?') + 'charset=utf8mb4'
+
+    c_args = {
+        'connect_timeout': 5,
+        'read_timeout': 60,
+        'write_timeout': 60,
+        'charset': 'utf8mb4',
+        'use_unicode': True,
+    }
     if unix_socket:
-        c_args = {'unix_socket': unix_socket, 'connect_timeout': 5}
+        c_args['unix_socket'] = unix_socket
     eng = create_engine(
-        resolve_url(db_url),
+        url,
         poolclass=NullPool,
-        connect_args=c_args)
+        connect_args=c_args if str(url).startswith('mysql') else {})
     try:
         _event.listen(eng, 'connect', lambda dbapi_con, rec: _apply_session_tune(dbapi_con))
     except Exception:
@@ -492,12 +518,37 @@ def _create_tables_resilient(eng, max_tries=4, max_tables=None,
     خروجی دیکشنری شامل تعداد کل، ساخته‌شده در این فراخوانی و باقی‌مانده است.
     """
     from models import db as _db
-    from sqlalchemy import inspect as _insp
+    from sqlalchemy import inspect as _insp, text as _text
     import time as _time
+
+    # اطمینان از تنظیم ویژگی‌های MySQL (utf8mb4 و InnoDB) برای تمام جدول‌ها
+    for tbl in _db.metadata.tables.values():
+        tbl.kwargs.setdefault('mysql_charset', 'utf8mb4')
+        tbl.kwargs.setdefault('mysql_collate', 'utf8mb4_unicode_ci')
+        tbl.kwargs.setdefault('mysql_engine', 'InnoDB')
+
+    # اگر MySQL است: تنظیم انکودینگ دیتابیس فعلی به utf8mb4
+    if eng.dialect.name == 'mysql':
+        try:
+            with eng.begin() as conn:
+                conn.execute(_text("SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci"))
+                conn.execute(_text("ALTER DATABASE CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"))
+        except Exception:
+            pass
 
     tables = list(_db.metadata.sorted_tables)
     table_names = {table.name for table in tables}
     existing = set(_insp(eng).get_table_names())
+
+    # تبدیل جدول‌های موجود از قبل به utf8mb4
+    if eng.dialect.name == 'mysql':
+        for t_name in existing.intersection(table_names):
+            try:
+                with eng.begin() as conn:
+                    conn.execute(_text(f"ALTER TABLE `{t_name}` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"))
+            except Exception:
+                pass
+
     pending = [table for table in tables if table.name not in existing]
     if max_tables is not None:
         limit = max(1, int(max_tables))
@@ -769,15 +820,33 @@ def run_install(db_url, admin, site, create_demo_student=False, progress_cb=None
 
         with eng.begin() as conn:
             try:
+                conn.execute(db.text('SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci'))
+            except Exception:
+                pass
+            try:
                 conn.execute(db.text('SET FOREIGN_KEY_CHECKS=0'))
             except Exception:
                 pass
+
+            # تنظیم انکودینگ دیتابیس در MySQL
+            if is_mysql:
+                try:
+                    conn.execute(db.text('ALTER DATABASE CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci'))
+                except Exception:
+                    pass
 
             # تنظیمات — batch
             existing = {r[0] for r in conn.execute(_sel(Setting.key))}
             rows = [{'key': k, 'value': v} for k, v in settings.items() if k not in existing]
             if rows:
                 conn.execute(_ins(Setting), rows)
+
+            # پاک‌سازی رکوردهای خراب با اسلاگ علامت سؤال (ناشی از تلاش‌های قبلی با انکودینگ نادرست)
+            if is_mysql:
+                try:
+                    conn.execute(db.text("DELETE FROM categories WHERE slug LIKE '%?%' OR slug = ''"))
+                except Exception:
+                    pass
 
             # دسته‌بندی‌ها — batch
             existing = {r[0] for r in conn.execute(_sel(Category.slug))}
@@ -804,6 +873,11 @@ def run_install(db_url, admin, site, create_demo_student=False, progress_cb=None
                     is_active=True, password_hash=u.password_hash))
 
             # صفحه اصلی
+            if is_mysql:
+                try:
+                    conn.execute(db.text("DELETE FROM pages WHERE slug LIKE '%?%'"))
+                except Exception:
+                    pass
             if not conn.execute(_sel(Page.id).where(
                     Page.slug == 'home', Page.ptype == 'page')).first():
                 conn.execute(_ins(Page).values(
@@ -812,10 +886,17 @@ def run_install(db_url, admin, site, create_demo_student=False, progress_cb=None
                     is_published=True))
 
             # دوره نمونه + سکشن‌ها + درس‌ها (batch)
+            if is_mysql:
+                try:
+                    conn.execute(db.text("DELETE FROM courses WHERE slug LIKE '%?%'"))
+                except Exception:
+                    pass
             if not conn.execute(_sel(Course.id).where(
                     Course.slug == 'course-intro')).first():
                 cat_id = conn.execute(_sel(Category.id).where(
                     Category.slug == 'برنامه-نویسی')).scalar()
+                if not cat_id:
+                    cat_id = conn.execute(_sel(Category.id).limit(1)).scalar()
                 t_id = conn.execute(_sel(User.id).where(
                     User.role == 'super_admin').limit(1)).scalar()
                 res = conn.execute(_ins(Course).values(
@@ -901,6 +982,12 @@ def run_install(db_url, admin, site, create_demo_student=False, progress_cb=None
         m = _re.search(r'\(\d+, "([^"]+)"\)', msg)
         if m:
             msg = m.group(1)
+        low = msg.lower()
+        if 'duplicate entry' in low and ('?' in msg or 'slug' in low):
+            return False, ('خطا در نصب (Duplicate entry): انکودینگ دیتابیس MySQL شما با utf8mb4 مغایرت داشته و '
+                           'اسلاگ‌های فارسی به علامت سؤال (????) تبدیل شده‌اند. '
+                           'سیستم اکنون جدول‌ها را اصلاح می‌کند؛ لطفاً دکمه «ادامه نصب» یا «شروع مجدد» را بزنید '
+                           'یا در صورت تمایل جدول‌های ناقص قبلی را در phpMyAdmin حذف (Drop) کرده و دوباره امتحان نمایید.')
         if _is_conn_lost(e):
             # جدول‌هایی که ساخته شده‌اند می‌مانند — اجرای دوباره از همان‌جا ادامه می‌دهد
             return False, ('خطا در نصب: هاست هنگام ساخت داده‌ها اتصال MySQL را قطع کرد (کد 2013). '

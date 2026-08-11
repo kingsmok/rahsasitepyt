@@ -117,7 +117,21 @@ def create_app():
             'pool_size': 10,
             'max_overflow': 20,
             'pool_timeout': 15,
+            'connect_args': {
+                'charset': 'utf8mb4',
+                'use_unicode': True,
+            },
         }
+        from sqlalchemy import event
+        from sqlalchemy.engine import Engine
+        @event.listens_for(Engine, "connect")
+        def set_mysql_session(dbapi_connection, connection_record):
+            try:
+                cursor = dbapi_connection.cursor()
+                cursor.execute("SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci")
+                cursor.close()
+            except Exception:
+                pass
     else:
         # بهینه‌سازی فوق‌العاده SQLite برای همزمانی بالا (حالت WAL + کش در حافظه + ضد قفل دیتابیس)
         from sqlalchemy import event

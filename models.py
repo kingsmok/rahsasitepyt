@@ -1220,3 +1220,17 @@ class Product(db.Model):
             return _json.loads(self.features or '[]')
         except Exception:
             return [f for f in (self.features or '').split('\n') if f.strip()]
+
+
+# ================================================================
+# تنظیم خودکار انکودینگ utf8mb4 و موتور InnoDB برای MySQL/MariaDB
+# ================================================================
+def _apply_mysql_table_options(metadata):
+    """تنظیم مشخصات MySQL برای تمام جدول‌ها جهت پیشگیری از خطای Duplicate entry در اسلاگ‌های فارسی"""
+    for _tbl in metadata.tables.values():
+        _tbl.kwargs.setdefault('mysql_charset', 'utf8mb4')
+        _tbl.kwargs.setdefault('mysql_collate', 'utf8mb4_unicode_ci')
+        _tbl.kwargs.setdefault('mysql_engine', 'InnoDB')
+
+_apply_mysql_table_options(db.metadata)
+

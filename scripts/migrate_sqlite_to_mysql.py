@@ -31,8 +31,11 @@ if not MYSQL_URL.startswith('mysql'):
 import sqlite3
 from sqlalchemy import create_engine, text, insert
 
+if 'charset=' not in MYSQL_URL:
+    MYSQL_URL += ('&' if '?' in MYSQL_URL else '?') + 'charset=utf8mb4'
+
 src = sqlite3.connect(SQLITE_PATH)
-dst = create_engine(MYSQL_URL, pool_pre_ping=True)
+dst = create_engine(MYSQL_URL, pool_pre_ping=True, connect_args={'charset': 'utf8mb4', 'use_unicode': True})
 
 # ── ۱) حذف جدول‌های قبلی (اگر مهاجرت قبلی ناقص مانده) + ساخت از مدل‌ها ──
 from app import app
@@ -41,6 +44,12 @@ import sqlalchemy as _sa
 
 def drop_all_mysql(engine):
     """حذف همه جدول‌های موجود در MySQL — شروع تمیز"""
+    try:
+        with engine.begin() as conn:
+            conn.execute(text("SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci"))
+            conn.execute(text("ALTER DATABASE CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"))
+    except Exception:
+        pass
     insp = _sa.inspect(engine)
     for t in insp.get_table_names():
         try:

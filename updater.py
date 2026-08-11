@@ -102,6 +102,40 @@ def _git_remote():
     return out.strip() if code == 0 else ''
 
 
+def get_git_info():
+    """اطلاعات کامل گیت مخزن فعلی برای پنل مدیریت نصب و اتصال"""
+    branch = _current_branch()
+    remote = _git_remote()
+    code, out = _run(['git', 'log', '-1', '--pretty=format:%h|%s|%ci'])
+    commit_hash, commit_msg, commit_date = '', '', ''
+    if code == 0 and '|' in out:
+        parts = out.strip().split('|', 2)
+        commit_hash = parts[0] if len(parts) > 0 else ''
+        commit_msg = parts[1] if len(parts) > 1 else ''
+        commit_date = parts[2] if len(parts) > 2 else ''
+    return {
+        'branch': branch,
+        'remote': remote,
+        'commit_hash': commit_hash,
+        'commit_msg': commit_msg,
+        'commit_date': commit_date,
+    }
+
+
+
+
+def test_git_repo(url):
+    """تست اتصال به مخزن گیت (عمومی یا خصوصی) از طریق git ls-remote"""
+    if not url:
+        return False, 'آدرس مخزن گیت خالی است'
+    code, out = _run(['git', 'ls-remote', url, 'HEAD'], timeout=15)
+    if code == 0:
+        return True, 'اتصال به مخزن گیت موفقیت‌آمیز بود ✅ (دسترسی برقرار است)'
+    msg = out.strip()[-200:]
+    if 'Authentication failed' in msg or 'could not read Username' in msg or 'Permission denied' in msg:
+        return False, ('خطای دسترسی/احراز هویت: برای مخازن خصوصی (Private) باید از آدرس همراه با توکن '
+                       '(https://TOKEN@github.com/user/repo.git) یا کلید SSH استفاده کنید.')
+    return False, 'خطا در اتصال به مخزن: ' + msg
 
 
 def _log_history(repo, mig_msg):

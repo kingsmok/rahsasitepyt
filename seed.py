@@ -32,7 +32,7 @@ def seed():
         'telegram': 'academy_ir',
         'instagram': 'academy.ir',
         'default_theme': 'theme-22',
-        'sandbox_mode': '1',
+        'sandbox_mode': '0',
         'watermark_enabled': '1',
         'maintenance': '0',
         'allow_register': '1',

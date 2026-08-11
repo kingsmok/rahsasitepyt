@@ -95,3 +95,15 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 /* حالت لودینگ دکمه‌ها — spinner داخل دکمه */
 .btn-loading{opacity:.75;pointer-events:none}
 .btn-loading .spinner{width:15px;height:15px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;display:inline-block;animation:spin .7s linear infinite;vertical-align:middle;margin-left:6px}
+
+/* ===== بهینه‌سازی نمایش آیکون‌های SVG (Tabler) در تایپوگرافی فارسی ===== */
+svg[aria-hidden="true"], svg[role="img"], .icon-btn svg, .btn svg, .badge svg, .ic svg, span.ic svg {
+  display: inline-block;
+  vertical-align: -0.15em;
+  flex-shrink: 0;
+  max-width: 100%;
+}
+.btn svg, .badge svg, .ic svg, .eo-close svg, .back-to-top svg {
+  vertical-align: middle;
+}
+

@@ -26,17 +26,31 @@ from werkzeug.security import generate_password_hash, check_password_hash
 #    امنش می‌کند — بدون نیاز به دانستن رمز جدید.
 #    مثال phpMyAdmin:
 #      UPDATE users SET password_hash = MD5('رمزجدید') WHERE id = 5;
-# ۳) برای غیرفعال‌کردن پذیرش MD5 قدیمی، LEGACY_MD5 را False کنید.
+# ۳) اگر رمز را «به صورت متن ساده» در ستون password_hash بنویسید کار نمی‌کند،
+#    مگر اینکه پیشوند plain: بگذارید. یعنی این دو کار می‌کنند:
+#      UPDATE users SET password_hash = MD5('رمزجدید')   WHERE id = 5;
+#      UPDATE users SET password_hash = 'plain:رمزجدید'  WHERE id = 5;
+#    در اولین ورود موفق، همان رمز خودکار به هش قوی تبدیل می‌شود.
+# ۴) برای غیرفعال‌کردن پذیرش هش‌های قدیمی، LEGACY_MD5 / LEGACY_PLAIN را False کنید.
 # ⚠️ چرا رمزهای جدید را مستقیم MD5 نمی‌کنیم؟ MD5 برای رمز عبور در چند ثانیه
 #    با جدول‌های رنگین‌کمانی شکسته می‌شود؛ حتی هش‌های قویِ ورک‌زگ هم روی
 #    هاست‌های معمولی فقط چند ده میلی‌ثانیه زمان می‌برند (تأثیری در سرعت ورود ندارد).
 # ═══════════════════════════════════════════════════════════════════════════
-LEGACY_MD5 = True
+import os as _os
+
+LEGACY_MD5 = _os.environ.get('LEGACY_MD5', '1') != '0'
+# پذیرش رمز متن‌ساده با پیشوند plain: (فقط برای تغییر رمز دستی در phpMyAdmin)
+LEGACY_PLAIN = _os.environ.get('LEGACY_PLAIN', '1') != '0'
 
 import hashlib as _hashlib
+import hmac as _hmac
 import re as _re
 
 _MD5_RE = _re.compile(r'^[0-9a-f]{32}$')
+_SHA1_RE = _re.compile(r'^[0-9a-f]{40}$')
+_SHA256_RE = _re.compile(r'^[0-9a-f]{64}$')
+# پیشوندهای مجاز برای رمز متن‌ساده دستی: plain:...  plain$...  {plain}...
+_PLAIN_RE = _re.compile(r'^(?:plain[:$]|\{plain\})(?P<pw>.+)$', _re.S)
 
 
 def _md5_hex(text):
@@ -183,27 +197,44 @@ class User(db.Model):
     def check_password(self, p):
         """بررسی رمز عبور:
         ۱) هش قوی استاندارد (scrypt/pbkdf2)
-        ۲) هش قدیمی MD5 خام — فقط با اجازهٔ LEGACY_MD5؛ در صورت درستی،
-           بلافاصله به هش قوی ارتقا می‌یابد (خودکار و بی‌سروصدا)"""
-        if not self.password_hash:
+        ۲) رمز متن‌ساده با پیشوند plain:  (برای تغییر دستی در phpMyAdmin)
+        ۳) هش‌های خام قدیمی MD5/SHA1/SHA256 — با اجازهٔ LEGACY_MD5
+        در حالت‌های ۲ و ۳ در صورت درستی، بلافاصله به هش قوی ارتقا می‌یابد."""
+        raw = (self.password_hash or '').strip()
+        if not raw:
             return False
         # ۱) حالت استاندارد ورک‌زگ (شامل md5$salt$hash و sha1$salt$hash قدیمی فلاسک)
-        try:
-            if check_password_hash(self.password_hash, p):
-                return True
-        except ValueError:
-            pass  # قالب ناشناخته → بررسی حالت خام MD5 در ادامه
-        # ۲) هش خام MD5 (مثل UPDATE ... SET password_hash = MD5('...') در phpMyAdmin)
-        if LEGACY_MD5:
-            _h = (self.password_hash or '').strip().lower()
-            if _MD5_RE.match(_h):
-                if _h == _md5_hex(p):
+        if '$' in raw or raw.startswith('pbkdf2:') or raw.startswith('scrypt:'):
+            try:
+                if check_password_hash(raw, p):
+                    return True
+            except (ValueError, TypeError):
+                pass  # قالب ناشناخته → بررسی حالت‌های قدیمی در ادامه
+        # ۲) رمز متن‌ساده با پیشوند plain: — کاربردی‌ترین راه تغییر رمز از phpMyAdmin
+        if LEGACY_PLAIN:
+            m = _PLAIN_RE.match(raw)
+            if m:
+                if m.group('pw').strip() == (p or ''):
                     self._upgrade_hash(p)
                     return True
+                return False
+        # ۳) هش خام (مثل UPDATE ... SET password_hash = MD5('...') در phpMyAdmin)
+        if LEGACY_MD5:
+            _h = raw.lower()
+            digest = None
+            if _MD5_RE.match(_h):
+                digest = _md5_hex(p)
+            elif _SHA1_RE.match(_h):
+                digest = _hashlib.sha1((p or '').encode('utf-8')).hexdigest()
+            elif _SHA256_RE.match(_h):
+                digest = _hashlib.sha256((p or '').encode('utf-8')).hexdigest()
+            if digest and _hmac.compare_digest(_h, digest):
+                self._upgrade_hash(p)
+                return True
         return False
 
     def _upgrade_hash(self, p):
-        """ارتقای خودکار هش قدیمی MD5 به هش قوی — در همان ورود موفق"""
+        """ارتقای خودکار هش قدیمی (MD5/plain) به هش قوی — در همان ورود موفق"""
         try:
             self.set_password(p)
             db.session.add(self)

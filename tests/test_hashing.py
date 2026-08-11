@@ -47,3 +47,52 @@ def test_certificate_codes_md5_and_legacy(app):
         # کد قدیمی متفاوت است (SHA-1) ولی تابعش سر جایش است
         assert old != c
         assert old == 'CRT-' + hashlib.sha1(seed.encode()).hexdigest()[:10].upper()
+
+
+def test_plain_prefix_accepted_and_upgraded(app):
+    """رمز متن‌ساده با پیشوند plain: (تغییر دستی در phpMyAdmin) پذیرفته و ارتقا می‌یابد"""
+    with app.app_context():
+        u = User(name='پلین', email='plain@test.ir', phone='09120000333', role='student')
+        u.password_hash = 'plain:MyNewPass123'
+        db.session.add(u)
+        db.session.commit()
+        assert u.check_password('MyNewPass123') is True
+        db.session.refresh(u)
+        assert u.password_hash.startswith(('scrypt:', 'pbkdf2:'))
+        assert u.check_password('MyNewPass123') is True
+        assert u.check_password('wrong') is False
+
+
+def test_plain_prefix_wrong_password_rejected(app):
+    """رمز اشتباه در حالت plain: باید رد شود"""
+    with app.app_context():
+        u = User(name='پلین۲', email='plain2@test.ir', phone='09120000444', role='student')
+        u.password_hash = 'plain:Correct-1'
+        db.session.add(u)
+        db.session.commit()
+        assert u.check_password('Wrong-1') is False
+        assert u.password_hash == 'plain:Correct-1'  # ارتقا نداده
+
+
+def test_bare_plaintext_never_matches(app):
+    """متن ساده بدون پیشوند نباید هرگز پذیرفته شود (امنیت)"""
+    with app.app_context():
+        u = User(name='خام', email='bare@test.ir', phone='09120000555', role='student')
+        u.password_hash = 'justplaintext'
+        db.session.add(u)
+        db.session.commit()
+        assert u.check_password('justplaintext') is False
+
+
+def test_legacy_sha1_and_sha256_hashes(app):
+    """هش خام SHA1/SHA256 قدیمی هم پذیرفته و ارتقا می‌یابد"""
+    for i, (algo, email) in enumerate(((hashlib.sha1, 'sha1@test.ir'),
+                                       (hashlib.sha256, 'sha256@test.ir'))):
+        with app.app_context():
+            u = User(name='قدیمی', email=email, phone=f'0912000066{i}', role='student')
+            u.password_hash = algo(b'legacy-pw-1').hexdigest()
+            db.session.add(u)
+            db.session.commit()
+            assert u.check_password('legacy-pw-1') is True
+            db.session.refresh(u)
+            assert u.password_hash.startswith(('scrypt:', 'pbkdf2:'))

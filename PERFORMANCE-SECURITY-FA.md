@@ -188,8 +188,13 @@ UPDATE users SET password_hash = MD5('رمزجدید') WHERE id = 5;
 
 ## کنترل
 
-- در `models.py` ثابت `LEGACY_MD5 = True` — با `False` کردن آن، پذیرش هش‌های خام MD5
-  غیرفعال می‌شود (رمزهایی که هنوز ارتقا نیافته‌اند باید از پنل ادمین بازنشانی شوند)
+- `LEGACY_MD5` و `LEGACY_PLAIN` (در `models.py`، قابل تنظیم با متغیر محیطی `.env`) —
+  با `0` کردنشان، پذیرش هش‌های خام MD5/SHA1/SHA256 و رمز `plain:` غیرفعال می‌شود
+  (رمزهایی که هنوز ارتقا نیافته‌اند باید از پنل ادمین یا
+  `scripts/set_password.py` بازنشانی شوند)
+- تغییر رمز از خط فرمان (مطمئن‌ترین راه، مخصوصاً وقتی از پنل جواب نمی‌گیرید):
+  `python3 scripts/set_password.py --email admin@site.ir --password 'رمزجدید'`
+- اگر رمز را در دیتابیس عوض کردید و اثر نکرد → **`docs/PASSWORD-RESET-FA.md`**
 - تابع‌های `certificate_code()` و `certificate_code_legacy_sha1()` در `models.py`
   همهٔ تولید/استعلام کد گواهینامه را متمرکز کرده‌اند (۴ جا قبلاً تکراری بود)
 

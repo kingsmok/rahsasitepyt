@@ -1191,7 +1191,7 @@
     <div class="pb-prod-details">
       {% if d.show_price %}<div class="s-row"><span>قیمت</span><span class="price">{{ fa('{:,.0f}'.format(cc.final_price)) }} <small class="text-3" style="font-size:11px">تومان</small></span></div>{% endif %}
       {% if d.show_teacher %}<div class="s-row"><span>مدرس</span><span>{{ cc.teacher.name if cc.teacher else '—' }}</span></div>{% endif %}
-      {% if d.show_rating %}<div class="s-row"><span>امتیاز</span><span>⭐ {{ fa(cc.rating) if cc.rating else '—' }} ({{ fa(cc.reviews|length) }})</span></div>{% endif %}
+      {% if d.show_rating %}<div class="s-row"><span>امتیاز</span><span>⭐ {{ fa(cc.rating) if cc.rating else '—' }} ({{ fa(cc.review_count) }})</span></div>{% endif %}
       {% if d.show_students %}<div class="s-row"><span>دانشجویان</span><span>{{ fa(cc.students_count) }} نفر</span></div>{% endif %}
       {% if d.show_meta %}
       <div class="s-row"><span>سطح</span><span>{{ cc.level }}</span></div>

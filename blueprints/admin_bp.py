@@ -370,8 +370,19 @@ def orders():
     query = Order.query
     if status:
         query = query.filter(Order.status == status)
-    all_orders = query.order_by(Order.created_at.desc()).all()
-    return render_template('admin/orders.html', orders=all_orders, status=status)
+    # صفحه‌بندی — قبلاً همه سفارش‌ها (هزاران ردیف) یکجا بارگذاری و رندر می‌شد
+    try:
+        page = max(1, request.args.get('page', 1, type=int))
+    except Exception:
+        page = 1
+    per_page = 50
+    total = query.count()
+    pages = max(1, (total + per_page - 1) // per_page)
+    page = min(page, pages)
+    all_orders = query.order_by(Order.created_at.desc()) \
+        .offset((page - 1) * per_page).limit(per_page).all()
+    return render_template('admin/orders.html', orders=all_orders, status=status,
+                           page=page, pages=pages, total=total)
 
 
 @admin_bp.route('/orders/<int:oid>')
@@ -1963,9 +1974,9 @@ def certificates():
     items = Enrollment.query.filter(Enrollment.completed_at.isnot(None)) \
         .order_by(Enrollment.completed_at.desc()).all()
     certs = []
-    import hashlib
+    from models import certificate_code
     for e in items:
-        code = 'CRT-' + hashlib.sha1(f"{e.course.slug}|{e.user.email}|{e.id}".encode()).hexdigest()[:10].upper()
+        code = certificate_code(e.course.slug, e.user.email, e.id)
         certs.append({'id': e.id, 'user': e.user.name if e.user else '—',
                       'course': e.course.title if e.course else '—',
                       'date': e.completed_at, 'code': code, 'enroll': e})

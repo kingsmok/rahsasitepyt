@@ -15,11 +15,124 @@ import json
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 
+# ═══════════════════════════════════════════════════════════════════════════
+# خط‌مشی هش‌گذاری رمز عبور (بخش هش‌گذاری)
+# ───────────────────────────────────────────────────────────────────────────
+# ۱) رمزهای جدید و تغییر رمزها → همیشه با الگوریتم قوی ورک‌زگ ذخیره می‌شوند
+#    (scrypt؛ در پایتون‌های قدیمی‌تر pbkdf2:sha256) — غیرقابل شکستن با روش‌های معمول
+# ۲) هش‌های قدیمی MD5 خام (۳۲ کاراکتر hex) فقط برای «ورود» پذیرفته می‌شوند و در
+#    همان ورود موفق، خودکار به هش قوی «ارتقا» می‌یابند. یعنی اگر در phpMyAdmin
+#    رمزی را دستی با MD5() ساختید، کاربر با همان رمز وارد می‌شود و سیستم خودش
+#    امنش می‌کند — بدون نیاز به دانستن رمز جدید.
+#    مثال phpMyAdmin:
+#      UPDATE users SET password_hash = MD5('رمزجدید') WHERE id = 5;
+# ۳) برای غیرفعال‌کردن پذیرش MD5 قدیمی، LEGACY_MD5 را False کنید.
+# ⚠️ چرا رمزهای جدید را مستقیم MD5 نمی‌کنیم؟ MD5 برای رمز عبور در چند ثانیه
+#    با جدول‌های رنگین‌کمانی شکسته می‌شود؛ حتی هش‌های قویِ ورک‌زگ هم روی
+#    هاست‌های معمولی فقط چند ده میلی‌ثانیه زمان می‌برند (تأثیری در سرعت ورود ندارد).
+# ═══════════════════════════════════════════════════════════════════════════
+LEGACY_MD5 = True
+
+import hashlib as _hashlib
+import re as _re
+
+_MD5_RE = _re.compile(r'^[0-9a-f]{32}$')
+
+
+def _md5_hex(text):
+    return _hashlib.md5((text or '').encode('utf-8')).hexdigest()
+
+
+def certificate_code(slug, email, enrollment_id):
+    """کد رهگیری گواهینامه — شناسهٔ عمومی و غیرحساس (MD5 طبق درخواست).
+    برای اینکه کدهای قبلاً چاپ‌شده (ساخته‌شده با SHA-1) هم معتبر بمانند،
+    استعلام‌کننده هر دو حالت را می‌پذیرد — این تابع فقط نسخهٔ جدید (MD5) را می‌سازد."""
+    seed = f"{slug}|{email}|{enrollment_id}"
+    return 'CRT-' + _md5_hex(seed)[:10].upper()
+
+
+def certificate_code_legacy_sha1(slug, email, enrollment_id):
+    """نسخهٔ قدیمی کد گواهینامه (SHA-1) — فقط برای استعلام کدهای چاپ‌شدهٔ قبل."""
+    seed = f"{slug}|{email}|{enrollment_id}"
+    return 'CRT-' + _hashlib.sha1(seed.encode('utf-8')).hexdigest()[:10].upper()
+
 db = SQLAlchemy()
+
+
+def ensure_indexes():
+    """ایجاد ایندکس‌های جاافتاده روی دیتابیس موجود (بدون نیاز به مهاجرت).
+    روی SQLite و MySQL امن است: فقط ایندکس‌هایی که وجود ندارند ساخته می‌شوند."""
+    from sqlalchemy import text as _text
+    _tables = {
+        'courses': [
+            ('idx_courses_status', 'status'),
+            ('idx_courses_cat', 'category_id'),
+            ('idx_courses_teacher', 'teacher_id'),
+            ('idx_courses_views', 'views'),
+        ],
+        'enrollments': [
+            ('idx_enroll_course', 'course_id'),
+        ],
+        'reviews': [
+            ('idx_reviews_user', 'user_id'),
+        ],
+        'favorites': [
+            ('idx_fav_user', 'user_id'),
+        ],
+        'live_sessions': [
+            ('idx_live_starts', 'starts_at'),
+        ],
+        'blog_comments': [
+            ('idx_bc_post', 'post_id'),
+        ],
+        'notfound_logs': [
+            ('idx_nf_path', 'path'),
+        ],
+        'price_history': [
+            ('idx_price_item', 'item_type, item_id'),
+        ],
+        'users': [
+            ('idx_users_role', 'role'),
+        ],
+        'orders': [
+            ('idx_orders_user_created', 'user_id, created_at'),
+        ],
+        'reviews': [
+            ('idx_reviews_created', 'is_approved, created_at'),
+        ],
+        'tickets': [
+            ('idx_tickets_user_status', 'user_id, status'),
+        ],
+        'notifications': [
+            # روی SQLite و MySQL 5.7+/8 کار می‌کند؛
+            # MySQL قدیمی‌تر را اسکریپت deploy/mysql-optimize.sql (نسخه پیشوندی) پوشش می‌دهد
+            ('idx_notif_title_link', 'title, link'),
+        ],
+    }
+    try:
+        from sqlalchemy import inspect as _inspect
+        insp = _inspect(db.engine)
+        existing = {ix['name'] for ix in insp.get_indexes('courses')}
+        for tname, indexes in _tables.items():
+            try:
+                have = {ix['name'] for ix in insp.get_indexes(tname)}
+            except Exception:
+                continue
+            for name, col in indexes:
+                if name in have:
+                    continue
+                try:
+                    with db.engine.begin() as conn:
+                        conn.execute(_text(f'CREATE INDEX {name} ON {tname} ({col})'))
+                except Exception:
+                    pass
+    except Exception:
+        pass
 
 
 class User(db.Model):
     __tablename__ = 'users'
+    __table_args__ = (db.Index('idx_users_role', 'role'),)
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(120), nullable=False, default='')
     email = db.Column(db.String(160), unique=True, nullable=True, index=True)
@@ -64,12 +177,42 @@ class User(db.Model):
         return self.session_token
 
     def set_password(self, p):
+        # همیشه هش قوی — هرگز MD5 خام برای رمزهای جدید
         self.password_hash = generate_password_hash(p)
 
     def check_password(self, p):
+        """بررسی رمز عبور:
+        ۱) هش قوی استاندارد (scrypt/pbkdf2)
+        ۲) هش قدیمی MD5 خام — فقط با اجازهٔ LEGACY_MD5؛ در صورت درستی،
+           بلافاصله به هش قوی ارتقا می‌یابد (خودکار و بی‌سروصدا)"""
         if not self.password_hash:
             return False
-        return check_password_hash(self.password_hash, p)
+        # ۱) حالت استاندارد ورک‌زگ (شامل md5$salt$hash و sha1$salt$hash قدیمی فلاسک)
+        try:
+            if check_password_hash(self.password_hash, p):
+                return True
+        except ValueError:
+            pass  # قالب ناشناخته → بررسی حالت خام MD5 در ادامه
+        # ۲) هش خام MD5 (مثل UPDATE ... SET password_hash = MD5('...') در phpMyAdmin)
+        if LEGACY_MD5:
+            _h = (self.password_hash or '').strip().lower()
+            if _MD5_RE.match(_h):
+                if _h == _md5_hex(p):
+                    self._upgrade_hash(p)
+                    return True
+        return False
+
+    def _upgrade_hash(self, p):
+        """ارتقای خودکار هش قدیمی MD5 به هش قوی — در همان ورود موفق"""
+        try:
+            self.set_password(p)
+            db.session.add(self)
+            db.session.commit()
+        except Exception:
+            try:
+                db.session.rollback()
+            except Exception:
+                pass
 
     def initials(self):
         parts = (self.name or '؟').split()
@@ -126,6 +269,10 @@ class Category(db.Model):
 
 class Course(db.Model):
     __tablename__ = 'courses'
+    __table_args__ = (db.Index('idx_courses_status', 'status'),
+                       db.Index('idx_courses_cat', 'category_id'),
+                       db.Index('idx_courses_teacher', 'teacher_id'),
+                       db.Index('idx_courses_views', 'views'),)
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200), nullable=False)
     slug = db.Column(db.String(220), unique=True, nullable=False)
@@ -191,14 +338,39 @@ class Course(db.Model):
 
     @property
     def rating(self):
-        rs = [r.rating for r in self.reviews]
-        if not rs:
+        """میانگین امتیاز — با کوئری تجمیعی (نه بارگذاری همه نظرات).
+        اگر در لیست‌ها مقدار `_agg_rating` از قبل ست شده باشد، همان استفاده می‌شود."""
+        if hasattr(self, '_agg_rating'):
+            return self._agg_rating
+        try:
+            from models import Review as _R
+            v = db.session.query(db.func.avg(_R.rating)) \
+                .filter(_R.course_id == self.id).scalar()
+            return round(float(v or 0), 1)
+        except Exception:
             return 0
-        return round(sum(rs) / len(rs), 1)
+
+    @property
+    def review_count(self):
+        """تعداد نظرات — کوئری تجمیعی سبک به‌جای بارگذاری همه رکوردها."""
+        if hasattr(self, '_agg_review_count'):
+            return self._agg_review_count
+        try:
+            from models import Review as _R
+            return _R.query.filter_by(course_id=self.id).count()
+        except Exception:
+            return 0
 
     @property
     def students_count(self):
-        return (self.seeded_students or 0) + len(self.enrollments)
+        """تعداد دانشجویان — کوئری تجمیعی به‌جای بارگذاری همه ثبت‌نام‌ها."""
+        if hasattr(self, '_agg_students'):
+            return self._agg_students
+        try:
+            from models import Enrollment as _E
+            return (self.seeded_students or 0) + _E.query.filter_by(course_id=self.id).count()
+        except Exception:
+            return self.seeded_students or 0
 
     def is_free(self):
         return self.final_price == 0
@@ -245,7 +417,9 @@ class Lesson(db.Model):
 
 class Review(db.Model):
     __tablename__ = 'reviews'
-    __table_args__ = (db.Index('idx_reviews_course', 'course_id', 'is_approved'),)
+    __table_args__ = (db.Index('idx_reviews_course', 'course_id', 'is_approved'),
+                       db.Index('idx_reviews_user', 'user_id'),
+                       db.Index('idx_reviews_created', 'is_approved', 'created_at'),)
     id = db.Column(db.Integer, primary_key=True)
     course_id = db.Column(db.Integer, db.ForeignKey('courses.id'))
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
@@ -262,6 +436,7 @@ class Review(db.Model):
 
 class Favorite(db.Model):
     __tablename__ = 'favorites'
+    __table_args__ = (db.Index('idx_fav_user', 'user_id'),)
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     course_id = db.Column(db.Integer, db.ForeignKey('courses.id'), nullable=False)
@@ -272,7 +447,8 @@ class Favorite(db.Model):
 class Order(db.Model):
     __tablename__ = 'orders'
     __table_args__ = (db.Index('idx_orders_user_status', 'user_id', 'status'),
-                       db.Index('idx_orders_status_created', 'status', 'created_at'),)
+                       db.Index('idx_orders_status_created', 'status', 'created_at'),
+                       db.Index('idx_orders_user_created', 'user_id', 'created_at'),)
     id = db.Column(db.Integer, primary_key=True)
     code = db.Column(db.String(40), unique=True, nullable=False, index=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
@@ -359,7 +535,8 @@ class Coupon(db.Model):
 
 class Enrollment(db.Model):
     __tablename__ = 'enrollments'
-    __table_args__ = (db.Index('idx_enroll_user_course', 'user_id', 'course_id'),)
+    __table_args__ = (db.Index('idx_enroll_user_course', 'user_id', 'course_id'),
+                       db.Index('idx_enroll_course', 'course_id'),)
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     course_id = db.Column(db.Integer, db.ForeignKey('courses.id'), nullable=False)
@@ -373,7 +550,8 @@ class Enrollment(db.Model):
 
     def progress_list(self):
         try:
-            return json.loads(self.progress or '[]')
+            v = json.loads(self.progress or '[]')
+            return v if isinstance(v, list) else []
         except Exception:
             return []
 
@@ -395,6 +573,7 @@ class Enrollment(db.Model):
 
 class Ticket(db.Model):
     __tablename__ = 'tickets'
+    __table_args__ = (db.Index('idx_tickets_user_status', 'user_id', 'status'),)
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     subject = db.Column(db.String(200), nullable=False)
@@ -482,6 +661,7 @@ class NotFoundLog(db.Model):
 
 class BlogComment(db.Model):
     __tablename__ = 'blog_comments'
+    __table_args__ = (db.Index('idx_bc_post', 'post_id'),)
     id = db.Column(db.Integer, primary_key=True)
     post_id = db.Column(db.Integer, db.ForeignKey('blog_posts.id'), nullable=False)
     name = db.Column(db.String(120), nullable=False)
@@ -748,7 +928,8 @@ class PageRevision(db.Model):
 # ================================================================
 class Notification(db.Model):
     __tablename__ = 'notifications'
-    __table_args__ = (db.Index('idx_notif_user_read', 'user_id', 'is_read'),)
+    __table_args__ = (db.Index('idx_notif_user_read', 'user_id', 'is_read'),
+                       db.Index('idx_notif_title_link', 'title', 'link'),)
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
     title = db.Column(db.String(200), nullable=False)
@@ -968,6 +1149,7 @@ class ForumPost(db.Model):
 # ================================================================
 class LiveSession(db.Model):
     __tablename__ = 'live_sessions'
+    __table_args__ = (db.Index('idx_live_starts', 'starts_at'),)
     id = db.Column(db.Integer, primary_key=True)
     course_id = db.Column(db.Integer, db.ForeignKey('courses.id'), nullable=True)
     title = db.Column(db.String(200), nullable=False)

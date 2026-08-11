@@ -69,7 +69,7 @@
     <h1>{{ course.title }}</h1>
     <p class="sub">{{ course.subtitle }}</p>
     <div class="meta-row">
-      <span>{{ icon('star', 14) }} {{ fa(course.rating) if course.rating else '—' }} ({{ fa(course.reviews|length) }} نظر)</span>
+      <span>{{ icon('star', 14) }} {{ fa(course.rating) if course.rating else '—' }} ({{ fa(course.review_count) }} نظر)</span>
       <span>{{ icon('users', 15) }} {{ fa(course.students_count) }} دانشجو</span>
       <span>{{ icon('clock', 15) }} {{ fa(course.duration_hours) }} ساعت آموزش</span>
       <span>🗣 {{ course.language }}</span>
@@ -95,7 +95,7 @@
         <div class="course-tabs">
           <button class="active" data-tab="tab-overview">📋 معرفی دوره</button>
           <button data-tab="tab-curriculum">📚 سرفصل‌ها ({{ fa(course.lesson_count) }} جلسه)</button>
-          <button data-tab="tab-reviews">💬 نظرات ({{ fa(course.reviews|length) }})</button>
+          <button data-tab="tab-reviews">💬 نظرات ({{ fa(course.review_count) }})</button>
           <button data-tab="tab-teacher">👨‍🏫 مدرس</button>
         </div>
 

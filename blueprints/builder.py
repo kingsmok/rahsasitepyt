@@ -1503,8 +1503,8 @@ def api_upload():
     f = request.files.get('file')
     if not f:
         return jsonify(ok=False), 400
-    from validators import safe_filename, ALLOWED_IMAGE_EXT
-    safe = safe_filename(f.filename or '', ALLOWED_IMAGE_EXT)
+    from validators import safe_filename, ALLOWED_IMAGE_EXT_TRUSTED
+    safe = safe_filename(f.filename or '', ALLOWED_IMAGE_EXT_TRUSTED)
     if not safe:
         return jsonify(ok=False, msg='فرمت فایل مجاز نیست (فقط تصویر)'), 400
     up_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static', 'img', 'uploads')

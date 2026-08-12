@@ -2306,8 +2306,8 @@ def settings():
             up = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                               'static', 'img', 'uploads', 'brand')
             os.makedirs(up, exist_ok=True)
-            from validators import safe_filename, ALLOWED_IMAGE_EXT
-            safe = safe_filename(logo_f.filename or '', ALLOWED_IMAGE_EXT)
+            from validators import safe_filename, ALLOWED_IMAGE_EXT_TRUSTED
+            safe = safe_filename(logo_f.filename or '', ALLOWED_IMAGE_EXT_TRUSTED)
             if safe:
                 lname = 'logo' + os.path.splitext(safe)[1].lower()
                 logo_f.save(os.path.join(up, lname))
@@ -2401,8 +2401,8 @@ def super_settings():
                 up = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                                   'static', 'img', 'uploads', 'brand')
                 os.makedirs(up, exist_ok=True)
-                from validators import safe_filename, ALLOWED_IMAGE_EXT
-                safe = safe_filename(logo_f.filename or '', ALLOWED_IMAGE_EXT)
+                from validators import safe_filename, ALLOWED_IMAGE_EXT_TRUSTED
+                safe = safe_filename(logo_f.filename or '', ALLOWED_IMAGE_EXT_TRUSTED)
                 if safe:
                     lname = 'logo' + os.path.splitext(safe)[1].lower()
                     logo_f.save(os.path.join(up, lname))

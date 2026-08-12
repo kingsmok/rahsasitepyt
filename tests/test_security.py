@@ -22,12 +22,32 @@ def test_csrf_accepts_valid_token(client):
 
 
 def test_upload_rejects_dangerous_ext(client):
-    """آپلود فایل .php باید رد شود"""
-    login(client, 'demo@test.ir', 'demo123')
+    """آپلود فایل .php باید رد شود (کتابخانه رسانه فقط برای مدرس/ادمین است)"""
+    login(client, 't@test.ir', 'teacher123')
     r = client.post('/api/media/upload', data={
         'file': (io.BytesIO(b'<?php echo 1;'), 'shell.php')
     }, content_type='multipart/form-data')
     assert r.status_code == 400
+
+
+def test_upload_rejects_svg_dangerous_content(client):
+    """SVG می‌تواند اسکریپت اجرا شود؛ باید رد شود (حتی برای مدرس/ادمین)"""
+    login(client, 't@test.ir', 'teacher123')
+    r = client.post('/api/media/upload', data={
+        'file': (io.BytesIO(b'<svg onload="alert(1)"></svg>'), 'x.svg')
+    }, content_type='multipart/form-data')
+    assert r.status_code == 400
+
+
+def test_media_upload_forbidden_for_student(client):
+    """کتابخانه رسانه مرکزی نباید برای دانشجوی معمولی باز باشد (فقط ادمین/مدرس) —
+    این همان حفره‌ای بود که امکان میزبانی محتوای فریب‌دهنده/مخرب زیر دامنه را
+    می‌داد و باعث علامت‌گذاری توسط Safe Browsing گوگل/فایرفاکس می‌شد."""
+    login(client, 'demo@test.ir', 'demo123')
+    r = client.post('/api/media/upload', data={
+        'file': (io.BytesIO(b'fake image bytes'), 'pic.png')
+    }, content_type='multipart/form-data')
+    assert r.status_code == 403
 
 
 def test_upload_rejects_non_image_in_builder(client):

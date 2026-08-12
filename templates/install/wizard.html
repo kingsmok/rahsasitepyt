@@ -123,7 +123,21 @@ h3{font-size:16px;font-weight:800;margin-bottom:4px}
         نام دیتابیس را اول در پنل هاست بسازید (مثلاً cPanel → MySQL Databases) — فقط نام را وارد کنید، نه آدرس کامل.<br>
         رمز عبور می‌تواند هر کاراکتری داشته باشد (خودکار encode می‌شود).</div>
       </div>
-      <div class="btn-row">
+      <div id="attach-box" style="display:none">
+        <div class="hint" style="border-color:#93c5fd;background:#eff6ff;color:#1e3a8a">
+          دیتابیس را در سی‌پنل ساخته‌اید؟ مشخصات MySQL را بالا وارد کنید.
+          سیستم فقط وصل می‌شود و داده را پاک نمی‌کند.
+          اگر فایل <code dir="ltr">instance/academy.db</code> را هم آپلود کرده‌اید،
+          می‌توانید همان را استفاده کنید یا داده‌اش را به MySQL کپی کنید.
+        </div>
+        <div style="display:grid;gap:8px;margin-bottom:8px">
+          <button class="btn btn-g" type="button" id="btn-inspect" onclick="inspectDb()">🔍 ببین دیتابیسم چه دارد</button>
+          <button class="btn btn-p" type="button" id="btn-attach" onclick="attachDb(false)">🔗 وصل کن و داده را نگه دار</button>
+          <button class="btn btn-g" type="button" id="btn-copy" onclick="attachDb(true)">📦 وصل کن + کپی داده از SQLite آپلودشده</button>
+          <button class="btn btn-g" type="button" id="btn-use-sqlite" onclick="attachSqlite()">💾 همین فایل آپلودشده (SQLite) را استفاده کن</button>
+        </div>
+      </div>
+      <div class="btn-row" id="normal-db-btns">
         <button class="btn btn-g" onclick="testDb()" id="btn-test">🔌 تست اتصال</button>
         <button class="btn btn-p" onclick="next(1)">ادامه ←</button>
       </div>
@@ -552,12 +566,17 @@ function runInstall(){
   runInstallChunk();
 }
 
-/* شروع: بررسی خودکار سلامت + اگر نصب در جریان است ادامه بده */
-checkHealth();
-</script>
-</body>
-</html>
-�سی انجام شد.';
+function inspectDb(){
+  var p = dbParams();
+  p.db_type = 'mysql';
+  if (!p.host || !p.name || !p.user){ msg(false, 'اطلاعات MySQL را کامل کنید.'); return; }
+  var b = $('btn-inspect');
+  b.disabled = true; b.innerHTML = '<span class="spin"></span> در حال بررسی...';
+  fetch('/install/inspect-db', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(p)
+  }).then(parseResp).then(function(res){
+    var d = res.d || {};
     msg(!!d.ok, d.msg || 'بررسی انجام شد.');
   }).catch(function(){ msg(false, 'خطا در ارتباط با سرور'); })
   .finally(function(){ b.disabled = false; b.textContent = '🔍 ببین دیتابیسم چه دارد'; });

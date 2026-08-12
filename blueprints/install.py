@@ -15,7 +15,9 @@ from werkzeug.exceptions import HTTPException
 
 from installer import (is_installed, build_db_url, validate_mysql,
                        test_connection, check_db_health, env_db_url,
-                       INSTANCE_DIR, run_install_request, install_progress)
+                       INSTANCE_DIR, run_install_request, install_progress,
+                       detect_local_data, inspect_database,
+                       attach_existing_database)
 
 install_bp = Blueprint('install', __name__)
 

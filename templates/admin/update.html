@@ -38,7 +38,7 @@
     <input class="form-control" type="text" name="repo_url" value="{{ repo_url }}" dir="ltr"
            placeholder="https://github.com/user/academy.git" style="flex:1;min-width:280px">
     <input class="form-control" type="text" name="branch" value="{{ branch }}" dir="ltr"
-           placeholder="شاخه (خالی = تشخیص خودکار)" style="max-width:250px">
+           placeholder="main (خالی = تشخیص خودکار)" style="max-width:250px">
     <button class="btn btn-ghost" type="submit">💾 ذخیره</button>
   </form>
 </div>
@@ -48,7 +48,8 @@
   <p class="text-3" style="font-size:12.5px;margin:6px 0 14px">
     ابتدا می‌توانید نسخهٔ GitHub را بررسی کنید. سپس با اجرای دستی، آخرین commit دریافت می‌شود؛
     کدها جایگزین، وابستگی‌های تغییرکرده نصب و دیتابیس با داده‌های قبلی مایگریت می‌شود.
-    فایل‌های محلی (<code>.env</code>، آپلودها، بکاپ‌ها) دست‌نخورده می‌مانند.
+    فایل‌های محلی (<code>.env</code>، آپلودها، بکاپ‌ها، <code>.htaccess</code>) دست‌نخورده می‌مانند.
+    اگر سایت از ZIP سی‌پنل نصب شده و پوشهٔ <code>.git</code> ندارد، سیستم خودش مخزن را می‌سازد یا آرشیو GitHub را دانلود می‌کند.
   </p>
   <div id="upd-msg" class="msg" style="display:none"></div>
   <div id="upd-check" class="text-2" style="font-size:12.5px;margin-bottom:12px"></div>
@@ -110,7 +111,7 @@ function checkUpdate(){
         ' | نسخه مخزن: ' + (d.remote_short || '—');
       umsg(true, d.available ? 'نسخهٔ جدید برای نصب آماده است.' : 'نسخهٔ سایت به‌روز است.');
     } else {
-      document.getElementById('upd-check').textContent = d.msg || 'بررسی مخزن ناموفق بود.';
+      document.getElementById('upd-check').textContent = 'بررسی مخزن ناموفق بود.';
       umsg(false, d.msg || 'خطا در بررسی مخزن');
     }
     b.disabled = false;

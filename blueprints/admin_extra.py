@@ -614,10 +614,11 @@ def update_log():
 @admin_required
 def install_manager():
     """صفحه جامع مدیریت نصب، اتصال زمپ (XAMPP)، گیت و وضعیت دیتابیس"""
-    from installer import is_installed, check_db_health, env_db_url
+    from installer import is_installed, check_db_health, env_db_url, detect_local_data
     from updater import _display_repo, get_git_info, get_repo_url
     db_url_str = str(env_db_url() or '')
     db_type = 'mysql' if db_url_str.startswith('mysql') else 'sqlite'
+    local_data = detect_local_data()
     # پنهان‌سازی رمز در نمایش URL
     safe_db_url = db_url_str
     if '@' in safe_db_url and ':' in safe_db_url.split('@')[0]:
@@ -678,6 +679,57 @@ def install_test_git():
     url = (request.form.get('repo_url') or '').strip()
     ok, msg = test_git_repo(url)
     return jsonify(ok=ok, msg=msg)
+
+
+@admin_bp.route('/install-manager/inspect-db', methods=['POST'])
+@admin_required
+def install_inspect_db():
+    """بررسی دیتابیس ساخته‌شده در سی‌پنل بدون تغییر داده."""
+    from installer import build_db_url, inspect_database, validate_mysql, detect_local_data
+    host = (request.form.get('host') or 'localhost').strip()
+    port = (request.form.get('port') or '3306').strip()
+    name = (request.form.get('name') or '').strip()
+    user = (request.form.get('user') or '').strip()
+    password = request.form.get('password') or ''
+    err = validate_mysql(host, name, user)
+    if err:
+        return jsonify(ok=False, msg=err), 400
+    url = build_db_url('mysql', host, port, name, user, password)
+    report = inspect_database(url)
+    report['local'] = detect_local_data()
+    return jsonify(**report)
+
+
+@admin_bp.route('/install-manager/attach-db', methods=['POST'])
+@admin_required
+def install_attach_db():
+    """وصل دائمی به دیتابیس موجود — داده پاک نمی‌شود."""
+    if g.user.role not in ('super_admin', 'admin'):
+        return jsonify(ok=False, msg='فقط مدیر کل می‌تواند اتصال دیتابیس را تغییر دهد.'), 403
+    from installer import (attach_existing_database, build_db_url, validate_mysql)
+    host = (request.form.get('host') or 'localhost').strip()
+    port = (request.form.get('port') or '3306').strip()
+    name = (request.form.get('name') or '').strip()
+    user = (request.form.get('user') or '').strip()
+    password = request.form.get('password') or ''
+    copy_sqlite = request.form.get('copy_sqlite') == '1'
+    err = validate_mysql(host, name, user)
+    if err:
+        return jsonify(ok=False, msg=err), 400
+    url = build_db_url('mysql', host, port, name, user, password)
+    ok, msg = attach_existing_database(url, copy_from_sqlite=copy_sqlite)
+    return jsonify(ok=ok, msg=msg), (200 if ok else 400)
+
+
+@admin_bp.route('/install-manager/use-sqlite', methods=['POST'])
+@admin_required
+def install_use_sqlite():
+    """استفاده از فایل SQLite آپلودشده در instance/academy.db."""
+    if g.user.role not in ('super_admin', 'admin'):
+        return jsonify(ok=False, msg='فقط مدیر کل می‌تواند اتصال دیتابیس را تغییر دهد.'), 403
+    from installer import attach_existing_database
+    ok, msg = attach_existing_database('', copy_from_sqlite=False)
+    return jsonify(ok=ok, msg=msg), (200 if ok else 400)
 
 
 @admin_bp.route('/install-manager/migrate-db', methods=['POST'])

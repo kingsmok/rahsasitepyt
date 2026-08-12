@@ -33,7 +33,7 @@ h3{font-size:16px;font-weight:800;margin-bottom:4px}
 .fg input{width:100%;padding:10px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13.5px;font-family:inherit;transition:all .2s}
 .fg input:focus{outline:none;border-color:#2563eb;box-shadow:0 0 0 4px #eff6ff}
 .fg-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.db-choice{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+.db-choice{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
 .dbc{border:2px solid #e2e8f0;border-radius:14px;padding:12px 10px;cursor:pointer;text-align:center;transition:all .2s}
 .dbc .ic{font-size:24px;margin-bottom:6px}
 .dbc b{display:block;font-size:13.5px}
@@ -94,12 +94,16 @@ h3{font-size:16px;font-weight:800;margin-bottom:4px}
     <div class="pane on" id="pane-1">
       <h3>🗄 اتصال به دیتابیس</h3>
       <p class="sub">دیتابیس جایی است که اطلاعات سایت (کاربران، دوره‌ها، سفارش‌ها) ذخیره می‌شود.</p>
+      <div id="local-detect" class="hint" style="display:none;border-color:#86efac;background:#f0fdf4;color:#166534"></div>
       <div class="db-choice">
         <div class="dbc sel" id="dbc-sqlite" onclick="pickDb('sqlite')">
-          <div class="ic">💾</div><b>SQLite</b><small>بدون نیاز به تنظیم — محلی</small>
+          <div class="ic">💾</div><b>SQLite تازه</b><small>نصب جدید روی فایل محلی</small>
         </div>
         <div class="dbc" id="dbc-mysql" onclick="pickDb('mysql')">
-          <div class="ic">🗄</div><b>MySQL</b><small>دیتابیس هاست / سرور</small>
+          <div class="ic">🗄</div><b>MySQL تازه</b><small>نصب کامل روی هاست</small>
+        </div>
+        <div class="dbc" id="dbc-attach" onclick="pickDb('attach')">
+          <div class="ic">🔗</div><b>دیتابیس آماده‌ام</b><small>فقط وصل شو — داده پاک نمی‌شود</small>
         </div>
         <div class="dbc" id="dbc-xampp" onclick="pickDb('xampp')">
           <div class="ic">⚡</div><b style="color:#d97706">زمپ (XAMPP)</b><small>اتصال فوری محلی</small>
@@ -211,12 +215,18 @@ function parseResp(r){
 }
 
 function pickDb(t){
-  dbType = (t === 'xampp' ? 'mysql' : t);
+  dbType = (t === 'xampp' || t === 'attach') ? 'mysql' : t;
   $('dbc-sqlite').classList.toggle('sel', t==='sqlite');
   $('dbc-mysql').classList.toggle('sel', t==='mysql');
+  var aEl = $('dbc-attach');
+  if (aEl) aEl.classList.toggle('sel', t==='attach');
   var xEl = $('dbc-xampp');
   if (xEl) xEl.classList.toggle('sel', t==='xampp');
-  $('mysql-fields').style.display = (t==='mysql' || t==='xampp') ? 'block' : 'none';
+  $('mysql-fields').style.display = (t==='mysql' || t==='xampp' || t==='attach') ? 'block' : 'none';
+  var attach = $('attach-box');
+  if (attach) attach.style.display = (t==='attach') ? 'block' : 'none';
+  var normal = $('normal-db-btns');
+  if (normal) normal.style.display = (t==='attach') ? 'none' : 'grid';
   if (t === 'xampp'){
     if (!$('db_host').value) $('db_host').value = 'localhost';
     if (!$('db_port').value) $('db_port').value = '3306';
@@ -224,6 +234,10 @@ function pickDb(t){
     $('db_pass').value = '';
     if (!$('db_name').value) $('db_name').value = 'academy_db';
     msg(true, '✨ تنظیمات اتصال به زمپ (XAMPP) به‌صورت خودکار پر شد (root بدون رمز). اگر دیتابیس وجود نداشته باشد، به صورت خودکار ساخته می‌شود.');
+  }
+  if (t === 'attach'){
+    if (!$('db_host').value) $('db_host').value = 'localhost';
+    if (!$('db_port').value) $('db_port').value = '3306';
   }
 }
 
@@ -540,6 +554,80 @@ function runInstall(){
 
 /* شروع: بررسی خودکار سلامت + اگر نصب در جریان است ادامه بده */
 checkHealth();
+</script>
+</body>
+</html>
+�سی انجام شد.';
+    msg(!!d.ok, d.msg || 'بررسی انجام شد.');
+  }).catch(function(){ msg(false, 'خطا در ارتباط با سرور'); })
+  .finally(function(){ b.disabled = false; b.textContent = '🔍 ببین دیتابیسم چه دارد'; });
+}
+
+function attachDb(copySqlite){
+  var p = dbParams();
+  p.db_type = 'mysql';
+  p.copy_sqlite = copySqlite ? '1' : '0';
+  if (!p.host || !p.name || !p.user){ msg(false, 'اطلاعات MySQL را کامل کنید.'); return; }
+  var b = copySqlite ? $('btn-copy') : $('btn-attach');
+  b.disabled = true; b.innerHTML = '<span class="spin"></span> در حال اتصال...';
+  fetch('/install/attach', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(p)
+  }).then(parseResp).then(function(res){
+    var d = res.d || {};
+    if (!d.ok){ msg(false, d.msg || 'اتصال ناموفق بود'); return; }
+    msg(true, d.msg || 'وصل شد');
+    setTimeout(function(){ window.location.href = d.redirect || '/'; }, 900);
+  }).catch(function(){ msg(false, 'خطا در ارتباط با سرور'); })
+  .finally(function(){
+    b.disabled = false;
+    b.textContent = copySqlite ? '📦 وصل کن + کپی داده از SQLite آپلودشده' : '🔗 وصل کن و داده را نگه دار';
+  });
+}
+
+function attachSqlite(){
+  var b = $('btn-use-sqlite');
+  b.disabled = true; b.innerHTML = '<span class="spin"></span> در حال اتصال...';
+  fetch('/install/attach', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({db_type: 'sqlite'})
+  }).then(parseResp).then(function(res){
+    var d = res.d || {};
+    if (!d.ok){ msg(false, d.msg || 'اتصال ناموفق بود'); return; }
+    msg(true, d.msg || 'وصل شد');
+    setTimeout(function(){ window.location.href = d.redirect || '/'; }, 900);
+  }).catch(function(){ msg(false, 'خطا در ارتباط با سرور'); })
+  .finally(function(){ b.disabled = false; b.textContent = '💾 همین فایل آپلودشده (SQLite) را استفاده کن'; });
+}
+
+function loadLocalDetect(){
+  fetch('/install/detect').then(parseResp).then(function(res){
+    var d = res.d || {};
+    var box = $('local-detect');
+    if (!box) return;
+    var bits = [];
+    if (d.sqlite_has_data){
+      bits.push('فایل آپلودشده پیدا شد: ' + (d.sqlite_users||0) + ' کاربر، ' + (d.sqlite_courses||0) + ' دوره' +
+        (d.sqlite_site_name ? '، سایت «'+d.sqlite_site_name+'»' : '') +
+        '. می‌توانید «دیتابیس آماده‌ام» را بزنید یا همان SQLite را استفاده کنید.');
+    } else if (d.sqlite_exists){
+      bits.push('فایل instance/academy.db هست ولی دادهٔ کاربری ندارد.');
+    }
+    if (d.cpanel_db_hint){
+      bits.push('روی سی‌پنل معمولاً نام دیتابیس شبیه ' + d.cpanel_db_hint + ' است (پیشوند ' + d.cpanel_user + '_).');
+    }
+    if (bits.length){
+      box.style.display = 'block';
+      box.textContent = bits.join(' ');
+    }
+    if (d.cpanel_db_hint && !$('db_name').value) $('db_name').value = d.cpanel_db_hint;
+    if (d.cpanel_user && !$('db_user').value) $('db_user').value = d.cpanel_user + '_';
+  }).catch(function(){});
+}
+
+/* شروع: بررسی خودکار سلامت + اگر نصب در جریان است ادامه بده */
+checkHealth();
+loadLocalDetect();
 </script>
 </body>
 </html>

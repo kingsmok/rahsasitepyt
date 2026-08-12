@@ -33,6 +33,39 @@
   </div>
 </div>
 
+<!-- کارت ۱.۵: وصل به دیتابیس ساخته‌شده در سی‌پنل -->
+<div class="card" style="padding:22px;margin-bottom:18px;border:1.5px solid #2563eb">
+  <h3 style="margin:0 0 10px;font-size:17px">🔗 دیتابیس ساخته‌ام — فقط وصل شو</h3>
+  <p class="text-2" style="font-size:13.5px;line-height:1.9;margin-bottom:14px">
+    فایل‌ها را آپلود کرده‌اید و در سی‌پنل دیتابیس ساخته‌اید؟ مشخصات را بگذارید.
+    سیستم داده را می‌خواند و پاک نمی‌کند. اگر دیتابیس خالی است و
+    <code>instance/academy.db</code> آپلود کرده‌اید، می‌توانید همان را استفاده کنید یا به MySQL کپی کنید.
+  </p>
+  {% if local_data and local_data.sqlite_has_data %}
+  <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:13px;color:#166534;line-height:1.9">
+    ✅ فایل SQLite آپلودشده پیدا شد:
+    {{ local_data.sqlite_users }} کاربر، {{ local_data.sqlite_courses }} دوره
+    {% if local_data.sqlite_site_name %} — سایت «{{ local_data.sqlite_site_name }}»{% endif %}
+    <div class="flex gap-1 wrap" style="margin-top:8px">
+      <button class="btn btn-ghost btn-sm" type="button" onclick="useUploadedSqlite()">💾 همین فایل SQLite را استفاده کن</button>
+    </div>
+  </div>
+  {% endif %}
+  <div class="flex gap-1 wrap" style="margin-bottom:10px">
+    <input class="form-control" type="text" id="att-host" value="localhost" dir="ltr" placeholder="localhost" style="max-width:160px">
+    <input class="form-control" type="text" id="att-port" value="3306" dir="ltr" placeholder="3306" style="max-width:90px">
+    <input class="form-control" type="text" id="att-name" value="{{ local_data.cpanel_db_hint if local_data else '' }}" dir="ltr" placeholder="user_academy" style="max-width:200px">
+    <input class="form-control" type="text" id="att-user" dir="ltr" placeholder="user_dbuser" style="max-width:180px">
+    <input class="form-control" type="password" id="att-pass" dir="ltr" placeholder="رمز دیتابیس" style="max-width:180px">
+  </div>
+  <div class="flex gap-1 wrap">
+    <button class="btn btn-ghost" type="button" onclick="inspectHostDb()">🔍 ببین دیتابیسم چه دارد</button>
+    <button class="btn btn-primary" type="button" onclick="attachHostDb(false)">🔗 وصل کن و داده را نگه دار</button>
+    <button class="btn btn-outline" type="button" onclick="attachHostDb(true)">📦 وصل + کپی از SQLite آپلودشده</button>
+  </div>
+  <p id="att-result" class="text-2" style="margin-top:12px;font-size:13px"></p>
+</div>
+
 <!-- کارت ۲: راهکار جذاب اتصال به زمپ (XAMPP) -->
 <div class="card" style="padding:22px;margin-bottom:18px;border:1.5px solid #f59e0b;background:linear-gradient(180deg, #fffbeb 0%, #ffffff 100%)">
   <div class="flex between wrap" style="gap:12px;margin-bottom:12px">
@@ -83,7 +116,7 @@
 
   <div class="flex gap-1 wrap" style="margin-bottom:18px">
     <button class="btn btn-primary btn-lg" id="btn-run-update" onclick="runGitUpdate()">
-      🔄 دریافت کامل به‌روزرسانی از GitHub (git fetch + reset)
+      🔄 دریافت کامل به‌روزرسانی از GitHub
     </button>
     <button class="btn btn-outline btn-lg" onclick="runAutoMigrate()">
       🗄 اجرای مایگریشن خودکار دیتابیس
@@ -174,6 +207,50 @@ function testGitRepo(){
     .then(r => r.json())
     .then(d => showMsg(d.ok, d.msg))
     .catch(e => showMsg(false, 'خطا در تست مخزن: ' + e));
+}
+
+function hostDbForm(copySqlite){
+  var fd = new FormData();
+  fd.append('_csrf_token', getCsrf());
+  fd.append('host', document.getElementById('att-host').value.trim());
+  fd.append('port', document.getElementById('att-port').value.trim());
+  fd.append('name', document.getElementById('att-name').value.trim());
+  fd.append('user', document.getElementById('att-user').value.trim());
+  fd.append('password', document.getElementById('att-pass').value);
+  if (copySqlite) fd.append('copy_sqlite', '1');
+  return fd;
+}
+function inspectHostDb(){
+  var box = document.getElementById('att-result');
+  box.textContent = 'در حال بررسی...';
+  fetch('/admin/install-manager/inspect-db', {method: 'POST', body: hostDbForm(false)})
+    .then(r => r.json())
+    .then(d => { box.textContent = d.msg || ''; showMsg(!!d.ok, d.msg || ''); })
+    .catch(e => showMsg(false, 'خطا: ' + e));
+}
+function attachHostDb(copySqlite){
+  if (!confirm(copySqlite
+      ? 'داده از SQLite آپلودشده فقط به جدول‌های خالی کپی می‌شود. ادامه؟'
+      : 'سایت به همین دیتابیس وصل می‌شود و داده پاک نمی‌گردد. ادامه؟')) return;
+  fetch('/admin/install-manager/attach-db', {method: 'POST', body: hostDbForm(copySqlite)})
+    .then(r => r.json())
+    .then(d => {
+      showMsg(!!d.ok, d.msg || '');
+      if (d.ok) setTimeout(() => location.reload(), 1800);
+    })
+    .catch(e => showMsg(false, 'خطا: ' + e));
+}
+function useUploadedSqlite(){
+  if (!confirm('سایت از فایل instance/academy.db آپلودشده می‌خواند. ادامه؟')) return;
+  var fd = new FormData();
+  fd.append('_csrf_token', getCsrf());
+  fetch('/admin/install-manager/use-sqlite', {method: 'POST', body: fd})
+    .then(r => r.json())
+    .then(d => {
+      showMsg(!!d.ok, d.msg || '');
+      if (d.ok) setTimeout(() => location.reload(), 1800);
+    })
+    .catch(e => showMsg(false, 'خطا: ' + e));
 }
 
 function runAutoMigrate(){

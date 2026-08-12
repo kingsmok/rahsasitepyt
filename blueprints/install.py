@@ -67,28 +67,93 @@ def wizard():
     return render_template('install/wizard.html')
 
 
+def _url_from_request(d):
+    db_type = d.get('db_type') or d.get('type') or 'sqlite'
+    if db_type in ('mysql', 'attach', 'xampp'):
+        err = validate_mysql(d.get('host') or d.get('db_host') or '',
+                             d.get('name') or d.get('db_name') or '',
+                             d.get('user') or d.get('db_user') or '')
+        if err:
+            return None, err
+        return build_db_url(
+            'mysql',
+            d.get('host') or d.get('db_host') or '',
+            d.get('port') or d.get('db_port') or '',
+            d.get('name') or d.get('db_name') or '',
+            d.get('user') or d.get('db_user') or '',
+            d.get('password') or d.get('db_pass') or '',
+        ), ''
+    return '', ''
+
+
 @install_bp.route('/install/test-db', methods=['POST'])
 def test_db():
-    """تست اتصال دیتابیس — همیشه JSON"""
+    """تست اتصال دیتابیس — همیشه JSON؛ حتی بعد از نصب هم کار می‌کند."""
     try:
-        if is_installed():
-            return _already_installed_json()
         d = request.get_json(silent=True) or request.form or {}
-        db_type = d.get('db_type', 'sqlite')
-        if db_type == 'mysql':
-            err = validate_mysql(d.get('host', ''), d.get('name', ''), d.get('user', ''))
-            if err:
-                return jsonify(ok=False, msg=err)
-            url = build_db_url('mysql', d.get('host', ''), d.get('port', ''),
-                               d.get('name', ''), d.get('user', ''),
-                               d.get('password', ''))
-        else:
-            url = ''
+        url, err = _url_from_request(d)
+        if err:
+            return jsonify(ok=False, msg=err)
         ok, msg = test_connection(url)
         return jsonify(ok=ok, msg=msg)
     except Exception as e:
         current_app.logger.error('install test-db error: %s', e)
         return jsonify(ok=False, msg='خطا در تست اتصال: ' + str(e)[:200]), 500
+
+
+@install_bp.route('/install/detect')
+def detect_db():
+    """تشخیص SQLite آپلودشده و پیشنهاد نام دیتابیس سی‌پنل."""
+    info = detect_local_data()
+    return jsonify(ok=True, **info)
+
+
+@install_bp.route('/install/inspect-db', methods=['POST'])
+def inspect_db():
+    """خواندن خلاصهٔ دیتابیس ساخته‌شده — بدون نوشتن."""
+    try:
+        d = request.get_json(silent=True) or request.form or {}
+        url, err = _url_from_request(d)
+        if err:
+            return jsonify(ok=False, msg=err)
+        report = inspect_database(url)
+        local = detect_local_data()
+        report['local'] = {
+            'sqlite_has_data': local['sqlite_has_data'],
+            'sqlite_users': local['sqlite_users'],
+            'sqlite_courses': local['sqlite_courses'],
+            'sqlite_site_name': local['sqlite_site_name'],
+        }
+        return jsonify(**report)
+    except Exception as e:
+        current_app.logger.error('install inspect-db error: %s', e)
+        return jsonify(ok=False, msg='خطا در بررسی دیتابیس: ' + str(e)[:200]), 500
+
+
+@install_bp.route('/install/attach', methods=['POST'])
+def attach_db():
+    """وصل کردن دیتابیس موجود / فایل آپلودشده؛ داده پاک نمی‌شود."""
+    try:
+        d = request.get_json(silent=True) or request.form or {}
+        url, err = _url_from_request(d)
+        if err:
+            return jsonify(ok=False, msg=err)
+        copy_flag = str(d.get('copy_sqlite') or '').strip() in ('1', 'true', 'yes', 'on')
+        ok, msg = attach_existing_database(url, copy_from_sqlite=copy_flag)
+        if not ok:
+            return jsonify(ok=False, msg=msg), 400
+        try:
+            from models import User
+            from flask import session
+            adm = User.query.filter(User.role == 'super_admin').order_by(User.id).first()
+            if adm:
+                session['uid'] = adm.id
+        except Exception:
+            pass
+        return jsonify(ok=True, done=True, msg=msg, redirect='/')
+    except Exception as e:
+        current_app.logger.error('install attach error: %s\n%s', e, _tb.format_exc())
+        return jsonify(ok=False, msg='خطا در اتصال دیتابیس: ' + str(e)[:250]), 500
 
 
 @install_bp.route('/install/run', methods=['POST'])

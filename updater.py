@@ -16,9 +16,11 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 import urllib.parse
+import urllib.request
 from datetime import datetime
 
 try:
@@ -43,11 +45,26 @@ INSTANCE_DIR = os.path.join(BASE_DIR, 'instance')
 STATE_FILE = os.path.join(INSTANCE_DIR, '.update_progress.json')
 HISTORY_FILE = os.path.join(INSTANCE_DIR, 'update_history.json')
 LOCK_FILE = os.path.join(INSTANCE_DIR, '.update.lock')
+APPLIED_COMMIT_FILE = os.path.join(INSTANCE_DIR, '.update_commit')
 STALE_SECONDS = 1800  # مایگریشن دیتابیس‌های بزرگ ممکن است چند دقیقه طول بکشد.
 UPDATE_REF_PREFIX = 'refs/remotes/academy-update'
 _REQUIRED_FILES = ('app.py', 'models.py', 'passenger_wsgi.py')
-_PRESERVE_FILES = ('instance/.update_progress.json', 'instance/update_history.json')
+_PRESERVE_FILES = ('instance/.update_progress.json', 'instance/update_history.json',
+                   'instance/.update_commit')
 _BRANCH_RE = re.compile(r'^[A-Za-z0-9][A-Za-z0-9._/-]*$')
+_OVERLAY_SKIP = {
+    '.env', '.env.local', '.htaccess', '.git',
+    'instance', 'uploads', 'venv', '.venv', 'env', 'logs',
+    '__pycache__', 'node_modules',
+}
+_GIT_CANDIDATES = (
+    '/usr/bin/git',
+    '/usr/local/bin/git',
+    '/usr/local/cpanel/3rdparty/bin/git',
+    '/opt/cpanel/ea-git/bin/git',
+    '/opt/git/bin/git',
+)
+_git_path = None
 
 _state = {
     'status': 'idle',   # idle | running | done | error
@@ -132,6 +149,87 @@ def _git_env():
     env['GIT_TERMINAL_PROMPT'] = '0'
     env.setdefault('LC_ALL', 'C')
     return env
+
+
+def _find_git():
+    """مسیر واقعی git؛ روی سی‌پنل گاهی در PATH اپ Passenger نیست."""
+    global _git_path
+    if _git_path:
+        return _git_path
+    candidates = []
+    which = shutil.which('git')
+    if which:
+        candidates.append(which)
+    candidates.extend(_GIT_CANDIDATES)
+    seen = set()
+    for path in candidates:
+        if not path or path in seen:
+            continue
+        seen.add(path)
+        try:
+            r = subprocess.run([path, '--version'], capture_output=True, text=True,
+                               timeout=8, env=_git_env())
+            text = ((r.stdout or '') + (r.stderr or '')).lower()
+            if r.returncode == 0 and 'git' in text:
+                _git_path = path
+                return path
+        except Exception:
+            continue
+    _git_path = 'git'
+    return _git_path
+
+
+def _git(args, timeout=120):
+    """اجرای git با safe.directory تا مالکیت مشکوک روی هاست جلوی دستور را نگیرد."""
+    cmd = [_find_git(), '-c', 'safe.directory=' + BASE_DIR]
+    cmd.extend(args)
+    return _run(cmd, timeout=timeout)
+
+
+def _is_git_worktree():
+    code, out = _git(['rev-parse', '--is-inside-work-tree'], timeout=15)
+    return code == 0 and out.strip() == 'true'
+
+
+def _ensure_local_git():
+    """اگر سایت از ZIP سی‌پنل نصب شده باشد، مخزن محلی را می‌سازد تا fetch ممکن شود."""
+    if _is_git_worktree():
+        return True
+    code, _out = _git(['init'], timeout=30)
+    if code != 0:
+        return False
+    _git(['config', 'user.email', 'update@localhost'], timeout=10)
+    _git(['config', 'user.name', 'Academy Updater'], timeout=10)
+    return _is_git_worktree()
+
+
+def _read_applied_commit():
+    try:
+        with open(APPLIED_COMMIT_FILE, encoding='utf-8') as f:
+            raw = (f.read() or '').strip()
+        value = raw.split()[0] if raw else ''
+    except OSError:
+        return ''
+    if value and re.fullmatch(r'[0-9a-fA-F]{7,40}', value):
+        return value.lower()
+    return ''
+
+
+def _local_version():
+    """هش نسخهٔ فعلی: HEAD گیت یا آخرین commit اعمال‌شده از بروزرسانی ZIP."""
+    return _current_commit('HEAD') or _read_applied_commit()
+
+
+def _write_applied_commit(commit):
+    commit = (commit or '').strip()
+    if not commit:
+        return
+    try:
+        os.makedirs(INSTANCE_DIR, exist_ok=True)
+        with open(APPLIED_COMMIT_FILE, 'w', encoding='utf-8') as f:
+            f.write(commit + '\n')
+    except OSError:
+        pass
 
 
 def _redact_text(value, repo=''):
@@ -225,24 +323,28 @@ def _git_remote():
     url = get_repo_url()
     if url:
         return url
-    code, out = _run(['git', 'remote', 'get-url', 'origin'])
+    code, out = _git(['remote', 'get-url', 'origin'], timeout=15)
     return out.strip() if code == 0 else ''
 
 
 def _current_branch():
-    code, out = _run(['git', 'rev-parse', '--abbrev-ref', 'HEAD'])
+    code, out = _git(['rev-parse', '--abbrev-ref', 'HEAD'], timeout=15)
     value = out.strip() if code == 0 else ''
     return value if value and value != 'HEAD' else ''
 
 
 def _current_commit(revision='HEAD'):
-    code, out = _run(['git', 'rev-parse', '--verify', revision])
+    code, out = _git(['rev-parse', '--verify', revision], timeout=15)
     return out.strip() if code == 0 else ''
 
 
 def _commit_info(revision='HEAD'):
-    code, out = _run(['git', 'show', '-s', '--format=%H|%h|%s|%cI', revision])
+    code, out = _git(['show', '-s', '--format=%H|%h|%s|%cI', revision], timeout=15)
     if code != 0:
+        applied = _read_applied_commit() if revision == 'HEAD' else ''
+        if applied:
+            return {'hash': applied, 'short': applied[:10],
+                    'message': 'نسخهٔ اعمال‌شده از بروزرسانی قبلی', 'date': ''}
         return {'hash': '', 'short': '', 'message': '', 'date': ''}
     parts = out.strip().split('|', 3)
     return {
@@ -257,8 +359,11 @@ def get_git_info():
     """اطلاعات Git برای صفحهٔ مدیریت، بدون لو دادن توکن مخزن."""
     remote = _git_remote()
     info = _commit_info('HEAD')
+    branch = _current_branch()
+    if not branch:
+        branch = 'بدون مخزن محلی' if not _is_git_worktree() else 'detached'
     return {
-        'branch': _current_branch() or 'detached',
+        'branch': branch,
         'target_branch': get_update_branch() or 'تشخیص خودکار',
         'remote': _display_repo(remote),
         'commit_hash': info['short'],
@@ -267,41 +372,136 @@ def get_git_info():
     }
 
 
+def _parse_github(url):
+    """استخراج owner/name/token از URL گیت‌هاب (HTTPS یا SSH)."""
+    url = (url or '').strip()
+    if not url:
+        return None
+    token = ''
+    url_no_auth = url
+    try:
+        parsed = urllib.parse.urlsplit(url)
+        if parsed.scheme in ('http', 'https'):
+            if parsed.username:
+                token = parsed.password or parsed.username
+            host = parsed.hostname or ''
+            url_no_auth = urllib.parse.urlunsplit((parsed.scheme, host, parsed.path, '', ''))
+    except Exception:
+        url_no_auth = url
+    match = re.search(
+        r'(?i)(?:^|://|@)github\.com[:/]+([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+)',
+        url_no_auth or url,
+    )
+    if not match:
+        return None
+    name = match.group(2)
+    if name.endswith('.git'):
+        name = name[:-4]
+    return {'host': 'github.com', 'owner': match.group(1), 'name': name, 'token': token}
+
+
+def _http_json(url, token='', timeout=30):
+    req = urllib.request.Request(url, headers={
+        'User-Agent': 'rahsasitepyt-updater',
+        'Accept': 'application/vnd.github+json',
+    })
+    if token:
+        req.add_header('Authorization', 'Bearer ' + token)
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            raw = resp.read().decode('utf-8', 'replace')
+        data = json.loads(raw)
+        return data
+    except Exception:
+        return None
+
+
+def _github_heads(repo_url):
+    info = _parse_github(repo_url)
+    if not info:
+        return {}
+    data = _http_json(
+        'https://api.github.com/repos/{}/{}/branches?per_page=100'.format(
+            info['owner'], info['name']),
+        token=info['token'],
+    )
+    refs = {}
+    if isinstance(data, list):
+        for row in data:
+            name = (row or {}).get('name') or ''
+            sha = ((row or {}).get('commit') or {}).get('sha') or ''
+            if name and sha:
+                refs[name] = sha
+    return refs
+
+
+def _github_default_branch(repo_url):
+    info = _parse_github(repo_url)
+    if not info:
+        return ''
+    data = _http_json(
+        'https://api.github.com/repos/{}/{}'.format(info['owner'], info['name']),
+        token=info['token'],
+    )
+    if not isinstance(data, dict):
+        return ''
+    branch = (data.get('default_branch') or '').strip()
+    if branch and _BRANCH_RE.match(branch) and '..' not in branch and '//' not in branch:
+        return branch
+    return ''
+
+
 def _remote_refs(repo, heads=False):
-    args = ['git', 'ls-remote']
+    args = ['ls-remote']
     if heads:
         args.append('--heads')
-    args.extend([repo])
-    code, out = _run(args, timeout=30)
+    args.append(repo)
+    code, out = _git(args, timeout=30)
+    refs = {}
+    if code == 0:
+        for line in out.splitlines():
+            bits = line.split()
+            if len(bits) >= 2 and bits[1].startswith('refs/heads/'):
+                refs[bits[1][len('refs/heads/'):]] = bits[0]
+        if refs:
+            return refs, out
+    gh = _github_heads(repo)
+    if gh:
+        return gh, out
     if code != 0:
         raise UpdateError('اتصال به مخزن گیت شکست خورد: ' +
                           _redact_text(out[-300:], repo))
-    refs = {}
-    for line in out.splitlines():
-        bits = line.split()
-        if len(bits) >= 2 and bits[1].startswith('refs/heads/'):
-            refs[bits[1][len('refs/heads/'):]] = bits[0]
     return refs, out
 
 
 def _remote_default_branch(repo):
-    """تشخیص default branch از symref و سپس fallback به main/master."""
-    code, raw = _run(['git', 'ls-remote', '--symref', repo, 'HEAD'], timeout=30)
-    if code != 0:
-        raise UpdateError('تشخیص شاخهٔ پیش‌فرض گیت شکست خورد: ' +
-                          _redact_text(raw[-300:], repo))
+    """تشخیص default branch؛ روی گیت قدیمی بدون --symref (مثل cPanel) هم کار می‌کند."""
+    code, raw = _git(['ls-remote', '--symref', repo, 'HEAD'], timeout=30)
     default = ''
-    for line in raw.splitlines():
-        if line.startswith('ref: refs/heads/') and line.endswith(' HEAD'):
-            default = line[len('ref: refs/heads/'):].rsplit(' HEAD', 1)[0]
-            break
+    if code == 0:
+        for line in raw.splitlines():
+            stripped = line.rstrip()
+            if stripped.startswith('ref: refs/heads/') and stripped.endswith(' HEAD'):
+                default = stripped[len('ref: refs/heads/'):].rsplit(' HEAD', 1)[0].strip()
+                break
     if default and _BRANCH_RE.match(default) and '..' not in default and '//' not in default:
         return default
-    heads, _ = _remote_refs(repo, heads=True)
+    # گیت 1.8 سی‌پنل --symref ندارد و فقط usage چاپ می‌کند؛ نباید خطا بدهیم.
+    try:
+        heads, _ = _remote_refs(repo, heads=True)
+    except UpdateError:
+        heads = {}
     for candidate in ('main', 'master'):
         if candidate in heads:
             return candidate
-    return next(iter(heads), '')
+    if heads:
+        return next(iter(heads))
+    gh = _github_default_branch(repo)
+    if gh:
+        return gh
+    raise UpdateError(
+        'تشخیص شاخهٔ پیش‌فرض گیت ممکن نشد. نام شاخه را در تنظیمات مخزن بنویسید (مثلاً main).'
+    )
 
 
 def _select_branch(repo, branch=''):
@@ -318,6 +518,11 @@ def _select_branch(repo, branch=''):
     heads, _ = _remote_refs(repo, heads=True)
     if current and current in heads:
         return current
+    for candidate in ('main', 'master'):
+        if candidate in heads:
+            return candidate
+    if heads and len(heads) == 1:
+        return next(iter(heads))
     default = _remote_default_branch(repo)
     if default:
         return default
@@ -332,7 +537,7 @@ def _fetch_target(repo, branch):
     """فقط شاخهٔ هدف را از URL می‌گیرد و origin پروژه را دستکاری نمی‌کند."""
     target = _target_ref(branch)
     refspec = '+refs/heads/{}:{}'.format(branch, target)
-    code, out = _run(['git', 'fetch', '--no-tags', '--force', repo, refspec],
+    code, out = _git(['fetch', '--no-tags', '--force', repo, refspec],
                      timeout=int(os.environ.get('GIT_FETCH_TIMEOUT', '300')))
     if code != 0:
         raise UpdateError('دریافت نسخهٔ جدید از گیت شکست خورد: ' +
@@ -344,7 +549,7 @@ def _fetch_target(repo, branch):
 
 
 def _verify_target(target):
-    code, out = _run(['git', 'ls-tree', '-r', '--name-only', target])
+    code, out = _git(['ls-tree', '-r', '--name-only', target], timeout=60)
     if code != 0:
         raise UpdateError('امکان بررسی فایل‌های نسخهٔ جدید نیست: ' + out[-250:])
     files = set(out.splitlines())
@@ -357,12 +562,16 @@ def _verify_target(target):
 
 
 def _git_file(revision, path):
-    code, out = _run(['git', 'show', '{}:{}'.format(revision, path)])
+    if not revision:
+        return None
+    code, out = _git(['show', '{}:{}'.format(revision, path)], timeout=30)
     return out if code == 0 else None
 
 
 def _changed_files(old_commit, new_ref):
-    code, out = _run(['git', 'diff', '--name-only', old_commit, new_ref])
+    if not old_commit or not new_ref:
+        return []
+    code, out = _git(['diff', '--name-only', old_commit, new_ref], timeout=60)
     return [line.strip() for line in out.splitlines() if line.strip()] if code == 0 else []
 
 
@@ -390,18 +599,24 @@ def _restore_local_files(saved):
             pass
 
 
-def _requirements_changed(old_commit):
-    old = _git_file(old_commit, 'requirements.txt')
+def _read_local_requirements():
     try:
         with open(os.path.join(BASE_DIR, 'requirements.txt'), 'r', encoding='utf-8') as f:
-            new = f.read()
+            return f.read()
     except OSError:
-        new = None
+        return None
+
+
+def _requirements_changed(old_commit, old_requirements=None):
+    old = old_requirements
+    if old is None and old_commit:
+        old = _git_file(old_commit, 'requirements.txt')
+    new = _read_local_requirements()
     return old is not None and new is not None and old != new
 
 
-def _install_changed_dependencies(old_commit):
-    if not _requirements_changed(old_commit):
+def _install_changed_dependencies(old_commit, old_requirements=None):
+    if not _requirements_changed(old_commit, old_requirements=old_requirements):
         return 'وابستگی‌ها تغییری نکرده‌اند.'
     flag = os.environ.get('UPDATE_INSTALL_DEPENDENCIES', '1').strip().lower()
     if flag in ('0', 'false', 'no', 'off'):
@@ -533,6 +748,122 @@ def _log_history(repo, migration, **extra):
         pass
 
 
+def _download_file(url, dest, token='', timeout=180):
+    req = urllib.request.Request(url, headers={
+        'User-Agent': 'rahsasitepyt-updater',
+        'Accept': 'application/zip, */*',
+    })
+    if token:
+        req.add_header('Authorization', 'Bearer ' + token)
+    with urllib.request.urlopen(req, timeout=timeout) as resp, open(dest, 'wb') as handle:
+        shutil.copyfileobj(resp, handle)
+    if not os.path.exists(dest) or os.path.getsize(dest) < 64:
+        raise UpdateError('آرشیو دانلودشده خالی یا نامعتبر است.')
+
+
+def _archive_root(extract_dir):
+    try:
+        entries = [name for name in os.listdir(extract_dir) if name not in ('.', '..')]
+    except OSError:
+        return extract_dir
+    if len(entries) == 1:
+        only = os.path.join(extract_dir, entries[0])
+        if os.path.isdir(only):
+            return only
+    return extract_dir
+
+
+def _overlay_skip(rel):
+    rel = (rel or '').replace('\\', '/').lstrip('/')
+    if not rel:
+        return False
+    top = rel.split('/', 1)[0]
+    if top in _OVERLAY_SKIP:
+        return True
+    return rel == 'static/uploads' or rel.startswith('static/uploads/')
+
+
+def _overlay_tree(src_root, dest_root):
+    """کپی فایل‌های آرشیو روی سایت، بدون دست‌زدن به .env / instance / آپلود / venv."""
+    changed = []
+    for dirpath, dirnames, filenames in os.walk(src_root):
+        rel_dir = os.path.relpath(dirpath, src_root)
+        if rel_dir == '.':
+            rel_dir = ''
+        kept = []
+        for name in dirnames:
+            rel = (rel_dir + '/' + name).replace('\\', '/').lstrip('/') if rel_dir else name
+            if not _overlay_skip(rel):
+                kept.append(name)
+        dirnames[:] = kept
+        for filename in filenames:
+            rel = (rel_dir + '/' + filename).replace('\\', '/').lstrip('/') if rel_dir else filename
+            if _overlay_skip(rel):
+                continue
+            source = os.path.join(dirpath, filename)
+            dest = os.path.join(dest_root, *rel.split('/'))
+            os.makedirs(os.path.dirname(dest), exist_ok=True)
+            shutil.copy2(source, dest)
+            changed.append(rel)
+    return changed
+
+
+def _apply_github_archive(repo, branch):
+    """جایگزینی کد از ZIP گیت‌هاب — برای نصب‌های سی‌پنل بدون پوشهٔ .git."""
+    info = _parse_github(repo)
+    if not info:
+        raise UpdateError(
+            'این پوشه مخزن گیت نیست و آدرس هم GitHub نیست؛ '
+            'نمی‌توان آرشیو را دانلود کرد.'
+        )
+    quoted = urllib.parse.quote(branch, safe='')
+    urls = [
+        'https://codeload.github.com/{}/{}/zip/refs/heads/{}'.format(
+            info['owner'], info['name'], quoted),
+        'https://github.com/{}/{}/archive/refs/heads/{}.zip'.format(
+            info['owner'], info['name'], quoted),
+    ]
+    tmp = tempfile.mkdtemp(prefix='academy-upd-')
+    try:
+        zip_path = os.path.join(tmp, 'src.zip')
+        last_err = 'دانلود انجام نشد.'
+        downloaded = False
+        for url in urls:
+            try:
+                _download_file(url, zip_path, token=info['token'])
+                downloaded = True
+                break
+            except Exception as exc:
+                last_err = str(exc)
+        if not downloaded:
+            raise UpdateError('دانلود آرشیو GitHub شکست خورد: ' +
+                              _redact_text(last_err, repo)[:300])
+        extract_dir = os.path.join(tmp, 'src')
+        os.makedirs(extract_dir, exist_ok=True)
+        shutil.unpack_archive(zip_path, extract_dir)
+        root = _archive_root(extract_dir)
+        missing = [name for name in _REQUIRED_FILES
+                   if not os.path.isfile(os.path.join(root, name))]
+        if missing:
+            raise UpdateError('آرشیو مخزن فایل‌های ضروری را ندارد: ' + '، '.join(missing))
+        changed = _overlay_tree(root, BASE_DIR)
+        files = set()
+        for dirpath, dirnames, filenames in os.walk(root):
+            dirnames[:] = [d for d in dirnames if d not in _OVERLAY_SKIP]
+            for filename in filenames:
+                rel = os.path.relpath(os.path.join(dirpath, filename), root)
+                files.add(rel.replace('\\', '/'))
+        commit = ''
+        try:
+            refs, _ = _remote_refs(repo, heads=True)
+            commit = refs.get(branch, '')
+        except Exception:
+            commit = ''
+        return commit, files, changed
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def check_for_update(repo_url=None, branch=None):
     """بررسی نسخهٔ GitHub بدون تغییر کد یا دیتابیس (برای دکمهٔ «بررسی»)."""
     repo = _validate_repo_url(repo_url or _git_remote())
@@ -541,18 +872,26 @@ def check_for_update(repo_url=None, branch=None):
     remote_commit = refs.get(chosen, '')
     if not remote_commit:
         raise UpdateError('شاخهٔ «{}» در مخزن پیدا نشد.'.format(chosen))
-    local_commit = _current_commit('HEAD')
+    local_commit = _local_version()
+    available = bool(remote_commit and remote_commit != local_commit)
+    if not local_commit:
+        msg = 'نسخهٔ محلی ثبت نشده (نصب ZIP). نسخهٔ مخزن آمادهٔ نصب است.'
+        available = True
+    elif available:
+        msg = 'نسخهٔ جدید موجود است.'
+    else:
+        msg = 'کد سایت با آخرین نسخهٔ مخزن یکسان است.'
     return {
         'ok': True,
-        'available': bool(remote_commit and remote_commit != local_commit),
+        'available': available,
         'branch': chosen,
         'local_commit': local_commit,
         'remote_commit': remote_commit,
         'local_short': local_commit[:10] if local_commit else '',
         'remote_short': remote_commit[:10],
         'repo': _display_repo(repo),
-        'msg': ('نسخهٔ جدید موجود است.' if remote_commit != local_commit
-                else 'کد سایت با آخرین نسخهٔ مخزن یکسان است.'),
+        'git_worktree': _is_git_worktree(),
+        'msg': msg,
     }
 
 
@@ -564,26 +903,52 @@ def _perform_update(repo, branch=None):
     """اجرای synchronous عملیات؛ هم Thread وب و هم cron/CLI از همین استفاده می‌کنند."""
     repo = _validate_repo_url(repo)
     old_commit = _current_commit('HEAD')
-    if not old_commit:
-        raise UpdateError('این پوشه یک مخزن Git معتبر نیست.')
-
+    old_requirements = _read_local_requirements()
     preserved = _preserve_local_files()
-    backup_ref = 'refs/academy-update-backup/{}'.format(int(time.time()))
-    _run(['git', 'update-ref', backup_ref, old_commit])
+    backup_ref = ''
+    if old_commit:
+        backup_ref = 'refs/academy-update-backup/{}'.format(int(time.time()))
+        _git(['update-ref', backup_ref, old_commit], timeout=15)
 
     _set_step(1, 'اتصال به GitHub و دریافت آخرین نسخه...')
     chosen = _select_branch(repo, branch)
-    target_ref, target_commit = _fetch_target(repo, chosen)
-    files = _verify_target(target_ref)
-    changed = _changed_files(old_commit, target_ref)
 
-    _set_step(2, 'جایگزینی فایل‌های برنامه با نسخهٔ تاییدشده...')
-    code, out = _run(['git', 'reset', '--hard', target_ref])
-    if code != 0:
-        raise UpdateError('جایگزینی کدها شکست خورد: ' + _redact_text(out[-400:], repo))
+    method = 'git'
+    files = set()
+    changed = []
+    target_commit = ''
+    git_error = None
+    try:
+        if not _ensure_local_git():
+            raise UpdateError('دستور git روی این هاست در دسترس نیست.')
+        target_ref, target_commit = _fetch_target(repo, chosen)
+        files = _verify_target(target_ref)
+        changed = _changed_files(old_commit, target_ref)
+        _set_step(2, 'جایگزینی فایل‌های برنامه با نسخهٔ تاییدشده...')
+        code, out = _git(['reset', '--hard', target_ref], timeout=120)
+        if code != 0:
+            raise UpdateError('جایگزینی کدها شکست خورد: ' + _redact_text(out[-400:], repo))
+    except Exception as exc:
+        git_error = exc
+        if not _parse_github(repo):
+            if isinstance(exc, UpdateError):
+                raise
+            raise UpdateError(str(exc)) from exc
+        _set_step(2, 'دریافت آرشیو GitHub و جایگزینی کدها (بدون مخزن محلی)...')
+        try:
+            target_commit, files, changed = _apply_github_archive(repo, chosen)
+        except Exception as archive_exc:
+            git_msg = _redact_text(str(git_error), repo)[:280]
+            arch_msg = _redact_text(str(archive_exc), repo)[:280]
+            raise UpdateError(
+                'بروزرسانی شکست خورد. گیت: {} | آرشیو: {}'.format(git_msg, arch_msg)
+            ) from archive_exc
+        method = 'archive'
     _restore_local_files(preserved)
+    _write_applied_commit(target_commit)
 
-    dependency_msg = _install_changed_dependencies(old_commit)
+    dependency_msg = _install_changed_dependencies(
+        old_commit, old_requirements=old_requirements)
 
     _set_step(3, 'اجرای مایگریشن ساختار و داده‌های دیتابیس...')
     migration_msg = _run_fresh_migration()
@@ -682,7 +1047,8 @@ def start_update(repo=None, branch=None):
                          branch=result.get('branch'), old_commit=result.get('old_commit'),
                          new_commit=result.get('new_commit'),
                          changed_count=result.get('changed_count', 0),
-                         dependencies=result.get('dependencies', ''))
+                         dependencies=result.get('dependencies', ''),
+                         method=result.get('method', ''))
             if result.get('restart_requested'):
                 _touch_restart()
         except Exception as exc:

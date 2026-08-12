@@ -12,6 +12,7 @@ instance/.installed
 instance/.install_progress.json
 instance/.update_progress.json
 instance/update_history.json
+instance/.update_commit
 
 # ── لاگ‌ها ──
 logs/

@@ -535,6 +535,312 @@ def env_db_url():
     return os.environ.get('DATABASE_URL', '')
 
 
+def sqlite_file_path():
+    return os.path.join(INSTANCE_DIR, 'academy.db')
+
+
+def _mask_db_url(url):
+    url = str(url or '')
+    if '@' in url and ':' in url.split('@')[0]:
+        head, tail = url.split('@', 1)
+        user = head.rsplit(':', 1)[0]
+        return user + ':***@' + tail
+    return url
+
+
+def _open_engine(db_url):
+    url = resolve_url(db_url)
+    if str(url).startswith('mysql'):
+        return _get_engine(url)
+    from sqlalchemy import create_engine
+    return create_engine(url)
+
+
+def _table_count(eng, table):
+    from sqlalchemy import text
+    try:
+        with eng.connect() as conn:
+            return int(conn.execute(text('SELECT COUNT(*) FROM {}'.format(table))).scalar() or 0)
+    except Exception:
+        return 0
+
+
+def _setting_from_engine(eng, key):
+    from sqlalchemy import text
+    try:
+        with eng.connect() as conn:
+            row = conn.execute(
+                text('SELECT value FROM settings WHERE `key` = :k'),
+                {'k': key},
+            ).first()
+            if row is None:
+                row = conn.execute(
+                    text('SELECT value FROM settings WHERE key = :k'),
+                    {'k': key},
+                ).first()
+            return (row[0] if row else '') or ''
+    except Exception:
+        return ''
+
+
+def detect_local_data():
+    """تشخیص فایل SQLite آپلودشده، .env و پیشوند رایج سی‌پنل."""
+    path = sqlite_file_path()
+    info = {
+        'sqlite_exists': os.path.exists(path),
+        'sqlite_path': path,
+        'sqlite_size': 0,
+        'sqlite_users': 0,
+        'sqlite_courses': 0,
+        'sqlite_site_name': '',
+        'sqlite_has_data': False,
+        'env_exists': os.path.exists(os.path.join(BASE_DIR, '.env')),
+        'env_db': _mask_db_url(env_db_url()),
+        'installed': is_installed(),
+        'cpanel_user': '',
+        'cpanel_db_hint': '',
+    }
+    if info['sqlite_exists']:
+        try:
+            info['sqlite_size'] = os.path.getsize(path)
+        except OSError:
+            info['sqlite_size'] = 0
+        try:
+            from sqlalchemy import create_engine
+            eng = create_engine('sqlite:///' + path)
+            info['sqlite_users'] = _table_count(eng, 'users')
+            info['sqlite_courses'] = _table_count(eng, 'courses')
+            info['sqlite_site_name'] = _setting_from_engine(eng, 'site_name')
+            info['sqlite_has_data'] = info['sqlite_users'] > 0 or info['sqlite_courses'] > 0
+            eng.dispose()
+        except Exception:
+            pass
+    home = os.environ.get('HOME') or ''
+    if home.rstrip('/').count('/') >= 2 and os.path.basename(home.rstrip('/')):
+        user = os.path.basename(home.rstrip('/'))
+        if user and user not in ('.', '..'):
+            info['cpanel_user'] = user
+            info['cpanel_db_hint'] = user + '_academy'
+    return info
+
+
+def inspect_database(db_url):
+    """اتصال و خواندن خلاصهٔ داده — بدون تغییر چیزی."""
+    url = resolve_url(db_url)
+    kind = 'mysql' if str(url).startswith('mysql') else 'sqlite'
+    try:
+        eng = _open_engine(db_url)
+        from sqlalchemy import inspect as sa_inspect
+        with eng.connect():
+            pass
+        names = set(sa_inspect(eng).get_table_names())
+        core = ('settings', 'users', 'courses', 'pages')
+        missing = [t for t in core if t not in names]
+        users = _table_count(eng, 'users') if 'users' in names else 0
+        courses = _table_count(eng, 'courses') if 'courses' in names else 0
+        site_name = _setting_from_engine(eng, 'site_name') if 'settings' in names else ''
+        has_data = users > 0 or courses > 0 or bool(site_name)
+        eng.dispose()
+        if missing and not has_data:
+            msg = 'اتصال برقرار است؛ دیتابیس خالی یا ناقص است (جدول‌های جاافتاده: {}).'.format(
+                '، '.join(missing))
+        elif has_data:
+            msg = 'داده پیدا شد ✅ — {} کاربر، {} دوره{}.'.format(
+                users, courses,
+                ('، سایت «{}»'.format(site_name) if site_name else ''))
+        else:
+            msg = 'اتصال برقرار است؛ جدول هست ولی هنوز دادهٔ کاربری نیست.'
+        return {
+            'ok': True,
+            'msg': msg,
+            'kind': kind,
+            'tables': len(names),
+            'missing_core': missing,
+            'users': users,
+            'courses': courses,
+            'site_name': site_name,
+            'has_data': has_data,
+            'empty': not has_data,
+        }
+    except Exception as exc:
+        return {
+            'ok': False,
+            'msg': 'خطای اتصال: ' + _friendly_db_error(exc, url),
+            'kind': kind,
+            'tables': 0,
+            'missing_core': ['settings', 'users', 'courses', 'pages'],
+            'users': 0,
+            'courses': 0,
+            'site_name': '',
+            'has_data': False,
+            'empty': True,
+        }
+
+
+def copy_sqlite_into(db_url):
+    """کپی امن SQLite آپلودشده به مقصد؛ جدول پر را بازنویسی نمی‌کند."""
+    src_path = sqlite_file_path()
+    if not os.path.exists(src_path):
+        return False, 'فایل instance/academy.db پیدا نشد.'
+    dest_url = resolve_url(db_url)
+    if dest_url.startswith('sqlite') and os.path.abspath(
+            dest_url.replace('sqlite:///', '', 1)) == os.path.abspath(src_path):
+        return True, 'مقصد همان فایل SQLite آپلودشده است؛ کپی لازم نیست.'
+    import sqlite3
+    from sqlalchemy import inspect as sa_inspect, text, insert
+    from models import db as _db
+
+    src = sqlite3.connect(src_path)
+    dst = _open_engine(db_url)
+    copied = 0
+    skipped = 0
+    try:
+        _create_tables_resilient(dst)
+        insp = sa_inspect(dst)
+        dest_tables = set(insp.get_table_names())
+        for table in _db.metadata.sorted_tables:
+            name = table.name
+            if name not in dest_tables:
+                continue
+            dest_cols = {c['name'] for c in insp.get_columns(name)}
+            if _table_count(dst, name) > 0:
+                skipped += 1
+                continue
+            src_cols = [row[1] for row in src.execute('PRAGMA table_info("%s")' % name)]
+            cols = [c for c in src_cols if c in dest_cols]
+            if not cols:
+                continue
+            quoted = ','.join('"%s"' % c for c in cols)
+            rows = src.execute('SELECT %s FROM "%s"' % (quoted, name)).fetchall()
+            if not rows:
+                continue
+            batch = [dict(zip(cols, row)) for row in rows]
+            with dst.begin() as conn:
+                try:
+                    conn.execute(text('SET FOREIGN_KEY_CHECKS=0'))
+                except Exception:
+                    pass
+                for start in range(0, len(batch), 200):
+                    conn.execute(insert(table), batch[start:start + 200])
+                try:
+                    conn.execute(text('SET FOREIGN_KEY_CHECKS=1'))
+                except Exception:
+                    pass
+            copied += len(batch)
+        return True, '{} ردیف از SQLite کپی شد؛ {} جدول مقصد از قبل داده داشت و دست نخورد.'.format(
+            copied, skipped)
+    except Exception as exc:
+        return False, 'کپی داده شکست خورد: ' + str(exc)[:240]
+    finally:
+        try:
+            src.close()
+        except Exception:
+            pass
+        try:
+            dst.dispose()
+        except Exception:
+            pass
+
+
+def attach_existing_database(db_url, copy_from_sqlite=False):
+    """وصل کردن دیتابیس موجود: داده پاک نمی‌شود؛ فقط .env و جدول‌های جاافتاده."""
+    url = resolve_url(db_url)
+    if str(url).startswith('mysql'):
+        try:
+            import pymysql  # noqa: F401
+        except ImportError:
+            return False, ('ماژول PyMySQL نصب نیست. در ترمینال هاست: '
+                           './venv/bin/pip install PyMySQL')
+        ensure_mysql_db(url)
+
+    report = inspect_database(db_url)
+    if not report['ok']:
+        return False, report['msg']
+
+    copy_msg = ''
+    if copy_from_sqlite:
+        local = detect_local_data()
+        if not local['sqlite_has_data']:
+            return False, 'فایل SQLite آپلودشده دادهٔ قابل‌کپی ندارد.'
+        if report['has_data']:
+            return False, (
+                'دیتابیس مقصد از قبل داده دارد؛ برای جلوگیری از قاطی‌شدن، کپی انجام نشد. '
+                'فقط «وصل کردن بدون کپی» را بزنید.'
+            )
+        ok_copy, copy_msg = copy_sqlite_into(db_url)
+        if not ok_copy:
+            return False, copy_msg
+        report = inspect_database(db_url)
+
+    try:
+        eng = _open_engine(db_url)
+        _create_tables_resilient(eng)
+        eng.dispose()
+    except Exception as exc:
+        return False, 'ساخت جدول‌های جاافتاده شکست خورد: ' + str(exc)[:220]
+
+    secret = secrets.token_hex(32)
+    write_env_file('' if not str(url).startswith('mysql') else url, secret)
+    try:
+        os.environ['DATABASE_URL'] = url if str(url).startswith('mysql') else ''
+    except Exception:
+        pass
+
+    # سوئیچ زندهٔ engine — مثل نصب؛ شکست آن فقط ری‌استارت می‌خواهد.
+    try:
+        from flask import current_app
+        from models import db as _db
+        app = current_app._get_current_object()
+        new_uri = url
+        from sqlalchemy import create_engine as _ce
+        opts = dict(app.config.get('SQLALCHEMY_ENGINE_OPTIONS') or {})
+        opts.setdefault('pool_pre_ping', True)
+        if str(url).startswith('mysql'):
+            opts.setdefault('pool_recycle', 280)
+            mode = _best_conn_cache.get(url)
+            if isinstance(mode, tuple) and 'unix_socket=' not in new_uri:
+                new_uri += ('&' if '?' in new_uri else '?') + 'unix_socket=' + mode[1]
+        new_engine = _ce(new_uri, **opts)
+        with new_engine.connect():
+            pass
+        app.config['SQLALCHEMY_DATABASE_URI'] = new_uri
+        engines = _db._app_engines.get(app)
+        if engines is not None:
+            old = list(engines.values())
+            engines[None] = new_engine
+            for old_eng in old:
+                try:
+                    old_eng.dispose()
+                except Exception:
+                    pass
+        else:
+            try:
+                new_engine.dispose()
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+    if int(report.get('users') or 0) < 1:
+        parts = [report['msg'],
+                 'اتصال در .env ذخیره شد اما هنوز کاربری نیست.',
+                 'نصب کامل را ادامه دهید تا حساب مدیر ساخته شود — داده پاک نمی‌شود.']
+        if copy_msg:
+            parts.insert(1, copy_msg)
+        return True, ' '.join(parts)
+    mark_installed({
+        'db': 'mysql' if str(url).startswith('mysql') else 'sqlite',
+        'source': 'attach',
+        'site': report.get('site_name') or 'آکادمی آنلاین',
+        'users': report.get('users', 0),
+    })
+    parts = [report['msg'], 'سایت از همین دیتابیس می‌خواند.']
+    if copy_msg:
+        parts.append(copy_msg)
+    parts.append('اگر صفحه قدیمی ماند، در سی‌پنل Setup Python App → Restart بزنید.')
+    return True, ' '.join(parts)
+
+
 def _is_conn_lost(exc):
     """آیا خطا از نوع قطعی اتصال است؟ (2013 / 2006 / server has gone away)"""
     s = str(exc)

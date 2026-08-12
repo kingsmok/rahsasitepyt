@@ -63,6 +63,44 @@ def test_request_install_resumes_without_background_thread(tmp_path, monkeypatch
     engine.dispose()
 
 
+def test_inspect_and_attach_existing_sqlite(tmp_path, monkeypatch):
+    """دیتابیس آپلودشده تشخیص داده شود و بدون پاک‌شدن وصل گردد."""
+    monkeypatch.setattr(installer, 'INSTANCE_DIR', str(tmp_path))
+    monkeypatch.setattr(installer, 'MARKER', str(tmp_path / '.installed'))
+    env_path = tmp_path / '.env'
+    monkeypatch.setattr(installer, 'write_env_file',
+                        lambda *_a, **_k: env_path.write_text('SECRET_KEY=x\n') or str(env_path))
+
+    empty = installer.detect_local_data()
+    assert empty['sqlite_exists'] is False
+    assert empty['sqlite_has_data'] is False
+
+    db_path = tmp_path / 'academy.db'
+    engine = create_engine('sqlite:///' + str(db_path))
+    with engine.begin() as conn:
+        conn.execute(text('CREATE TABLE users (id INTEGER PRIMARY KEY, email TEXT, role TEXT)'))
+        conn.execute(text('CREATE TABLE courses (id INTEGER PRIMARY KEY, title TEXT)'))
+        conn.execute(text('CREATE TABLE settings (`key` TEXT, value TEXT)'))
+        conn.execute(text("INSERT INTO users (email, role) VALUES ('a@b.ir', 'super_admin')"))
+        conn.execute(text("INSERT INTO settings (`key`, value) VALUES ('site_name', 'آکادمی من')"))
+    engine.dispose()
+
+    local = installer.detect_local_data()
+    assert local['sqlite_has_data'] is True
+    assert local['sqlite_users'] == 1
+    assert local['sqlite_site_name'] == 'آکادمی من'
+
+    report = installer.inspect_database('sqlite:///' + str(db_path))
+    assert report['ok'] is True
+    assert report['has_data'] is True
+    assert report['users'] == 1
+
+    ok, msg = installer.attach_existing_database('sqlite:///' + str(db_path))
+    assert ok is True
+    assert 'پیدا شد' in msg or 'می‌خواند' in msg
+    assert (tmp_path / '.installed').exists()
+
+
 def test_mysql_table_options_utf8mb4():
     """بررسی اینکه تمام جدول‌ها مشخصات utf8mb4 و InnoDB مای‌اسکیول را دارند."""
     from models import db

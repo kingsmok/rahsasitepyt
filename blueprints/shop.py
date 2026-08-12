@@ -380,8 +380,8 @@ def card2card(code):
             flash('فیش واریزی شما ثبت شد! پس از تایید توسط پشتیبانی، دوره فعال می‌شود. ⏳', 'success')
             return redirect(url_for('student.orders'))
 
-    card_no = g.settings.get('c2c_card', '6104-3378-0000-0000')
-    card_name = g.settings.get('c2c_name', 'آکادمی آنلاین')
+    card_no = (g.settings.get('c2c_card') or '').strip()
+    card_name = (g.settings.get('c2c_name') or g.settings.get('site_name') or '').strip()
     return render_template('pay/card2card.html', order=order, card_no=card_no,
                            card_name=card_name, existing=existing)
 
@@ -390,7 +390,9 @@ def card2card(code):
 def bank(code):
     """شبیه‌ساز درگاه بانکی برای تست — فقط در حالت sandbox_mode=1 قابل استفاده است"""
     from gateways import GATEWAY_MAP
-    order = Order.query.filter_by(code=code).first_or_404()
+    if not g.user:
+        return redirect(url_for('auth.login'))
+    order = Order.query.filter_by(code=code, user_id=g.user.id).first_or_404()
     gw = request.args.get('gw') or order.gateway or 'sandbox'
     if order.status == 'paid':
         return redirect(url_for('shop.pay_result', code=code, status='success'))
@@ -547,7 +549,11 @@ def _mark_paid(order, ref, detail):
 
 @shop_bp.route('/pay/result/<code>')
 def pay_result(code):
+    if not g.user:
+        return redirect(url_for('auth.login'))
     order = Order.query.filter_by(code=code).first_or_404()
+    if order.user_id != g.user.id and not getattr(g.user, 'is_admin', False):
+        abort(403)
     status = request.args.get('status', '')
     # استعلام خودکار: اگر وضعیت «نامشخص» است ولی پرداخت واقعاً انجام شده
     if status in ('', 'unknown') and order.status == 'paid':

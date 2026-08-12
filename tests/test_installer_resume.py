@@ -101,6 +101,79 @@ def test_inspect_and_attach_existing_sqlite(tmp_path, monkeypatch):
     assert (tmp_path / '.installed').exists()
 
 
+def test_wizard_template_is_valid_utf8():
+    """رگرسیون ارور نصب: codec can't decode byte 0xb1 in wizard.html"""
+    from pathlib import Path
+    path = Path(__file__).resolve().parents[1] / 'templates' / 'install' / 'wizard.html'
+    raw = path.read_bytes()
+    text = raw.decode('utf-8')  # نباید UnicodeDecodeError بدهد
+    assert text.count('</html>') == 1
+    assert text.count('</body>') == 1
+    assert 'id="attach-box"' in text
+    assert 'function inspectDb' in text
+    assert 'function loadLocalDetect' in text
+    assert 'checkHealth();' in text
+    assert '\x00' not in text
+
+
+def test_source_text_files_are_valid_utf8():
+    """قالب‌ها و سورس‌ها باید UTF-8 خالص باشند تا Jinja/نصب‌کننده کرش نکنند."""
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[1]
+    skip_dirs = {'.git', 'node_modules', '__pycache__', '.venv', 'venv', 'instance', 'logs'}
+    exts = {'.html', '.js', '.css', '.py', '.md', '.json', '.txt', '.svg'}
+    bad = []
+    for path in root.rglob('*'):
+        if not path.is_file() or path.suffix.lower() not in exts:
+            continue
+        if any(part in skip_dirs for part in path.parts):
+            continue
+        try:
+            path.read_bytes().decode('utf-8')
+        except UnicodeDecodeError as exc:
+            bad.append('%s: %s' % (path.relative_to(root), exc))
+    assert not bad, 'فایل غیر UTF-8:\n' + '\n'.join(bad)
+
+
+def test_install_wizard_page_renders(client, monkeypatch):
+    """GET /install باید HTML بدهد، نه JSON خطای utf-8 codec."""
+    import installer as inst
+    monkeypatch.setattr(inst, 'is_installed', lambda: False)
+    r = client.get('/install')
+    assert r.status_code == 200
+    html = r.get_data(as_text=True)
+    assert 'utf-8' not in html.lower() or 'charset' in html.lower()
+    assert 'codec can' not in html
+    assert 'نصب' in html
+    assert 'attach-box' in html
+    assert 'btn-install' in html
+    assert html.count('</html>') == 1
+
+
+def test_install_detect_and_inspect_endpoints(client):
+    """مسیرهای تشخیص/بررسی نباید به‌خاطر import جاافتاده ۵۰۰ بدهند."""
+    r = client.get('/install/detect')
+    assert r.status_code == 200
+    data = r.get_json()
+    assert data['ok'] is True
+    assert 'sqlite_exists' in data
+
+    r = client.post('/install/inspect-db', json={'db_type': 'sqlite'})
+    assert r.status_code == 200
+    data = r.get_json()
+    assert 'ok' in data
+    assert 'msg' in data
+
+
+def test_read_text_file_tolerates_windows_bytes(tmp_path):
+    """فایل .env ویندوزی نباید نصب را با UnicodeDecodeError بترکاند."""
+    p = tmp_path / 'env-win'
+    p.write_bytes(b'SECRET_KEY=abc\nNOTE=\xb1plus\n')
+    text = installer._read_text_file(str(p))
+    assert 'SECRET_KEY=abc' in text
+    assert 'NOTE=' in text
+
+
 def test_mysql_table_options_utf8mb4():
     """بررسی اینکه تمام جدول‌ها مشخصات utf8mb4 و InnoDB مای‌اسکیول را دارند."""
     from models import db

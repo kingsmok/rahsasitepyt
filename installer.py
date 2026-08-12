@@ -239,13 +239,27 @@ def _persisted_db_url(db_url):
     return db_url
 
 
+def _read_text_file(path):
+    """خواندن متن با تحمل انکودینگ خراب (ویندوز/هاست) — هرگز UnicodeDecodeError نمی‌دهد."""
+    with open(path, 'rb') as fh:
+        raw = fh.read()
+    if raw.startswith(b'\xef\xbb\xbf'):
+        raw = raw[3:]
+    for enc in ('utf-8', 'utf-8-sig', 'cp1256', 'cp1252', 'latin-1'):
+        try:
+            return raw.decode(enc)
+        except UnicodeDecodeError:
+            continue
+    return raw.decode('utf-8', errors='replace')
+
+
 def write_env_file(db_url, secret_key):
     """به‌روزرسانی .env — حفظ کلیدهای موجود + افزودن دیتابیس/کلید"""
     db_url = _persisted_db_url(db_url)
     env_path = os.path.join(BASE_DIR, '.env')
     lines = {}
     if os.path.exists(env_path):
-        for ln in open(env_path, encoding='utf-8'):
+        for ln in _read_text_file(env_path).splitlines():
             ln = ln.strip()
             if ln and not ln.startswith('#') and '=' in ln:
                 k, v = ln.split('=', 1)
@@ -1002,8 +1016,7 @@ def _save_state():
 
 def _load_state_file():
     try:
-        with open(_INSTALL_STATE_FILE, encoding='utf-8') as f:
-            return json.load(f)
+        return json.loads(_read_text_file(_INSTALL_STATE_FILE))
     except Exception:
         return None
 

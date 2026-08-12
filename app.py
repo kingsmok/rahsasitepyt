@@ -19,6 +19,7 @@ try:
 except Exception:
     pass
 
+import hmac
 from flask import Flask, g, request, session, redirect, url_for, abort, render_template
 from models import utcnow, db, User, Setting, Category, Order, NewsletterEmail
 from jdates import (fa, fa_num, money, MONTHS, slugify, jdate, jdatetime, jdate_num, jtime,
@@ -612,6 +613,14 @@ def create_app():
         # HSTS — فقط روی HTTPS فعال می‌شود
         if request.is_secure:
             resp.headers.setdefault('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
+        # صفحات پرداخت/حساب هرگز ایندکس نشوند — ایندکس شبیه‌ساز پرداخت
+        # توسط Google Safe Browsing به‌عنوان «Dangerous site» فلگ می‌شود.
+        _np = request.path or ''
+        if (_np.startswith('/pay') or _np.startswith('/checkout') or
+                _np.startswith('/cart') or _np.startswith('/dashboard') or
+                _np.startswith('/auth') or _np.startswith('/install') or
+                _np.startswith('/wallet') or _np.startswith('/admin')):
+            resp.headers['X-Robots-Tag'] = 'noindex, nofollow, noarchive'
         # کش هوشمند: استاتیک ۷ روز، HTML بدون کش
         if request.path.startswith('/static/'):
             resp.headers['Cache-Control'] = 'public, max-age=604800, immutable'
@@ -744,7 +753,8 @@ def create_app():
                 not request.path.startswith('/install') and \
                 request.path != '/admin/update/webhook':
             token = request.form.get('_csrf_token') or request.headers.get('X-CSRF-Token')
-            if not token or token != session.get('_csrf_token'):
+            expected = session.get('_csrf_token') or ''
+            if not token or not expected or not hmac.compare_digest(str(token), str(expected)):
                 abort(400, description='توکن CSRF نامعتبر است. صفحه را رفرش کنید.')
 
     # ---------- GET روی مسیرهای POST-only → ریدایرکت به جای 405 ----------
@@ -972,6 +982,12 @@ def create_app():
                             RedirectRule.query.filter_by(is_active=True).all()]
                 for _src, _tgt, _code in _ttl_cache('redirect_rules', 60, _get_rules):
                     if _src == request.path:
+                        # فقط مسیر نسبی داخلی — ریدایرکت خارجی = فیشینگ/Safe Browsing
+                        _tgt = str(_tgt or '').strip()
+                        if not _tgt.startswith('/') or _tgt.startswith('//') or '\\' in _tgt:
+                            continue
+                        if any(ch in _tgt for ch in ('\r', '\n', '\x00')):
+                            continue
                         return redirect(_tgt, code=_code)
             except Exception:
                 _lexc('app.py')

@@ -401,6 +401,9 @@ def _parse_github(url):
 
 
 def _http_json(url, token='', timeout=30):
+    """دریافت JSON از API گیت‌هاب با خطایابی بهتر."""
+    import errno
+    import socket
     req = urllib.request.Request(url, headers={
         'User-Agent': 'rahsasitepyt-updater',
         'Accept': 'application/vnd.github+json',
@@ -412,8 +415,31 @@ def _http_json(url, token='', timeout=30):
             raw = resp.read().decode('utf-8', 'replace')
         data = json.loads(raw)
         return data
-    except Exception:
-        return None
+    except urllib.error.HTTPError as e:
+        if e.code == 403:
+            raise UpdateError('محدودیت نرخ درخواست GitHub (Rate Limit). لطفاً کمی صبر کنید یا از Token احراز هویت استفاده کنید.')
+        elif e.code == 404:
+            raise UpdateError('مخزن یا شاخه در GitHub پیدا نشد (404). آدرس مخزن را بررسی کنید.')
+        elif e.code == 401:
+            raise UpdateError('احراز هویت GitHub ناموفق بود. لطفاً Token را بررسی کنید.')
+        else:
+            raise UpdateError('خطای HTTP ' + str(e.code) + ' از GitHub: ' + str(e.reason))
+    except urllib.error.URLError as e:
+        reason = str(e.reason)
+        if 'timed out' in reason.lower():
+            raise UpdateError('زمان اتصال به GitHub تمام شد. اتصال اینترنت را بررسی کنید.')
+        elif 'Name or service not known' in reason or 'No address associated' in reason:
+            raise UpdateError('DNS خطا: امکان اتصال به github.com نیست. نام دامنه حل نمی‌شود.')
+        elif 'Connection refused' in reason:
+            raise UpdateError('اتصال به GitHub رد شد. ممکن است فایروال یا پروکسی مسدود کرده باشد.')
+        elif 'Connection timed out' in reason:
+            raise UpdateError('زمان اتصال به GitHub تمام شد. سرور به اینترنت دسترسی محدود دارد.')
+        else:
+            raise UpdateError('خطا در اتصال به GitHub: ' + reason[:200])
+    except socket.timeout:
+        raise UpdateError('زمان اتصال به GitHub تمام شد. لطفاً دوباره تلاش کنید.')
+    except Exception as e:
+        raise UpdateError('خطا در اتصال به GitHub: ' + str(e)[:200])
 
 
 def _github_heads(repo_url):
@@ -452,6 +478,7 @@ def _github_default_branch(repo_url):
 
 
 def _remote_refs(repo, heads=False):
+    """دریافت لیست شاخه‌ها از مخزن ریموت."""
     args = ['ls-remote']
     if heads:
         args.append('--heads')
@@ -465,12 +492,21 @@ def _remote_refs(repo, heads=False):
                 refs[bits[1][len('refs/heads/'):]] = bits[0]
         if refs:
             return refs, out
-    gh = _github_heads(repo)
-    if gh:
-        return gh, out
+    # اگر git ls-remote کار نکرد، از API گیت‌هاب استفاده می‌کنیم
+    try:
+        gh = _github_heads(repo)
+        if gh:
+            return gh, out
+    except UpdateError:
+        pass  # خطا در ادامه هندل می‌شود
     if code != 0:
-        raise UpdateError('اتصال به مخزن گیت شکست خورد: ' +
-                          _redact_text(out[-300:], repo))
+        error_msg = out.strip() if out else 'خروجی خالی'
+        if 'Authentication' in error_msg or 'permission denied' in error_msg.lower():
+            raise UpdateError('دسترسی به مخزن گیت ممکن نیست. برای مخزن خصوصی از SSH Key یا Token استفاده کنید.')
+        elif 'Could not read from remote repository' in error_msg:
+            raise UpdateError('مخزن گیت قابل خواندن نیست. آدرس مخزن را بررسی کنید.')
+        else:
+            raise UpdateError('خطا در اتصال به مخزن گیت: ' + _redact_text(error_msg[-300:], repo))
     return refs, out
 
 

@@ -754,8 +754,10 @@ def create_app():
                 request.path != '/admin/update/webhook':
             token = request.form.get('_csrf_token') or request.headers.get('X-CSRF-Token')
             expected = session.get('_csrf_token') or ''
-            if not token or not expected or not hmac.compare_digest(str(token), str(expected)):
-                abort(400, description='توکن CSRF نامعتبر است. صفحه را رفرش کنید.')
+            if not token:
+                abort(400, description='توکن امنیتی (CSRF) ارسال نشده است. لطفاً صفحه را رفرش کنید و دوباره تلاش کنید.')
+            if not expected or not hmac.compare_digest(str(token), str(expected)):
+                abort(400, description='توکن امنیتی (CSRF) نامعتبر یا منقضی شده است. لطفاً صفحه را رفرش کنید.')
 
     # ---------- GET روی مسیرهای POST-only → ریدایرکت به جای 405 ----------
     @app.errorhandler(400)

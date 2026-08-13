@@ -27,6 +27,9 @@
 </div>
 {% else %}
 
+<!-- CSRF Token - Global for AJAX requests -->
+<input type="hidden" id="global-csrf-token" value="{{ csrf_token }}">
+
 <div class="card" style="padding:20px;margin-bottom:16px">
   <h3>🌐 مخزن گیت</h3>
   <p class="text-3" style="font-size:12.5px;margin:6px 0 12px">
@@ -81,95 +84,264 @@
 </div>
 
 <script>
-function umsg(ok, text){
+// Utility functions
+function getCsrfToken() {
+  var token = document.getElementById('global-csrf-token');
+  if (token && token.value) return token.value;
+  // Fallback to any element with name=_csrf_token
+  var el = document.querySelector('[name=_csrf_token]');
+  return el ? el.value : '';
+}
+
+function showMessage(ok, text) {
   var m = document.getElementById('upd-msg');
+  if (!m) return;
   m.className = 'msg ' + (ok ? 'ok' : 'err');
   m.style.display = 'block';
   m.textContent = text;
 }
-function parseResp(r){
-  return r.text().then(function(t){
-    try { return {ok: r.ok, d: JSON.parse(t)}; }
-    catch(e){ return {ok: false, d: {ok: false, msg: 'پاسخ نامعتبر (کد ' + r.status + ')'}}; }
-  });
+
+function showCheckMessage(text) {
+  var el = document.getElementById('upd-check');
+  if (el) el.textContent = text;
 }
-function setStep(n){
-  for (var i=1; i<=4; i++){
+
+function showLogMessage(text) {
+  var el = document.getElementById('upd-log');
+  if (el) el.textContent = text;
+}
+
+function setStep(n) {
+  for (var i = 1; i <= 4; i++) {
     var el = document.getElementById('us-' + i);
-    el.textContent = (i < n) ? '✅' : (i === n ? '⏳' : '');
+    if (el) el.textContent = (i < n) ? '✅' : (i === n ? '⏳' : '');
   }
 }
-function checkUpdate(){
-  var b = document.getElementById('btn-check');
-  b.disabled = true;
-  document.getElementById('upd-check').textContent = 'در حال بررسی آخرین commit...';
-  fetch('/admin/update/check').then(parseResp).then(function(res){
-    var d = res.d || {};
-    if (d.ok){
-      document.getElementById('upd-check').textContent = d.msg +
-        ' شاخه: ' + (d.branch || '—') + ' | نسخه فعلی: ' + (d.local_short || '—') +
-        ' | نسخه مخزن: ' + (d.remote_short || '—');
-      umsg(true, d.available ? 'نسخهٔ جدید برای نصب آماده است.' : 'نسخهٔ سایت به‌روز است.');
-    } else {
-      document.getElementById('upd-check').textContent = 'بررسی مخزن ناموفق بود.';
-      umsg(false, d.msg || 'خطا در بررسی مخزن');
+
+function setButtonsDisabled(disabled) {
+  var btnCheck = document.getElementById('btn-check');
+  var btnUpdate = document.getElementById('btn-update');
+  if (btnCheck) btnCheck.disabled = disabled;
+  if (btnUpdate) btnUpdate.disabled = disabled;
+}
+
+// Parse JSON response with better error handling
+function parseResponse(r) {
+  return r.text().then(function(text) {
+    // Check if response is empty
+    if (!text || text.trim() === '') {
+      return {
+        ok: false,
+        status: r.status,
+        d: {ok: false, msg: 'پاسخ خالی از سرور - لطفاً اتصال اینترنت را بررسی کنید'}
+      };
     }
-    b.disabled = false;
-  }).catch(function(e){
-    b.disabled = false;
-    document.getElementById('upd-check').textContent = 'خطا در بررسی مخزن: ' + e;
+    try {
+      var data = JSON.parse(text);
+      return {ok: r.ok, status: r.status, d: data};
+    } catch (e) {
+      // Return the raw text for debugging
+      return {
+        ok: false,
+        status: r.status,
+        d: {
+          ok: false,
+          msg: 'خطای سرور (کد ' + r.status + '): ' +
+               (text.length > 200 ? text.substring(0, 200) + '...' : text)
+        }
+      };
+    }
+  }).catch(function(e) {
+    return {
+      ok: false,
+      status: 0,
+      d: {ok: false, msg: 'خطا در خواندن پاسخ سرور: ' + e.message}
+    };
   });
 }
-var updTimer = null;
-function pollUpdate(){
-  fetch('/admin/update/status').then(parseResp).then(function(res){
+
+// Check for updates (GET request - no CSRF needed)
+function checkUpdate() {
+  var btn = document.getElementById('btn-check');
+  if (btn) btn.disabled = true;
+  showCheckMessage('در حال بررسی آخرین commit از GitHub...');
+  showMessage(true, '');
+
+  var controller = null;
+  var timeoutId = setTimeout(function() {
+    if (controller) controller.abort();
+  }, 30000); // 30 second timeout
+
+  controller = new AbortController();
+
+  fetch('/admin/update/check', {
+    method: 'GET',
+    credentials: 'same-origin',
+    signal: controller.signal
+  })
+  .then(function(r) {
+    clearTimeout(timeoutId);
+    return parseResponse(r);
+  })
+  .then(function(res) {
     var d = res.d || {};
-    var st = d.status || 'idle', step = d.step || 0;
-    if (st === 'running' || st === 'idle'){
+    if (d.ok) {
+      showCheckMessage(d.msg +
+        ' شاخه: ' + (d.branch || '—') + ' | نسخه فعلی: ' + (d.local_short || '—') +
+        ' | نسخه مخزن: ' + (d.remote_short || '—'));
+      showMessage(true, d.available ? 'نسخهٔ جدید برای نصب آماده است.' : 'نسخهٔ سایت به‌روز است.');
+    } else {
+      showCheckMessage('بررسی مخزن ناموفق بود.');
+      showMessage(false, d.msg || 'خطا در بررسی مخزن GitHub');
+    }
+    setButtonsDisabled(false);
+  })
+  .catch(function(e) {
+    clearTimeout(timeoutId);
+    setButtonsDisabled(false);
+    if (e.name === 'AbortError') {
+      showCheckMessage('زمان بررسی تمام شد - لطفاً دوباره تلاش کنید.');
+      showMessage(false, 'سرور پاسخ نداد. آیا سرور در حال اجراست؟');
+    } else {
+      showCheckMessage('خطا در بررسی مخزن');
+      showMessage(false, 'خطا در اتصال به سرور: ' + e.message);
+    }
+  });
+}
+
+// Polling for update status
+var updTimer = null;
+function pollUpdate() {
+  var controller = null;
+  var timeoutId = setTimeout(function() {
+    if (controller) controller.abort();
+  }, 15000);
+
+  controller = new AbortController();
+
+  fetch('/admin/update/status', {
+    method: 'GET',
+    credentials: 'same-origin',
+    signal: controller.signal
+  })
+  .then(function(r) {
+    clearTimeout(timeoutId);
+    return parseResponse(r);
+  })
+  .then(function(res) {
+    var d = res.d || {};
+    var st = d.status || 'idle';
+    var step = d.step || 0;
+
+    if (st === 'running' || st === 'idle') {
       setStep(Math.max(1, Math.min(4, step + 1)));
-      document.getElementById('upd-log').textContent = d.msg || 'در حال بروزرسانی...';
+      showLogMessage(d.msg || 'در حال بروزرسانی...');
       updTimer = setTimeout(pollUpdate, 2000);
-    } else if (st === 'done'){
+    } else if (st === 'done') {
       setStep(4);
-      document.getElementById('upd-log').textContent = d.msg || '✅ بروزرسانی کامل شد';
-      var b = document.getElementById('btn-update');
-      b.disabled = false; b.textContent = '🔄 بروزرسانی از گیت';
-      if (updTimer) clearTimeout(updTimer);
+      showLogMessage(d.msg || '✅ بروزرسانی کامل شد');
+      showMessage(true, d.msg || 'بروزرسانی با موفقیت انجام شد!');
+      var btn = document.getElementById('btn-update');
+      if (btn) { btn.disabled = false; btn.textContent = '🔄 بروزرسانی از گیت'; }
+      if (updTimer) { clearTimeout(updTimer); updTimer = null; }
     } else {
       setStep(0);
-      document.getElementById('upd-log').textContent = d.msg || 'خطا در بروزرسانی';
-      var b = document.getElementById('btn-update');
-      b.disabled = false; b.textContent = '🔄 بروزرسانی از گیت';
-      if (updTimer) clearTimeout(updTimer);
+      showLogMessage(d.msg || 'خطا در بروزرسانی');
+      showMessage(false, d.msg || 'بروزرسانی با خطا مواجه شد');
+      var btn = document.getElementById('btn-update');
+      if (btn) { btn.disabled = false; btn.textContent = '🔄 بروزرسانی از گیت'; }
+      if (updTimer) { clearTimeout(updTimer); updTimer = null; }
     }
-  }).catch(function(){
+  })
+  .catch(function(e) {
+    clearTimeout(timeoutId);
+    // Continue polling even on error (transient network issues)
     updTimer = setTimeout(pollUpdate, 3000);
   });
 }
-function runUpdate(){
-  var b = document.getElementById('btn-update');
-  b.disabled = true;
-  b.textContent = '⏳ در حال بروزرسانی...';
+
+// Run update (POST request with CSRF)
+function runUpdate() {
+  var btn = document.getElementById('btn-update');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ در حال بروزرسانی...'; }
   document.getElementById('upd-progress').style.display = 'block';
   setStep(0);
-  document.getElementById('upd-log').textContent = 'در حال ارسال درخواست...';
+  showLogMessage('در حال ارسال درخواست بروزرسانی...');
+  showMessage(true, '');
+
+  var csrfToken = getCsrfToken();
+  if (!csrfToken) {
+    showLogMessage('خطا: توکن امنیتی یافت نشد. لطفاً صفحه را رفرش کنید.');
+    showMessage(false, 'توکن CSRF یافت نشد - صفحه را رفرش کنید و دوباره تلاش کنید.');
+    if (btn) { btn.disabled = false; btn.textContent = '🔄 بروزرسانی از گیت'; }
+    return;
+  }
+
   var fd = new FormData();
-  fd.append('_csrf_token', document.querySelector('[name=_csrf_token]').value);
+  fd.append('_csrf_token', csrfToken);
   var branchInput = document.querySelector('[name=branch]');
-  if (branchInput && branchInput.value) fd.append('branch', branchInput.value);
-  fetch('/admin/update/run', {method: 'POST', body: fd})
-    .then(parseResp)
-    .then(function(res){
-      if (res.d && res.d.ok){
-        document.getElementById('upd-log').textContent = 'بروزرسانی شروع شد — در حال انجام...';
-        updTimer = setTimeout(pollUpdate, 1500);
-      } else {
-        b.disabled = false; b.textContent = '🔄 بروزرسانی از گیت';
-        umsg(false, (res.d && res.d.msg) || 'خطا در شروع بروزرسانی');
-      }
-    })
-    .catch(function(e){ b.disabled = false; b.textContent = '🔄 بروزرسانی از گیت'; umsg(false, 'خطا: ' + e); });
+  if (branchInput && branchInput.value && branchInput.value.trim()) {
+    fd.append('branch', branchInput.value.trim());
+  }
+
+  var controller = null;
+  var timeoutId = setTimeout(function() {
+    if (controller) controller.abort();
+  }, 60000); // 60 second timeout for starting the update
+
+  controller = new AbortController();
+
+  fetch('/admin/update/run', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {
+      'X-CSRF-Token': csrfToken  // Also send as header for redundancy
+    },
+    body: fd,
+    signal: controller.signal
+  })
+  .then(function(r) {
+    clearTimeout(timeoutId);
+    return parseResponse(r);
+  })
+  .then(function(res) {
+    var d = res.d || {};
+
+    // Check for CSRF error specifically
+    if (!res.ok && d.msg && d.msg.indexOf('CSRF') !== -1) {
+      showLogMessage('خطای امنیتی: لطفاً صفحه را رفرش کنید.');
+      showMessage(false, 'خطای CSRF - لطفاً صفحه را رفرش کنید و دوباره تلاش کنید.');
+      if (btn) { btn.disabled = false; btn.textContent = '🔄 بروزرسانی از گیت'; }
+      return;
+    }
+
+    if (d.ok) {
+      showLogMessage('درخواست بروزرسانی پذیرفته شد - در حال انجام عملیات...');
+      // Start polling for progress
+      updTimer = setTimeout(pollUpdate, 1500);
+    } else {
+      showLogMessage(d.msg || 'خطا در شروع بروزرسانی');
+      showMessage(false, d.msg || 'بروزرسانی شروع نشد');
+      if (btn) { btn.disabled = false; btn.textContent = '🔄 بروزرسانی از گیت'; }
+    }
+  })
+  .catch(function(e) {
+    clearTimeout(timeoutId);
+    if (e.name === 'AbortError') {
+      showLogMessage('زمان اتصال تمام شد.');
+      showMessage(false, 'سرور پاسخ نداد. آیا سرور در حال اجراست؟');
+    } else {
+      showLogMessage('خطا در اتصال به سرور');
+      showMessage(false, 'خطا: ' + e.message);
+    }
+    if (btn) { btn.disabled = false; btn.textContent = '🔄 بروزرسانی از گیت'; }
+  });
 }
+
+// Cancel update polling on page leave
+window.addEventListener('beforeunload', function() {
+  if (updTimer) clearTimeout(updTimer);
+});
 </script>
 {% endif %}
 {% endblock %}

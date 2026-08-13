@@ -522,9 +522,23 @@ def update_save_repo():
 @admin_required
 def update_check():
     """بررسی وجود نسخهٔ جدید، بدون reset یا تغییر دیتابیس."""
-    from updater import UpdateError, check_for_update
+    from updater import UpdateError, check_for_update, get_repo_url
+    # بررسی وجود مخزن
+    repo = get_repo_url()
+    if not repo:
+        import subprocess as _sp
+        try:
+            r = _sp.run(['git', 'remote', 'get-url', 'origin'], capture_output=True,
+                        text=True, timeout=10)
+            if r.returncode == 0:
+                repo = r.stdout.strip()
+        except Exception:
+            pass
+    if not repo:
+        return jsonify(ok=False, msg='آدرس مخزن گیت تنظیم نشده است. لطفاً ابتدا آدرس مخزن را وارد و ذخیره کنید.'), 400
     try:
-        return jsonify(check_for_update())
+        result = check_for_update()
+        return jsonify(result)
     except Exception as exc:
         msg = str(exc)
         if isinstance(exc, UpdateError):
@@ -538,7 +552,21 @@ def update_run():
     """شروع بروزرسانی در پس‌زمینه — فقط مدیر مجاز به تغییر کد."""
     if g.user.role not in ('super_admin', 'admin'):
         return jsonify(ok=False, msg='فقط مدیر کل می‌تواند بروزرسانی کند.'), 403
-    from updater import start_update
+    from updater import start_update, get_repo_url
+    # بررسی وجود مخزن
+    repo = get_repo_url()
+    if not repo:
+        import subprocess as _sp
+        try:
+            r = _sp.run(['git', 'remote', 'get-url', 'origin'], capture_output=True,
+                        text=True, timeout=10)
+            if r.returncode == 0:
+                repo = r.stdout.strip()
+        except Exception:
+            pass
+    if not repo:
+        return jsonify(ok=False, msg='آدرس مخزن گیت تنظیم نشده است. لطفاً ابتدا آدرس مخزن را وارد و ذخیره کنید.'), 400
+
     branch = (request.form.get('branch') or '').strip() or None
     started, msg = start_update(branch=branch)
     if not started:

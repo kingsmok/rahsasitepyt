@@ -603,13 +603,15 @@ def create_app():
             pass
         resp.headers.setdefault('X-Content-Type-Options', 'nosniff')
         resp.headers.setdefault('X-Frame-Options', 'SAMEORIGIN')
-        resp.headers.setdefault('X-XSS-Protection', '1; mode=block')
+        # X-XSS-Protection: 0 چون CSP ما محافظت می‌کند؛ 1 با 'unsafe-inline' تداخل دارد
+        resp.headers.setdefault('X-XSS-Protection', '0')
         resp.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
         resp.headers.setdefault('X-Powered-By', 'Academy LMS')
         # محدودسازی APIهای مرورگر (دوربین/میکروفون/موقعیت) — فقط در صورت نیاز باز شوند
-        resp.headers.setdefault('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+        resp.headers.setdefault('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()')
         # ایزوله‌سازی پنجره‌های کراس‌اورجین
         resp.headers.setdefault('Cross-Origin-Opener-Policy', 'same-origin')
+        resp.headers.setdefault('Cross-Origin-Embedder-Policy', 'require-corp')
         # HSTS — فقط روی HTTPS فعال می‌شود
         if request.is_secure:
             resp.headers.setdefault('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
@@ -626,17 +628,36 @@ def create_app():
             resp.headers['Cache-Control'] = 'public, max-age=604800, immutable'
         elif resp.content_type and resp.content_type.startswith('text/html'):
             resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        # ── Content Security Policy ──
+        # این CSP برای جلوگیری از XSS، تزریق اسکریپت، و فیشینگ طراحی شده
+        # fetch/XHR به همان origin نیاز به اجازه جداگانه ندارد (self شامل می‌شود)
         csp = (
             "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.youtube-nocookie.com https://www.aparat.com https://w.soundcloud.com; "
+            # unsafe-inline برای Flask/Jinja2 templates; با nonce/hash می‌توان حذف کرد
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
             "style-src 'self' 'unsafe-inline'; "
-            "img-src 'self' data: https:; "
-            "frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com https://www.aparat.com https://player.vimeo.com https://w.soundcloud.com https://maps.google.com; "
+            "img-src 'self' data: https: blob:; "
             "font-src 'self' data:; "
-            "connect-src 'self' https://www.google-analytics.com"
+            "connect-src 'self' https://www.google-analytics.com https://www.googletagmanager.com; "
+            "frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com https://www.aparat.com https://player.vimeo.com https://w.soundcloud.com https://maps.google.com; "
+            "worker-src 'self' blob:; "
+            "child-src 'self' blob:; "
+            "form-action 'self'; "
+            "base-uri 'self'; "
+            "object-src 'none'; "
+            "manifest-src 'self'; "
+            "media-src 'self' data: blob:; "
+            # جلوگیری از MIME type sniffing
+            "plugin-types application/pdf; "
+            # گزارش نقض CSP (در production فعال شود)
+            # "report-uri /csp-violation-report; "
+            "block-all-mixed-content"
         )
         if resp.status_code != 500:
-            resp.headers.setdefault('Content-Security-Policy', csp)
+            resp.headers['Content-Security-Policy'] = csp
+            # انتساب سختگیرانه مرورگر برای فرم‌ها
+            if request.path.startswith('/admin'):
+                resp.headers['X-Required-Security-Headers'] = 'CSP, X-Frame-Options, X-Content-Type-Options'
         # فشرده‌سازی gzip برای HTML، CSS و JS
         import gzip as _gzip
         _ct = resp.content_type or ''

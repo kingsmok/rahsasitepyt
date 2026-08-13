@@ -127,7 +127,10 @@ def _set_state(**values):
 
 
 def update_progress():
-    """وضعیت فعلی بروزرسانی را از فایل مشترک برمی‌گرداند."""
+    """وضعیت فعلی بروزرسانی را از فایل مشترک برمی‌گرداند.
+    
+    این تابع توسط polling فرانت‌اند فراخوانی می‌شود.
+    """
     _load()
     with _state_lock:
         st = dict(_state)
@@ -140,6 +143,13 @@ def update_progress():
         st['stale'] = True
         st['msg'] = 'بروزرسانی متوقف شده است — دوباره تلاش کنید.'
         _set_state(status='error', ok=False, msg=st['msg'])
+    
+    # اگر وضعیت idle است، آخرین نتیجه را برگردان
+    if st.get('status') == 'idle':
+        report = st.get('report', {})
+        if report:
+            st['msg'] = report.get('migration', '') or 'آماده برای بروزرسانی'
+    
     return st
 
 
@@ -605,8 +615,26 @@ def _git_file(revision, path):
 
 
 def _changed_files(old_commit, new_ref):
-    if not old_commit or not new_ref:
+    """لیست فایل‌های تغییرکرده بین دو commit.
+    
+    اگر old_commit خالی باشد (نصب اولیه از ZIP)، همه فایل‌های پروژه
+    به‌عنوان «جدید» برگردانده می‌شوند.
+    """
+    if not new_ref:
         return []
+    
+    if not old_commit:
+        # نصب اولیه: همه فایل‌های پروژه رو لیست کن
+        files = []
+        for root, dirs, filenames in os.walk(BASE_DIR):
+            # حذف پوشه‌های که نباید تغییر کنند
+            dirs[:] = [d for d in dirs if d not in _OVERLAY_SKIP and d not in ('.git',)]
+            for f in filenames:
+                rel = os.path.relpath(os.path.join(root, f), BASE_DIR)
+                if rel and rel not in _OVERLAY_SKIP and not rel.startswith('.'):
+                    files.append(rel.replace('\\', '/'))
+        return files
+    
     code, out = _git(['diff', '--name-only', old_commit, new_ref], timeout=60)
     return [line.strip() for line in out.splitlines() if line.strip()] if code == 0 else []
 
@@ -666,7 +694,15 @@ def _install_changed_dependencies(old_commit, old_requirements=None):
 
 
 def _run_fresh_migration():
-    """مایگریشن را با import تازهٔ مدل‌ها در یک پردازش جدا اجرا می‌کند."""
+    """مایگریشن را با import تازهٔ مدل‌ها در یک پردازش جدا اجرا می‌کند.
+    
+    این تابع مهم است چون بعد از git reset، پردازش وب هنوز نسخهٔ قدیمی کد را
+    در حافظه دارد. اجرای مایگریشن در همان پردازش باعث می‌شود ستون‌های جدید
+    دیده نشوند.
+    """
+    # پاک‌سازی pyc cache قبل از اجرا برای اطمینان از استفاده از کد جدید
+    _clear_python_cache()
+    
     script = os.path.join(BASE_DIR, 'scripts', 'migrate_database.py')
     if os.path.exists(script):
         cmd = [sys.executable, '-u', script]
@@ -677,11 +713,21 @@ def _run_fresh_migration():
             'print(_migrate_db())'
         )
         cmd = [sys.executable, '-u', '-c', code]
+    
     env = _git_env()
     env['PYTHONPATH'] = BASE_DIR + os.pathsep + env.get('PYTHONPATH', '')
-    code, out = _run(cmd, timeout=int(os.environ.get('DB_MIGRATION_TIMEOUT', '900')), env=env)
+    
+    # اجرا با timeout بلندتر برای دیتابیس‌های بزرگ
+    timeout = int(os.environ.get('DB_MIGRATION_TIMEOUT', '900'))
+    
+    code, out = _run(cmd, timeout=timeout, env=env)
+    
     if code != 0:
-        raise UpdateError('مایگریشن دیتابیس شکست خورد: ' + _redact_text(out[-900:]))
+        # اگر خطای پایتون است، جزئیات بیشتری برگردان
+        error_lines = out.strip().split('\n')
+        error_msg = '\n'.join(error_lines[-10:]) if len(error_lines) > 10 else out
+        raise UpdateError('مایگریشن دیتابیس شکست خورد:\n' + _redact_text(error_msg[-1200:]))
+    
     return out.strip()[-1200:] or 'مایگریشن انجام شد.'
 
 
@@ -932,7 +978,11 @@ def check_for_update(repo_url=None, branch=None):
 
 
 def _set_step(step, msg):
-    _set_state(step=step, msg=msg)
+    """ثبت مرحله فعلی بروزرسانی برای نمایش در فرانت‌اند.
+    
+    step: 1=دریافت کد، 2=جایگزینی، 3=مایگریشن، 4=پاک‌سازی
+    """
+    _set_state(step=step, msg=msg, status='running')
 
 
 def _perform_update(repo, branch=None):
@@ -997,14 +1047,31 @@ def _perform_update(repo, branch=None):
         os.path.exists(os.path.join(BASE_DIR, name))
         for name in ('passenger_wsgi.py', 'wsgi.py'))
     new_info = _commit_info('HEAD')
+    
+    # اگه فایل‌ها تغییری نکرده، همه فایل‌ها رو لیست کن
+    if not changed and target_commit:
+        try:
+            changed = _changed_files('', target_ref) if '_git' in dir() and old_commit else []
+            if not changed:
+                # همه فایل‌های پروژه رو لیست کن
+                for root, dirs, filenames in os.walk(BASE_DIR):
+                    dirs[:] = [d for d in dirs if d not in _OVERLAY_SKIP and d not in ('.git',)]
+                    for f in filenames:
+                        rel = os.path.relpath(os.path.join(root, f), BASE_DIR)
+                        if rel not in _OVERLAY_SKIP:
+                            changed.append(rel.replace('\\', '/'))
+        except Exception:
+            pass
+    
     result = {
         'repo': _display_repo(repo),
         'branch': chosen,
+        'method': method,
         'old_commit': old_commit,
         'new_commit': target_commit,
         'new_short': new_info['short'] or target_commit[:10],
         'changed_files': changed,
-        'changed_count': len(changed),
+        'changed_count': len(changed) if changed else 0,
         'required_files': sorted(set(_REQUIRED_FILES).intersection(files)),
         'migration': migration_msg,
         'dependencies': dependency_msg,
@@ -1015,13 +1082,20 @@ def _perform_update(repo, branch=None):
 
 
 def _success_message(result):
+    """ساخت پیام موفقیت با جزئیات کامل."""
     restart = 'ری‌استارت Passenger درخواست شد.' if result.get('restart_requested') else 'ری‌استارت خودکار فعال نبود.'
+    method = result.get('method', 'git')
+    method_text = ' (روش: Git)' if method == 'git' else ' (روش: آرشیو GitHub)'
     return (
-        'بروزرسانی کامل شد ✅ — نسخهٔ {} از شاخهٔ {} نصب شد؛ {} فایل تغییر کرد. '
-        '{} {}'
-    ).format(result.get('new_short', '—'), result.get('branch', '—'),
-             result.get('changed_count', 0), restart,
-             result.get('migration', ''))
+        'بروزرسانی کامل شد ✅ نسخهٔ {} از شاخهٔ {} نصب شد؛ '
+        '{} فایل تغییر کرد. {}{}'
+    ).format(
+        result.get('new_short', '—'),
+        result.get('branch', '—'),
+        result.get('changed_count', 0),
+        restart,
+        result.get('migration', '')
+    )
 
 
 def run_update(repo=None, branch=None):

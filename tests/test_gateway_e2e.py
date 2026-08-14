@@ -77,7 +77,7 @@ def test_real_zarinpal_full_flow(client, app, real_gateway_settings, monkeypatch
     assert r.status_code == 302
     target = r.headers['Location']
     assert 'zarinpal.com/pg/StartPay/AUTH-E2E-1' in target
-    assert '/pay/bank/' not in target  # نباید به شبیه‌ساز برود
+    assert '/pay/sandbox/' not in target  # نباید به شبیه‌ساز برود
 
     # بازگشت از درگاه (callback) → pay_verify
     r = client.get(f'/pay/verify/zarinpal?Authority=AUTH-E2E-1&Status=OK&code={code}',
@@ -108,7 +108,7 @@ def test_real_gateway_not_offered_when_sandbox_off(client, app, real_gateway_set
     r = client.post(f'/pay/{code}', data={'_csrf_token': tok, 'gateway': 'sandbox'},
                     follow_redirects=False)
     assert r.status_code == 302
-    assert '/pay/bank/' not in r.headers['Location']
+    assert '/pay/sandbox/' not in r.headers['Location']
     from models import db
     with app.app_context():
         db.session.query(__import__('models', fromlist=['OrderItem']).OrderItem).delete()

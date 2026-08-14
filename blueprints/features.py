@@ -154,8 +154,14 @@ def assignment_view(aid):
         fname = sub.file if sub else None
         if f and f.filename:
             ext = os.path.splitext(f.filename)[1].lower()
-            if ext not in ('.pdf', '.zip', '.rar', '.py', '.js', '.html', '.css', '.docx', '.jpg', '.png', '.txt'):
-                flash('فرمت فایل مجاز نیست.', 'error')
+            # ⚠️ امنیت: html/js/css از لیست مجاز حذف شدند.
+            # هر فایل HTML/JS که کاربر آپلود کند زیر دامنهٔ خودمان قابل دسترس
+            # می‌شود و می‌تواند به‌عنوان صفحهٔ فیشینگ یا اسکریپت مخرب پخش شود؛
+            # این دقیقاً همان چیزی است که Google Safe Browsing دامنه را برایش
+            # «Dangerous site» علامت می‌زند. دانشجو تمرین کدش را در zip بفرستد.
+            if ext not in ('.pdf', '.zip', '.rar', '.py', '.docx', '.jpg', '.jpeg',
+                           '.png', '.webp', '.txt', '.csv', '.ipynb'):
+                flash('فرمت فایل مجاز نیست. کد خود را داخل فایل zip بفرستید.', 'error')
                 return redirect(url_for('features.assignment_view', aid=aid))
             fname = f'asg-{aid}-{g.user.id}{ext}'
             from uploads_helper import uploads_dir

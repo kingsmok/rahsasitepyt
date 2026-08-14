@@ -224,6 +224,24 @@ def create_app():
     app.jinja_env.filters['from_json'] = _from_json
     from validators import mask_nc
     app.jinja_env.filters['mask_nc'] = mask_nc
+    # ── پاکسازی HTML دلخواه (ضد XSS/فیشینگ) ──
+    # هرجا در قالب‌ها HTML خام رندر می‌شود باید از این فیلتر عبور کند، نه |safe.
+    # جزئیات دلیل امنیتی در html_sanitizer.py توضیح داده شده است.
+    from html_sanitizer import sanitize_markup as _sanitize_markup, escape_nl2br as _escape_nl2br
+    app.jinja_env.filters['clean_html'] = _sanitize_markup
+    app.jinja_env.filters['nl2br'] = _escape_nl2br
+
+    def _safe_tracking_id(v):
+        """شناسه سرویس تحلیلی (GA/Clarity/...) — فقط حروف، عدد، خط‌تیره.
+
+        این مقدار داخل تگ <script> رندر می‌شود؛ بدون این فیلتر یک ادمین
+        (یا مهاجمی که به پنل نفوذ کرده) می‌توانست با مقداری مثل
+        `G-1';alert(1);//` اسکریپت دلخواه در تمام صفحات سایت اجرا کند.
+        """
+        import re as _re2
+        v = str(v or '').strip()
+        return v if _re2.match(r'^[A-Za-z0-9_-]{1,64}$', v) else ''
+    app.jinja_env.filters['tracking_id'] = _safe_tracking_id
     # نسخه خودکار assetها — از آخرین زمان تغییر فایل‌های static (برای شکستن کش)
     # ⚠️ قبلاً در هر رندر، کل پوشه static اسکن می‌شد (چند بار در هر صفحه!) — حالا ۶۰ ثانیه کش می‌شود
     def _asset_v():
@@ -283,6 +301,14 @@ def create_app():
     from icons import init_icons
     init_icons(app)
 
+    # ---------- ترمیم خودکار محافظ پوشه‌های آپلود (آپاچی/سی‌پنل) ----------
+    # نصب‌های قدیمی که فایل .htaccess محافظ را ندارند، خودکار امن می‌شوند.
+    try:
+        from uploads_helper import ensure_upload_guards
+        ensure_upload_guards()
+    except Exception:
+        _lexc('app.py')
+
     @app.template_filter('timestamp_to_jdate')
     def _ts_jdate(ts):
         try:
@@ -294,15 +320,37 @@ def create_app():
     # ---------- سرو فایل‌های خصوصی آپلودی (instance/uploads) ----------
     @app.route('/uploads/<folder>/<path:filename>')
     def serve_private_upload(folder, filename):
-        """سرو فایل‌های خصوصی — دسترسی قبلاً در before_request چک شده است"""
+        """سرو فایل‌های خصوصی — دسترسی قبلاً در before_request چک شده است
+
+        امنیت: فایل آپلودی هرگز نباید توسط مرورگر «اجرا/رندر» شود. اگر یک فایل
+        html/svg آپلودشده به‌صورت inline سرو شود، زیر دامنهٔ خودمان اجرا می‌شود
+        (XSS ذخیره‌شده / صفحهٔ فیشینگ) و باعث علامت خوردن دامنه توسط
+        Google Safe Browsing («Dangerous site») می‌گردد. بنابراین:
+          • فقط تصویر و pdf به‌صورت inline نمایش داده می‌شوند
+          • بقیه اجباراً دانلود می‌شوند (Content-Disposition: attachment)
+          • در هر حالت nosniff + CSP قفل‌شده روی پاسخ ست می‌شود
+        """
         from flask import send_from_directory as _sfd, abort as _abort
         if folder not in ('lessons', 'proofs', 'submissions', 'tickets', 'forms'):
             _abort(404)
+        # جلوگیری از path traversal (../) — فقط نام فایل ساده مجاز است
+        if '..' in filename or filename.startswith('/') or '\\' in filename:
+            _abort(404)
         from uploads_helper import uploads_dir as _udir
+        _ext = os.path.splitext(filename)[1].lower()
+        _inline_ok = _ext in ('.jpg', '.jpeg', '.png', '.webp', '.gif', '.avif', '.pdf')
         try:
-            return _sfd(_udir(folder), filename, as_attachment=False)
+            _resp = _sfd(_udir(folder), filename, as_attachment=not _inline_ok)
         except FileNotFoundError:
             _abort(404)
+        _resp.headers['X-Content-Type-Options'] = 'nosniff'
+        # اگر پسوند ناشناخته بود، mimetype اجرایی به آن نچسبد
+        if not _inline_ok:
+            _resp.headers['Content-Type'] = 'application/octet-stream'
+        # سندباکس کامل: حتی اگر چیزی از فیلترها رد شد، اسکریپتی اجرا نمی‌شود
+        _resp.headers['Content-Security-Policy'] = "default-src 'none'; sandbox; frame-ancestors 'none'"
+        _resp.headers['X-Robots-Tag'] = 'noindex, nofollow, noarchive'
+        return _resp
 
     # ---------- ثبت بلوپرینت‌ها ----------
     from blueprints.site import site_bp
@@ -612,7 +660,12 @@ def create_app():
         resp.headers.setdefault('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()')
         # ایزوله‌سازی پنجره‌های کراس‌اورجین
         resp.headers.setdefault('Cross-Origin-Opener-Policy', 'same-origin')
-        resp.headers.setdefault('Cross-Origin-Embedder-Policy', 'require-corp')
+        # ⚠️ Cross-Origin-Embedder-Policy: require-corp عمداً ست نمی‌شود.
+        # با require-corp هر منبع کراس‌اورجین بدون هدر CORP (تصویر آپلودشده در CDN،
+        # ویدیو آپارات/یوتیوب، ویجت گفتگو) بلاک می‌شود و صفحه «شکسته/نیمه‌بارگذاری»
+        # نمایش داده می‌شود؛ صفحهٔ شکسته با منابع بلاک‌شده یکی از سیگنال‌های منفی
+        # کیفیت/امنیت است و عیب‌یابی «Dangerous site» را هم سخت می‌کند.
+        resp.headers.setdefault('Cross-Origin-Resource-Policy', 'same-site')
         # HSTS — فقط روی HTTPS فعال می‌شود
         if request.is_secure:
             resp.headers.setdefault('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
@@ -624,6 +677,30 @@ def create_app():
                 _np.startswith('/auth') or _np.startswith('/install') or
                 _np.startswith('/wallet') or _np.startswith('/admin')):
             resp.headers['X-Robots-Tag'] = 'noindex, nofollow, noarchive'
+        # تصاویر آپلودی ادمین/صفحه‌ساز (/static/img/uploads/...) — inline می‌مانند
+        # (لوگو و تصاویر صفحه باید نمایش داده شوند) ولی با sandbox، پس حتی اگر
+        # فایل SVG اسکریپت داشته باشد و کاربر مستقیم بازش کند، چیزی اجرا نمی‌شود.
+        if request.path.startswith('/static/img/uploads/'):
+            resp.headers['X-Content-Type-Options'] = 'nosniff'
+            resp.headers['Content-Security-Policy'] = \
+                "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; sandbox; frame-ancestors 'none'"
+            resp.headers['X-Robots-Tag'] = 'noindex, nofollow'
+        # ── فایل‌های آپلودشدهٔ عمومی (/static/uploads/...) ──
+        # این فایل‌ها را کاربر/ادمین آپلود کرده‌اند؛ اگر مرورگر آن‌ها را به‌عنوان
+        # HTML یا SVG اجرا کند، محتوای دلخواه زیر دامنهٔ ما اجرا می‌شود
+        # (XSS ذخیره‌شده / صفحهٔ فیشینگ) → علامت «Dangerous site» گوگل.
+        if request.path.startswith('/static/uploads/'):
+            resp.headers['X-Content-Type-Options'] = 'nosniff'
+            resp.headers['Content-Security-Policy'] = \
+                "default-src 'none'; img-src 'self' data:; media-src 'self'; sandbox; frame-ancestors 'none'"
+            resp.headers['X-Robots-Tag'] = 'noindex, nofollow'
+            _uext = os.path.splitext(request.path)[1].lower()
+            # svg/html/xml هرگز inline رندر نشوند — اجباراً دانلود
+            if _uext in ('.svg', '.svgz', '.html', '.htm', '.xhtml', '.xml',
+                         '.js', '.mjs', '.css', '.pdf'):
+                resp.headers['Content-Disposition'] = 'attachment'
+                if _uext != '.pdf':
+                    resp.headers['Content-Type'] = 'application/octet-stream'
         # کش هوشمند: استاتیک ۷ روز، HTML بدون کش
         if request.path.startswith('/static/'):
             resp.headers['Cache-Control'] = 'public, max-age=604800, immutable'
@@ -634,27 +711,40 @@ def create_app():
         # fetch/XHR به همان origin نیاز به اجازه جداگانه ندارد (self شامل می‌شود)
         csp = (
             "default-src 'self'; "
-            # unsafe-inline برای Flask/Jinja2 templates; با nonce/hash می‌توان حذف کرد
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
-            "style-src 'self' 'unsafe-inline'; "
-            "img-src 'self' data: https: blob:; "
-            "font-src 'self' data:; "
-            "connect-src 'self' https://www.google-analytics.com https://www.googletagmanager.com; "
-            "frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com https://www.aparat.com https://player.vimeo.com https://w.soundcloud.com https://maps.google.com; "
+            # unsafe-inline برای Flask/Jinja2 templates; با nonce/hash می‌توان حذف کرد.
+            # 'unsafe-eval' حذف شد — هیچ‌جای پروژه eval/new Function نداریم و وجودش
+            # فقط سطح حمله XSS را باز نگه می‌داشت.
+            "script-src 'self' 'unsafe-inline' "
+            "https://www.googletagmanager.com https://www.google-analytics.com "
+            "https://www.clarity.ms https://client.crisp.chat; "
+            "style-src 'self' 'unsafe-inline' https://client.crisp.chat; "
+            "img-src 'self' data: blob: https://www.google-analytics.com "
+            "https://www.googletagmanager.com https://image.crisp.chat https://client.crisp.chat; "
+            "font-src 'self' data: https://client.crisp.chat; "
+            "connect-src 'self' https://www.google-analytics.com https://www.googletagmanager.com "
+            "https://*.clarity.ms https://client.crisp.chat wss://client.relay.crisp.chat; "
+            "frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com "
+            "https://www.aparat.com https://player.vimeo.com https://w.soundcloud.com "
+            "https://maps.google.com https://game.crisp.chat; "
             "worker-src 'self' blob:; "
             "child-src 'self' blob:; "
             "form-action 'self'; "
             "base-uri 'self'; "
+            # frame-ancestors نسخهٔ مدرن X-Frame-Options است — جلوگیری از
+            # clickjacking/کپی‌برداری صفحه در iframe سایت فیشینگ
+            "frame-ancestors 'self'; "
             "object-src 'none'; "
             "manifest-src 'self'; "
             "media-src 'self' data: blob:; "
-            # جلوگیری از MIME type sniffing
-            "plugin-types application/pdf; "
-            # گزارش نقض CSP (در production فعال شود)
-            # "report-uri /csp-violation-report; "
-            "block-all-mixed-content"
+            # ارتقای خودکار منابع http به https (جلوگیری از mixed-content)
+            "upgrade-insecure-requests"
         )
-        if resp.status_code != 500:
+        # ⚠️ مسیرهای آپلود CSP سخت‌گیرانه‌تر (sandbox) خودشان را بالاتر ست کرده‌اند
+        # — نباید با CSP عمومی بازنویسی شود.
+        _is_upload_path = (request.path.startswith('/static/uploads/') or
+                           request.path.startswith('/static/img/uploads/') or
+                           request.path.startswith('/uploads/'))
+        if resp.status_code != 500 and not _is_upload_path:
             resp.headers['Content-Security-Policy'] = csp
             # انتساب سختگیرانه مرورگر برای فرم‌ها
             if request.path.startswith('/admin'):
@@ -1093,7 +1183,7 @@ def create_app():
                 g.seo['description'] = g.settings.get('seo_desc', '')
             g.seo['keywords'] = g.seo['keywords'] or g.settings.get('seo_keywords', '')
             if not g.seo['og_image']:
-                g.seo['og_image'] = g.settings.get('seo_og_image', 'hero.png')
+                g.seo['og_image'] = g.settings.get('seo_og_image', 'hero.webp')
             if not g.seo['canonical']:
                 g.seo['canonical'] = request.base_url.split('?')[0]
             if request.endpoint and (request.endpoint.startswith('admin') or
@@ -1105,7 +1195,8 @@ def create_app():
             _p = request.path or ''
             if (_p.startswith('/pay') or _p.startswith('/checkout') or
                     _p.startswith('/cart') or _p.startswith('/dashboard') or
-                    _p.startswith('/auth')):
+                    _p.startswith('/auth') or _p.startswith('/install') or
+                    _p.startswith('/wallet') or _p.startswith('/uploads')):
                 g.seo['noindex'] = True
         except Exception:
             _lexc('app.py')
@@ -1305,6 +1396,17 @@ def create_app():
                                 Enrollment.query.filter_by(user_id=_u0.id).all()}
         except Exception:
             _lexc('app.py')
+        def _real_gateway_configured():
+            """آیا حداقل یک درگاه پرداخت بانکیِ واقعی کامل پیکربندی شده است؟"""
+            try:
+                from gateways import GATEWAYS, gateway_ready
+                _st = getattr(g, 'settings', {}) or {}
+                return any(gateway_ready(_gw['id'], _st)
+                           for _gw in GATEWAYS
+                           if _gw.get('kind') not in ('test', 'manual'))
+            except Exception:
+                return False
+
         from gamification import user_badges
         from permissions import has_permission, ROLES
         unread_count = 0
@@ -1327,6 +1429,12 @@ def create_app():
                     eff_container=getattr(g, 'eff_container', ''),
                     eff_radius=getattr(g, 'eff_radius', ''),
                     csrf_token=getattr(g, 'csrf_token', ''),
+                    # آیا درگاه پرداخت بانکی واقعی پیکربندی شده است؟
+                    # ادعاهای «پرداخت امن شتاب / درگاه بانکی معتبر» فقط وقتی نمایش
+                    # داده می‌شوند که واقعاً درست باشند — ادعای نادرست دربارهٔ
+                    # پرداخت بانکی، «محتوای فریب‌دهنده» محسوب می‌شود و یکی از
+                    # دلایل علامت خوردن دامنه با «Dangerous site» است.
+                    real_gateway_on=_real_gateway_configured(),
                     clarity_script=_clarity, crisp_script=_crisp,
                     bc_admin_menu=lambda: __import__('permissions', fromlist=['menu_for']).menu_for(_u),
                     seo=getattr(g, 'seo', dict(title='', description='', keywords='',

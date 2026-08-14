@@ -24,7 +24,7 @@
 
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:site" content="{{ site.seo_twitter or '@academy_ir' }}">
+  {% if site.seo_twitter %}<meta name="twitter:site" content="{{ site.seo_twitter }}">{% endif %}
   <meta name="twitter:title" content="{{ seo.title or self.title() }}">
   <meta name="twitter:description" content="{{ seo.description or self.description() }}">
   <meta name="twitter:image" content="{{ request.host_url.rstrip('/') }}/static/img/{{ seo.og_image or 'hero.webp' }}">
@@ -36,14 +36,15 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="stylesheet" href="/static/css/base.css?v={{ asset_v() }}">
-  {% if site.ga_code %}
-  <!-- Google Analytics -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id={{ site.ga_code }}"></script>
+  {% set _ga = site.ga_code|tracking_id %}
+  {% if _ga %}
+  <!-- Google Analytics — شناسه از فیلتر tracking_id عبور می‌کند (ضد تزریق اسکریپت) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id={{ _ga }}"></script>
   <script>
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
     gtag('js', new Date());
-    gtag('config', '{{ site.ga_code }}');
+    gtag('config', '{{ _ga }}');
   </script>
   {% endif %}
   <link rel="stylesheet" href="/static/css/builder.css?v={{ asset_v() }}">
@@ -64,13 +65,10 @@
     "url": "{{ request.host_url.rstrip('/') }}",
     "logo": "{{ request.host_url.rstrip('/') }}/static/img/favicon.svg",
     "description": "{{ seo.description or site.site_desc or '' }}",
-    "email": "{{ site.email or 'info@academy.ir' }}",
-    "telephone": "{{ site.phone or '021-91001234' }}",
-    "address": { "@type": "PostalAddress", "streetAddress": "{{ site.address or 'تهران' }}", "addressCountry": "IR" },
-    "sameAs": [
-      "https://t.me/{{ site.telegram or 'academy_ir' }}",
-      "https://instagram.com/{{ site.instagram or 'academy.ir' }}"
-    ]
+    {% if site.email %}"email": "{{ site.email }}",{% endif %}
+    {% if site.phone %}"telephone": "{{ site.phone }}",{% endif %}
+    "address": { "@type": "PostalAddress", "streetAddress": "{{ site.address }}", "addressCountry": "IR" },
+    "sameAs": [{% if site.telegram %}"https://t.me/{{ site.telegram }}"{% endif %}{% if site.telegram and site.instagram %}, {% endif %}{% if site.instagram %}"https://instagram.com/{{ site.instagram }}"{% endif %}]
   }
   </script>
   {% if seo.schema %}
@@ -198,9 +196,12 @@
       {% else %}
       <a href="{{ url_for('auth.login') }}">🎫 ثبت تیکت پشتیبانی</a>
       {% endif %}
-      <a href="tel:{{ site.phone or '021-91001234' }}">📞 {{ fa(site.phone or '۰۲۱-۹۱۰۰۱۲۳۴') }}</a>
-      <a href="https://wa.me/98910001234" target="_blank" rel="noopener">💬 گفتگو در واتساپ</a>
-      <a href="https://t.me/{{ site.telegram or 'academy_ir' }}" target="_blank" rel="noopener">✈️ گفتگو در تلگرام</a>
+      {# ⚠️ راه‌های ارتباطی فقط وقتی نمایش داده می‌شوند که مدیر مقدار واقعی ثبت کرده باشد.
+         شماره/آیدی نمونه (۰۲۱-۹۱۰۰۱۲۳۴ یا academy_ir) روی سایت واقعی یعنی «اطلاعات تماس
+         جعلی» — و این یکی از سیگنال‌های «محتوای فریب‌دهنده» برای Google Safe Browsing است. #}
+      {% if site.phone %}<a href="tel:{{ site.phone }}">📞 {{ fa(site.phone) }}</a>{% endif %}
+      {% if site.whatsapp %}<a href="https://wa.me/{{ site.whatsapp }}" target="_blank" rel="noopener">💬 گفتگو در واتساپ</a>{% endif %}
+      {% if site.telegram %}<a href="https://t.me/{{ site.telegram }}" target="_blank" rel="noopener">✈️ گفتگو در تلگرام</a>{% endif %}
     </div>
   </div>
 </div>

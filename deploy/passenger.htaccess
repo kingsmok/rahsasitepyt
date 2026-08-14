@@ -28,3 +28,30 @@ PassengerFriendlyErrorPages off
 <IfModule mod_rewrite.c>
     RewriteEngine On
 </IfModule>
+
+# ============================================================
+# 🔒 محافظت از پوشهٔ آپلود (سی‌پنل / هاست اشتراکی)
+# ------------------------------------------------------------
+# ⚠️ مهم برای Google Safe Browsing: روی هاست اشتراکی، فایل‌های داخل
+# static/uploads مستقیماً توسط آپاچی سرو می‌شوند (بدون عبور از پایتون).
+# اگر مهاجم فایل php/html/svg آپلود کند، زیر دامنهٔ شما اجرا می‌شود و
+# کروم کل دامنه را با پیام «Dangerous site» مسدود می‌کند.
+# این فایل را با نام .htaccess داخل پوشهٔ static/uploads هم کپی کنید.
+# ============================================================
+<IfModule mod_headers.c>
+    <FilesMatch "\.(?i:jpe?g|png|gif|webp|avif|mp4|webm|mp3|wav|ogg|pdf)$">
+        Header set X-Content-Type-Options "nosniff"
+    </FilesMatch>
+</IfModule>
+
+# اجرای هرگونه اسکریپت در پوشه آپلود ممنوع
+<Directory "static/uploads">
+    php_flag engine off
+    Options -ExecCGI -Indexes
+    AddType text/plain .php .php3 .php4 .php5 .phtml .pl .py .cgi .sh .js .html .htm .svg
+    <IfModule mod_headers.c>
+        Header set X-Content-Type-Options "nosniff"
+        Header set Content-Security-Policy "default-src 'none'; img-src 'self' data:; media-src 'self'; sandbox"
+        Header set X-Robots-Tag "noindex, nofollow"
+    </IfModule>
+</Directory>

@@ -1,0 +1,61 @@
+# ============================================================
+# 🔒 .htaccess پوشهٔ آپلود — جلوگیری از «Dangerous site» گوگل
+# ------------------------------------------------------------
+# نصب (هاست سی‌پنل / آپاچی):
+#     cp deploy/uploads.htaccess static/uploads/.htaccess
+#     cp deploy/uploads.htaccess static/img/uploads/.htaccess
+#
+# چرا لازم است؟
+# فایل‌هایی که کاربر/ادمین آپلود می‌کند مستقیماً توسط آپاچی سرو می‌شوند و از
+# کدهای امنیتی پایتون عبور نمی‌کنند. اگر یک فایل php/html/svg آپلود شود:
+#   • php  → اجرای کد روی سرور شما (وب‌شل)
+#   • html → صفحهٔ فیشینگ روی دامنهٔ معتبر شما
+#   • svg  → جاوااسکریپت در دامنهٔ شما (سرقت سشن کاربران)
+# هر سه مورد باعث می‌شود Google Safe Browsing دامنه را علامت بزند و کروم
+# پیام «Attackers on the site you tried visiting might trick you...» را
+# به همهٔ بازدیدکنندگان نشان دهد.
+# ============================================================
+
+# ── ۱) اجرای اسکریپت در این پوشه کاملاً غیرفعال ──
+<IfModule mod_php.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php7.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php8.c>
+    php_flag engine off
+</IfModule>
+
+Options -ExecCGI -Indexes -MultiViews
+RemoveHandler .php .php3 .php4 .php5 .php7 .php8 .phtml .phar .pl .py .cgi .sh .jsp .asp .aspx
+RemoveType .php .php3 .php4 .php5 .php7 .php8 .phtml .phar .pl .py .cgi .sh
+
+# ── ۲) پسوندهای خطرناک به‌عنوان متن ساده (نه کد اجرایی) ──
+AddType text/plain .php .php3 .php4 .php5 .php7 .php8 .phtml .phar
+AddType text/plain .pl .py .cgi .sh .bash .jsp .asp .aspx .htaccess
+
+# ── ۳) فقط فایل‌های امن قابل دسترسی باشند ──
+<IfModule mod_authz_core.c>
+    <FilesMatch "\.(?i:php\d?|phtml|phar|pl|py|cgi|sh|bash|exe|dll|so|jsp|asp|aspx|htaccess|htpasswd|ini|env|sql|db)$">
+        Require all denied
+    </FilesMatch>
+</IfModule>
+<IfModule !mod_authz_core.c>
+    <FilesMatch "\.(?i:php\d?|phtml|phar|pl|py|cgi|sh|bash|exe|dll|so|jsp|asp|aspx|htaccess|htpasswd|ini|env|sql|db)$">
+        Order allow,deny
+        Deny from all
+    </FilesMatch>
+</IfModule>
+
+# ── ۴) html/svg/js هرگز رندر نشوند — اجباراً دانلود ──
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Robots-Tag "noindex, nofollow"
+    Header set Content-Security-Policy "default-src 'none'; img-src 'self' data:; media-src 'self'; sandbox"
+
+    <FilesMatch "\.(?i:html?|xhtml|xml|svgz?|js|mjs|css)$">
+        Header set Content-Disposition "attachment"
+        Header set Content-Type "application/octet-stream"
+    </FilesMatch>
+</IfModule>

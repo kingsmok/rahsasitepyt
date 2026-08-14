@@ -31,3 +31,10 @@ env/
 
 # قفلهای فرآیندی
 instance/*.lock
+
+# ── آپلودهای عمومی (فایل .htaccess محافظ commit می‌شود، محتوا نه) ──
+static/uploads/*
+!static/uploads/.htaccess
+!static/uploads/lessons/
+static/img/uploads/*
+!static/img/uploads/.htaccess

@@ -334,8 +334,12 @@ def profile():
             up = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                               'static', 'img', 'uploads', 'avatars')
             os.makedirs(up, exist_ok=True)
-            from validators import safe_filename, ALLOWED_IMAGE_EXT
+            from validators import (safe_filename, ALLOWED_IMAGE_EXT,
+                                    file_content_is_safe)
             safe = safe_filename(f.filename or '', ALLOWED_IMAGE_EXT)
+            if safe and not file_content_is_safe(f.stream, os.path.splitext(safe)[1].lower()):
+                flash('فایل تصویر معتبر نیست.', 'error')
+                safe = None
             if safe:
                 fname = f'av_{g.user.id}_{uuid.uuid4().hex[:6]}{os.path.splitext(safe)[1].lower()}'
                 f.save(os.path.join(up, fname))

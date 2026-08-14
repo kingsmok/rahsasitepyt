@@ -166,10 +166,14 @@ def media_library():
         for f in files:
             if not f or not f.filename:
                 continue
-            safe = safe_filename(f.filename or '')
+            from validators import file_content_is_safe as _fcs, ALLOWED_MEDIA_EXT as _AME
+            safe = safe_filename(f.filename or '', _AME)
             if not safe:
                 continue
             import os as _os
+            # محتوای فایل هم چک شود (SVG/تصویر حاوی اسکریپت رد می‌شود)
+            if not _fcs(f.stream, _os.path.splitext(safe)[1].lower()):
+                continue
             up = _os.path.join(_os.path.dirname(_os.path.dirname(__file__)),
                                'static', 'uploads', 'media')
             _os.makedirs(up, exist_ok=True)

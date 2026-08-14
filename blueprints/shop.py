@@ -381,9 +381,16 @@ def card2card(code):
                            card_name=card_name, existing=existing)
 
 
-@shop_bp.route('/pay/bank/<code>', methods=['GET', 'POST'])
+# ⚠️ مسیر عمداً «bank» نیست: آدرسی مثل /pay/bank/... روی یک صفحهٔ شبیه‌ساز
+# پرداخت، برای خزندهٔ Google Safe Browsing شبیه صفحهٔ جعلی بانک دیده می‌شود.
+# نام مسیر «sandbox» صریحاً می‌گوید این یک محیط آزمایشی است.
+@shop_bp.route('/pay/sandbox/<code>', methods=['GET', 'POST'])
 def bank(code):
-    """شبیه‌ساز درگاه بانکی برای تست — فقط در حالت sandbox_mode=1 قابل استفاده است"""
+    """شبیه‌ساز پرداخت برای تست — فقط در حالت sandbox_mode=1 قابل استفاده است.
+
+    نام تابع (endpoint) برای سازگاری با url_for('shop.bank', ...) در قالب‌ها
+    و کدهای موجود دست‌نخورده مانده؛ فقط URL عمومی به /pay/sandbox تغییر کرده.
+    """
     from gateways import GATEWAY_MAP
     if not g.user:
         return redirect(url_for('auth.login'))

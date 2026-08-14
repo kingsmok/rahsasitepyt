@@ -43,6 +43,8 @@
       <button class="btn btn-sm btn-ghost" onclick="toggleJson('{{ key }}')">👁 JSON</button>
     </span>
   </div>
+  {# safe-reviewed: این HTML از design_variants.py (کد خود پروژه) تولید می‌شود،
+     نه از ورودی کاربر یا دیتابیس — بنابراین |safe اینجا بردار XSS نیست. #}
   <div class="dp-body" id="body-{{ key }}">{{ (variant.components[key] or '')|safe }}</div>
   <pre class="dp-json" id="json-{{ key }}"></pre>
 </div>

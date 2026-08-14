@@ -3,7 +3,10 @@
    ============================================================ #}
 {% from 'partials/course_card.html' import course_card %}
 
-{% macro nl2br(t) %}{{ (t or '').replace('\n', '<br>') }}{% endmacro %}
+{# متن ساده با خط جدید → <br> — ورودی کاملاً escape می‌شود (فیلتر nl2br در app.py).
+   نسخهٔ قبلی «replace» می‌کرد ولی خروجی autoescape می‌شد و کاربر عبارت «<br>» را
+   به‌صورت متن می‌دید؛ حالا هم درست نمایش داده می‌شود و هم امن است. #}
+{% macro nl2br(t) %}{{ t|nl2br }}{% endmacro %}
 
 {# مسیر صحیح تصویر: آپلودهای کتابخانه رسانه در /static/uploads/... و تصاویر عادی در /static/img/... #}
 {% macro img_url(src) %}
@@ -136,7 +139,7 @@
   <div style="height:{{ d.height or 40 }}px"></div>
 
 {% elif t == 'html' %}
-  <div class="pb-html">{{ d.code|safe }}</div>
+  <div class="pb-html">{{ d.code|clean_html }}</div>
 
 {% elif t == 'countdown' %}
   <div class="pb-countdown text-center" data-target="{{ d.target or '' }}">
@@ -556,8 +559,8 @@
         <p style="font-size:13px;color:var(--text-2);line-height:2">{{ r.comment }}</p>
         {% if d.show_pros and (r.pros or r.cons) %}
         <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">
-          {% if r.pros %}<div style="background:var(--success-soft);border-radius:10px;padding:10px 14px;font-size:12px;color:var(--success)"><b>✅ نقاط قوت:</b><br>{{ r.pros.replace('\n','<br>')|safe }}</div>{% endif %}
-          {% if r.cons %}<div style="background:var(--danger-soft);border-radius:10px;padding:10px 14px;font-size:12px;color:var(--danger)"><b>⚠️ نقاط ضعف:</b><br>{{ r.cons.replace('\n','<br>')|safe }}</div>{% endif %}
+          {% if r.pros %}<div style="background:var(--success-soft);border-radius:10px;padding:10px 14px;font-size:12px;color:var(--success)"><b>✅ نقاط قوت:</b><br>{{ r.pros|nl2br }}</div>{% endif %}
+          {% if r.cons %}<div style="background:var(--danger-soft);border-radius:10px;padding:10px 14px;font-size:12px;color:var(--danger)"><b>⚠️ نقاط ضعف:</b><br>{{ r.cons|nl2br }}</div>{% endif %}
         </div>
         {% endif %}
       </div>
@@ -738,19 +741,22 @@
       <span class="dk-logo-ic">🎓</span><span><b style="color:#fff">{{ bc_site().get('site_name') or 'آکادمی آنلاین' }}</b></span>
     </a>
     <p>{{ d.desc or bc_site().get('site_desc') or '' }}</p>
+    {# ⚠️ لینک شبکه اجتماعی فقط با آیدی واقعیِ ثبت‌شده نمایش داده می‌شود.
+       لینک به اکانت ناموجود (academy_ir و ...) روی سایت واقعی، «اطلاعات جعلی»
+       است و از سیگنال‌های محتوای فریب‌دهنده برای Google Safe Browsing. #}
     <div class="pb-f-socials socials-grid">
-      <a href="https://t.me/{{ bc_site().get('telegram') or 'academy_ir' }}" target="_blank" rel="noopener" title="تلگرام" class="soc soc-tg"><img src="/static/img/social/telegram.svg" alt="تلگرام"></a>
-      <a href="https://instagram.com/{{ bc_site().get('instagram') or 'academy.ir' }}" target="_blank" rel="noopener" title="اینستاگرام" class="soc soc-ig"><img src="/static/img/social/instagram.svg" alt="اینستاگرام"></a>
-      <a href="https://wa.me/{{ bc_site().get('whatsapp') or '98910001234' }}" target="_blank" rel="noopener" title="واتساپ" class="soc soc-wa"><img src="/static/img/social/whatsapp.svg" alt="واتساپ"></a>
-      <a href="https://ble.ir/{{ bc_site().get('bale') or 'academy_ir' }}" target="_blank" rel="noopener" title="بله" class="soc soc-bale"><img src="/static/img/social/bale.svg" alt="بله"></a>
-      <a href="https://eitaa.com/{{ bc_site().get('eitaa') or 'academy_ir' }}" target="_blank" rel="noopener" title="ایتا" class="soc soc-eitaa"><img src="/static/img/social/eitaa.svg" alt="ایتا"></a>
-      <a href="https://rubika.ir/{{ bc_site().get('rubika') or 'academy_ir' }}" target="_blank" rel="noopener" title="روبیکا" class="soc soc-rubika"><img src="/static/img/social/rubika.svg" alt="روبیکا"></a>
-      <a href="https://sapp.ir/{{ bc_site().get('soroush') or 'academy_ir' }}" target="_blank" rel="noopener" title="سروش" class="soc soc-soroush"><img src="/static/img/social/soroush.svg" alt="سروش"></a>
-      <a href="https://aparat.com/{{ bc_site().get('aparat') or 'academy_ir' }}" target="_blank" rel="noopener" title="آپارات" class="soc soc-aparat"><img src="/static/img/social/aparat.svg" alt="آپارات"></a>
-      <a href="https://x.com/{{ bc_site().get('twitter') or 'academy_ir' }}" target="_blank" rel="noopener" title="ایکس" class="soc soc-x"><img src="/static/img/social/x.svg" alt="ایکس"></a>
-      <a href="https://linkedin.com/company/{{ bc_site().get('linkedin') or 'academy-ir' }}" target="_blank" rel="noopener" title="لینکدین" class="soc soc-li"><img src="/static/img/social/linkedin.svg" alt="لینکدین"></a>
-      <a href="https://youtube.com/@{{ bc_site().get('youtube') or 'academy' }}" target="_blank" rel="noopener" title="یوتیوب" class="soc soc-yt"><img src="/static/img/social/youtube.svg" alt="یوتیوب"></a>
-      <a href="https://github.com/{{ bc_site().get('github') or 'academy' }}" target="_blank" rel="noopener" title="گیت‌هاب" class="soc soc-gh"><img src="/static/img/social/github.svg" alt="گیت‌هاب"></a>
+      {% if bc_site().get('telegram') %}<a href="https://t.me/{{ bc_site().get('telegram') }}" target="_blank" rel="noopener" title="تلگرام" class="soc soc-tg"><img src="/static/img/social/telegram.svg" alt="تلگرام"></a>{% endif %}
+      {% if bc_site().get('instagram') %}<a href="https://instagram.com/{{ bc_site().get('instagram') }}" target="_blank" rel="noopener" title="اینستاگرام" class="soc soc-ig"><img src="/static/img/social/instagram.svg" alt="اینستاگرام"></a>{% endif %}
+      {% if bc_site().get('whatsapp') %}<a href="https://wa.me/{{ bc_site().get('whatsapp') }}" target="_blank" rel="noopener" title="واتساپ" class="soc soc-wa"><img src="/static/img/social/whatsapp.svg" alt="واتساپ"></a>{% endif %}
+      {% if bc_site().get('bale') %}<a href="https://ble.ir/{{ bc_site().get('bale') }}" target="_blank" rel="noopener" title="بله" class="soc soc-bale"><img src="/static/img/social/bale.svg" alt="بله"></a>{% endif %}
+      {% if bc_site().get('eitaa') %}<a href="https://eitaa.com/{{ bc_site().get('eitaa') }}" target="_blank" rel="noopener" title="ایتا" class="soc soc-eitaa"><img src="/static/img/social/eitaa.svg" alt="ایتا"></a>{% endif %}
+      {% if bc_site().get('rubika') %}<a href="https://rubika.ir/{{ bc_site().get('rubika') }}" target="_blank" rel="noopener" title="روبیکا" class="soc soc-rubika"><img src="/static/img/social/rubika.svg" alt="روبیکا"></a>{% endif %}
+      {% if bc_site().get('soroush') %}<a href="https://sapp.ir/{{ bc_site().get('soroush') }}" target="_blank" rel="noopener" title="سروش" class="soc soc-soroush"><img src="/static/img/social/soroush.svg" alt="سروش"></a>{% endif %}
+      {% if bc_site().get('aparat') %}<a href="https://aparat.com/{{ bc_site().get('aparat') }}" target="_blank" rel="noopener" title="آپارات" class="soc soc-aparat"><img src="/static/img/social/aparat.svg" alt="آپارات"></a>{% endif %}
+      {% if bc_site().get('twitter') %}<a href="https://x.com/{{ bc_site().get('twitter') }}" target="_blank" rel="noopener" title="ایکس" class="soc soc-x"><img src="/static/img/social/x.svg" alt="ایکس"></a>{% endif %}
+      {% if bc_site().get('linkedin') %}<a href="https://linkedin.com/company/{{ bc_site().get('linkedin') }}" target="_blank" rel="noopener" title="لینکدین" class="soc soc-li"><img src="/static/img/social/linkedin.svg" alt="لینکدین"></a>{% endif %}
+      {% if bc_site().get('youtube') %}<a href="https://youtube.com/@{{ bc_site().get('youtube') }}" target="_blank" rel="noopener" title="یوتیوب" class="soc soc-yt"><img src="/static/img/social/youtube.svg" alt="یوتیوب"></a>{% endif %}
+      {% if bc_site().get('github') %}<a href="https://github.com/{{ bc_site().get('github') }}" target="_blank" rel="noopener" title="گیت‌هاب" class="soc soc-gh"><img src="/static/img/social/github.svg" alt="گیت‌هاب"></a>{% endif %}
     </div>
   </div>
 
@@ -804,7 +810,7 @@
   </div>
 
 {% elif t == 'text_editor' %}
-  <div class="pb-text-editor" style="text-align:{{ d.align or 'right' }};color:{{ d.color or '' }}">{{ rd(d.content or '')|safe }}</div>
+  <div class="pb-text-editor" style="text-align:{{ d.align or 'right' }};color:{{ d.color or '' }}">{{ rd(d.content or '')|clean_html }}</div>
 
 {% elif t == 'google_maps' %}
   <div class="pb-map" style="border-radius:{{ d.radius or 0 }}px;overflow:hidden;box-shadow:var(--shadow-sm);position:relative">

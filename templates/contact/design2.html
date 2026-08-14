@@ -7,13 +7,13 @@
     <h1 style="font-size:clamp(26px,4vw,36px);font-weight:900;margin-bottom:10px">تماس با ما</h1>
     <p class="text-2" style="font-size:14.5px;margin-bottom:34px">برای هر سوالی، ما اینجاییم. معمولاً کمتر از ۲۴ ساعت پاسخ می‌دهیم.</p>
     <div class="grid" style="grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:34px">
-      <a class="card card-hover" style="padding:20px;text-align:center" href="tel:{{ site.phone or '02191001234' }}">
+      <a class="card card-hover" style="padding:20px;text-align:center" href="tel:{{ site.phone }}">
         <div style="font-size:28px">📞</div><strong style="font-size:13px;display:block;margin-top:8px">تلفن</strong>
-        <small class="text-3" style="font-size:12px">{{ fa(site.phone or '۰۲۱-۹۱۰۰۱۲۳۴') }}</small>
+        <small class="text-3" style="font-size:12px">{{ fa(site.phone) }}</small>
       </a>
-      <a class="card card-hover" style="padding:20px;text-align:center" href="mailto:{{ site.email or 'info@academy.ir' }}">
+      <a class="card card-hover" style="padding:20px;text-align:center" href="mailto:{{ site.email }}">
         <div style="font-size:28px">✉️</div><strong style="font-size:13px;display:block;margin-top:8px">ایمیل</strong>
-        <small class="text-3" style="font-size:12px" dir="ltr">{{ site.email or 'info@academy.ir' }}</small>
+        <small class="text-3" style="font-size:12px" dir="ltr">{{ site.email }}</small>
       </a>
       <a class="card card-hover" style="padding:20px;text-align:center" href="{{ url_for('site.faq') }}">
         <div style="font-size:28px">❓</div><strong style="font-size:13px;display:block;margin-top:8px">سوالات متداول</strong>

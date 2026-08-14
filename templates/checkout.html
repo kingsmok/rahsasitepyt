@@ -107,7 +107,7 @@
           <button class="btn btn-primary btn-lg btn-block" type="submit">ادامه و انتخاب درگاه پرداخت ←</button>
         </form>
         <p class="text-center mt-2" style="font-size:11.5px;color:var(--text-3)">با ادامه، شرایط استفاده را می‌پذیرید</p>
-        <div class="secure">🛡️ پرداخت امن با رمزنگاری SSL</div>
+        {% if real_gateway_on %}<div class="secure">🛡️ پرداخت امن با رمزنگاری SSL</div>{% endif %}
       </div>
     </div>
   </div>

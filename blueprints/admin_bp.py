@@ -2308,16 +2308,25 @@ def settings():
             up = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                               'static', 'img', 'uploads', 'brand')
             os.makedirs(up, exist_ok=True)
-            from validators import safe_filename, ALLOWED_IMAGE_EXT_TRUSTED
+            from validators import (safe_filename, ALLOWED_IMAGE_EXT_TRUSTED,
+                                    file_content_is_safe)
             safe = safe_filename(logo_f.filename or '', ALLOWED_IMAGE_EXT_TRUSTED)
+            # محتوای فایل هم چک شود — svg/تصویری که <script> داشته باشد رد می‌شود
+            if safe and not file_content_is_safe(logo_f.stream,
+                                                 os.path.splitext(safe)[1].lower()):
+                flash('فایل لوگو حاوی کد اجرایی است و پذیرفته نشد.', 'error')
+                safe = None
             if safe:
                 lname = 'logo' + os.path.splitext(safe)[1].lower()
                 logo_f.save(os.path.join(up, lname))
-            st = db.session.get(Setting, 'custom_logo')
-            if st:
-                st.value = '/static/img/uploads/brand/' + lname
-            else:
-                db.session.add(Setting(key='custom_logo', value='/static/img/uploads/brand/' + lname))
+                # ⚠️ باگ قبلی: اگر فایل رد می‌شد، lname تعریف نشده بود و
+                # همین‌جا NameError → خطای ۵۰۰ می‌داد. حالا فقط در حالت موفق ذخیره می‌شود.
+                st = db.session.get(Setting, 'custom_logo')
+                if st:
+                    st.value = '/static/img/uploads/brand/' + lname
+                else:
+                    db.session.add(Setting(key='custom_logo',
+                                           value='/static/img/uploads/brand/' + lname))
         db.session.commit()
         flash('تنظیمات با موفقیت ذخیره شد.', 'success')
         return redirect(url_for('admin.settings'))
@@ -2403,8 +2412,14 @@ def super_settings():
                 up = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                                   'static', 'img', 'uploads', 'brand')
                 os.makedirs(up, exist_ok=True)
-                from validators import safe_filename, ALLOWED_IMAGE_EXT_TRUSTED
+                from validators import (safe_filename, ALLOWED_IMAGE_EXT_TRUSTED,
+                                        file_content_is_safe)
                 safe = safe_filename(logo_f.filename or '', ALLOWED_IMAGE_EXT_TRUSTED)
+                # محتوای فایل هم چک شود — svg/تصویری که <script> داشته باشد رد می‌شود
+                if safe and not file_content_is_safe(logo_f.stream,
+                                                     os.path.splitext(safe)[1].lower()):
+                    flash('فایل لوگو حاوی کد اجرایی است و پذیرفته نشد.', 'error')
+                    safe = None
                 if safe:
                     lname = 'logo' + os.path.splitext(safe)[1].lower()
                     logo_f.save(os.path.join(up, lname))

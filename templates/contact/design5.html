@@ -18,13 +18,13 @@
         <div style="font-size:30px">🎫</div><strong style="font-size:13px;display:block;margin-top:8px">ثبت تیکت</strong>
         <small class="text-3" style="font-size:11.5px">پیگیری درخواست</small>
       </a>
-      <a class="card card-hover" style="padding:20px;text-align:center" href="tel:{{ site.phone or '02191001234' }}">
+      <a class="card card-hover" style="padding:20px;text-align:center" href="tel:{{ site.phone }}">
         <div style="font-size:30px">📞</div><strong style="font-size:13px;display:block;margin-top:8px">تماس تلفنی</strong>
-        <small class="text-3" style="font-size:11.5px">{{ fa(site.phone or '۰۲۱-۹۱۰۰۱۲۳۴') }}</small>
+        <small class="text-3" style="font-size:11.5px">{{ fa(site.phone) }}</small>
       </a>
-      <a class="card card-hover" style="padding:20px;text-align:center" href="mailto:{{ site.email or 'info@academy.ir' }}">
+      <a class="card card-hover" style="padding:20px;text-align:center" href="mailto:{{ site.email }}">
         <div style="font-size:30px">✉️</div><strong style="font-size:13px;display:block;margin-top:8px">ایمیل</strong>
-        <small class="text-3" style="font-size:11.5px" dir="ltr">{{ site.email or 'info@academy.ir' }}</small>
+        <small class="text-3" style="font-size:11.5px" dir="ltr">{{ site.email }}</small>
       </a>
     </div>
     <div class="card" style="padding:34px">

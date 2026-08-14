@@ -203,6 +203,73 @@ def check_live(base):
 
 
 # ────────────────────────────────────────────────────────────
+# ۵) بررسی Certificate Transparency — کشف زیردامنه‌های فیشینگ
+# ────────────────────────────────────────────────────────────
+SUSPICIOUS_KEYWORDS = (
+    # برندهایی که معمولاً در فیشینگ جعل می‌شوند
+    'xfinity', 'comcast', 'paypal', 'apple', 'icloud', 'amazon', 'netflix',
+    'microsoft', 'office365', 'outlook', 'chase', 'wellsfargo', 'bankofamerica',
+    'coinbase', 'binance', 'metamask', 'instagram', 'facebook', 'whatsapp',
+    'shaparak', 'bank', 'bmi', 'mellat', 'saderat',
+    # الگوهای رایج صفحات فیشینگ
+    'billing', 'account-update', 'update-account', 'verify', 'verification',
+    'signin', 'sign-in', 'login-', 'secure-', 'confirm', 'recovery', 'unlock',
+    'suspended', 'wallet', 'invoice', 'payment-',
+)
+
+
+def check_certificate_transparency(domain):
+    """همهٔ زیردامنه‌هایی که تابه‌حال برایشان گواهی SSL صادر شده را بررسی می‌کند.
+
+    چرا مهم است؟ اگر مهاجم (یا مالک قبلی دامنه) زیردامنه‌ای مثل
+    `xfinity.billing-account.update.example.ir` ساخته و صفحهٔ فیشینگ گذاشته
+    باشد، Google Safe Browsing **کل دامنه** را علامت می‌زند — حتی اگر سایت
+    اصلی شما کاملاً سالم باشد. آن زیردامنه ممکن است الآن حذف شده باشد ولی
+    ردّ آن برای همیشه در لاگ Certificate Transparency باقی می‌ماند.
+    """
+    import urllib.request
+    import urllib.error
+    import json as _json
+    print(f'\n{BLUE}── بررسی Certificate Transparency برای {domain} ──{RESET}')
+    url = f'https://crt.sh/?q=%25.{domain}&output=json'
+    try:
+        req = urllib.request.Request(url, headers={'User-Agent': 'SafeBrowsingSelfCheck/1.0'})
+        with urllib.request.urlopen(req, timeout=60) as r:
+            data = _json.loads(r.read().decode('utf-8', 'ignore'))
+    except Exception as e:
+        warn(f'بررسی Certificate Transparency ممکن نشد: {str(e)[:80]}',
+             f'دستی بررسی کنید: https://crt.sh/?q=%25.{domain}')
+        return
+
+    names = set()
+    for row in data:
+        for n in (row.get('name_value') or '').split('\n'):
+            n = n.strip().lower().lstrip('*.')
+            if n:
+                names.add(n)
+
+    suspicious = []
+    for n in sorted(names):
+        for kw in SUSPICIOUS_KEYWORDS:
+            if kw in n:
+                suspicious.append(n)
+                break
+
+    print(f'   تعداد کل نام‌های ثبت‌شده: {len(names)}')
+    for n in sorted(names):
+        mark = f'{RED}⚠{RESET}' if n in suspicious else f'{GREEN}✓{RESET}'
+        print(f'   {mark} {n}')
+
+    if suspicious:
+        bad('زیردامنهٔ مشکوک به فیشینگ در تاریخچهٔ گواهی: ' + ', '.join(suspicious[:5]),
+            'رکورد DNS آن را حذف کنید، گواهی wildcard را revoke کنید، همهٔ رمزها '
+            '(ثبت دامنه/DNS/هاست/SSH) را عوض کنید، و در Request Review به گوگل '
+            'دقیقاً همین را توضیح دهید.')
+    else:
+        ok('هیچ زیردامنهٔ مشکوکی در تاریخچهٔ گواهی‌ها نیست')
+
+
+# ────────────────────────────────────────────────────────────
 def main():
     print(f'{BLUE}══════════════════════════════════════════════════════{RESET}')
     print(f'{BLUE} 🔎 عیب‌یاب هشدار «Dangerous site» گوگل{RESET}')
@@ -212,6 +279,10 @@ def main():
     check_unsafe_templates()
     if len(sys.argv) > 1:
         check_live(sys.argv[1])
+        # نام دامنه را از URL دربیاور و تاریخچهٔ گواهی‌ها را بررسی کن
+        _d = sys.argv[1].split('://')[-1].split('/')[0].split(':')[0]
+        if _d and not _d.startswith(('localhost', '127.', '0.0.0.0')):
+            check_certificate_transparency(_d)
 
     print(f'\n{GREEN}✅ موارد سالم ({len(passed)}):{RESET}')
     for p in passed:

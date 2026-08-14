@@ -8,7 +8,7 @@
     <h1>تکمیل پروفایل</h1>
     <p class="a-sub">
       شماره تماس شما <b dir="ltr">{{ fa(cur_user.phone) }}</b> تایید شد.<br>
-      برای استفاده کامل از سایت، اطلاعات زیر را وارد کنید <span class="text-danger">(کد ملی الزامی است)</span>.
+      برای استفاده کامل از سایت، اطلاعات زیر را وارد کنید. کد ملی اختیاری است.
     </p>
 
     <form method="post">
@@ -19,10 +19,10 @@
         <input id="f_name_1" class="form-control" name="name" placeholder="مثلا: علی محمدی" required autofocus>
       </div>
       <div class="form-group">
-        <label for="f_national_code_1">کد ملی <span class="req">*</span></label>
-        <input id="f_national_code_1" class="form-control" name="national_code" placeholder="۱۰ رقم — صحت آن بررسی می‌شود" dir="ltr"
-               pattern="[0-9]{10}" maxlength="10" required>
-        <p class="form-hint">کد ملی با الگوریتم استاندارد (سازمان ثبت احوال) اعتبارسنجی می‌شود.</p>
+        <label for="f_national_code_1">کد ملی (اختیاری)</label>
+        <input id="f_national_code_1" class="form-control" name="national_code" placeholder="۱۰ رقم — در صورت تمایل" dir="ltr"
+               pattern="[0-9]{10}" maxlength="10">
+        <p class="form-hint">اختیاری است و تنها برای صدور گواهینامه استفاده می‌شود. در صورت واردکردن، با الگوریتم استاندارد (سازمان ثبت احوال) اعتبارسنجی می‌شود.</p>
       </div>
       <div class="form-group">
         <label for="f_email_1">ایمیل <span class="req">*</span></label>

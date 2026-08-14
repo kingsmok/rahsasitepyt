@@ -73,9 +73,6 @@ def ensure_indexes():
         'enrollments': [
             ('idx_enroll_course', 'course_id'),
         ],
-        'reviews': [
-            ('idx_reviews_user', 'user_id'),
-        ],
         'favorites': [
             ('idx_fav_user', 'user_id'),
         ],
@@ -98,6 +95,7 @@ def ensure_indexes():
             ('idx_orders_user_created', 'user_id, created_at'),
         ],
         'reviews': [
+            ('idx_reviews_user', 'user_id'),
             ('idx_reviews_created', 'is_approved, created_at'),
         ],
         'tickets': [
@@ -250,7 +248,7 @@ class User(db.Model):
             return None
 
     def profile_complete(self):
-        return bool(self.name and self.national_code and self.email)
+        return bool(self.name and self.email)
 
     def enrolled_courses(self):
         return [e.course for e in self.enrollments if e.course]
@@ -1416,4 +1414,39 @@ def _apply_mysql_table_options(metadata):
         _tbl.kwargs.setdefault('mysql_engine', 'InnoDB')
 
 _apply_mysql_table_options(db.metadata)
+
+
+def annotate_course_stats(courses):
+    """محاسبهٔ یکجا (bulk) آمار دوره‌ها — حذف N+1 برای rating/review_count/students_count.
+
+    برای هر دوره در `courses` مقادیر `_agg_rating`, `_agg_review_count`, `_agg_students`
+    را ست می‌کند تا propertyهای `rating`/`review_count`/`students_count` کوئری جدا نزنند.
+    """
+    courses = [c for c in courses if c is not None]
+    if not courses:
+        return courses
+    ids = [c.id for c in courses]
+    # میانگین امتیاز + تعداد نظرات به‌ازای دوره (یک کوئری تجمیعی)
+    try:
+        rows = db.session.query(Review.course_id,
+                                db.func.avg(Review.rating),
+                                db.func.count(Review.id)) \
+            .filter(Review.course_id.in_(ids), Review.is_approved == True) \
+            .group_by(Review.course_id).all()
+        stat = {r[0]: (round(float(r[1] or 0), 1), int(r[2] or 0)) for r in rows}
+    except Exception:
+        stat = {}
+    # تعداد ثبت‌نام به‌ازای دوره (یک کوئری تجمیعی)
+    try:
+        erows = db.session.query(Enrollment.course_id, db.func.count(Enrollment.id)) \
+            .filter(Enrollment.course_id.in_(ids)) \
+            .group_by(Enrollment.course_id).all()
+        encount = {r[0]: int(r[1] or 0) for r in erows}
+    except Exception:
+        encount = {}
+    for c in courses:
+        if c.id in stat:
+            c._agg_rating, c._agg_review_count = stat[c.id]
+        c._agg_students = (c.seeded_students or 0) + encount.get(c.id, 0)
+    return courses
 

@@ -10,7 +10,8 @@ import random
 from validators import gen_national_code
 from models import (utcnow, db, User, Category, Course, Section, Lesson, Review, Order,
                     OrderItem, Coupon, Enrollment, BlogPost, BlogComment, Ticket, NewsletterEmail,
-                    ContactMessage, Setting, Page)
+                    ContactMessage, Setting, Page, Quiz, QuizQuestion, Assignment, QuestionBank,
+                    Product)
 
 
 def slugify(text):
@@ -18,6 +19,292 @@ def slugify(text):
     text = text.replace(' ', '-')
     text = re.sub(r'[^\w\u0600-\u06FF\-]', '', text)
     return text
+
+
+# =====================================================================
+# بانک سوال واقعی — کوئیز و آزمون‌های دوره‌ها
+# =====================================================================
+# هر سوال: (متن، [گزینه‌ها]، شاخص گزینهٔ درست، توضیح)
+QUESTION_BANK = {
+    'برنامه-نویسی': [
+        ('برای چاپ عبارت "سلام دنیا" در پایتون کدام تابع استفاده می‌شود؟',
+         ['echo', 'print()', 'console.log()', 'System.out.print()'], 1,
+         'در پایتون برای نمایش خروجی از تابع print() استفاده می‌شود.'),
+        ('کدام نوع داده برای نگهداری مجموعه‌ای از مقادیر بدون ترتیب و تکراری مناسب است؟',
+         ['list', 'dict', 'set', 'tuple'], 2,
+         'set مجموعه‌ای بدون ترتیب و بدون عضو تکراری است.'),
+        ('خروجی عبارت 10 // 3 در پایتون چیست؟',
+         ['3.33', '3.0', '3', '1'], 2,
+         'عملگر // تقسیم صحیح (فلور) است و باقیمانده را نادیده می‌گیرد.'),
+        ('برای تعریف یک تابع در پایتون از کدام کلیدواژه استفاده می‌شود؟',
+         ['function', 'def', 'func', 'method'], 1,
+         'توابع در پایتون با کلیدواژه def تعریف می‌شوند.'),
+        ('کدام ساختار داده برای نگهداری داده‌ها به صورت کلید-مقدار است؟',
+         ['list', 'tuple', 'dictionary', 'set'], 2,
+         'dictionary (دیکشنری) داده‌ها را به صورت کلید-مقدار نگهداری می‌کند.'),
+        ('فهرست [1,2,3] در کدام کاراکتر محصور می‌شود؟',
+         ['()', '[]', '{}', '<>'], 1,
+         'فهرست‌ها (list) با براکت [] تعریف می‌شوند.'),
+        ('برای حلقه زدن روی یک فهرست از کدام حلقه استفاده می‌شود؟',
+         ['for', 'while فقط', 'do-while', 'switch'], 0,
+         'حلقه for برای پیمایش فهرست‌ها و قابل‌شمارش‌ها استفاده می‌شود.'),
+        ('مفهوم OOP در برنامه‌نویسی به چه معناست؟',
+         ['برنامه‌نویسی رویه‌ای', 'برنامه‌نویسی شیءگرا', 'برنامه‌نویسی تابعی', 'برنامه‌نویسی اعلامی'], 1,
+         'OOP مخفف Object-Oriented Programming (برنامه‌نویسی شیءگرا) است.'),
+        ('برای گرفتن ورودی از کاربر در پایتون از کدام تابع استفاده می‌شود؟',
+         ['input()', 'scan()', 'read()', 'get()'], 0,
+         'تابع input() ورودی کاربر را به صورت رشته دریافت می‌کند.'),
+        ('خطای دسترسی به عضو ناموجود در فهرست چه نام دارد؟',
+         ['SyntaxError', 'IndexError', 'KeyError', 'ValueError'], 1,
+         'دسترسی به ایندکس خارج از محدوده فهرست خطای IndexError ایجاد می‌کند.'),
+    ],
+    'وب': [
+        ('HTML مخفف چیست؟',
+         ['HyperText Markup Language', 'HighText Machine Language', 'Hyperlink Text Markup', 'Home Tool Markup Language'], 0,
+         'HTML مخفف HyperText Markup Language است.'),
+        ('برای سبک‌دهی به صفحه وب از کدام فناوری استفاده می‌شود؟',
+         ['HTML', 'CSS', 'PHP', 'SQL'], 1,
+         'CSS (Cascading Style Sheets) برای استایل‌دهی استفاده می‌شود.'),
+        ('کدام تگ برای ساخت یک لینک در HTML استفاده می‌شود؟',
+         ['<link>', '<a>', '<href>', '<url>'], 1,
+         'تگ <a> برای ساخت لینک استفاده می‌شود.'),
+        ('JavaScript در مرورگر برای چه کاری استفاده می‌شود؟',
+         ['استایل‌دهی', 'تعامل و رفتار صفحه', 'ذخیره داده‌ها در دیتابیس', 'رندر گرافیک سه‌بعدی فقط'], 1,
+         'جاوااسکریپت برای تعامل و رفتار صفحه در مرورگر استفاده می‌شود.'),
+        ('کدام ویژگی HTTP برای تشخیص یک کلاینت از سرور استفاده می‌شود؟',
+         ['Header', 'Cookie', 'Body', 'URL'], 1,
+         'کوکی (Cookie) برای نگهداری وضعیت کلاینت استفاده می‌شود.'),
+        ('فریم‌ورک Flask به کدام زبان نوشته شده است؟',
+         ['Java', 'Python', 'Ruby', 'PHP'], 1,
+         'Flask یک میکروفریم‌ورک پایتون است.'),
+        ('استفاده از HTML برای ساختاردهی محتوا و CSS برای ظاهر، چه نام دارد؟',
+         ['Responsive', 'Separation of concerns', 'Server-side', 'Compilation'], 1,
+         'جداسازی محتوا (HTML) از ظاهر (CSS) را تفکیک دغدغه‌ها می‌نامند.'),
+        ('برای ارسال فرم به سرور از کدام متد HTTP استفاده می‌شود؟',
+         ['GET فقط', 'POST', 'PUT', 'DELETE'], 1,
+         'متد POST برای ارسال داده فرم استفاده می‌شود.'),
+        ('کدام یک یک زبان سمت سرور است؟',
+         ['HTML', 'CSS', 'Python', 'JavaScript مرورگر'], 2,
+         'پایتون یک زبان سمت سرور است.'),
+        ('معنای عبارت «Responsive Design» چیست؟',
+         ['سایت سریع', 'سازگاری با دستگاه‌های مختلف', 'طراحی زیبا', 'رمزنگاری داده'], 1,
+         'طراحی واکنش‌گرا یعنی صفحه در اندازه‌های مختلف نمایشگر به درستی دیده شود.'),
+    ],
+    'هوش-مصنوعی': [
+        ('یادگیری ماشین زیرمجموعه کدام حوزه است؟',
+         ['طراحی وب', 'هوش مصنوعی', 'امنیت', 'شبکه'], 1,
+         'یادگیری ماشین یکی از شاخه‌های هوش مصنوعی است.'),
+        ('در یادگیری نظارت‌شده، داده‌های آموزشی دارای چه چیزی هستند؟',
+         ['برچسب', 'بدون برچسب', 'فقط ویژگی', 'هیچ‌کدام'], 0,
+         'در یادگیری نظارت‌شده داده‌ها برچسب (label) دارند.'),
+        ('کدام کتابخانه پایتون برای یادگیری ماشین پرکاربرد است؟',
+         ['Flask', 'Scikit-learn', 'Pygame', 'Django فقط'], 1,
+         'Scikit-learn کتابخانه اصلی یادگیری ماشین در پایتون است.'),
+        ('رگرسیون برای چه نوع مسئله‌ای استفاده می‌شود؟',
+         ['طبقه‌بندی', 'پیش‌بینی مقدار پیوسته', 'خوشه‌بندی', 'کاهش ابعاد'], 1,
+         'رگرسیون برای پیش‌بینی مقادیر پیوسته (عددی) استفاده می‌شود.'),
+        ('دیتاست در یادگیری ماشین به چه معناست؟',
+         ['مجموعه داده', 'مدل', 'نمودار', 'خطا'], 0,
+         'دیتاست یعنی مجموعه‌ای از داده‌های آموزشی/آزمایشی.'),
+    ],
+    'طراحی': [
+        ('ابزار اصلی برای طراحی رابط کاربری (UI) در این دوره چیست؟',
+         ['Photoshop فقط', 'Figma', 'Excel', 'Word'], 1,
+         'در این دوره طراحی رابط با Figma انجام می‌شود.'),
+        ('UX مخفف چیست؟',
+         ['User eXperience', 'Unified eXperience', 'Universal X', 'User Index'], 0,
+         'UX یعنی تجربه کاربری.'),
+        ('چه چیزی برای درک نیاز کاربر در طراحی محصول مهم است؟',
+         ['پرسونا', 'رنگ فقط', 'فونت', 'انیمیشن'], 0,
+         'پرسونا (شخصیت کاربر) به درک نیاز کاربران کمک می‌کند.'),
+    ],
+    'آفیس': [
+        ('برای جمع‌کردن اعداد در اکسل از کدام تابع استفاده می‌شود؟',
+         ['AVERAGE', 'SUM', 'COUNT', 'MAX'], 1,
+         'تابع SUM برای جمع‌کردن اعداد استفاده می‌شود.'),
+        ('برای شرطی‌سازی در اکسل از کدام تابع استفاده می‌شود؟',
+         ['IF', 'VLOOKUP', 'SUM', 'DATE'], 0,
+         'تابع IF برای تصمیم‌گیری شرطی استفاده می‌شود.'),
+    ],
+    'کسب-وکار': [
+        ('SEO مخفف چیست؟',
+         ['Social Engine Optimization', 'Search Engine Optimization', 'Secure Engine Output', 'Search Element Option'], 1,
+         'SEO یعنی بهینه‌سازی موتور جستجو.'),
+        ('کدام پلتفرم برای تبلیغات دیجیتال استفاده می‌شود؟',
+         ['Google Ads', 'Excel', 'Word', 'Photoshop'], 0,
+         'Google Ads پلتفرم تبلیغات دیجیتال است.'),
+    ],
+    'موبایل': [
+        ('زبان رسمی توسعه اندروید در این دوره چیست؟',
+         ['Java فقط', 'Kotlin', 'Swift', 'C#'], 1,
+         'Kotlin زبان رسمی و مدرن توسعه اندروید است.'),
+        ('Jetpack Compose برای چه کاری استفاده می‌شود؟',
+         ['طراحی رابط کاربری', 'دیتابیس', 'شبکه', 'کامپایل'], 0,
+         'Jetpack Compose یک ابزار مدرن برای ساخت رابط کاربری اندروید است.'),
+    ],
+    'زبان': [
+        ('در فارسی، "کتاب" در انگلیسی چه می‌شود؟',
+         ['Book', 'Pen', 'Table', 'Chair'], 0,
+         'کتاب به انگلیسی Book می‌شود.'),
+        ('کدام جمله از نظر زمانی درست است؟',
+         ['I go to school yesterday', 'I went to school yesterday', 'I goed to school', 'I going to school yesterday'], 1,
+         'گذشته ساده فعل go برابر went است.'),
+    ],
+    'امنیت': [
+        ('تست نفوذ با کدام ابزار انجام می‌شود؟',
+         ['Kali Linux', 'Excel', 'Word', 'Photoshop'], 0,
+         'Kali Linux توزیع محبوب برای تست نفوذ و امنیت است.'),
+        ('فیشینگ چیست؟',
+         ['حمله برای فریب کاربر جهت افشای اطلاعات', 'ویروس کامپیوتری', 'اتصال شبکه', 'رمزنگاری'], 0,
+         'فیشینگ حملهای برای فریب کاربر جهت افشای اطلاعات حساس است.'),
+    ],
+    'فروشگاه': [],
+}
+
+# تکلیف‌های واقعی هر دوره — بر اساس دسته
+ASSIGNMENT_TEMPLATES = {
+    'برنامه-نویسی': [
+        ('تمرین پروژه: ماشین‌حساب ساده', 'با پایتون یک ماشین‌حساب ساده بسازید که چهار عمل اصلی را پشتیبانی کند و ورودی کاربر را بگیرد.'),
+        ('تمرین: مدیریت فهرست مخاطبین', 'یک برنامه ساده برای ذخیره و نمایش مخاطبین با فهرست و دیکشنری بنویسید.'),
+    ],
+    'وب': [
+        ('تمرین: ساخت فرم تماس', 'یک فرم تماس ساده با HTML و CSS بسازید و با Flask آن را پردازش کنید.'),
+        ('تمرین: صفحه واکنش‌گرا', 'یک صفحه فرود با CSS بسازید که در موبایل و دسکتاپ درست نمایش داده شود.'),
+    ],
+    'هوش-مصنوعی': [
+        ('تمرین: پیش‌بینی با رگرسیون', 'با Scikit-learn یک مدل رگرسیون روی دیتاست ساده بسازید و نتیجه را گزارش دهید.'),
+    ],
+    'طراحی': [
+        ('تمرین: طراحی یک صفحه اپ', 'با Figma یک صفحه ورود اپلیکیشن موبایل طراحی کنید و خروجی بگیرید.'),
+    ],
+    'آفیس': [
+        ('تمرین: ساخت داشبورد اکسل', 'یک داشبورد ساده با نمودار و جدول محوری از داده‌های نمونه بسازید.'),
+    ],
+    'کسب-وکار': [
+        ('تمرین: تحلیل کلمات کلیدی', 'برای یک کسب‌وکار فرضی فهرست کلمات کلیدی و استراتژی سئو بنویسید.'),
+    ],
+    'موبایل': [
+        ('تمرین: اولین اپ با Kotlin', 'یک اپ ساده با Jetpack Compose بسازید که متن ورودی را نمایش دهد.'),
+    ],
+    'زبان': [
+        ('تمرین: متن معرفی خود', 'یک متن ۱۰ خطی به انگلیسی درباره خودتان بنویسید.'),
+    ],
+    'امنیت': [
+        ('تمرین: شناسایی آسیب‌پذیری', 'سه آسیب‌پذیری رایج وب را نام ببرید و راه‌حل هر کدام را بنویسید.'),
+    ],
+}
+
+
+def seed_quizzes(courses):
+    """ایجاد کوئیز، تکلیف و بانک سوال واقعی برای هر دوره.
+
+    برای هر دوره دو آزمون (میان‌دوره و پایان‌دوره) با سوالات واقعی از
+    بانک سوال مرتبط با دستهٔ دوره + یک یا دو تکلیف عملی ساخته می‌شود.
+    """
+    # ساخت بانک سوال عمومی (اگر خالی است)
+    if QuestionBank.query.count() == 0:
+        for cat, items in QUESTION_BANK.items():
+            for text, choices, correct, expl in items:
+                import json as _j
+                db.session.add(QuestionBank(
+                    category=cat, text=text,
+                    choices=_j.dumps(choices, ensure_ascii=False),
+                    correct_index=correct, explanation=expl))
+        db.session.flush()
+
+    for idx, c in enumerate(courses):
+        cat = (c.category.name if c.category else '')
+        bank = [q for q in QuestionBank.query.filter_by(category=cat).all()
+                if q.choices_list()]
+        if not bank:
+            # اگر برای دسته سوال نداشتیم، از سوالات عمومی استفاده کن
+            bank = QuestionBank.query.all()
+        bank = [q for q in bank if q.choices_list()]
+        if not bank:
+            continue
+
+        sections = sorted(c.sections, key=lambda s: s.sort)
+        # آزمون میان‌دوره
+        mid = Quiz(course_id=c.id,
+                   section_id=sections[0].id if sections else None,
+                   title='آزمون میان‌دوره', passing_score=50,
+                   description=f'آزمون ارزشیابی مفاهیم ابتدایی دوره «{c.title}». برای قبولی نمره ۵۰٪ لازم است.')
+        db.session.add(mid)
+        # آزمون پایان‌دوره
+        final = Quiz(course_id=c.id,
+                     section_id=sections[-1].id if sections else None,
+                     title='آزمون پایان‌دوره', passing_score=60,
+                     description=f'ارزیابی نهایی آموخته‌های دوره «{c.title}». برای قبولی نمره ۶۰٪ لازم است.')
+        db.session.add(final)
+        db.session.flush()  # تا id آزمون‌ها مقدار بگیرد
+
+        for quiz, need, start in ((mid, 5, 0), (final, 8, 2)):
+            picked = []
+            seen = set()
+            # انتخاب سوالات بدون تکرار
+            for q in bank * 3:
+                if q.id not in seen:
+                    picked.append(q)
+                    seen.add(q.id)
+                    if len(picked) >= need:
+                        break
+            # اگر به اندازه کافی نبود، تکرار کن
+            while len(picked) < need and bank:
+                picked.append(bank[len(picked) % len(bank)])
+            for si, q in enumerate(picked[:need]):
+                db.session.add(QuizQuestion(
+                    quiz_id=quiz.id, text=q.text, choices=q.choices,
+                    correct_index=q.correct_index, explanation=q.explanation,
+                    sort=si))
+
+        # تکلیف‌های دوره
+        asg_pool = ASSIGNMENT_TEMPLATES.get(cat) or ASSIGNMENT_TEMPLATES.get('برنامه-نویسی')
+        if asg_pool:
+            for title, desc in asg_pool[:2]:
+                db.session.add(Assignment(
+                    course_id=c.id,
+                    section_id=sections[0].id if sections else None,
+                    title=title, description=desc, max_score=100))
+
+    db.session.flush()
+    print(f'   ✅ {QuestionBank.query.count()} سوال در بانک سوال، '
+          f'{Quiz.query.count()} آزمون و {Assignment.query.count()} تکلیف ساخته شد')
+
+
+def seed_products():
+    """ایجاد محصولات نمونه فروشگاه (در صورت خالی بودن)."""
+    if Product.query.count() > 0:
+        return
+    products = [
+        dict(title='ماگ سرامیکی لوگو آکادمی', slug='academy-mug', price=320000, discount_price=250000,
+             category='ماگ و لیوان', image='product-mug.jpg', sku='MUG-001',
+             description='ماگ سرامیکی با کیفیت با لوگوی آکادمی — ظرفیت ۳۵۰ میل، مناسب چای و قهوه.',
+             dimensions='۹×۹×۱۰ سانتی‌متر', weight='۳۲۰ گرم', material='سرامیک',
+             features='مناسب ماشین ظرفشویی\nظرفیت ۳۵۰ میلی‌لیتر\nچاپ با کیفیت بالا\nجعبه‌بندی مناسب هدیه',
+             stock=25, featured=True),
+        dict(title='لیوان شیشه‌ای دوجداره', slug='glass-mug', price=180000, discount_price=0,
+             category='ماگ و لیوان', image='product-glass.jpg', sku='GLASS-001',
+             description='لیوان شیشه‌ای دوجداره — نوشیدنی را مدت بیشتری گرم/سرد نگه می‌دارد.',
+             dimensions='۸×۸×۱۰ سانتی‌متر', weight='۲۲۰ گرم', material='شیشه بوروسیلیکات',
+             features='دوجداره و ضد بخار\nمقاوم در برابر شوک حرارتی\nظرفیت ۳۰۰ میلی‌لیتر',
+             stock=40, featured=True),
+        dict(title='دفترچه یادداشت برنامه‌نویس', slug='dev-notebook', price=95000, discount_price=75000,
+             category='نوشت‌افزار', image='product-notebook.jpg', sku='NB-001',
+             description='دفترچه یادداشت با کاغذ طرح دار و جلد مقاوم — همراه با ۱۰۰ صفحه نقطه‌ای.',
+             dimensions='۱۵×۲۱ سانتی‌متر', weight='۲۸۰ گرم', material='کاغذ ۹۰ گرمی',
+             features='۱۰۰ صفحه نقطه‌ای\nجلد سخت با طرح کد\nباند الاستیک',
+             stock=60, featured=True),
+        dict(title='تی‌شرت برنامه‌نویس', slug='coder-tshirt', price=220000, discount_price=0,
+             category='پوشاک', image='product-tshirt.jpg', sku='TS-001',
+             description='تی‌شرت نخی با طرح مخصوص برنامه‌نویسان — کیفیت بالا و دوخت تمیز.',
+             dimensions='سایز M / L / XL', weight='۲۰۰ گرم', material='نخ ۱۰۰٪',
+             features='نخ صد در صد\nچاپ برجسته\nقابل شست‌وشو',
+             stock=15, featured=False),
+    ]
+    for p in products:
+        db.session.add(Product(**p))
+    db.session.commit()
+    print(f'   ✅ {len(products)} محصول نمونه ساخته شد')
 
 
 def seed():
@@ -272,6 +559,12 @@ def seed():
 
     db.session.flush()
 
+    # ---------- آزمون‌ها، تکلیف‌ها و بانک سوال واقعی ----------
+    seed_quizzes(courses)
+
+    # ---------- محصولات فروشگاه ----------
+    seed_products()
+
     # ---------- سفارش‌ها و ثبت‌نام‌ها ----------
     order = Order(code='AC-140308-001', user_id=demo.id, gateway='zarinpal',
                   status='paid', ref_id='REF-100200300',
@@ -375,7 +668,7 @@ def seed_pages():
     import json as _json
     print('🧩 ساخت صفحات صفحه‌ساز...')
 
-    # ---------------- هدر (سبک فرادرس) ----------------
+    # ---------------- هدر (کلاسیک آکادمیک) ----------------
     header = Page.query.filter_by(ptype='header').first()
     if not header:
         header = Page(title='هدر سایت', slug='site-header', ptype='header')

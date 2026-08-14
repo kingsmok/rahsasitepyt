@@ -22,16 +22,22 @@
         {% elif o.status == 'pending' %}<span class="badge badge-accent">در انتظار پرداخت</span>
         {% elif o.status == 'failed' %}<span class="badge badge-danger">ناموفق</span>
         {% else %}<span class="badge badge-gray">لغو شده</span>{% endif %}
-        {% if o.status == 'pending' %}<a class="btn btn-primary btn-sm" href="{{ url_for('shop.pay_start', code=o.code) }}">ادامه پرداخت</a>{% endif %}
+        {% if o.status == 'pending' %}
+          {% if o.installment_count and o.installment_count > 1 %}
+          <a class="btn btn-primary btn-sm" href="{{ url_for('bnpl.bnpl_page', code=o.code) }}">ادامه پرداخت اقساطی</a>
+          {% else %}
+          <a class="btn btn-primary btn-sm" href="{{ url_for('shop.pay_start', code=o.code) }}">ادامه پرداخت</a>
+          {% endif %}
+        {% endif %}
         <a class="btn btn-ghost btn-sm" href="{{ url_for('student.invoice', code=o.code) }}">فاکتور</a>
       </div>
     </div>
     {% if o.installment_count and o.installment_count > 1 %}
     <div style="margin:10px 0 4px;padding:12px 14px;background:var(--bg-2);border-radius:12px">
-      <div class="flex between" style="margin-bottom:8px">
-        <b style="font-size:13px">💳 برنامه اقساط ({{ fa(o.installment_count) }} قسط)</b>
-        <small class="text-3">{{ '✓ تکمیل‌شده' if o.status == 'paid' else 'در حال پرداخت' }}</small>
-      </div>
+          <div class="flex between" style="margin-bottom:8px">
+            <b style="font-size:13px">💳 برنامه اقساط ({{ fa(o.installment_count) }} قسط) — سرویس: {{ gateway_names.get(o.gateway, o.gateway or '—') }}</b>
+            <small class="text-3">{{ '✓ تکمیل‌شده' if o.status == 'paid' else 'در حال پرداخت' }}</small>
+          </div>
       <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px">
         {% for inst in installments.get(o.id, []) %}
         <div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:10px 12px;text-align:center">
@@ -41,10 +47,14 @@
           <span class="badge badge-success" style="font-size:10px">✓ پرداخت‌شده</span>
           {% else %}
           <span class="badge badge-accent" style="font-size:10px">{{ inst.due_date|jdate }}</span>
+          {% if o.status == 'pending' %}
           <form method="post" action="{{ url_for('shop.pay_installment', code=o.code, num=inst.number) }}" style="margin-top:6px">
             <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
             <button class="btn btn-primary btn-sm btn-block" type="submit" style="padding:5px 8px;font-size:10.5px">پرداخت قسط</button>
           </form>
+          {% else %}
+          <small class="text-3" style="display:block;font-size:10px;margin-top:6px">از طریق {{ gateway_names.get(o.gateway, 'سرویس اقساطی') }}</small>
+          {% endif %}
           {% endif %}
         </div>
         {% endfor %}
@@ -59,7 +69,7 @@
     </div>
     {% endfor %}
     <div class="flex between" style="padding-top:10px">
-      <span class="text-3" style="font-size:12.5px">درگاه: {{ {'zarinpal': 'زرین‌پال', 'idpay': 'آیدی پی', 'zibal': 'زیبال', 'sandbox': 'آزمایشی'}.get(o.gateway, o.gateway or '—') }}</span>
+      <span class="text-3" style="font-size:12.5px">درگاه: {{ gateway_names.get(o.gateway, o.gateway or '—') }}</span>
       <div class="flex gap-1">
         {% if o.discount %}<span class="text-success" style="font-size:13px">تخفیف: {{ fa('{:,.0f}'.format(o.discount)) }} تومان</span>{% endif %}
         <span style="font-weight:900;font-size:15px">جمع: {{ fa('{:,.0f}'.format(o.final_total)) }} تومان</span>

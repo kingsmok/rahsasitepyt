@@ -72,13 +72,13 @@ def desktop_header(t, idx):
       <div><b class="dv-text-lg dv-font-black" style="color:var(--text)">{site}</b>
       <small class="dv-block dv-text-xs" style="color:var(--primary)">{t['name']}</small></div>
     </div>'''
-    search = f'''<div class="dv-search">
+    search = '''<div class="dv-search">
       <input type="text" placeholder="جستجوی دوره، استاد، مهارت..." class="dv-search-in">
       <button class="dv-search-btn">🔍</button>
     </div>'''
     nav = ('<a href="#">خانه</a><a href="#">دوره‌ها</a><a href="#">اساتید</a>'
            '<a href="#">وبلاگ</a><a href="#">درباره ما</a>')
-    cta = f'<a class="dv-btn dv-btn-primary" href="#">ورود / ثبت‌نام</a>'
+    cta = '<a class="dv-btn dv-btn-primary" href="#">ورود / ثبت‌نام</a>'
     v = idx % 5
 
     if v == 0:      # هدر یک‌طبقه مدرن با جستجوی زنده
@@ -561,16 +561,16 @@ def about_section(t, idx):
 def contact_section(t, idx):
     v = idx % 4
     c = t['colors']
-    form = f'''<form class="dv-contact-form" onsubmit="return false">
+    form = '''<form class="dv-contact-form" onsubmit="return false">
       <div class="dv-flex dv-gap-2"><input placeholder="نام و نام خانوادگی"><input placeholder="شماره موبایل"></div>
       <input placeholder="موضوع پیام">
       <textarea rows="4" placeholder="متن پیام شما..."></textarea>
       <button class="dv-btn dv-btn-primary dv-w-full">📨 ارسال پیام</button>
     </form>'''
-    cards = (f'<div class="dv-cinfo"><span>🏢</span><div><b>آدرس</b><small>تهران، خیابان آزادی، پلاک ۱۲۳</small></div></div>'
-             f'<div class="dv-cinfo"><span>📞</span><div><b>تلفن</b><small>۰۲۱-۱۲۳۴۵۶۷۸</small></div></div>'
-             f'<div class="dv-cinfo"><span>✉️</span><div><b>ایمیل</b><small>info@academy.ir</small></div></div>'
-             f'<div class="dv-cinfo"><span>🕰</span><div><b>ساعات پاسخگویی</b><small>شنبه تا پنجشنبه ۹ تا ۱۸</small></div></div>')
+    cards = ('<div class="dv-cinfo"><span>🏢</span><div><b>آدرس</b><small>تهران، خیابان آزادی، پلاک ۱۲۳</small></div></div>'
+             '<div class="dv-cinfo"><span>📞</span><div><b>تلفن</b><small>۰۲۱-۱۲۳۴۵۶۷۸</small></div></div>'
+             '<div class="dv-cinfo"><span>✉️</span><div><b>ایمیل</b><small>info@academy.ir</small></div></div>'
+             '<div class="dv-cinfo"><span>🕰</span><div><b>ساعات پاسخگویی</b><small>شنبه تا پنجشنبه ۹ تا ۱۸</small></div></div>')
     if v == 0:      # فرم + اطلاعات + نقشه
         return f'''<div class="dv-widget dv-flex dv-gap-4" style="flex-wrap:wrap">
   <div style="flex:1.2;min-width:260px;background:var(--card);border-radius:18px;padding:22px;border:1px solid var(--border)">

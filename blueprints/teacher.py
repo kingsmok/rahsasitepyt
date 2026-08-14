@@ -2,6 +2,7 @@
 """پنل استاد — دوره‌های خودش، دانشجویان، تکالیف، پرسش‌ها، درآمد"""
 from flask import Blueprint, render_template, request, redirect, url_for, flash, g, abort
 from sqlalchemy import func
+from validators import safe_referrer
 from models import (utcnow, db, User, Course, Section, Lesson, Enrollment, Order,
                     OrderItem, Assignment, AssignmentSubmission, LessonQuestion,
                     Quiz, QuizAttempt, ActivityLog, Notification, PayoutRequest)
@@ -126,7 +127,7 @@ def grade(sid):
                         '📌', url_for('features.assignment_view', aid=sub.assignment_id))
     db.session.commit()
     flash('نمره ثبت و به دانشجو اعلان شد. ✅', 'success')
-    return redirect(request.referrer or url_for('teacher.assignments'))
+    return redirect(safe_referrer(url_for('teacher.assignments')))
 
 
 @teacher_bp.route('/questions')
@@ -161,7 +162,7 @@ def answer_question(qid):
                                 lesson=q.lesson_id) + '#lesson-qa')
     db.session.commit()
     flash('پاسخ ثبت و به دانشجو اعلان شد. ✅', 'success')
-    return redirect(request.referrer or url_for('teacher.questions'))
+    return redirect(safe_referrer(url_for('teacher.questions')))
 
 
 @teacher_bp.route('/revenue')

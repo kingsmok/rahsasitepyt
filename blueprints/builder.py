@@ -931,9 +931,8 @@ def builder_price_history(d):
         _lexc2(f'builder.price_compare: {_e}')
     if not compare and item:
         base = current or 0
-        compare = [dict(name='ترب', price=max(1, int(base * 0.97))),
-                   dict(name='دیجی‌کالا', price=int(base * 1.05)),
-                   dict(name='فرادرس', price=int(base * 1.12))]
+        compare = [dict(name='در سایت‌های مشابه (مرجع)', price=max(1, int(base * 1.05))),
+                   dict(name='قیمت پیشنهادی دیگران', price=int(base * 1.12))]
     return dict(item=item, url=url, points=points, current=current, compare=compare)
 
 
@@ -1094,27 +1093,9 @@ def _b_cache(key, ttl, fn):
 
 def _attach_course_aggs(courses):
     """آمار تجمیعی دوره‌ها (نظر/امتیاز/دانشجو) — یک کوئری به‌جای بارگذاری همه رکوردها.
-    مقادیر روی خود اشیا ست می‌شود تا course_lite آن‌ها را بخواند."""
-    _ids = [c.id for c in courses]
-    if not _ids:
-        return courses
-    try:
-        from models import Review as _R, Enrollment as _E
-        _rev_rows = db.session.query(_R.course_id, db.func.count(_R.id),
-                                     db.func.avg(_R.rating)) \
-            .filter(_R.course_id.in_(_ids)).group_by(_R.course_id).all()
-        _rev_map = {r[0]: (r[1], round(float(r[2] or 0), 1)) for r in _rev_rows}
-        _enr_rows = db.session.query(_E.course_id, db.func.count(_E.id)) \
-            .filter(_E.course_id.in_(_ids)).group_by(_E.course_id).all()
-        _enr_map = dict(_enr_rows)
-        for c in courses:
-            _rc, _ra = _rev_map.get(c.id, (0, 0))
-            c._agg_review_count = _rc
-            c._agg_rating = _ra
-            c._agg_students = (c.seeded_students or 0) + _enr_map.get(c.id, 0)
-    except Exception:
-        pass
-    return courses
+    این‌جا صرفاً به `annotate_course_stats` در models.py واگذار می‌شود تا یک منبع واحد باشد."""
+    from models import annotate_course_stats
+    return annotate_course_stats(courses)
 
 
 def builder_courses(d):

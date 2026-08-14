@@ -24,6 +24,8 @@ from models import (utcnow, db, User, Category, Course, Section, Lesson, Order, 
 import re as _re
 from validators import human_size
 from validators import log_exc as _lexc
+from validators import safe_referrer
+from jdates import jdate_num, jtime
 
 
 def _save_lesson_file(f):
@@ -416,7 +418,7 @@ def proof_verify(pid):
         order.status = 'pending'
         db.session.commit()
         flash('فیش رد شد و سفارش به حالت در انتظار بازگشت.', 'info')
-    return redirect(request.referrer or url_for('admin.orders'))
+    return redirect(safe_referrer(url_for('admin.orders')))
 
 
 @admin_bp.route('/proofs')
@@ -664,7 +666,7 @@ def tickets():
                 t.status = 'closed'
             db.session.commit()
             flash('تیکت به‌روزرسانی شد.', 'success')
-        return redirect(request.referrer or url_for('admin.tickets'))
+        return redirect(safe_referrer(url_for('admin.tickets')))
     status = request.args.get('status', '')
     prio = request.args.get('priority', '')
     cat = request.args.get('cat', '')
@@ -906,7 +908,7 @@ def submission_grade(sid):
     sub.graded_at = utcnow()
     db.session.commit()
     flash('نمره ثبت شد.', 'success')
-    return redirect(request.referrer or url_for('admin.submissions'))
+    return redirect(safe_referrer(url_for('admin.submissions')))
 
 
 # ================================================================
@@ -1267,7 +1269,7 @@ def page_toggle(pid):
     p.is_published = not p.is_published
     db.session.commit()
     flash('وضعیت انتشار تغییر کرد.', 'info')
-    return redirect(request.referrer or url_for('admin.pages'))
+    return redirect(safe_referrer(url_for('admin.pages')))
 
 
 @admin_bp.route('/pages/<int:pid>/delete', methods=['POST'])
@@ -2591,4 +2593,6 @@ def product_admin_delete(pid):
     return redirect(url_for('admin.products_admin'))
 
 # بارگذاری بخش‌های تکمیلی (گزارش‌ها، رسانه، داستان موفقیت، اعلان‌ها، مشاوره‌ها)
-from blueprints.admin_extra import *
+# این import صرفاً برای اجرای decoratorهای @admin_bp.route در admin_extra است
+# (star-import نمی‌کنیم تا namespace admin_bp آلودهٔ متغیرهای محلی admin_extra نشود)
+import blueprints.admin_extra  # noqa: F401  (side-effect: رجیستر routeها)

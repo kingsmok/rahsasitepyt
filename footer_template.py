@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""قالب فوتر — سبک فرادرس (سرمه‌ای + نارنجی)"""
+"""قالب فوتر — کلاسیک آکادمیک (سرمه‌ای + نارنجی)"""
 
 FOOTER_ROWS = [
     {
@@ -67,10 +67,9 @@ FOOTER_ROWS = [
                 {"id": "f_pay", "type": "html", "data": {
                     "code": (
                         '<div class="f-pay-section">'
-                        '<span class="f-pay-title">💳 پرداخت امن با درگاه‌های معتبر</span>'
+                        '<span class="f-pay-title">💳 پرداخت آنلاین از طریق درگاه‌های پرداخت</span>'
                         '<div class="f-pay-icons">'
                         '<img src="/static/img/payments/zarinpal.svg" alt="زرین‌پال" title="زرین‌پال">'
-                        '<img src="/static/img/payments/shaparak.svg" alt="شاپرک" title="شاپرک">'
                         '<img src="/static/img/payments/idpay.svg" alt="آیدی‌پی" title="آیدی‌پی">'
                         '</div></div>'
                     )}}

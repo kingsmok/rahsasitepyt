@@ -98,6 +98,8 @@ def test_jdate_none():
 def test_student_e2e_register_learn_cert_review_ticket(client, app):
     """فلوی کامل دانشجو: ثبت‌نام → ورود خودکار → یادگیری → گواهی → نظر → تیکت"""
     import re as _re
+    import uuid as _uuid
+    import random as _rnd
     from models import User, Enrollment, Review, Ticket, Section, Lesson
 
     def _csrf(url):
@@ -105,30 +107,25 @@ def test_student_e2e_register_learn_cert_review_ticket(client, app):
         m = _re.search(r'name="_csrf_token" value="([^"]+)"', r.text)
         return m.group(1) if m else None
 
-    # ثبت‌نام (با کد ملی معتبر)
-    import random as _rnd
-    nc = None
-    for _ in range(200):
-        d = [_rnd.randint(0, 9) for _ in range(10)]
-        if d[0] == 0:
-            continue
-        s = sum((10 - i) * d[i] for i in range(9))
-        r = s % 11
-        c = (0 if r < 2 else 11 - r)
-        if c == d[9]:
-            nc = ''.join(map(str, d))
-            break
-    if not nc:
-        nc = '0013542429'  # کد معتبر ثابت
+    # شناسه یکتا — جلوگیری از تداخل اگر تست دوباره در همان فرایند اجرا شود
+    _uniq = _uuid.uuid4().hex[:8]
+    email = f'e2e-{_uniq}@test.ir'
+    # تلفن ۱۱ رقمی معتبر با پیشوند 09 — رقم‌های تصادفی
+    phone = '09' + str(_rnd.randint(100000000, 999999999))  # 11 رقم
+
+    # کد ملی یکتای معتبر (تولید الگوریتمی تضمینی از validators)
+    from validators import gen_national_code as _gen_nc
+    nc = _gen_nc()
+
     tok = _csrf('/auth/register')
     r = client.post('/auth/register', data={
-        '_csrf_token': tok, 'name': 'کاربر E2E تست', 'email': 'e2e@test.ir',
+        '_csrf_token': tok, 'name': 'کاربر E2E تست', 'email': email,
         'password': 'Test1234!', 'confirm': 'Test1234!',
-        'phone': '09120988776', 'national_code': nc,
+        'phone': phone, 'national_code': nc,
     }, follow_redirects=False)
     assert r.status_code == 302, f'ثبت‌نام: {r.status_code}'
     with app.app_context():
-        u = User.query.filter_by(email='e2e@test.ir').first()
+        u = User.query.filter_by(email=email).first()
         assert u is not None
 
     # ثبت‌نام در دوره (مستقیم — چون پرداخت در تست دیگر پوشش داده شده)

@@ -1,11 +1,42 @@
 # -*- coding: utf-8 -*-
 """ثبت‌نام، ورود (ایمیل و شماره تماس OTP)، تکمیل پروفایل و خروج"""
+import hmac
+import os
 import random
 import time
 from flask import Blueprint, render_template, request, redirect, url_for, flash, g, session
 from models import db, User
 from validators import is_valid_phone, is_valid_national_code
 from validators import log_exc as _lexc
+
+
+def _is_prod():
+    """آیا محیط production است؟ (برای رفتارهای امن فقط-در-تولید)"""
+    return (os.environ.get('FLASK_ENV') == 'production' or
+            os.environ.get('APP_ENV') == 'production')
+
+
+def _codes_equal(a, b):
+    """مقایسهٔ مقاوم در برابر Timing Attack برای کدهای تایید (OTP/2FA).
+    اگر کد مورد انتظار خالی باشد (هیچ کدی صادر نشده) همیشه نامعتبر برمی‌گرداند."""
+    a = str(a or '')
+    b = str(b or '')
+    if not a or not b:
+        return False
+    try:
+        return hmac.compare_digest(a, b)
+    except Exception:
+        return False
+
+
+def _is_demo_otp(settings):
+    """آیا باید کد تایید را روی صفحه نمایش بدهیم؟ فقط در حالت دمو/غیر-تولید،
+    یعنی وقتی پنل پیامکی واقعی تنظیم نشده است. در production هرگز کد روی صفحه
+    نمایش داده نمی‌شود تا جلوی سرقت کد/تسخیر حساب گرفته شود."""
+    if _is_prod():
+        return False
+    provider = (settings.get('sms_provider') or '').strip()
+    return provider in ('', 'demo')
 
 
 def _safe_next(url):
@@ -31,6 +62,7 @@ AVATAR_COLORS = ['#2563eb', '#7c3aed', '#059669', '#dc2626', '#ea580c',
 # نگهداری تلاش‌های ناموفق به‌ازای IP — مکمل محدودیت session (پاک‌کردن کوکی دور نمی‌زند)
 _LOGIN_ATTEMPTS = {}   # ip -> [timestamps]
 _LOGIN_LOCK = {}       # ip -> lock_until
+_MAX_IP_TRACKED = 5000  # سقف ردیابی IP — جلوگیری از Memory DoS
 MAX_FAILS = 5
 LOCK_MINUTES = 15
 
@@ -62,6 +94,10 @@ def _ip_fail():
     if len(lst) >= MAX_FAILS:
         _LOGIN_LOCK[ip] = now + LOCK_MINUTES * 60
         _LOGIN_ATTEMPTS[ip] = []
+    # پاک‌سازی حافظه برای جلوگیری از Memory DoS با IPهای یکتا
+    if len(_LOGIN_ATTEMPTS) > _MAX_IP_TRACKED:
+        _LOGIN_ATTEMPTS.clear()
+        _LOGIN_LOCK.clear()
 
 
 def _ip_success():
@@ -91,9 +127,9 @@ def register():
             err = 'شماره تماس معتبر نیست — باید با 09 شروع شود و ۱۱ رقم باشد. (مثال: 09123456789)'
         elif User.query.filter_by(phone=phone).first():
             err = 'این شماره تماس قبلاً ثبت شده است. با همان شماره وارد شوید.'
-        elif not is_valid_national_code(nc):
+        elif nc and not is_valid_national_code(nc):
             err = 'کد ملی معتبر نیست. لطفاً کد ملی ۱۰ رقمی صحیح خود را وارد کنید.'
-        elif User.query.filter_by(national_code=nc).first():
+        elif nc and User.query.filter_by(national_code=nc).first():
             err = 'این کد ملی قبلاً در سیستم ثبت شده است.'
         elif '@' not in email:
             err = 'ایمیل معتبر وارد کنید.'
@@ -106,7 +142,7 @@ def register():
         if err:
             flash(err, 'error')
         else:
-            user = User(name=name, phone=phone, national_code=nc, email=email,
+            user = User(name=name, phone=phone, national_code=nc or None, email=email,
                         role='student', avatar_color=random.choice(AVATAR_COLORS))
             user.set_password(password)
             # کد معرف (ارجاع دوستان) — از پارامتر ref یا کوکی
@@ -168,12 +204,13 @@ def login():
                 session['admin_2fa_ts'] = time.time()
                 from sms import send_sms
                 send_sms(user.phone or '', f'کد تایید دومرحله‌ای ورود به پنل: {code2}', g.settings)
-                flash(f'🔐 کد تایید دومرحله‌ای (دمو): {code2}', 'info')
+                if _is_demo_otp(g.settings):
+                    flash(f'🔐 کد تایید دومرحله‌ای (دمو): {code2}', 'info')
                 return redirect(url_for('auth.admin_2fa'))
             from models import ActivityLog
             db.session.add(ActivityLog(user_id=user.id, action='login',
                                        detail='ورود با ایمیل', ip=_client_ip()))
-            from gamification import award_points, record_streak
+            from gamification import record_streak
             record_streak(user)
             # هشدار ورود مشکوک: اگر IP تغییر کرده باشد
             try:
@@ -242,7 +279,7 @@ def phone_send():
     # ارسال کد: اگر پنل پیامکی واقعی تنظیم شده باشد پیامک می‌شود، وگرنه حالت دمو
     from sms import send_otp
     ok, msg = send_otp(phone, code, g.settings)
-    if ok and g.settings.get('sms_provider') not in ('', 'demo', None):
+    if ok and not _is_demo_otp(g.settings):
         flash('📲 کد تایید به شماره شما پیامک شد.', 'success')
     else:
         flash(f'📲 کد تایید شما (حالت دمو): {code}', 'info')
@@ -265,7 +302,7 @@ def phone_verify():
             session.pop('otp_tries', None)
             flash('تلاش‌های ناموفق بیش از حد — کد جدید درخواست کنید.', 'error')
             return redirect(url_for('auth.login'))
-        if code != session.get('otp_code'):
+        if not _codes_equal(code, session.get('otp_code')):
             flash(f'کد تایید اشتباه است. ({5 - otp_tries + 1} تلاش باقی‌مانده)', 'error')
         elif time.time() - session.get('otp_ts', 0) > 600:
             flash('کد تایید منقضی شده است. دوباره ارسال کنید.', 'error')
@@ -324,7 +361,7 @@ def admin_2fa():
             flash('تلاش‌های ناموفق بیش از حد — دوباره وارد شوید.', 'error')
             return redirect(url_for('auth.login'))
         code = request.form.get('code', '').strip()
-        if code == session.get('admin_2fa'):
+        if _codes_equal(code, session.get('admin_2fa')):
             session.pop('admin_2fa', None)
             session.pop('admin_2fa_ts', None)
             session.pop('admin_2fa_tries', None)
@@ -358,7 +395,10 @@ def forgot():
         if not user.email and not user.password_hash:
             flash('این حساب رمز عبور ندارد (ورود فقط با کد تایید). می‌توانید از همان ورود با کد استفاده کنید.', 'info')
             return redirect(url_for('auth.login'))
-        # ارسال کد (مکانیزم مشترک OTP)
+        # ارسال کد (مکانیزم مشترک OTP) — کد همیشه به شمارهٔ واقعی پیامک می‌شود.
+        # ⚠️ امنیت: هرگز کد بازیابی را فقط با نمایش روی صفحهٔ «درخواست‌کننده» صادر نکن،
+        # چون مهاجم با واردکردن شمارهٔ قربانی، کد را می‌بیند و رمز او را بازنشانی می‌کند
+        # (تسخیر حساب). کد فقط در حالت دمو/غیر-تولید روی صفحه نمایش داده می‌شود.
         now = time.time()
         last = session.get('otp_last_send', 0)
         if now - last < 60:
@@ -370,7 +410,12 @@ def forgot():
         session['otp_ts'] = now
         session['otp_last_send'] = now
         session['otp_purpose'] = 'reset'
-        flash(f'📲 کد بازیابی شما (حالت دمو): {code}', 'info')
+        from sms import send_otp
+        ok, msg = send_otp(phone, code, g.settings)
+        if ok and not _is_demo_otp(g.settings):
+            flash('📲 کد بازیابی به شماره شما پیامک شد.', 'success')
+        else:
+            flash(f'📲 کد بازیابی شما (حالت دمو): {code}', 'info')
         return redirect(url_for('auth.forgot_verify'))
     return render_template('auth/forgot.html')
 
@@ -386,7 +431,7 @@ def forgot_verify():
         code = request.form.get('code', '').strip()
         password = request.form.get('password', '')
         confirm = request.form.get('confirm', '')
-        if code != session.get('otp_code'):
+        if not _codes_equal(code, session.get('otp_code')):
             flash('کد تایید اشتباه است.', 'error')
         elif time.time() - session.get('otp_ts', 0) > 600:
             flash('کد منقضی شده است. دوباره تلاش کنید.', 'error')
@@ -428,9 +473,9 @@ def complete_profile():
         err = None
         if len(name) < 3:
             err = 'نام و نام خانوادگی را کامل وارد کنید.'
-        elif not is_valid_national_code(nc):
+        elif nc and not is_valid_national_code(nc):
             err = 'کد ملی معتبر نیست — کد ملی ۱۰ رقمی صحیح خود را وارد کنید.'
-        elif User.query.filter(User.national_code == nc, User.id != g.user.id).first():
+        elif nc and User.query.filter(User.national_code == nc, User.id != g.user.id).first():
             err = 'این کد ملی قبلاً در سیستم ثبت شده است.'
         elif '@' not in email:
             err = 'ایمیل معتبر وارد کنید.'
@@ -442,7 +487,7 @@ def complete_profile():
             flash(err, 'error')
         else:
             g.user.name = name
-            g.user.national_code = nc
+            g.user.national_code = nc or None
             g.user.email = email
             if password:
                 g.user.set_password(password)

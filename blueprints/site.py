@@ -12,6 +12,7 @@ def fa_num2(n):
 from sqlalchemy.orm import joinedload
 from models import db, Course, Category, User, BlogPost, Review, Favorite, ContactMessage, NewsletterEmail, Section, Enrollment
 from validators import log_exc as _lexc
+from validators import safe_referrer
 
 site_bp = Blueprint('site', __name__)
 
@@ -169,6 +170,9 @@ def course_detail(slug):
     if not related:
         related = Course.query.filter(Course.id != course.id, Course.status == 'published') \
             .order_by(Course.views.desc()).limit(3).all()
+    # محاسبهٔ یکجا آمار دوره + دوره‌های مرتبط (حذف N+1)
+    from models import annotate_course_stats
+    annotate_course_stats([course] + list(related))
     reviews = (Review.query.options(joinedload(Review.user))
                .filter_by(course_id=course.id, is_approved=True)
                .order_by(Review.created_at.desc()).all())
@@ -806,4 +810,4 @@ def newsletter():
         db.session.add(NewsletterEmail(email=email))
         db.session.commit()
         flash('عضویت شما در خبرنامه با موفقیت ثبت شد! 🎉', 'success')
-    return redirect(request.referrer or url_for('site.index'))
+    return redirect(safe_referrer(url_for('site.index')))

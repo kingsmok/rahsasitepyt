@@ -1,16 +1,14 @@
 # -*- coding: utf-8 -*-
 """پنل دانشجو: داشبورد، یادگیری، علاقه‌مندی‌ها، سفارش‌ها، تیکت‌ها، پروفایل، گواهینامه"""
 import os
-import random
 import uuid
-from datetime import datetime
 try:
     from datetime import UTC
 except ImportError:  # پایتون < 3.11 (هاست‌های اشتراکی)
     from datetime import timezone as _tz_utc
     UTC = _tz_utc.utc
 from flask import Blueprint, render_template, request, redirect, url_for, flash, g, abort, session
-from models import (utcnow, db, User, Course, Enrollment, Favorite, Order, Ticket, Review, ActivityLog, StudyDay)
+from models import (utcnow, db, User, Course, Enrollment, Favorite, Order, Ticket, ActivityLog, StudyDay)
 from validators import youtube_id, aparat_hash, is_valid_phone, is_valid_national_code
 from validators import log_exc as _lexc
 
@@ -43,8 +41,7 @@ def dashboard():
         orders=Order.query.filter_by(user_id=g.user.id).count(),
     )
         # یادآور ادامه یادگیری: دوره‌ای که شروع شده ولی ۷+ روز است پیشرفت نداشته
-    from datetime import timedelta as _td
-    from models import Enrollment as _E, Notification as _N
+    from models import Enrollment as _E
     reminder = None
     try:
         for e in _E.query.filter_by(user_id=g.user.id).all():
@@ -216,8 +213,10 @@ def orders():
               .options(_sil(Order.items), _sil(Order.installments))
               .filter_by(user_id=g.user.id)
               .order_by(Order.created_at.desc()).all())
+    from gateways import GATEWAY_MAP as _gmap
     return render_template('dashboard/orders.html', orders=orders,
-                           installments={o.id: o.installments for o in orders})
+                           installments={o.id: o.installments for o in orders},
+                           gateway_names={k: v['name'] for k, v in _gmap.items()})
 
 
 @student_bp.route('/invoice/<code>')
@@ -304,9 +303,9 @@ def profile():
             err = 'شماره تماس معتبر نیست — باید با 09 شروع شود و ۱۱ رقم باشد.'
         elif User.query.filter(User.phone == phone, User.id != g.user.id).first():
             err = 'این شماره تماس قبلاً برای حساب دیگری ثبت شده است.'
-        elif not is_valid_national_code(nc):
+        elif nc and not is_valid_national_code(nc):
             err = 'کد ملی معتبر نیست — کد ملی ۱۰ رقمی صحیح خود را وارد کنید.'
-        elif User.query.filter(User.national_code == nc, User.id != g.user.id).first():
+        elif nc and User.query.filter(User.national_code == nc, User.id != g.user.id).first():
             err = 'این کد ملی قبلاً ثبت شده است.'
         elif password and len(password) < 6:
             err = 'رمز عبور باید حداقل ۶ کاراکتر باشد.'
@@ -315,7 +314,7 @@ def profile():
             return redirect(url_for('student.profile'))
         g.user.name = name
         g.user.phone = phone
-        g.user.national_code = nc
+        g.user.national_code = nc or None
         g.user.bio = bio
         g.user.avatar_color = color
         g.user.notify_email = bool(request.form.get('notify_email'))

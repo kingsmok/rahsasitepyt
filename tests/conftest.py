@@ -61,3 +61,28 @@ def login(client, email, password):
     return client.post('/auth/login', data={
         '_csrf_token': m.group(1), 'email': email, 'password': password
     }, follow_redirects=False)
+
+
+@pytest.fixture(autouse=True)
+def _clean_global_state():
+    """پاک‌سازی state سراسری بین تست‌ها — جلوگیری از فلکینگ.
+
+    dictهای قفل لاگین (auth) و rate-limit (app) بین تست‌ها در یک فرایند مشترک‌اند؛
+    اگر پاک نشوند، لاگین‌های ناموفق یک تست می‌توانند تست بعدی را قفل کنند
+    (همه تست‌ها از IP یکسان 127.0.0.1 استفاده می‌کنند)."""
+    from blueprints import auth as _auth
+    from flask import current_app, has_app_context
+    _auth._LOGIN_ATTEMPTS.clear()
+    _auth._LOGIN_LOCK.clear()
+    try:
+        if has_app_context():
+            rl = getattr(current_app, '_rl_hits', None)
+            lock = getattr(current_app, '_rl_lock', None)
+            if rl is not None and lock is not None:
+                with lock:
+                    rl.clear()
+    except Exception:
+        pass
+    yield
+    _auth._LOGIN_ATTEMPTS.clear()
+    _auth._LOGIN_LOCK.clear()

@@ -27,6 +27,18 @@ def test_register_new_user(client):
     assert r.status_code == 302
 
 
+def test_register_without_national_code(client):
+    """کد ملی اختیاری است — ثبت‌نام بدون کد ملی باید موفق باشد (ضد فیشینگ)."""
+    r = client.get('/auth/register')
+    m = re.search(r'name="_csrf_token" value="([^\"]+)"', r.text)
+    r = client.post('/auth/register', data={
+        '_csrf_token': m.group(1),
+        'name': 'کاربر بدون کد ملی', 'email': 'nocode@test.ir', 'phone': '09120000555',
+        'national_code': '', 'password': 'secret123', 'confirm': 'secret123',
+    }, follow_redirects=False)
+    assert r.status_code == 302  # بدون کد ملی هم ثبت‌نام موفق است
+
+
 def test_logout(client):
     login(client, 'demo@test.ir', 'demo123')
     r = client.get('/auth/logout', follow_redirects=False)

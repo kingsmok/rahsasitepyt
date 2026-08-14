@@ -177,3 +177,21 @@ def http_request(method, url, **kwargs):
     import requests as _req
     kwargs.setdefault('timeout', (5, 15))  # اتصال ۵ ثانیه، پاسخ ۱۵ ثانیه
     return _req.request(method, url, **kwargs)
+
+
+def safe_referrer(default=None):
+    """برگرداندن referrer فقط در صورت هم-منشاء بودن (جلوگیری از Open Redirect).
+
+    `request.referrer` قابل‌کنترل توسط کلاینت است؛ ریدایرکت مستقیم به آن می‌تواند
+    کاربر را به یک دامنهٔ بیرونی (فیشینگ) بفرستد. این تابع فقط آدرس‌های داخلی
+    (هم‌منشاء) را برمی‌گرداند و در غیر این صورت `default` را برمی‌گرداند.
+    """
+    from flask import request
+    ref = (request.referrer or '').strip()
+    host = (request.host_url or '').rstrip('/')
+    if host and ref.startswith(host + '/'):
+        # جلوگیری از نویسه‌های خطرناک در URL
+        if any(c in ref for c in ('\n', '\r', '\x00')):
+            return default
+        return ref
+    return default

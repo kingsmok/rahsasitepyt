@@ -204,3 +204,94 @@ def test_tracking_id_filter_blocks_injection(app):
     assert f("G-ABC123") == 'G-ABC123'
     assert f("x';alert(1);//") == ''
     assert f('</script><script>alert(1)</script>') == ''
+
+
+# ─────────────────────────────────────────────────────────
+# ۶) محتوای فریب‌دهنده (علت واقعی علامت خوردن diier.ir)
+# ─────────────────────────────────────────────────────────
+PLACEHOLDER_CONTACTS = ('info@academy.ir', '021-91001234', '۰۲۱-۹۱۰۰۱۲۳۴',
+                        '98910001234', 'academy_ir')
+FAKE_STATS = ('۵۰,۰۰۰+', '۱۵۰+', '۲,۰۰۰+', '٪۹۸')
+
+
+def _seed_source():
+    import seed
+    import designs
+    import persian_themes
+    import footer_template
+    out = ''
+    for mod in (seed, designs, persian_themes, footer_template):
+        with open(mod.__file__, encoding='utf-8') as f:
+            out += f.read()
+    return out
+
+
+def test_no_fake_stats_in_default_content():
+    """آمار جعلی («۵۰,۰۰۰+ دانشجو») نباید در محتوای پیش‌فرض باشد.
+
+    این دقیقاً چیزی بود که روی سایت واقعی با ۰ دانشجو نمایش داده می‌شد و
+    Google Safe Browsing آن را «محتوای فریب‌دهنده» تشخیص داد.
+    """
+    src = _seed_source()
+    # فقط خطوط کد (نه کامنت‌های توضیحی) بررسی شوند
+    code = '\n'.join(ln for ln in src.splitlines()
+                     if not ln.strip().startswith('#'))
+    for bad in FAKE_STATS:
+        assert f"'{bad}'" not in code and f'"{bad}"' not in code, \
+            f'آمار جعلی «{bad}» هنوز در محتوای پیش‌فرض است'
+
+
+def test_no_placeholder_contacts_in_default_content():
+    """اطلاعات تماس نمونه نباید در محتوای پیش‌فرض باشد"""
+    src = _seed_source()
+    code = '\n'.join(ln for ln in src.splitlines()
+                     if not ln.strip().startswith('#'))
+    for bad in PLACEHOLDER_CONTACTS:
+        assert f"'{bad}'" not in code and f'"{bad}"' not in code, \
+            f'اطلاعات تماس نمونه «{bad}» هنوز در محتوای پیش‌فرض است'
+
+
+def test_no_fake_testimonials_in_default_content():
+    """نظرات ساختگی با ادعای نتیجه نباید در محتوای پیش‌فرض باشد.
+
+    توجه: نام‌های فارسی در نظرات/کامنت‌های نمونهٔ وبلاگ مشکلی ندارند؛ آنچه
+    «فریب‌دهنده» است، ادعای نتیجهٔ ساختگی (مثل «بعد از ۴ ماه استخدام شدم»)
+    به‌عنوان رضایت مشتری روی صفحهٔ اصلی است.
+    """
+    src = _seed_source()
+    for bad in ('استخدام شدم', 'آماده بازار کار کرد',
+                'الان به عنوان طراح محصول کار می‌کنم'):
+        assert bad not in src, f'نظر جعلی «{bad}» هنوز در محتوای پیش‌فرض است'
+
+
+def test_templates_have_no_fake_contact_fallback():
+    """قالب‌ها نباید مقدار پیش‌فرض جعلی برای تماس داشته باشند.
+
+    الگوی `site.phone or '۰۲۱-۹۱۰۰۱۲۳۴'` یعنی حتی وقتی مدیر شماره‌ای ثبت
+    نکرده، سایت یک شماره الکی نشان می‌دهد = اطلاعات تماس جعلی.
+    """
+    import glob
+    import re as _re
+    # الگو: site.X or 'مقدارِ غیرخالی'  ← مقدار پیش‌فرض جعلی
+    # (site.X or ''  اشکالی ندارد چون چیزی نشان نمی‌دهد)
+    pat = _re.compile(
+        r"site\.(?:phone|email|address|telegram|instagram|whatsapp)\s+or\s+'([^']+)'")
+    offenders = []
+    for f in glob.glob('templates/**/*.html', recursive=True):
+        # فرم‌های پنل مدیریت فقط placeholder دارند و به بازدیدکننده نمایش داده نمی‌شوند
+        if '/admin/' in f.replace('\\', '/'):
+            continue
+        with open(f, encoding='utf-8') as fh:
+            for m in pat.finditer(fh.read()):
+                offenders.append(f'{f} → «{m.group(1)}»')
+    assert not offenders, 'مقدار پیش‌فرض جعلی برای تماس: ' + ', '.join(offenders[:5])
+
+
+def test_cleanup_script_is_importable():
+    """اسکریپت پاک‌سازی باید بدون خطا قابل بارگذاری باشد"""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        'clean_demo_content', 'scripts/clean_demo_content.py')
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    assert hasattr(mod, 'clean_widget') and hasattr(mod, 'WIDGET_PLACEHOLDERS')

@@ -36,9 +36,9 @@
       <div>
         <h4>ارتباط با ما</h4>
         <ul class="footer-contact">
-          <li><span class="ic">{{ icon('map-pin', 16) }}</span><span>{{ site.address or 'تهران، خیابان ولیعصر' }}</span></li>
-          <li><span class="ic">{{ icon('phone', 16) }}</span><span>{{ fa(site.phone or '۰۲۱-۹۱۰۰۱۲۳۴') }}</span></li>
-          <li><span class="ic">{{ icon('mail', 16) }}</span><span>{{ site.email or 'info@academy.ir' }}</span></li>
+          <li><span class="ic">{{ icon('map-pin', 16) }}</span><span>{{ site.address }}</span></li>
+          <li><span class="ic">{{ icon('phone', 16) }}</span><span>{{ fa(site.phone) }}</span></li>
+          {% if site.email %}<li><span class="ic">{{ icon('mail', 16) }}</span><span>{{ site.email }}</span></li>{% endif %}
           <li><span class="ic">{{ icon('clock', 16) }}</span><span>{{ site.support_hours or 'شنبه تا پنجشنبه — ۹ تا ۲۱' }}</span></li>
         </ul>
         <form action="{{ url_for('site.newsletter') }}" method="post" style="margin-top:14px">
@@ -54,9 +54,10 @@
     <div class="footer-bottom">
       <span>© {{ fa(now.year) }} — تمامی حقوق برای {{ site.site_name or 'آکادمی آنلاین' }} محفوظ است.</span>
       <div class="socials">
-        <a href="https://t.me/{{ site.telegram or 'academy_ir' }}" target="_blank" rel="noopener" title="تلگرام">{{ icon('brand-telegram', 18) }}</a>
-        <a href="https://instagram.com/{{ site.instagram or 'academy.ir' }}" target="_blank" rel="noopener" title="اینستاگرام">{{ icon('brand-instagram', 18) }}</a>
-        <a href="https://wa.me/98" target="_blank" rel="noopener" title="واتساپ">{{ icon('brand-whatsapp', 18) }}</a>
+        {# شبکه‌های اجتماعی فقط با آیدی واقعی — لینک به اکانت ناموجود سیگنال منفی است #}
+        {% if site.telegram %}<a href="https://t.me/{{ site.telegram }}" target="_blank" rel="noopener" title="تلگرام">{{ icon('brand-telegram', 18) }}</a>{% endif %}
+        {% if site.instagram %}<a href="https://instagram.com/{{ site.instagram }}" target="_blank" rel="noopener" title="اینستاگرام">{{ icon('brand-instagram', 18) }}</a>{% endif %}
+        {% if site.whatsapp %}<a href="https://wa.me/{{ site.whatsapp }}" target="_blank" rel="noopener" title="واتساپ">{{ icon('brand-whatsapp', 18) }}</a>{% endif %}
         <a href="https://youtube.com" target="_blank" rel="noopener" title="یوتیوب">{{ icon('brand-youtube', 18) }}</a>
       </div>
     </div>

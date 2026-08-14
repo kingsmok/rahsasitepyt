@@ -632,11 +632,14 @@ def build_css(t):
 # ---------------------------------------------------------------
 def home_rows(t):
     feats = [dict(icon=i, title=tt, text=tx) for i, tt, tx in t['features']]
+    # ⚠️ آمار پیش‌فرض «پویا» است (از دیتابیس پر می‌شود). عدد ثابت مثل
+    # «۵۰,۰۰۰+ دانشجو» روی سایتی که تازه راه‌اندازی شده، از دید
+    # Google Safe Browsing محتوای فریب‌دهنده است.
     st = t.get('stats') or [
-        dict(value='۱۵۰+', label='دوره آموزشی'),
-        dict(value='۵۰,۰۰۰+', label='دانشجوی فعال'),
-        dict(value='۲,۰۰۰+', label='ساعت آموزش'),
-        dict(value='٪۹۸', label='رضایت دانشجویان'),
+        dict(value='{courses}', label='دوره آموزشی'),
+        dict(value='{students}', label='دانشجوی فعال'),
+        dict(value='{hours}', label='ساعت آموزش'),
+        dict(value='{lessons}', label='درس منتشرشده'),
     ]
     cta = t['cta']
     return [
@@ -685,10 +688,10 @@ def component_html(t):
       <a href="/about" style="border:2px solid {a};color:{a};text-decoration:none;font-weight:800;padding:12px 30px;border-radius:14px">درباره ما</a>
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-top:34px">
-      <div style="background:#fff;border-radius:16px;padding:18px;border:1px solid {p}22"><b style="font-size:22px;color:{p}">۱۵۰+</b><div style="font-size:12.5px;color:{tx}88">دوره آموزشی</div></div>
-      <div style="background:#fff;border-radius:16px;padding:18px;border:1px solid {p}22"><b style="font-size:22px;color:{p}">۵۰,۰۰۰+</b><div style="font-size:12.5px;color:{tx}88">دانشجوی فعال</div></div>
-      <div style="background:#fff;border-radius:16px;padding:18px;border:1px solid {p}22"><b style="font-size:22px;color:{p}">۲,۰۰۰+</b><div style="font-size:12.5px;color:{tx}88">ساعت آموزش</div></div>
-      <div style="background:#fff;border-radius:16px;padding:18px;border:1px solid {p}22"><b style="font-size:22px;color:{p}">٪۹۸</b><div style="font-size:12.5px;color:{tx}88">رضایت</div></div>
+      <div style="background:#fff;border-radius:16px;padding:18px;border:1px solid {p}22"><b style="font-size:22px;color:{p}">—</b><div style="font-size:12.5px;color:{tx}88">دوره آموزشی</div></div>
+      <div style="background:#fff;border-radius:16px;padding:18px;border:1px solid {p}22"><b style="font-size:22px;color:{p}">—</b><div style="font-size:12.5px;color:{tx}88">دانشجوی فعال</div></div>
+      <div style="background:#fff;border-radius:16px;padding:18px;border:1px solid {p}22"><b style="font-size:22px;color:{p}">—</b><div style="font-size:12.5px;color:{tx}88">ساعت آموزش</div></div>
+      <div style="background:#fff;border-radius:16px;padding:18px;border:1px solid {p}22"><b style="font-size:22px;color:{p}">—</b><div style="font-size:12.5px;color:{tx}88">رضایت</div></div>
     </div>
   </div>''', 'homepage'),
         course_card=_section(t, f'''
@@ -736,7 +739,7 @@ def component_html(t):
       <h3 style="font-weight:900;margin-bottom:14px;color:{tx}">📍 اطلاعات دسترسی</h3>
       <div style="margin-bottom:10px">🏢 تهران، خیابان آزادی، پلاک ۱۲۳</div>
       <div style="margin-bottom:10px">📞 ۰۲۱-۱۲۳۴۵۶۷۸</div>
-      <div style="margin-bottom:10px">✉️ info@academy.ir</div>
+      <div style="margin-bottom:10px">✉️ ایمیل پشتیبانی</div>
       <div style="height:140px;border-radius:14px;background:linear-gradient(135deg,{s},{p}22);display:flex;align-items:center;justify-content:center;color:{p};font-weight:800;margin-top:12px">🗺 نقشه — شبکه سراسری پشتیبانی</div>
     </div>
   </div>''', 'contact_us'),

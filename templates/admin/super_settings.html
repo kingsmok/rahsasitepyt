@@ -102,7 +102,7 @@
         <option value="index,follow" {{ 'selected' if vals.get('seo_robots_main')=='index,follow' }}>index,follow</option>
         <option value="noindex,nofollow" {{ 'selected' if vals.get('seo_robots_main')=='noindex,nofollow' }}>noindex,nofollow</option>
       </select></div>
-    <div class="ss-field"><label>ایکس (Twitter)</label><input name="seo_twitter" value="{{ vals.get('seo_twitter','@academy_ir') }}"></div>
+    <div class="ss-field"><label>ایکس (Twitter)</label><input name="seo_twitter" value="{{ vals.get('seo_twitter','') }}" placeholder="@yourhandle"></div>
     <div class="ss-field"><label>کد گوگل آنالیتیکس (GA)</label><input name="ga_code" value="{{ vals.get('ga_code','') }}" placeholder="G-XXXXXXX"></div>
   </div>
 </div>

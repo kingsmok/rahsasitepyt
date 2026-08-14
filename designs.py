@@ -62,22 +62,21 @@ HOME_DESIGNS = {
                 {'id': 'd1_w4', 'type': 'courses', 'data': {'title': '⭐ پرفروش‌ترین دوره‌ها', 'subtitle': 'انتخاب بیشتر دانشجویان', 'limit': '8', 'columns': '4', 'sort': 'popular'}}]],
             },
             {'id': 'd1_stats', 'settings': {'gap': 0, 'py': 50}, 'cols': [[
+                # ⚠️ آمار پویا از دیتابیس — عدد ثابت جعلی روی سایت واقعی
+                # «محتوای فریب‌دهنده» است و باعث هشدار «Dangerous site» می‌شود.
                 {'id': 'd1_w5', 'type': 'stats', 'data': {'columns': '4', 'items': [
-                    {'value': '۱۵۰+', 'label': 'دوره آموزشی'},
-                    {'value': '۵۰,۰۰۰+', 'label': 'دانشجوی فعال'},
-                    {'value': '۲,۰۰۰+', 'label': 'ساعت آموزش'},
-                    {'value': '٪۹۸', 'label': 'رضایت دانشجویان'},
+                    {'value': '{courses}', 'label': 'دوره آموزشی'},
+                    {'value': '{students}', 'label': 'دانشجوی فعال'},
+                    {'value': '{hours}', 'label': 'ساعت آموزش'},
+                    {'value': '{lessons}', 'label': 'درس منتشرشده'},
                 ]}}]],
             },
             {'id': 'd1_teach', 'settings': {'gap': 22, 'py': 60}, 'cols': [[
                 {'id': 'd1_w6', 'type': 'teachers', 'data': {'title': '👨‍🏫 اساتید برتر آکادمی', 'limit': '4', 'columns': '4'}}]],
             },
             {'id': 'd1_testi', 'settings': {'gap': 22, 'py': 60, 'bg': '#ffffff', 'radius': 24}, 'cols': [[
-                {'id': 'd1_w7', 'type': 'testimonials', 'data': {'columns': '3', 'items': [
-                    {'name': 'علی محمدی', 'role': 'دانشجوی پایتون', 'stars': '5', 'color': '#7c3aed', 'text': 'بعد از ۴ ماه به عنوان برنامه‌نویس استخدام شدم!'},
-                    {'name': 'فاطمه احمدی', 'role': 'دانشجوی Django', 'stars': '5', 'color': '#059669', 'text': 'پروژه‌های عملی من را آماده بازار کار کرد.'},
-                    {'name': 'نگار کریمی', 'role': 'دانشجوی UI/UX', 'stars': '5', 'color': '#db2777', 'text': 'الان به عنوان طراح محصول کار می‌کنم.'},
-                ]}}]],
+                # نظرات واقعی از پنل مدیریت اضافه می‌شوند — نظر ساختگی ممنوع
+                {'id': 'd1_w7', 'type': 'testimonials', 'data': {'columns': '3', 'items': []}}]],
             },
             {'id': 'd1_stories', 'settings': {'gap': 22, 'py': 60}, 'cols': [[
                 {'id': 'd1_ws', 'type': 'success_stories', 'data': {'title': '🌟 داستان‌های موفقیت دانشجویان', 'limit': '3'}}]],
@@ -115,8 +114,8 @@ HOME_DESIGNS = {
             },
             {'id': 'd2_stats', 'settings': {'gap': 0, 'py': 50}, 'cols': [[
                 {'id': 'd2_w6', 'type': 'stats', 'data': {'columns': '4', 'items': [
-                    {'value': '۵۰,۰۰۰+', 'label': 'دانشجو'}, {'value': '۱۵۰+', 'label': 'دوره'},
-                    {'value': '۱۲۰+', 'label': 'مدرس'}, {'value': '٪۹۸', 'label': 'رضایت'}]}}]],
+                    {'value': '{students}', 'label': 'دانشجو'}, {'value': '{courses}', 'label': 'دوره'},
+                    {'value': '{teachers}', 'label': 'مدرس'}, {'value': '{lessons}', 'label': 'درس'}]}}]],
             },
             {'id': 'd2_posts', 'settings': {'gap': 24, 'py': 60, 'bg': '#ffffff', 'radius': 24}, 'cols': [[
                 {'id': 'd2_w7', 'type': 'posts', 'data': {'title': 'آخرین مقالات', 'limit': '3', 'columns': '3'}}]],

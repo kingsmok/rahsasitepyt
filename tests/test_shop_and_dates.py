@@ -51,7 +51,7 @@ def test_full_purchase_flow(client, app):
     tok = _csrf(client, f'/pay/{code}')
     r = client.post(f'/pay/{code}', data={'_csrf_token': tok, 'gateway': 'sandbox'},
                     follow_redirects=False)
-    assert r.status_code == 302 and '/pay/bank/' in r.headers['Location']
+    assert r.status_code == 302 and '/pay/sandbox/' in r.headers['Location']
     # شبیه‌سازی پرداخت موفق
     bank_url = r.headers['Location']
     tok = _csrf(client, bank_url)
@@ -72,7 +72,7 @@ def test_double_payment_no_duplicate(client, app):
     from models import PaymentLog
     before = PaymentLog.query.count()
     order = Order.query.filter_by(status='paid').first()
-    r = client.get(f'/pay/bank/{order.code}', follow_redirects=False)
+    r = client.get(f'/pay/sandbox/{order.code}', follow_redirects=False)
     assert r.status_code == 302
     assert PaymentLog.query.count() == before
 

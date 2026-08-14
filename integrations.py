@@ -28,12 +28,26 @@ def env(key, default=''):
     return _env_cache[key]
 
 
+import re as _re
+
+# شناسه‌های سرویس‌های بیرونی فقط می‌توانند حروف/عدد/خط‌تیره باشند.
+# اگر مقدار .env دستکاری شود (مثلاً `x"></script><script>...`) بدون این اعتبارسنجی
+# مستقیماً داخل تگ <script> در همهٔ صفحات تزریق می‌شد — یعنی XSS سراسری،
+# که Google Safe Browsing آن را «Dangerous site» علامت می‌زند.
+_ID_RE = _re.compile(r'^[A-Za-z0-9_-]{1,64}$')
+
+
+def _safe_id(value):
+    v = (value or '').strip()
+    return v if _ID_RE.match(v) else ''
+
+
 def clarity_id():
-    return env('CLARITY_ID')
+    return _safe_id(env('CLARITY_ID'))
 
 
 def crisp_id():
-    return env('CRISP_WEBSITE_ID')
+    return _safe_id(env('CRISP_WEBSITE_ID'))
 
 
 def groq_key():

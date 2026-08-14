@@ -205,10 +205,16 @@ def media_upload():
     f = request.files.get('file')
     if not f or not f.filename:
         return jsonify(ok=False, msg='فایلی ارسال نشده'), 400
-    from validators import safe_filename
-    safe = safe_filename(f.filename or '')
+    from validators import safe_filename, file_content_is_safe, ALLOWED_MEDIA_EXT
+    # کتابخانه رسانه فقط محتوای «قابل‌نمایش» می‌پذیرد — هیچ فایل اجرایی/سند HTML.
+    # فایل میزبانی‌شده زیر دامنهٔ ما که قابل اجرا باشد = صفحهٔ فیشینگ/بدافزار از
+    # دید Google Safe Browsing و مسدود شدن کل دامنه با پیام «Dangerous site».
+    safe = safe_filename(f.filename or '', ALLOWED_MEDIA_EXT)
     if not safe:
         return jsonify(ok=False, msg='فرمت فایل مجاز نیست'), 400
+    import os as _os0
+    if not file_content_is_safe(f.stream, _os0.path.splitext(safe)[1].lower()):
+        return jsonify(ok=False, msg='فایل حاوی کد اجرایی است و پذیرفته نشد'), 400
     from models import Media
     import os as _os, uuid as _uuid
     up = _os.path.join(_os.path.dirname(_os.path.dirname(__file__)),

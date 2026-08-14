@@ -89,6 +89,11 @@ ALLOWED_IMAGE_EXT = {'.jpg', '.jpeg', '.png', '.webp', '.gif', '.avif'}
 ALLOWED_IMAGE_EXT_TRUSTED = ALLOWED_IMAGE_EXT | {'.svg'}
 ALLOWED_FILE_EXT = ALLOWED_IMAGE_EXT | {'.pdf', '.doc', '.docx', '.zip', '.rar',
                                         '.txt', '.csv', '.xlsx', '.pptx', '.mp4', '.mp3'}
+# کتابخانه رسانه (فایل‌هایی که مستقیماً زیر دامنه عمومی سرو می‌شوند):
+# فقط تصویر/ویدیو/صوت + pdf. هیچ zip/سند اجرایی/svg — چون لینک آن‌ها قابل
+# پخش عمومی است و میزبانی محتوای اجرایی زیر دامنه، سیگنال «سایت خطرناک» است.
+ALLOWED_MEDIA_EXT = ALLOWED_IMAGE_EXT | {'.mp4', '.webm', '.mov', '.mp3', '.wav',
+                                         '.ogg', '.pdf'}
 
 def safe_filename(filename, allowed_ext=None):
     """نام امن + پسوند مجاز؛ در غیر این صورت None"""
@@ -102,7 +107,61 @@ def safe_filename(filename, allowed_ext=None):
     base = ''.join(c for c in filename if c.isalnum() or c in '._-') or 'file'
     while '..' in base:
         base = base.replace('..', '.')
+    # پسوند دوگانه (shell.php.jpg / x.html.png) — پسوند میانی هم نباید اجرایی باشد
+    _parts = base.lower().split('.')
+    _dangerous = {'php', 'php3', 'php4', 'php5', 'php7', 'phtml', 'phar', 'cgi',
+                  'pl', 'py', 'rb', 'sh', 'bash', 'exe', 'bat', 'cmd', 'com',
+                  'scr', 'msi', 'dll', 'jar', 'apk', 'js', 'mjs', 'html', 'htm',
+                  'xhtml', 'shtml', 'asp', 'aspx', 'jsp', 'htaccess'}
+    if any(p in _dangerous for p in _parts[:-1]):
+        return None
     return base
+
+
+# ── امضاهای محتوای اجرایی که نباید داخل فایل «تصویر» باشند ──
+_EXEC_MARKERS = (b'<script', b'javascript:', b'<iframe', b'<embed', b'<object',
+                 b'onload=', b'onerror=', b'onclick=', b'<!entity', b'<?php',
+                 b'<handler', b'<set ', b'<animate')
+
+
+def file_content_is_safe(stream, ext):
+    """آیا محتوای فایل آپلودشده با پسوندش می‌خواند و کد اجرایی ندارد؟
+
+    چک کردن فقط پسوند کافی نیست: یک فایل با نام `logo.svg` (یا حتی `x.png`)
+    می‌تواند حاوی `<script>` باشد و وقتی مرورگر بازش می‌کند، کد زیر دامنهٔ ما
+    اجرا می‌شود — یعنی XSS ذخیره‌شده و صفحهٔ فیشینگ روی دامنهٔ خودمان.
+    این همان الگویی است که Google Safe Browsing کل دامنه را برایش با پیام
+    «Dangerous site» مسدود می‌کند.
+
+    ورودی: شیء فایل (werkzeug FileStorage.stream یا هر stream قابل seek)
+    خروجی: True اگر امن باشد.
+    """
+    ext = (ext or '').lower()
+    try:
+        pos = stream.tell()
+    except Exception:
+        pos = None
+    try:
+        head = stream.read(8192) or b''
+    except Exception:
+        return False
+    finally:
+        try:
+            stream.seek(pos if pos is not None else 0)
+        except Exception:
+            pass
+    if isinstance(head, str):
+        head = head.encode('utf-8', 'ignore')
+    low = head.lower()
+    if ext in ('.svg', '.svgz'):
+        # SVG یک سند XML است — هیچ تگ اجرایی نباید داشته باشد
+        return not any(m in low for m in _EXEC_MARKERS)
+    if ext in ('.jpg', '.jpeg', '.png', '.gif', '.webp', '.avif'):
+        # تصویر باینری واقعی: نباید با متن/HTML شروع شود و نباید تگ اسکریپت داشته باشد
+        if low.lstrip()[:1] == b'<':
+            return False
+        return not any(m in low for m in (b'<script', b'<?php', b'<iframe'))
+    return True
 
 
 def log_exc(context=''):
@@ -177,6 +236,25 @@ def http_request(method, url, **kwargs):
     import requests as _req
     kwargs.setdefault('timeout', (5, 15))  # اتصال ۵ ثانیه، پاسخ ۱۵ ثانیه
     return _req.request(method, url, **kwargs)
+
+
+def safe_next(url, default=None):
+    """اعتبارسنجی پارامتر `next` — فقط مسیر نسبی داخلی.
+
+    Open Redirect یعنی لینکی مثل `https://دامنه-ما/auth/login?next=https://evil`
+    که کاربر به آن اعتماد می‌کند ولی سر از سایت مهاجم درمی‌آورد. این دقیقاً
+    الگوی «Social Engineering» است که Google Safe Browsing دامنهٔ *ما* را
+    (نه مهاجم را) برایش «Dangerous site» علامت می‌زند.
+    """
+    if not url:
+        return default
+    url = str(url).strip()
+    if any(c in url for c in ('\n', '\r', '\x00', '\t')):
+        return default
+    # // و /\ هر دو پروتکل-نسبی هستند و به دامنهٔ بیرونی می‌روند
+    if not url.startswith('/') or url.startswith('//') or url[:2] == '/\\':
+        return default
+    return url[:500]
 
 
 def safe_referrer(default=None):

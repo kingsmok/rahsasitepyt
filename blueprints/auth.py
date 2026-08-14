@@ -40,17 +40,13 @@ def _is_demo_otp(settings):
 
 
 def _safe_next(url):
-    """اعتبارسنجی پارامتر next — جلوگیری از Open Redirect (فقط مسیرهای نسبی داخلی)"""
-    if not url:
-        return None
-    url = url.strip()
-    # فقط مسیرهای نسبی (شروع با / و نه // که پروتکل-نسبی است)
-    if url.startswith('/') and not url.startswith('//') and not url.startswith('/\\'):
-        # جلوگیری از نویسه‌های خطرناک
-        if any(c in url for c in ('\n', '\r', '\x00')):
-            return None
-        return url[:500]
-    return None
+    """اعتبارسنجی پارامتر next — جلوگیری از Open Redirect.
+
+    پیاده‌سازی مشترک در validators.safe_next نگهداری می‌شود تا همهٔ بلوپرینت‌ها
+    یک منطق واحد (و تست‌شده) داشته باشند.
+    """
+    from validators import safe_next as _sn
+    return _sn(url)
 
 
 auth_bp = Blueprint('auth', __name__)

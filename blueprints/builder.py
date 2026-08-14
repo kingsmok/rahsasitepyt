@@ -1484,10 +1484,14 @@ def api_upload():
     f = request.files.get('file')
     if not f:
         return jsonify(ok=False), 400
-    from validators import safe_filename, ALLOWED_IMAGE_EXT_TRUSTED
+    from validators import (safe_filename, ALLOWED_IMAGE_EXT_TRUSTED,
+                            file_content_is_safe)
     safe = safe_filename(f.filename or '', ALLOWED_IMAGE_EXT_TRUSTED)
     if not safe:
         return jsonify(ok=False, msg='فرمت فایل مجاز نیست (فقط تصویر)'), 400
+    # محتوای واقعی فایل هم بررسی شود (SVG/تصویر حاوی <script> = XSS ذخیره‌شده)
+    if not file_content_is_safe(f.stream, os.path.splitext(safe)[1].lower()):
+        return jsonify(ok=False, msg='فایل حاوی کد اجرایی است و پذیرفته نشد'), 400
     up_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static', 'img', 'uploads')
     os.makedirs(up_dir, exist_ok=True)
     ext = os.path.splitext(safe)[1].lower()

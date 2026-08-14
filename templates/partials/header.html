@@ -9,7 +9,9 @@
     </div>
     <div class="dk-topbar-left">
       <span>{{ icon('shield-check', 15) }} ۷ روز ضمانت بازگشت وجه</span>
-      <span>{{ icon('credit-card', 15) }} پرداخت امن شتاب</span>
+      {# ادعای «پرداخت امن شتاب» فقط وقتی نمایش داده می‌شود که درگاه بانکی واقعی
+         پیکربندی شده باشد — ادعای نادرست دربارهٔ درگاه بانکی = محتوای فریب‌دهنده #}
+      {% if real_gateway_on %}<span>{{ icon('credit-card', 15) }} پرداخت امن شتاب</span>{% endif %}
       <a href="tel:{{ site.phone or '02191001234' }}">{{ icon('phone', 15) }} {{ fa(site.phone or '۰۲۱-۹۱۰۰۱۲۳۴') }}</a>
       {% if cur_user %}
       <a href="{{ url_for('student.dashboard') }}">{{ icon('user', 15) }} {{ cur_user.name.split()[0] }}</a>

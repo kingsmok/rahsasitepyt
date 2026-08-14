@@ -329,7 +329,7 @@
                 <li>قابل استفاده در موبایل و دسکتاپ</li>
               </ul>
             </div>
-            <div class="secure">🛡️ پرداخت امن از طریق درگاه بانکی معتبر</div>
+            {% if real_gateway_on %}<div class="secure">🛡️ پرداخت امن از طریق درگاه بانکی معتبر</div>{% endif %}
             {% if not course.is_free() and course.final_price >= 300000 %}
             <div style="margin-top:12px;background:var(--bg-2);border-radius:10px;padding:10px 14px;font-size:12.5px;color:var(--text-2)">
               💳 پرداخت <b>اقساطی</b> هم داریم:

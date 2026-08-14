@@ -862,6 +862,11 @@ def _overlay_skip(rel):
     top = rel.split('/', 1)[0]
     if top in _OVERLAY_SKIP:
         return True
+    # استثناء امنیتی: فایل .htaccess محافظ پوشهٔ آپلود باید همیشه به‌روزرسانی شود.
+    # بدون آن، روی هاست آپاچی فایل‌های آپلودی (php/html/svg) اجرا می‌شوند و
+    # دامنه توسط Google Safe Browsing با «Dangerous site» مسدود می‌گردد.
+    if rel.endswith('/.htaccess'):
+        return False
     return rel == 'static/uploads' or rel.startswith('static/uploads/')
 
 

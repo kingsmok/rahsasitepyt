@@ -36,14 +36,15 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="stylesheet" href="/static/css/base.css?v={{ asset_v() }}">
-  {% if site.ga_code %}
-  <!-- Google Analytics -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id={{ site.ga_code }}"></script>
+  {% set _ga = site.ga_code|tracking_id %}
+  {% if _ga %}
+  <!-- Google Analytics — شناسه از فیلتر tracking_id عبور می‌کند (ضد تزریق اسکریپت) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id={{ _ga }}"></script>
   <script>
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
     gtag('js', new Date());
-    gtag('config', '{{ site.ga_code }}');
+    gtag('config', '{{ _ga }}');
   </script>
   {% endif %}
   <link rel="stylesheet" href="/static/css/builder.css?v={{ asset_v() }}">

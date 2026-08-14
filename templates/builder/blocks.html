@@ -3,7 +3,10 @@
    ============================================================ #}
 {% from 'partials/course_card.html' import course_card %}
 
-{% macro nl2br(t) %}{{ (t or '').replace('\n', '<br>') }}{% endmacro %}
+{# متن ساده با خط جدید → <br> — ورودی کاملاً escape می‌شود (فیلتر nl2br در app.py).
+   نسخهٔ قبلی «replace» می‌کرد ولی خروجی autoescape می‌شد و کاربر عبارت «<br>» را
+   به‌صورت متن می‌دید؛ حالا هم درست نمایش داده می‌شود و هم امن است. #}
+{% macro nl2br(t) %}{{ t|nl2br }}{% endmacro %}
 
 {# مسیر صحیح تصویر: آپلودهای کتابخانه رسانه در /static/uploads/... و تصاویر عادی در /static/img/... #}
 {% macro img_url(src) %}
@@ -136,7 +139,7 @@
   <div style="height:{{ d.height or 40 }}px"></div>
 
 {% elif t == 'html' %}
-  <div class="pb-html">{{ d.code|safe }}</div>
+  <div class="pb-html">{{ d.code|clean_html }}</div>
 
 {% elif t == 'countdown' %}
   <div class="pb-countdown text-center" data-target="{{ d.target or '' }}">
@@ -556,8 +559,8 @@
         <p style="font-size:13px;color:var(--text-2);line-height:2">{{ r.comment }}</p>
         {% if d.show_pros and (r.pros or r.cons) %}
         <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">
-          {% if r.pros %}<div style="background:var(--success-soft);border-radius:10px;padding:10px 14px;font-size:12px;color:var(--success)"><b>✅ نقاط قوت:</b><br>{{ r.pros.replace('\n','<br>')|safe }}</div>{% endif %}
-          {% if r.cons %}<div style="background:var(--danger-soft);border-radius:10px;padding:10px 14px;font-size:12px;color:var(--danger)"><b>⚠️ نقاط ضعف:</b><br>{{ r.cons.replace('\n','<br>')|safe }}</div>{% endif %}
+          {% if r.pros %}<div style="background:var(--success-soft);border-radius:10px;padding:10px 14px;font-size:12px;color:var(--success)"><b>✅ نقاط قوت:</b><br>{{ r.pros|nl2br }}</div>{% endif %}
+          {% if r.cons %}<div style="background:var(--danger-soft);border-radius:10px;padding:10px 14px;font-size:12px;color:var(--danger)"><b>⚠️ نقاط ضعف:</b><br>{{ r.cons|nl2br }}</div>{% endif %}
         </div>
         {% endif %}
       </div>
@@ -804,7 +807,7 @@
   </div>
 
 {% elif t == 'text_editor' %}
-  <div class="pb-text-editor" style="text-align:{{ d.align or 'right' }};color:{{ d.color or '' }}">{{ rd(d.content or '')|safe }}</div>
+  <div class="pb-text-editor" style="text-align:{{ d.align or 'right' }};color:{{ d.color or '' }}">{{ rd(d.content or '')|clean_html }}</div>
 
 {% elif t == 'google_maps' %}
   <div class="pb-map" style="border-radius:{{ d.radius or 0 }}px;overflow:hidden;box-shadow:var(--shadow-sm);position:relative">

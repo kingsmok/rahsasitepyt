@@ -137,8 +137,12 @@ def test_source_text_files_are_valid_utf8():
 
 def test_install_wizard_page_renders(client, monkeypatch):
     """GET /install باید HTML بدهد، نه JSON خطای utf-8 codec."""
-    import installer as inst
-    monkeypatch.setattr(inst, 'is_installed', lambda: False)
+    # monkeypatch باید روی ماژولی اعمال شود که is_installed را استفاده می‌کند
+    # (blueprints.install آن را با `from installer import is_installed` کپی کرده است)
+    import installer as _inst
+    from blueprints import install as _bp_install
+    monkeypatch.setattr(_inst, 'is_installed', lambda: False)
+    monkeypatch.setattr(_bp_install, 'is_installed', lambda: False)
     r = client.get('/install')
     assert r.status_code == 200
     html = r.get_data(as_text=True)

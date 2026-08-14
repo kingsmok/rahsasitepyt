@@ -2,7 +2,6 @@
 """سبد خرید، تسویه حساب و درگاه‌های پرداخت"""
 import os
 import random
-import requests
 from datetime import datetime
 try:
     from datetime import UTC
@@ -11,13 +10,12 @@ except ImportError:  # پایتون < 3.11 (هاست‌های اشتراکی)
     UTC = _tz_utc.utc
 from flask import (Blueprint, render_template, request, redirect, url_for,
                    flash, g, session, abort)
-from werkzeug.utils import secure_filename
-from models import (utcnow, db, User, Course, Order, OrderItem, Coupon, Enrollment,
+from models import (utcnow, db, User, Order, OrderItem, Coupon, Enrollment,
                     PaymentLog, PaymentProof)
 
 shop_bp = Blueprint('shop', __name__)
 
-from gateways import GATEWAYS as _GW, gateway_ready, start_payment, verify_payment, gateway_fa
+from gateways import GATEWAYS as _GW, gateway_ready, start_payment, gateway_fa
 from validators import log_exc as _lexc
 from jdates import fa
 
@@ -155,24 +153,15 @@ def checkout():
                 # کاهش موجودی فقط بعد از پرداخت موفق انجام میشود (در _mark_paid)
         db.session.add(order)
         db.session.flush()
-        # ساخت قسط‌ها (هر قسط ۳۰٪ — اولین قسط با پرداخت اول)
-        if installment_count > 1:
-            from models import Installment
-            from datetime import timedelta as _td
-            each = round(final * 30 / 100)
-            remainder = final - each * (installment_count - 1)
-            for n in range(1, installment_count + 1):
-                amt = remainder if n == 1 else each
-                due = utcnow() + _td(days=30 * (n - 1))
-                db.session.add(Installment(order_id=order.id, number=n,
-                                           amount=amt, due_date=due))
         db.session.commit()
         session.pop('cart', None)
         session.pop('coupon_code', None)
         if installment_count > 1:
-            flash(f'سفارش ثبت شد — پرداخت در {installment_count} قسط. قسط اول اکنون پرداخت می‌شود.', 'info')
-        else:
-            flash('سفارش شما ثبت شد. لطفاً پرداخت را تکمیل کنید.', 'info')
+            # سفارش اقساطی → پنل اقساطی (انتخاب اسنپ‌پی/ترب/دیجی‌پی + تعداد قسط)
+            # خودِ قسط‌ها در bnpl_start ساخته می‌شوند (منبع واحد در bnpl.py)
+            flash('سفارش ثبت شد — برای پرداخت اقساطی سرویس و تعداد قسط را انتخاب کنید.', 'info')
+            return redirect(url_for('bnpl.bnpl_page', code=code))
+        flash('سفارش شما ثبت شد. لطفاً پرداخت را تکمیل کنید.', 'info')
         return redirect(url_for('shop.pay_start', code=code))
 
     from blueprints.products import _cart_items as _ci2
@@ -215,10 +204,10 @@ def pay_installment(code, num):
     if inst.status == 'paid':
         flash('این قسط قبلاً پرداخت شده.', 'info')
         return redirect(url_for('student.orders'))
-    # امنیت: در حالت غیرآزمایشی، پرداخت فقط از طریق درگاه انجام می‌شود (نه POST ساده)
+    # امنیت: در حالت غیرآزمایشی، پرداخت فقط از طریق درگاه اقساطی انجام می‌شود (نه POST ساده)
     if not _sandbox_allowed():
-        flash('پرداخت قسط از طریق درگاه انجام می‌شود — در حال انتقال...', 'info')
-        return redirect(url_for('shop.pay_start', code=code))
+        flash('پرداخت از طریق سرویس اقساطی انجام می‌شود — در حال انتقال...', 'info')
+        return redirect(url_for('shop.pay_start', code=code, gateway=order.gateway or ''))
     inst.status = 'paid'
     inst.paid_at = utcnow()
     inst.ref_id = 'INST-' + str(random.randint(100000000, 999999999))
@@ -296,8 +285,14 @@ def pay_start(code):
     # درگاه آزمایشی فقط در حالت sandbox_mode=1 به کاربر نمایش داده می‌شود
     _sandbox_on = _sandbox_allowed()
     _gws = [g for g in GATEWAYS if g['id'] != 'sandbox' or _sandbox_on]
+    # پیش‌انتخاب درگاه: از پارامتر ?gateway= (مثلاً بازگشت از پنل اقساطی) یا درگاه ثبت‌شده روی سفارش
+    preselected = (request.args.get('gateway') or order.gateway or '').strip()
+    if preselected and preselected not in [g['id'] for g in _gws]:
+        preselected = ''
+    is_installment = bool(order.installment_count and order.installment_count > 1)
     return render_template('pay/gateway.html', order=order, gateways=_gws,
-                           sandbox_mode=_sandbox_on)
+                           sandbox_mode=_sandbox_on, preselected=preselected,
+                           is_installment=is_installment)
 
 
 @shop_bp.route('/pay/verify/<gw>')
@@ -472,7 +467,6 @@ def _mark_paid(order, ref, detail):
             db.session.add(Enrollment(user_id=order.user_id, course_id=item.course_id, order_id=order.id))
         if item.product_id:
             # کاهش قطعی موجودی + اعلان
-            prod = db.session.get(Product, item.product_id) if 'Product' in dir() else None
             try:
                 from models import Product as _P
                 prod = db.session.get(_P, item.product_id)

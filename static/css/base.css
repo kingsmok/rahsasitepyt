@@ -107,3 +107,17 @@ svg[aria-hidden="true"], svg[role="img"], .icon-btn svg, .btn svg, .badge svg, .
   vertical-align: middle;
 }
 
+
+/* ===== پنل انتخاب تم (حالت نمایش) ===== */
+.theme-fab{display:flex;align-items:center;justify-content:center}
+.theme-panel-close{display:flex;align-items:center;justify-content:center;transition:all .2s}
+.theme-panel-close:hover{background:var(--danger-soft);color:var(--danger)}
+.theme-opt{display:flex;flex-direction:column;gap:2px;text-align:right;border:2px solid var(--border);border-radius:14px;padding:10px;cursor:pointer;transition:all .2s;background:var(--card)}
+.theme-opt:hover{border-color:var(--primary);transform:translateY(-2px)}
+.theme-opt.active{border-color:var(--primary);background:var(--primary-soft)}
+.theme-opt .preview{height:46px;border-radius:9px;margin-bottom:8px;display:flex;align-items:flex-end;gap:4px;padding:6px;width:100%}
+.theme-opt .preview i{width:9px;height:9px;border-radius:50%;display:block;border:1.5px solid rgba(255,255,255,.5)}
+.theme-opt .t-name{font-size:12px;font-weight:800}
+.theme-opt .t-desc{font-size:10.5px;color:var(--text-3);line-height:1.6;min-height:32px}
+.theme-opt .check{float:left;color:var(--primary);font-weight:900;margin-top:6px}
+@media (max-width:640px){.theme-panel{width:calc(100vw - 40px);left:20px}}

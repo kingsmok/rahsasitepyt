@@ -30,9 +30,9 @@
                  pattern="09[0-9]{9}" required title="شماره موبایل ۱۱ رقمی">
         </div>
         <div class="form-group">
-          <label for="f_national_code_1">کد ملی <span class="req">*</span></label>
+          <label for="f_national_code_1">کد ملی (اختیاری)</label>
           <input id="f_national_code_1" class="form-control" name="national_code" value="{{ cur_user.national_code or '' }}"
-                 dir="ltr" pattern="[0-9]{10}" maxlength="10" required title="کد ملی ۱۰ رقمی">
+                 dir="ltr" pattern="[0-9]{10}" maxlength="10" title="کد ملی ۱۰ رقمی — فقط برای صدور گواهینامه">
         </div>
       </div>
       <div class="form-group">

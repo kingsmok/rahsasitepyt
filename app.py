@@ -21,7 +21,7 @@ except Exception:
 
 import hmac
 from flask import Flask, g, request, session, redirect, url_for, abort, render_template
-from models import utcnow, db, User, Setting, Category, Order, NewsletterEmail
+from models import utcnow, db, User, Setting, Category, Order, NewsletterEmail, Course
 from jdates import (fa, fa_num, money, MONTHS, slugify, jdate, jdatetime, jdate_num, jtime,
                   jalali_to_gregorian, g2j, j2g)
 from validators import log_exc as _lexc
@@ -51,7 +51,7 @@ THEMES = [
     dict(id='theme-19', name='سرمه سلطنتی', desc='سرمه‌ای عمیق و باوقار',               colors=['#1e3a8a', '#1e40af', '#f59e0b'], dark=False),
     dict(id='theme-20', name='رنگین‌کمان',   desc='چند‌رنگ شاد با گرادیان‌های رنگی',     colors=['#6366f1', '#ec4899', '#f59e0b'], dark=False),
     dict(id='theme-21', name='ایرانی',       desc='فیروزه‌ای و لاجورد با نقوش اسلیمی و گره‌چینی', colors=['#0e9488', '#d4a017', '#0f3a4e'], dark=False),
-    dict(id='theme-22', name='فرادرس',       desc='سرمه‌ای و نارنجی — منو و فوتر به سبک فرادرس', colors=['#f2640c', '#0f2744', '#ff7a1a'], dark=False),
+    dict(id='theme-22', name='کلاسیک',       desc='سرمه‌ای و نارنجی — منو و فوتر کلاسیک آکادمیک', colors=['#f2640c', '#0f2744', '#ff7a1a'], dark=False),
     dict(id='theme-23', name='فیروزه',       desc='کاشی فیروزه‌ای ایرانی — آرام، آکادمیک و متمایز با زعفران', colors=['#0f766e', '#b45309', '#134e4a'], dark=False),
 ]
 
@@ -243,6 +243,7 @@ def create_app():
         except Exception:
             return '1'
     app.jinja_env.globals['asset_v'] = _asset_v
+    app.jinja_env.globals['utcnow'] = utcnow
     app.jinja_env.globals.update(THEMES=THEMES, fa=fa, money=money,
                                  PERSIAN_THEMES=_PERSIAN_THEMES)
 
@@ -320,7 +321,7 @@ def create_app():
 
     def _courses_by_id(cid):
         try:
-            return _CourseModel.query.get(int(cid or 0))
+            return db.session.get(_CourseModel, int(cid or 0))
         except Exception:
             return None
     app.register_blueprint(site_bp)

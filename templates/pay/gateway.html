@@ -22,7 +22,7 @@
               <div class="g-desc">{{ gw.desc }}</div>
               <div class="g-fee">کارمزد: {{ gw.fee }}</div>
             </div>
-            <input type="radio" name="gateway" value="{{ gw.id }}" class="hide" {{ 'checked' if gw.id == 'zarinpal' or loop.first }}>
+            <input type="radio" name="gateway" value="{{ gw.id }}" class="hide" {{ 'checked' if (preselected and gw.id == preselected) or ((not preselected) and (gw.id == 'zarinpal' or loop.first)) }}>
             <span class="g-radio"></span>
           </label>
           {% endfor %}

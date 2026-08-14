@@ -60,12 +60,15 @@ def _login_installed_admin(email=''):
 
 @install_bp.route('/install')
 def wizard():
-    if is_installed():
-        ok, _ = check_db_health()
-        if ok:
-            return redirect(url_for('site.index'))
-        # نصب ناقص (دیتابیس خراب) → صفحه تعمیر — نه ریدایرکت (ضد حلقه)
+    # اگر اصلاً نصب نشده → مستقیم صفحهٔ نصب (حتی اگر دیتابیسِ خالی سالم باشد،
+    # نباید به index ریدایرکت کند چون سایت آماده نیست)
+    if not is_installed():
         return render_template('install/wizard.html')
+    # نصب شده — سلامت دیتابیس؟
+    ok, _ = check_db_health()
+    if ok:
+        return redirect(url_for('site.index'))
+    # نصب ناقص (دیتابیس خراب) → صفحه تعمیر — نه ریدایرکت (ضد حلقه)
     return render_template('install/wizard.html')
 
 

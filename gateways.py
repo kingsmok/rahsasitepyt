@@ -32,11 +32,14 @@ GATEWAYS = [
     dict(id='saderat', name='بانک صادرات (سداد)', desc='درگاه مستقیم بانک صادرات — سامانه سداد',
          icon='💳', fee='کارمزد طبق قرارداد', kind='bank', config_keys=['sadad_merchant', 'sadad_terminal', 'sadad_key']),
     dict(id='snapppay', name='اسنپ‌پی', desc='پرداخت اقساطی و کیف پول اسنپ — فروش اقساطی',
-         icon='🛵', fee='طبق قرارداد اسنپ‌پی', kind='installment', config_keys=['snapp_client_id', 'snapp_client_secret', 'snapp_merchant']),
+         icon='🛵', fee='طبق قرارداد اسنپ‌پی', kind='installment', config_keys=['snapp_client_id', 'snapp_client_secret', 'snapp_merchant'],
+         plan=dict(max_installments=4, fee_pct=0, min_amount=300000)),
     dict(id='digipay', name='دیجی‌پی', desc='درگاه دیجی‌کالا — پرداخت و اقساطی',
-         icon='🛍', fee='طبق قرارداد دیجی‌پی', kind='installment', config_keys=['digipay_api_key', 'digipay_merchant']),
+         icon='🛍', fee='طبق قرارداد دیجی‌پی', kind='installment', config_keys=['digipay_api_key', 'digipay_merchant'],
+         plan=dict(max_installments=4, fee_pct=0, min_amount=300000)),
     dict(id='tarb', name='کارت اعتباری ترب', desc='پرداخت اعتباری/اقساطی از طریق API ترب (قابل تنظیم)',
-         icon='🛒', fee='طبق قرارداد', kind='installment', config_keys=['tarb_api_url', 'tarb_api_key', 'tarb_merchant']),
+         icon='🛒', fee='طبق قرارداد', kind='installment', config_keys=['tarb_api_url', 'tarb_api_key', 'tarb_merchant'],
+         plan=dict(max_installments=4, fee_pct=0, min_amount=300000)),
     dict(id='sandbox', name='درگاه آزمایشی', desc='شبیه‌ساز پرداخت برای تست و دمو — بدون هزینه واقعی',
          icon='🧪', fee='رایگان', kind='test'),
     dict(id='card2card', name='کارت‌به‌کارت', desc='واریز به کارت مجموعه و ثبت فیش — تایید توسط پشتیبانی',
@@ -60,6 +63,26 @@ def gateway_ready(gw_id, settings):
         if not (settings.get(k) or '').strip():
             return False
     return True
+
+
+def gateway_plan(gw_id):
+    """طرح اقساطی یک درگاه (اگر درگاه اقساطی باشد) — با مقادیر پیش‌فرض امن."""
+    g = GATEWAY_MAP.get(gw_id or '')
+    if not g or g.get('kind') != 'installment':
+        return None
+    p = g.get('plan') or {}
+    return {
+        'id': g['id'],
+        'name': g['name'],
+        'icon': g['icon'],
+        'desc': g.get('desc', ''),
+        'max_installments': max(2, int(p.get('max_installments', 4) or 4)),
+        'fee_pct': int(p.get('fee_pct', 0) or 0),
+        'min_amount': int(p.get('min_amount', 0) or 0),
+    }
+
+
+INSTALLMENT_PROVIDERS = ['snapppay', 'tarb', 'digipay']
 
 
 # ================================================================
@@ -413,15 +436,53 @@ def start_payment(gw_id, settings, order, user, callback_url):
 
 
 def verify_payment(gw_id, settings, order, args):
-    """تایید پرداخت — خروجی (موفق?, پیام, ref_id)"""
-    fn = {
-        'zarinpal': zarinpal_verify, 'idpay': idpay_verify, 'zibal': zibal_verify,
-        'melli': melli_verify, 'sepah': sepah_verify, 'saderat': sadad_verify,
-        'snapppay': snapppay_verify, 'digipay': digipay_verify, 'tarb': tarb_verify,
-    }.get(gw_id)
-    if not fn:
-        return False, 'درگاه ناشناخته', ''
-    return fn(settings, order, args)
+    """تایید پرداخت — خروجی (موفق?, پیام, ref_id).
+
+    `args` همان request.args (بازگشت از درگاه) است. هر درگاه پارامترهای
+    مشخصی را در callback برمی‌گرداند که اینجا با نگاشت نام استاندارد هر
+    درگاه استخراج و به تابع verify همان درگاه پاس داده می‌شود.
+    (نسخهٔ قبلی کل args را به‌جای پارامترها پاس می‌داد و تاییدِ همهٔ
+    درگاه‌های واقعی شکست می‌خورد.)
+    """
+    def _a(name, *aliases):
+        """گرفتن اولین پارامتر موجود از args (با نام‌های جایگزین)."""
+        if args is None:
+            return ''
+        v = args.get(name)
+        if v is not None and v != '':
+            return v
+        for al in aliases:
+            v = args.get(al)
+            if v is not None and v != '':
+                return v
+        return ''
+
+    try:
+        if gw_id == 'zarinpal':
+            return zarinpal_verify(settings, order, _a('Authority', 'authority'), _a('Status', 'status'))
+        if gw_id == 'idpay':
+            return idpay_verify(settings, order, _a('id', 'Id', 'payment_id'), _a('status', 'Status'))
+        if gw_id == 'zibal':
+            return zibal_verify(settings, order, _a('trackId', 'track_id'), _a('success', 'Status'))
+        if gw_id == 'melli':
+            return melli_verify(settings, order, _a('RefId', 'ref_id'),
+                                _a('SaleReferenceId', 'saleRef', 'SaleOrderId'))
+        if gw_id == 'sepah':
+            return sepah_verify(settings, order, _a('RefNum', 'ref_num'), _a('Token', 'token'))
+        if gw_id == 'saderat':
+            return sadad_verify(settings, order, _a('Token', 'token'))
+        if gw_id == 'snapppay':
+            return snapppay_verify(settings, order, _a('track_id', 'trackId', 'tracking_id'),
+                                   _a('status', 'Status', 'result'))
+        if gw_id == 'digipay':
+            return digipay_verify(settings, order, _a('purchaseId', 'pid', 'purchase_id'),
+                                  _a('status', 'Status'))
+        if gw_id == 'tarb':
+            return tarb_verify(settings, order, _a('ref_id', 'RefId', 'trackId'), _a('status', 'Status'))
+    except Exception as e:
+        _lexc('gateways.verify_payment')
+        return False, 'خطا در تایید تراکنش: ' + str(e)[:120], ''
+    return False, 'درگاه ناشناخته', ''
 
 
 def test_gateway(gw_id, settings):

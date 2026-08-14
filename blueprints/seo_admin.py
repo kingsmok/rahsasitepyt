@@ -5,6 +5,7 @@ from flask import (Blueprint, render_template, request, redirect, url_for,
                    flash, g, jsonify, abort)
 from models import (db, SeoMeta, RedirectRule, NotFoundLog, Setting,
                     Course, BlogPost, Page, User, Category)
+from validators import safe_referrer
 
 seo_bp = Blueprint('seo_admin', __name__, url_prefix='/admin/seo')
 
@@ -124,7 +125,7 @@ def save_score():
         m.score = score
         m.score_grade = grade
         db.session.commit()
-    return redirect(request.referrer or url_for('seo_admin.dashboard'))
+    return redirect(safe_referrer(url_for('seo_admin.dashboard')))
 
 
 # ================================================================

@@ -166,7 +166,6 @@ def media_library():
         for f in files:
             if not f or not f.filename:
                 continue
-            from validators import safe_filename
             safe = safe_filename(f.filename or '')
             if not safe:
                 continue

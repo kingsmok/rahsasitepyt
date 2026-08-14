@@ -7,7 +7,7 @@
 from persian_themes import PERSIAN_THEMES as _PT
 
 SITE_DESIGNS = {
-    '1': dict(name='فرادرس', desc='سرمه‌ای و نارنجی — منو و فوتر به سبک فرادرس',
+    '1': dict(name='کلاسیک', desc='سرمه‌ای و نارنجی — منو و فوتر کلاسیک آکادمیک',
               theme='theme-22', container='1280', radius='8'),
     '2': dict(name='ایرانی', desc='فیروزه‌ای و لاجورد با نقوش اسلیمی و گره‌چینی',
               theme='theme-21', container='1240', radius='14'),

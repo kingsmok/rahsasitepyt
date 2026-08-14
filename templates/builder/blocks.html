@@ -582,11 +582,19 @@
 {% elif t == 'trust_badges' %}
   <div class="pb-trust-badges" style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap;align-items:center">
     {% for it in d.get('items') or [] if it is mapping %}
-    <a class="pb-badge" href="{{ '/faq#trust' if it.type == 'digi' else '/terms' }}" title="{{ {'enamad': 'نماد اعتماد الکترونیکی', 'samandehi': 'ساماندهی', 'etehadiye': 'اتحادیه کشوری', 'digi': 'نماد سفارشی'}.get(it.type, 'نماد') }}"
+    {% set _t = it.type or 'enamad' %}
+    {% set _official = _t in ('enamad','samandehi','etehadiye') %}
+    {% set _c = (it.code or '')|string|trim %}
+    {# نمادهای رسمی (اینماد/ساماندهی/اتحادیه) فقط وقتی نمایش داده می‌شوند که کد واقعی ثبت شده باشد —
+       نمایش آن‌ها بدون گواهی/کد معتبر، نشانه‌ای از جعل نشان اعتماد است و توسط Google Safe Browsing
+       به‌عنوان فیشینگ/فریب شناخته می‌شود. #}
+    {% if not _official or _c|length %}
+    <a class="pb-badge" href="{{ '/faq#trust' if _t == 'digi' else '/terms' }}" title="{{ {'enamad': 'نماد اعتماد الکترونیکی', 'samandehi': 'ساماندهی', 'etehadiye': 'اتحادیه کشوری', 'digi': 'نماد سفارشی'}.get(_t, 'نماد') }}"
        style="width:{{ d.size or 80 }}px;height:{{ d.size or 80 }}px;border-radius:12px;background:#fff;border:1px solid #e2e8f0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6px;text-align:center">
-      <img src="/static/img/badges/{{ it.type or 'enamad' }}.svg" alt="{{ {'enamad': 'نماد اعتماد الکترونیکی', 'samandehi': 'نماد ساماندهی', 'etehadiye': 'نماد اتحادیه کشوری', 'digi': 'نماد اعتماد'}.get(it.type, 'نماد اعتماد') }}" style="width:100%;height:auto;max-height:52px">
-      <small style="font-size:9px;color:#64748b;margin-top:2px;line-height:1.3">{{ {'enamad': 'نماد اعتماد', 'samandehi': 'ساماندهی', 'etehadiye': 'اتحادیه', 'digi': 'نماد سفارشی'}.get(it.type, '') }}</small>
+      <img src="/static/img/badges/{{ _t }}.svg" alt="{{ {'enamad': 'نماد اعتماد الکترونیکی', 'samandehi': 'نماد ساماندهی', 'etehadiye': 'نماد اتحادیه کشوری', 'digi': 'نماد اعتماد'}.get(_t, 'نماد اعتماد') }}" style="width:100%;height:auto;max-height:52px">
+      <small style="font-size:9px;color:#64748b;margin-top:2px;line-height:1.3">{{ {'enamad': 'نماد اعتماد', 'samandehi': 'ساماندهی', 'etehadiye': 'اتحادیه', 'digi': 'نماد سفارشی'}.get(_t, '') }}</small>
     </a>
+    {% endif %}
     {% endfor %}
   </div>
 

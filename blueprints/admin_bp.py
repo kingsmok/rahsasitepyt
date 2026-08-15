@@ -11,7 +11,8 @@ try:
 except ImportError:  # پایتون < 3.11 (هاست‌های اشتراکی)
     from datetime import timezone as _tz_utc
     UTC = _tz_utc.utc
-from flask import (Blueprint, render_template, request, redirect, url_for, flash, g, abort, session, jsonify)
+from flask import (Blueprint, render_template, request, redirect, url_for, flash,
+                   g, abort, session, jsonify, current_app)
 from sqlalchemy import func
 from models import (utcnow, db, User, Category, Course, Section, Lesson, Order, OrderItem,
                     Coupon, BlogPost, BlogComment, NewsletterEmail, ContactMessage,
@@ -53,6 +54,15 @@ def slugify(text):
 
 admin_bp = Blueprint('admin', __name__)
 
+# مقادیر محرمانه هرگز دوباره داخل HTML نمایش داده نمی‌شوند. خالی گذاشتن فیلد
+# در ویرایش بعدی یعنی «مقدار فعلی را نگه دار»، نه پاک‌کردن ناخواسته.
+_SECRET_SETTING_KEYS = {
+    'idpay_api_key', 'parsian_login_account', 'melli_password', 'sadad_key',
+    'snapp_client_secret', 'digipay_api_key', 'tarb_api_key',
+    'sms_kavenegar_key', 'sms_melli_password', 'sms_faraz_token',
+    'smtp_pass', 'dk_access_token', 'basalam_webhook_secret', 'mapir_api_key',
+}
+
 
 def admin_required(view):
     @functools.wraps(view)
@@ -76,13 +86,15 @@ def overview():
     total_revenue = db.session.query(func.coalesce(func.sum(Order.final_total), 0)) \
         .filter(Order.status == 'paid').scalar()
     paid_orders = Order.query.filter_by(status='paid').count()
-    users_count = User.query.count()
+    users_count = User.query.filter_by(is_active=True).count()
     courses_count = Course.query.count()
+    published_courses_count = Course.query.filter_by(status='published').count()
     today_orders = Order.query.filter(func.date(Order.created_at) == func.date(func.now())).count()
     from sqlalchemy.orm import selectinload as _sil
     recent_orders = Order.query.options(_sil(Order.items)).order_by(Order.created_at.desc()).limit(8).all()
-    recent_users = User.query.order_by(User.created_at.desc()).limit(6).all()
-    top_courses = Course.query.options(db.joinedload(Course.category)).order_by(Course.views.desc()).limit(5).all()
+    recent_users = User.query.filter_by(is_active=True).order_by(User.created_at.desc()).limit(6).all()
+    top_courses = Course.query.options(db.joinedload(Course.category)) \
+        .filter_by(status='published').order_by(Course.views.desc()).limit(5).all()
     tickets_open = Ticket.query.filter(Ticket.status.in_(['open', 'answered'])).count()
     messages = ContactMessage.query.filter_by(is_read=False).count()
     # نمودار فروش ۷ روز اخیر
@@ -101,29 +113,106 @@ def overview():
     max_rev = max([w['revenue'] for w in week] + [1])
     for w in week:
         w['pct'] = round(w['revenue'] * 100 / max_rev)
-    reviews_pending = Review.query.filter_by(is_approved=False).count()
+    reviews_pending = Review.query.join(Course, Course.id == Review.course_id) \
+        .filter(Review.is_approved == False, Course.status == 'published').count()
     # گزارش‌های تکمیلی: نرخ تکمیل دوره‌ها، کاربران فعال، فروش ماه
     from datetime import timedelta
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     month_revenue = db.session.query(func.coalesce(func.sum(Order.final_total), 0)) \
         .filter(Order.status == 'paid', Order.paid_at >= month_start).scalar() or 0
     month_orders = Order.query.filter(Order.status == 'paid', Order.paid_at >= month_start).count()
-    active_users = User.query.filter(User.last_active.isnot(None),
+    active_users = User.query.filter(User.is_active == True, User.last_active.isnot(None),
                                      User.last_active >= (now - timedelta(days=7)).strftime('%Y-%m-%d')).count()
-    enrolls = Enrollment.query.all()
+    enrolls = Enrollment.query.join(Course, Course.id == Enrollment.course_id) \
+        .join(User, User.id == Enrollment.user_id) \
+        .filter(Course.status == 'published', User.is_active == True).all()
     completion_rate = round(sum(1 for e in enrolls if e.percent >= 100) * 100 / len(enrolls)) if enrolls else 0
     avg_progress = round(sum(e.percent for e in enrolls) / len(enrolls)) if enrolls else 0
     # ثبت‌نام‌های امروز
-    new_today = User.query.filter(func.date(User.created_at) == func.date(func.now())).count()
+    new_today = User.query.filter(User.is_active == True,
+                                  func.date(User.created_at) == func.date(func.now())).count()
     return render_template('admin/overview.html', total_revenue=total_revenue,
                            paid_orders=paid_orders, users_count=users_count,
-                           courses_count=courses_count, today_orders=today_orders,
+                           courses_count=courses_count,
+                           published_courses_count=published_courses_count,
+                           today_orders=today_orders,
                            recent_orders=recent_orders, recent_users=recent_users,
                            top_courses=top_courses, tickets_open=tickets_open,
                            messages=messages, week=week, reviews_pending=reviews_pending,
                            month_revenue=month_revenue, month_orders=month_orders,
                            active_users=active_users, completion_rate=completion_rate,
                            avg_progress=avg_progress, new_today=new_today)
+
+
+# ---------------------------------------------------------------- راه‌اندازی نهایی یکپارچه
+@admin_bp.route('/go-live', methods=['GET', 'POST'])
+@admin_required
+def go_live():
+    """مرکز یک‌صفحه‌ای تکمیل برند، سرویس‌ها، سیاست فروش و محتوای واقعی."""
+    keys = [
+        'site_name', 'site_desc', 'phone', 'email', 'address', 'support_hours',
+        'about_text', 'base_url', 'currency', 'refund_days',
+        'shipping_flat_rate', 'shipping_note',
+        'c2c_card', 'c2c_name', 'zarinpal_merchant', 'idpay_api_key',
+        'zibal_merchant', 'parsian_login_account', 'melli_terminal',
+        'melli_username', 'melli_password', 'sepah_terminal',
+        'sadad_merchant', 'sadad_terminal', 'sadad_key',
+        'sms_provider', 'sms_test_phone', 'sms_kavenegar_key',
+        'sms_kavenegar_sender', 'sms_kavenegar_template',
+        'sms_melli_username', 'sms_melli_password', 'sms_melli_sender',
+        'sms_faraz_token', 'sms_faraz_sender',
+        'smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'smtp_from', 'smtp_tls',
+    ]
+    if request.method == 'POST':
+        for key in keys:
+            if key not in request.form:
+                continue
+            value = request.form.get(key, '').strip()
+            if key in _SECRET_SETTING_KEYS and not value:
+                continue
+            if key in ('refund_days',):
+                try:
+                    value = str(max(0, min(90, int(value or 0))))
+                except ValueError:
+                    value = '0'
+            elif key == 'shipping_flat_rate':
+                try:
+                    value = str(max(0, int(value or 0)))
+                except ValueError:
+                    value = '0'
+            row = db.session.get(Setting, key)
+            if row:
+                row.value = value
+            else:
+                db.session.add(Setting(key=key, value=value))
+        db.session.commit()
+        clear = getattr(current_app, 'clear_cache', None)
+        if callable(clear):
+            clear()
+        flash('اطلاعات راه‌اندازی ذخیره شد. وضعیت بخش‌ها دوباره محاسبه شد.', 'success')
+        return redirect(url_for('admin.go_live'))
+
+    values = {row.key: row.value for row in Setting.query.all()}
+    from gateways import GATEWAYS, gateway_ready
+    from sms import provider_ready
+    public_ready = bool(values.get('site_name') and values.get('site_desc') and
+                        (values.get('phone') or values.get('email')))
+    payment_ready = any(gateway_ready(item['id'], values)
+                        for item in GATEWAYS if item.get('kind') != 'test')
+    sms_ready = provider_ready(values)
+    smtp_ready = bool(values.get('smtp_host') and values.get('smtp_from'))
+    courses_count = Course.query.filter_by(status='published').count()
+    from models import Product
+    products_count = Product.query.filter_by(is_active=True).count()
+    content_ready = bool(courses_count or products_count)
+    checks = {
+        'public': public_ready, 'payment': payment_ready,
+        'sms': sms_ready, 'smtp': smtp_ready, 'content': content_ready,
+    }
+    score = round(sum(1 for ready in checks.values() if ready) * 100 / len(checks))
+    return render_template('admin/go_live.html', vals=values, checks=checks,
+                           score=score, courses_count=courses_count,
+                           products_count=products_count)
 
 
 # ---------------------------------------------------------------- دوره‌ها
@@ -147,7 +236,7 @@ def course_new():
 @admin_bp.route('/courses/<int:cid>/edit', methods=['GET', 'POST'])
 @admin_required
 def course_edit(cid):
-    course = Course.query.get_or_404(cid)
+    course = db.get_or_404(Course, cid)
     return _course_form(course)
 
 
@@ -184,6 +273,14 @@ def _course_form(course):
             _iv = ''
         course.intro_video = _iv
         course.access_days = int(f.get('access_days') or 0)
+        course.delivery_type = f.get('delivery_type', 'online')
+        if course.delivery_type not in ('online', 'offline', 'hybrid'):
+            course.delivery_type = 'online'
+        course.allow_download = bool(f.get('allow_download'))
+        try:
+            course.attendance_required_percent = max(0, min(100, int(f.get('attendance_required_percent') or 75)))
+        except (TypeError, ValueError):
+            course.attendance_required_percent = 75
         course.audience = f.get('audience', '').strip()
         if not course.title:
             flash('عنوان دوره الزامی است.', 'error')
@@ -219,7 +316,7 @@ def _course_form(course):
 @admin_bp.route('/courses/<int:cid>/delete', methods=['POST'])
 @admin_required
 def course_delete(cid):
-    course = Course.query.get_or_404(cid)
+    course = db.get_or_404(Course, cid)
     db.session.delete(course)
     db.session.commit()
     flash('دوره حذف شد.', 'info')
@@ -230,7 +327,7 @@ def course_delete(cid):
 @admin_required
 def course_lessons(cid):
     """مدیریت سکشن‌ها و جلسات دوره"""
-    course = Course.query.get_or_404(cid)
+    course = db.get_or_404(Course, cid)
     if request.method == 'POST':
         action = request.form.get('action')
         if action == 'add_section':
@@ -340,7 +437,7 @@ def users():
 @admin_bp.route('/users/<int:uid>/role', methods=['POST'])
 @admin_required
 def user_role(uid):
-    user = User.query.get_or_404(uid)
+    user = db.get_or_404(User, uid)
     if user.id != g.user.id:
         new_role = request.form.get('role', 'student')
         # ادمین/سوپرادمین نمیتوانند توسط ادمین عادی تغییر نقش بدهند
@@ -356,7 +453,7 @@ def user_role(uid):
 @admin_bp.route('/users/<int:uid>/toggle', methods=['POST'])
 @admin_required
 def user_toggle(uid):
-    user = User.query.get_or_404(uid)
+    user = db.get_or_404(User, uid)
     if user.id != g.user.id:
         user.is_active = not user.is_active
         db.session.commit()
@@ -390,27 +487,47 @@ def orders():
 @admin_bp.route('/orders/<int:oid>')
 @admin_required
 def order_detail(oid):
-    order = Order.query.get_or_404(oid)
+    order = db.get_or_404(Order, oid)
     proofs = PaymentProof.query.filter_by(order_id=oid).order_by(PaymentProof.created_at.desc()).all()
     return render_template('admin/order_detail.html', order=order, proofs=proofs)
+
+
+@admin_bp.route('/orders/<int:oid>/fulfillment', methods=['POST'])
+@admin_required
+def order_fulfillment(oid):
+    order = db.get_or_404(Order, oid)
+    if order.fulfillment_status == 'not_required':
+        abort(400)
+    status = request.form.get('status', '')
+    if status not in ('stock_issue', 'processing', 'shipped', 'delivered'):
+        abort(400)
+    order.fulfillment_status = status
+    db.session.commit()
+    flash('وضعیت ارسال سفارش ذخیره شد.', 'success')
+    return redirect(url_for('admin.order_detail', oid=oid))
 
 
 @admin_bp.route('/proofs/<int:pid>/verify', methods=['POST'])
 @admin_required
 def proof_verify(pid):
     """تایید فیش کارت‌به‌کارت → فعال‌سازی سفارش و ثبت‌نام خودکار"""
-    proof = PaymentProof.query.get_or_404(pid)
+    proof = db.get_or_404(PaymentProof, pid)
     action = request.form.get('action', '')
     if action == 'approve':
         order = proof.order
+        if int(proof.amount or 0) != int(order.final_total or 0):
+            flash('مبلغ فیش با مبلغ نهایی سفارش یکسان نیست؛ فیش تایید نشد.', 'error')
+            return redirect(url_for('admin.order_detail', oid=order.id))
         from blueprints.shop import _mark_paid
-        _mark_paid(order, 'C2C-' + proof.ref_number, 'card2card_verified')
+        if not _mark_paid(order, 'C2C-' + proof.ref_number, 'card2card_verified'):
+            flash('وضعیت سفارش تغییر نکرد؛ احتمالاً قبلاً پردازش شده است.', 'error')
+            return redirect(url_for('admin.order_detail', oid=order.id))
         proof.status = 'approved'
         proof.verified_at = utcnow()
         proof.admin_note = request.form.get('note', '')
         db.session.add(proof)
         db.session.commit()
-        flash(f'فیش سفارش {order.code} تایید و دوره فعال شد. ✅', 'success')
+        flash(f'فیش سفارش {order.code} تایید و سفارش فعال شد. ✅', 'success')
     elif action == 'reject':
         proof.status = 'rejected'
         proof.admin_note = request.form.get('note', '')
@@ -489,7 +606,7 @@ def blog_new():
 @admin_bp.route('/blog/<int:pid>/edit', methods=['GET', 'POST'])
 @admin_required
 def blog_edit(pid):
-    post = BlogPost.query.get_or_404(pid)
+    post = db.get_or_404(BlogPost, pid)
     return _blog_form(post)
 
 
@@ -599,12 +716,25 @@ def designs():
 @admin_required
 def backup():
     import shutil
-    from flask import send_file
+    import tempfile
+    from flask import send_file, after_this_request
     src_db = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                           'instance', 'academy.db')
-    tmp = os.path.join('/tmp', 'academy-backup.db')
     if os.path.exists(src_db):
+        temp_dir = os.path.join(os.path.dirname(src_db), 'backups')
+        os.makedirs(temp_dir, exist_ok=True)
+        fd, tmp = tempfile.mkstemp(prefix='academy-download-', suffix='.db', dir=temp_dir)
+        os.close(fd)
         shutil.copy2(src_db, tmp)
+
+        @after_this_request
+        def _cleanup(response):
+            try:
+                os.remove(tmp)
+            except OSError:
+                pass
+            return response
+
         return send_file(tmp, as_attachment=True, download_name='academy-backup.db')
     flash('فایل دیتابیس پیدا نشد.', 'error')
     return redirect(url_for('admin.overview'))
@@ -687,7 +817,7 @@ def tickets():
 @admin_required
 def ticket_detail(tid):
     """تاریخچه کامل مکالمه تیکت"""
-    t = Ticket.query.get_or_404(tid)
+    t = db.get_or_404(Ticket, tid)
     replies = TicketReply.query.filter_by(ticket_id=tid).order_by(TicketReply.created_at.asc()).all()
     supports = User.query.filter(User.role.in_(['support', 'admin', 'super_admin'])).all()
     return render_template('admin/ticket_detail.html', t=t, replies=replies, supports=supports)
@@ -697,7 +827,7 @@ def ticket_detail(tid):
 @admin_required
 def ticket_reply_file(tid):
     """پاسخ با فایل پیوست"""
-    t = Ticket.query.get_or_404(tid)
+    t = db.get_or_404(Ticket, tid)
     f = request.files.get('attachment')
     body = request.form.get('body', '').strip() or '📎 فایل پیوست'
     fname = None
@@ -794,7 +924,7 @@ def quiz_new():
 @admin_bp.route('/quizzes/<int:qid>/edit', methods=['GET', 'POST'])
 @admin_required
 def quiz_edit(qid):
-    q = Quiz.query.get_or_404(qid)
+    q = db.get_or_404(Quiz, qid)
     courses = Course.query.order_by(Course.title).all()
     if request.method == 'POST':
         q.title = request.form.get('title', q.title).strip()
@@ -841,7 +971,7 @@ def _save_questions(q, raw):
 @admin_bp.route('/quizzes/<int:qid>/delete', methods=['POST'])
 @admin_required
 def quiz_delete(qid):
-    q = Quiz.query.get_or_404(qid)
+    q = db.get_or_404(Quiz, qid)
     db.session.delete(q)
     db.session.commit()
     flash('آزمون حذف شد.', 'info')
@@ -880,7 +1010,7 @@ def assignment_new():
 @admin_bp.route('/assignments/<int:aid>/delete', methods=['POST'])
 @admin_required
 def assignment_delete(aid):
-    a = Assignment.query.get_or_404(aid)
+    a = db.get_or_404(Assignment, aid)
     db.session.delete(a)
     db.session.commit()
     flash('تمرین حذف شد.', 'info')
@@ -901,7 +1031,7 @@ def submissions():
 @admin_bp.route('/submissions/<int:sid>/grade', methods=['POST'])
 @admin_required
 def submission_grade(sid):
-    sub = AssignmentSubmission.query.get_or_404(sid)
+    sub = db.get_or_404(AssignmentSubmission, sid)
     sub.score = request.form.get('score', 0, type=int)
     sub.feedback = request.form.get('feedback', '').strip()
     sub.status = 'graded'
@@ -925,7 +1055,7 @@ def lesson_questions():
 @admin_bp.route('/lesson-questions/<int:qid>/answer', methods=['POST'])
 @admin_required
 def lesson_question_answer(qid):
-    q = LessonQuestion.query.get_or_404(qid)
+    q = db.get_or_404(LessonQuestion, qid)
     q.answer = request.form.get('answer', '').strip()
     q.answered_at = utcnow()
     db.session.commit()
@@ -976,7 +1106,7 @@ def bundle_new():
 @admin_required
 def bundle_edit(bid):
     """ویرایش باندل — عنوان، قیمت، دوره‌ها"""
-    b = Bundle.query.get_or_404(bid)
+    b = db.get_or_404(Bundle, bid)
     courses = Course.query.filter_by(status='published').all()
     if request.method == 'POST':
         title = request.form.get('title', '').strip()
@@ -1004,7 +1134,7 @@ def bundle_edit(bid):
 @admin_bp.route('/bundles/<int:bid>/delete', methods=['POST'])
 @admin_required
 def bundle_delete(bid):
-    b = Bundle.query.get_or_404(bid)
+    b = db.get_or_404(Bundle, bid)
     db.session.delete(b)
     db.session.commit()
     flash('باندل حذف شد.', 'info')
@@ -1016,15 +1146,19 @@ def bundle_delete(bid):
 def gateways():
     """مدیریت درگاه‌های پرداخت — فقط کدها را وارد کنید"""
     if request.method == 'POST':
-        keys = ['zarinpal_merchant', 'idpay_api_key', 'zibal_merchant',
+        keys = ['c2c_card', 'c2c_name',
+                'zarinpal_merchant', 'idpay_api_key', 'zibal_merchant',
+                'parsian_login_account',
                 'melli_terminal', 'melli_username', 'melli_password',
-                'sepah_terminal', 'sepah_merchant', 'sepah_username', 'sepah_password',
+                'sepah_terminal',
                 'sadad_merchant', 'sadad_terminal', 'sadad_key',
                 'snapp_client_id', 'snapp_client_secret', 'snapp_merchant',
                 'digipay_api_key', 'digipay_merchant',
                 'tarb_api_url', 'tarb_api_key', 'tarb_merchant']
         for k in keys:
             v = request.form.get(k, '').strip()
+            if k in _SECRET_SETTING_KEYS and not v:
+                continue
             st = db.session.get(Setting, k)
             if st:
                 st.value = v
@@ -1042,15 +1176,19 @@ def gateway_test(gw):
     """تست اتصال درگاه — بدون تراکنش واقعی"""
     from gateways import test_gateway
     # اول ذخیره فیلدهای همین فرم
-    keys = ['zarinpal_merchant', 'idpay_api_key', 'zibal_merchant',
+    keys = ['c2c_card', 'c2c_name',
+            'zarinpal_merchant', 'idpay_api_key', 'zibal_merchant',
+            'parsian_login_account',
             'melli_terminal', 'melli_username', 'melli_password',
-            'sepah_terminal', 'sepah_merchant', 'sepah_username', 'sepah_password',
+            'sepah_terminal',
             'sadad_merchant', 'sadad_terminal', 'sadad_key',
             'snapp_client_id', 'snapp_client_secret', 'snapp_merchant',
             'digipay_api_key', 'digipay_merchant',
             'tarb_api_url', 'tarb_api_key', 'tarb_merchant']
     for k in keys:
         v = request.form.get(k, '').strip()
+        if k in _SECRET_SETTING_KEYS and not v:
+            continue
         st = db.session.get(Setting, k)
         if st:
             st.value = v
@@ -1132,6 +1270,8 @@ def sms_settings():
                 'sms_faraz_token', 'sms_faraz_sender', 'sms_test_phone']
         for k in keys:
             v = request.form.get(k, '').strip()
+            if k in _SECRET_SETTING_KEYS and not v:
+                continue
             st = db.session.get(Setting, k)
             if st:
                 st.value = v
@@ -1250,7 +1390,7 @@ def pages():
 def page_copy(pid):
     """کپی گرفتن از صفحه"""
     from models import Page
-    p = Page.query.get_or_404(pid)
+    p = db.get_or_404(Page, pid)
     import uuid
     np = Page(title=p.title + ' (کپی)', slug=p.slug + '-copy-' + uuid.uuid4().hex[:4],
               ptype='page', content=p.content, is_published=False)
@@ -1265,7 +1405,7 @@ def page_copy(pid):
 def page_toggle(pid):
     """انتشار / پیش‌نویس"""
     from models import Page
-    p = Page.query.get_or_404(pid)
+    p = db.get_or_404(Page, pid)
     p.is_published = not p.is_published
     db.session.commit()
     flash('وضعیت انتشار تغییر کرد.', 'info')
@@ -1277,7 +1417,7 @@ def page_toggle(pid):
 def page_delete(pid):
     """حذف موقت (فقط از فهرست — قابل بازیابی در بازیابی‌ها)"""
     from models import Page
-    p = Page.query.get_or_404(pid)
+    p = db.get_or_404(Page, pid)
     p.ptype = 'trash'
     p.is_published = False
     db.session.commit()
@@ -1298,7 +1438,7 @@ def pages_trash():
 @admin_required
 def page_restore(pid):
     from models import Page
-    p = Page.query.get_or_404(pid)
+    p = db.get_or_404(Page, pid)
     p.ptype = 'page'
     db.session.commit()
     flash('صفحه بازیابی شد. ♻️', 'success')
@@ -1310,7 +1450,7 @@ def page_restore(pid):
 def page_custom_theme(pid):
     """تعیین هدر/فوتر اختصاصی برای صفحه"""
     from models import Page
-    p = Page.query.get_or_404(pid)
+    p = db.get_or_404(Page, pid)
     p.custom_header = request.form.get('custom_header', '').strip() or None
     p.custom_footer = request.form.get('custom_footer', '').strip() or None
     db.session.commit()
@@ -1324,7 +1464,7 @@ def page_schedule(pid):
     """زمان‌بندی انتشار صفحه"""
     from models import Page
     from datetime import datetime as _dt
-    p = Page.query.get_or_404(pid)
+    p = db.get_or_404(Page, pid)
     raw = request.form.get('publish_at', '').strip()
     if raw:
         try:
@@ -1353,7 +1493,7 @@ def page_schedule(pid):
 def page_seo(pid):
     """SEO هر صفحه"""
     from models import Page, SeoMeta
-    p = Page.query.get_or_404(pid)
+    p = db.get_or_404(Page, pid)
     meta = SeoMeta.query.filter_by(path='/page/' + p.slug).first()
     if request.method == 'POST':
         if not meta:
@@ -1374,7 +1514,7 @@ def page_seo(pid):
 def page_revisions(pid):
     """تاریخچه نسخه‌های صفحه"""
     from models import Page, PageRevision
-    p = Page.query.get_or_404(pid)
+    p = db.get_or_404(Page, pid)
     revs = PageRevision.query.filter_by(page_id=pid) \
         .order_by(PageRevision.created_at.desc()).all()
     return render_template('admin/page_revisions.html', page=p, revs=revs)
@@ -1384,7 +1524,7 @@ def page_revisions(pid):
 @admin_required
 def page_revision_restore(rid):
     from models import PageRevision
-    rev = PageRevision.query.get_or_404(rid)
+    rev = db.get_or_404(PageRevision, rid)
     p = rev.page
     p.content = rev.content
     db.session.commit()
@@ -1433,7 +1573,7 @@ def form_new():
 @admin_bp.route('/forms/<int:pid>/edit', methods=['GET', 'POST'])
 @admin_required
 def form_edit(pid):
-    f = CustomForm.query.get_or_404(pid)
+    f = db.get_or_404(CustomForm, pid)
     if request.method == 'POST':
         f.title = request.form.get('title', f.title).strip()
         f.description = request.form.get('description', '').strip()
@@ -1452,7 +1592,7 @@ def form_edit(pid):
 @admin_bp.route('/forms/<int:pid>/entries')
 @admin_required
 def form_entries(pid):
-    f = CustomForm.query.get_or_404(pid)
+    f = db.get_or_404(CustomForm, pid)
     entries = CustomFormEntry.query.filter_by(form_id=pid) \
         .order_by(CustomFormEntry.created_at.desc()).all()
     return render_template('admin/form_entries.html', form=f, entries=entries)
@@ -1464,7 +1604,7 @@ def form_entries_export(pid):
     """خروجی اکسل (CSV) پاسخ‌های فرم"""
     import csv, io
     from flask import Response
-    f = CustomForm.query.get_or_404(pid)
+    f = db.get_or_404(CustomForm, pid)
     entries = CustomFormEntry.query.filter_by(form_id=pid) \
         .order_by(CustomFormEntry.created_at.desc()).all()
     labels = [x['label'] for x in f.fields_list()]
@@ -1487,7 +1627,7 @@ def form_entries_export(pid):
 @admin_bp.route('/forms/<int:pid>/toggle', methods=['POST'])
 @admin_required
 def form_toggle(pid):
-    f = CustomForm.query.get_or_404(pid)
+    f = db.get_or_404(CustomForm, pid)
     f.is_active = not f.is_active
     db.session.commit()
     return redirect(url_for('admin.forms'))
@@ -1541,7 +1681,7 @@ def canned_replies():
 @admin_bp.route('/canned-replies/<int:rid>/delete', methods=['POST'])
 @admin_required
 def canned_reply_delete(rid):
-    r = CannedReply.query.get_or_404(rid)
+    r = db.get_or_404(CannedReply, rid)
     db.session.delete(r)
     db.session.commit()
     return redirect(url_for('admin.canned_replies'))
@@ -1551,7 +1691,7 @@ def canned_reply_delete(rid):
 @admin_required
 def user_login_as(uid):
     """ورود به حساب کاربر توسط ادمین — با ثبت لاگ"""
-    target = User.query.get_or_404(uid)
+    target = db.get_or_404(User, uid)
     if target.role in ('super_admin',) and g.user.role != 'super_admin':
         flash('ورود به حساب سوپر ادمین مجاز نیست.', 'error')
         return redirect(url_for('admin.users'))
@@ -1615,7 +1755,7 @@ def menu_new():
 @admin_bp.route('/menus/<int:mid>', methods=['GET', 'POST'])
 @admin_required
 def menu_edit(mid):
-    m = Menu.query.get_or_404(mid)
+    m = db.get_or_404(Menu, mid)
     if request.method == 'POST':
         m.title = request.form.get('title', m.title).strip()
         m.location = request.form.get('location', m.location)
@@ -1652,7 +1792,7 @@ def menu_edit(mid):
 @admin_bp.route('/menus/<int:mid>/toggle', methods=['POST'])
 @admin_required
 def menu_toggle(mid):
-    m = Menu.query.get_or_404(mid)
+    m = db.get_or_404(Menu, mid)
     m.is_active = not m.is_active
     db.session.commit()
     return redirect(url_for('admin.menus'))
@@ -1661,7 +1801,7 @@ def menu_toggle(mid):
 @admin_bp.route('/menus/<int:mid>/delete', methods=['POST'])
 @admin_required
 def menu_delete(mid):
-    m = Menu.query.get_or_404(mid)
+    m = db.get_or_404(Menu, mid)
     db.session.delete(m)
     db.session.commit()
     flash('منو حذف شد.', 'info')
@@ -1674,7 +1814,7 @@ def menu_delete(mid):
 @admin_bp.route('/users/<int:uid>/profile')
 @admin_required
 def user_profile(uid):
-    u = User.query.get_or_404(uid)
+    u = db.get_or_404(User, uid)
     enrollments = Enrollment.query.filter_by(user_id=uid).all()
     orders = Order.query.filter_by(user_id=uid).order_by(Order.created_at.desc()).all()
     tickets = Ticket.query.filter_by(user_id=uid).order_by(Ticket.created_at.desc()).all()
@@ -1686,7 +1826,7 @@ def user_profile(uid):
 @admin_bp.route('/users/<int:uid>/reset-password', methods=['POST'])
 @admin_required
 def user_reset_password(uid):
-    u = User.query.get_or_404(uid)
+    u = db.get_or_404(User, uid)
     new_pass = request.form.get('password', '').strip()
     if len(new_pass) < 6:
         flash('رمز باید حداقل ۶ کاراکتر باشد.', 'error')
@@ -1736,7 +1876,7 @@ def user_add():
 def user_wallet(uid):
     """مدیریت کیف پول کاربر — افزایش/کاهش موجودی"""
     from gamification import wallet_charge, wallet_spend
-    u = User.query.get_or_404(uid)
+    u = db.get_or_404(User, uid)
     action = request.form.get('action', '')
     amount = request.form.get('amount', 0, type=int)
     note = request.form.get('note', '').strip() or 'توسط مدیریت'
@@ -1792,7 +1932,7 @@ def payouts():
 @admin_bp.route('/payouts/<int:pid>/action', methods=['POST'])
 @admin_required
 def payout_action(pid):
-    p = PayoutRequest.query.get_or_404(pid)
+    p = db.get_or_404(PayoutRequest, pid)
     action = request.form.get('action', '')
     if action == 'paid':
         p.status = 'paid'
@@ -1829,7 +1969,7 @@ def chat():
 @admin_bp.route('/chat/<int:uid>')
 @admin_required
 def chat_user(uid):
-    u = User.query.get_or_404(uid)
+    u = db.get_or_404(User, uid)
     msgs = ChatMessage.query.filter_by(user_id=uid).order_by(ChatMessage.created_at.asc()).all()
     # خواندن پیام‌های کاربر
     for m in msgs:
@@ -1890,7 +2030,7 @@ def course_students_export(cid):
     import csv, io
     from flask import Response
     from urllib.parse import quote
-    course = Course.query.get_or_404(cid)
+    course = db.get_or_404(Course, cid)
     buf = io.StringIO()
     w = csv.writer(buf)
     w.writerow(['نام', 'موبایل', 'ایمیل', 'پیشرفت٪', 'تاریخ ثبت‌نام', 'گواهی'])
@@ -1936,7 +2076,7 @@ def live_sessions():
 @admin_bp.route('/live-sessions/<int:sid>/delete', methods=['POST'])
 @admin_required
 def live_session_delete(sid):
-    s_ = LiveSession.query.get_or_404(sid)
+    s_ = db.get_or_404(LiveSession, sid)
     db.session.delete(s_)
     db.session.commit()
     return redirect(url_for('admin.live_sessions'))
@@ -1952,7 +2092,7 @@ def forum_moderate():
 @admin_bp.route('/forum/<int:tid>/delete', methods=['POST'])
 @admin_required
 def forum_topic_delete(tid):
-    t = ForumTopic.query.get_or_404(tid)
+    t = db.get_or_404(ForumTopic, tid)
     db.session.delete(t)
     db.session.commit()
     flash('تاپیک حذف شد.', 'info')
@@ -1962,7 +2102,7 @@ def forum_topic_delete(tid):
 @admin_bp.route('/forum/<int:tid>/pin', methods=['POST'])
 @admin_required
 def forum_topic_pin(tid):
-    t = ForumTopic.query.get_or_404(tid)
+    t = db.get_or_404(ForumTopic, tid)
     t.is_pinned = not t.is_pinned
     db.session.commit()
     return redirect(url_for('admin.forum_moderate'))
@@ -1990,7 +2130,7 @@ def certificates():
 def certificate_revoke(eid):
     """لغو گواهی — حذف completed_at"""
     from models import Enrollment
-    e = Enrollment.query.get_or_404(eid)
+    e = db.get_or_404(Enrollment, eid)
     e.completed_at = None
     from models import Notification
     Notification.notify(e.user_id, 'گواهی شما لغو شد ⚠️',
@@ -2030,6 +2170,8 @@ def email_test():
     keys = ['smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'smtp_from', 'smtp_tls']
     for k in keys:
         v = request.form.get(k, '').strip()
+        if k in _SECRET_SETTING_KEYS and not v:
+            continue
         st = db.session.get(Setting, k)
         if st:
             st.value = v
@@ -2042,7 +2184,7 @@ def email_test():
                          '<div style="font-family:Tahoma;padding:20px;text-align:center"><h2>✅ اتصال ایمیل برقرار است</h2><p>این یک ایمیل تست از آکادمی است.</p></div>',
                          settings)
     flash(('✅ ' if ok else '❌ ') + msg, 'success' if ok else 'error')
-    return redirect(url_for('admin.settings'))
+    return redirect(url_for('admin.super_settings', tab='sms'))
 
 
 
@@ -2111,7 +2253,7 @@ def question_bank():
 def question_bank_add_to_quiz(qid):
     """افزودن سوال بانک به یک آزمون"""
     from models import QuestionBank, QuizQuestion, Quiz
-    q = QuestionBank.query.get_or_404(qid)
+    q = db.get_or_404(QuestionBank, qid)
     quiz_id = request.form.get('quiz_id', type=int)
     quiz = db.session.get(Quiz, quiz_id)
     if not quiz:
@@ -2164,15 +2306,18 @@ def roles_manage():
 
 
 @admin_bp.route('/files/lesson/<int:lid>')
-@admin_required
 def protected_lesson_file(lid):
-    """دانلود محافظت‌شده فایل درس — فقط برای ثبت‌نامی/ادمین"""
+    """دانلود محافظت‌شده؛ فقط مدیر یا دانشجوی مجاز در دورهٔ قابل‌دانلود."""
     from models import Lesson
     from flask import send_from_directory
-    les = Lesson.query.get_or_404(lid)
-    course_id = les.section.course_id
+    if not g.user:
+        return redirect(url_for('auth.login', next=request.path))
+    les = db.get_or_404(Lesson, lid)
+    course = les.section.course
     if not g.user.is_admin:
-        enr = Enrollment.query.filter_by(user_id=g.user.id, course_id=course_id).first()
+        if not course.allow_download:
+            abort(403)
+        enr = Enrollment.query.filter_by(user_id=g.user.id, course_id=course.id).first()
         if not enr:
             abort(403)
     if not les.file_url:
@@ -2297,6 +2442,10 @@ def settings():
                 'site_design', 'home_design', 'about_design', 'contact_design']
         for k in keys:
             v = request.form.get(k, '').strip()
+            if k in _SECRET_SETTING_KEYS and not v:
+                continue
+            if k == 'sandbox_mode':
+                v = '0'
             s = db.session.get(Setting, k)
             if s:
                 s.value = v
@@ -2378,29 +2527,69 @@ def super_settings():
                 'seo_title', 'seo_desc', 'seo_keywords', 'seo_author', 'seo_og_image',
                 'seo_robots_main', 'seo_twitter', 'ga_code',
                 # فروش و درگاه‌ها
-                'currency', 'sandbox_mode', 'zarinpal_merchant', 'idpay_api_key',
-                'zibal_merchant', 'melli_terminal', 'melli_username', 'melli_password',
-                'sepah_terminal', 'sepah_merchant', 'sepah_username', 'sepah_password',
+                'currency', 'sandbox_mode', 'c2c_card', 'c2c_name',
+                'zarinpal_merchant', 'idpay_api_key',
+                'zibal_merchant', 'parsian_login_account',
+                'melli_terminal', 'melli_username', 'melli_password',
+                'sepah_terminal',
                 'sadad_merchant', 'sadad_terminal', 'sadad_key',
                 'snapp_client_id', 'snapp_client_secret', 'snapp_merchant',
                 'digipay_api_key', 'digipay_merchant', 'tarb_api_url', 'tarb_api_key', 'tarb_merchant',
                 'invoice_prefix', 'certificate_text', 'certificate_sign',
                 'watermark_enabled', 'bnpl_enabled', 'bnpl_max_installments', 'cashback_percent',
+                'loyalty_discount_percent', 'referral_bonus_percent', 'refund_days',
                 # پیامک و ایمیل
                 'sms_provider', 'sms_test_phone', 'sms_kavenegar_key', 'sms_kavenegar_sender',
-                'sms_kavenegar_template', 'sms_ir_api_key', 'sms_ir_line',
+                'sms_kavenegar_template', 'sms_melli_username', 'sms_melli_password',
+                'sms_melli_sender', 'sms_faraz_token', 'sms_faraz_sender',
                 'smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'smtp_from', 'smtp_tls',
                 # مارکت‌پلیس و سرویس‌ها
                 'dk_api_base', 'dk_access_token', 'basalam_webhook_secret', 'emalls_seller_id',
-                'mapir_api_key', 'competitive_prices',
+                'mapir_api_key', 'competitive_prices', 'shipping_flat_rate', 'shipping_note',
                 # صفحه‌ساز و طراحی
                 'kit_container', 'kit_radius', 'site_design', 'home_design',
                 'about_design', 'contact_design',
                 # امنیت و نگهداری
-                'maintenance', 'allow_register', 'allow_phone_login',
+                'maintenance', 'allow_register', 'allow_phone_login', 'admin_2fa_enabled',
+                'exam_enabled', 'spin_enabled',
             ]
             for k in keys:
+                # هر تب فقط فیلدهای خودش را ارسال می‌کند؛ تنظیمات تب‌های دیگر
+                # نباید با ذخیرهٔ این تب خالی شوند.
+                if k not in request.form:
+                    continue
                 v = request.form.get(k, '').strip()
+                if k in _SECRET_SETTING_KEYS and not v:
+                    continue
+                # پرداخت ساختگی در نسخهٔ نهایی قابل فعال‌سازی نیست.
+                if k == 'sandbox_mode':
+                    v = '0'
+                elif k == 'refund_days':
+                    try:
+                        v = str(max(0, min(90, int(v or 0))))
+                    except ValueError:
+                        v = '0'
+                elif k in ('cashback_percent', 'loyalty_discount_percent', 'referral_bonus_percent'):
+                    try:
+                        v = str(max(0, min(50, int(v or 0))))
+                    except ValueError:
+                        v = '0'
+                elif k == 'bnpl_max_installments':
+                    try:
+                        v = str(max(2, min(4, int(v or 4))))
+                    except ValueError:
+                        v = '4'
+                elif k == 'shipping_flat_rate':
+                    try:
+                        v = str(max(0, int(v or 0)))
+                    except ValueError:
+                        v = '0'
+                elif k == 'admin_2fa_enabled' and v == '1':
+                    from sms import provider_ready
+                    current_settings = {row.key: row.value for row in Setting.query.all()}
+                    if not g.user.phone or not provider_ready(current_settings):
+                        v = '0'
+                        flash('تایید دومرحله‌ای فعال نشد؛ ابتدا شماره مدیر و سرویس پیامک واقعی را تکمیل و تست کنید.', 'error')
                 st = db.session.get(Setting, k)
                 if st:
                     st.value = v
@@ -2514,9 +2703,18 @@ def super_settings():
         vals[st.key] = st.value
     rules = RedirectRule.query.order_by(RedirectRule.source).all()
     notfound = _NFL.query.order_by(_NFL.count.desc()).limit(15).all() if hasattr(_NFL, 'count') else _NFL.query.order_by(_NFL.id.desc()).limit(15).all()
+    try:
+        from sqlalchemy import inspect as _inspect
+        db_engine_name = db.engine.dialect.name
+        inspector = _inspect(db.engine)
+        index_count = sum(len(inspector.get_indexes(table))
+                          for table in inspector.get_table_names())
+    except Exception:
+        db_engine_name, index_count = 'نامشخص', 0
     return render_template('admin/super_settings.html', vals=vals, rules=rules,
                            notfound=notfound, tab=request.args.get('tab', 'general'),
-                           redirect_count=RedirectRule.query.count(), settings_count=_S.query.count())
+                           redirect_count=RedirectRule.query.count(), settings_count=_S.query.count(),
+                           db_engine_name=db_engine_name, index_count=index_count)
 
 
 @admin_bp.route('/themes')
@@ -2574,7 +2772,7 @@ def products_admin():
 @admin_required
 def product_admin_edit(pid):
     from models import Product as _P
-    p = _P.query.get_or_404(pid)
+    p = db.get_or_404(_P, pid)
     if request.method == 'POST':
         from validators import clamp_field
         p.title = clamp_field(request.form.get('title'), 'title') or p.title
@@ -2601,7 +2799,7 @@ def product_admin_edit(pid):
 @admin_required
 def product_admin_delete(pid):
     from models import Product as _P
-    p = _P.query.get_or_404(pid)
+    p = db.get_or_404(_P, pid)
     db.session.delete(p)
     db.session.commit()
     flash('محصول حذف شد.', 'info')

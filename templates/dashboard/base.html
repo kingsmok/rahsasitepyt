@@ -1,17 +1,21 @@
 {% extends 'base.html' %}
 {% block title %}{% block dtitle %}داشبورد{% endblock %} — {{ site.site_name or 'آکادمی آنلاین' }}{% endblock %}
+{% block body_class %}dashboard-body{% endblock %}
 
 {% block content %}
 <section class="section" style="padding-top:30px">
   <div class="container">
+    <button class="panel-nav-toggle" type="button" data-panel-nav-toggle aria-controls="student-panel-nav" aria-expanded="false">
+      {{ icon('menu-2', 18) }} <span>منوی حساب کاربری</span><span aria-hidden="true">⌄</span>
+    </button>
     <div class="dash-layout">
-      <aside class="dash-side">
+      <aside class="dash-side" id="student-panel-nav">
         <div class="ds-head">
           {% if cur_user.avatar %}<img class="avatar avatar-lg" src="{{ cur_user.avatar_url }}" alt="" style="width:74px;height:74px;margin:0 auto 10px;display:block;object-fit:cover">{% else %}<span class="avatar avatar-lg" style="background:{{ cur_user.avatar_color }}">{{ cur_user.initials() }}</span>{% endif %}
           <strong>{{ cur_user.name }}</strong>
           <small>{{ 'مدیر سایت' if cur_user.is_admin else ('مدرس' if cur_user.role == 'teacher' else 'دانشجو') }} — عضویت: {{ cur_user.created_at|jdate }}</small>
         </div>
-        <nav>
+        <nav aria-label="بخش‌های حساب کاربری">
           <a href="{{ url_for('student.dashboard') }}" class="{{ 'active' if request.endpoint == 'student.dashboard' }}"><span class="ic">{{ icon('dashboard', 17) }}</span> نمای کلی</a>
           <a href="{{ url_for('student.my_courses') }}" class="{{ 'active' if request.endpoint in ['student.my_courses', 'student.learn'] }}"><span class="ic">{{ icon('book', 17) }}</span> دوره‌های من</a>
           <a href="{{ url_for('student.favorites') }}" class="{{ 'active' if request.endpoint == 'student.favorites' }}"><span class="ic">{{ icon('heart', 17) }}</span> علاقه‌مندی‌ها</a>
@@ -22,13 +26,13 @@
 <a href="{{ url_for('community.forum') }}" class="{{ 'active' if request.endpoint and request.endpoint.startswith('community') }}"><span class="ic">{{ icon('message-circle', 17) }}</span> انجمن</a>
       <a href="{{ url_for('community.live') }}" class="{{ 'active' if request.endpoint == 'community.live' }}"><span class="ic">{{ icon('video', 17) }}</span> کلاس آنلاین</a>
 <a href="{{ url_for('features.support_chat') }}" class="{{ 'active' if request.endpoint == 'features.support_chat' }}"><span class="ic">{{ icon('message-circle', 17) }}</span> چت آنلاین</a>
-      <a href="{{ url_for('features.exam_practice') }}" class="{{ 'active' if request.endpoint and request.endpoint.startswith('features.exam_practice') }}"><span class="ic">{{ icon('target', 17) }}</span> شبیه‌ساز آزمون</a>
+      {% if site.get('exam_enabled') == '1' or demo_features_enabled %}<a href="{{ url_for('features.exam_practice') }}" class="{{ 'active' if request.endpoint and request.endpoint.startswith('features.exam_practice') }}"><span class="ic">{{ icon('target', 17) }}</span> آزمون تمرینی</a>{% endif %}
       <a href="{{ url_for('features.talent_test') }}" class="{{ 'active' if request.endpoint == 'features.talent_test' }}"><span class="ic">🧠</span> استعدادیابی</a>
 <a href="{{ url_for('features.challenge') }}" class="{{ 'active' if request.endpoint == 'features.challenge' }}"><span class="ic">🏆</span> چالش هفتگی</a>
 <a href="{{ url_for('features.notifications') }}" class="{{ 'active' if request.endpoint == 'features.notifications' }}">
         <span class="ic">🔔</span> اعلان‌ها {% if unread_notifications %}<span class="count-badge" style="background:var(--danger);color:#fff;font-size:10px;padding:1px 7px;border-radius:99px">{{ fa(unread_notifications) }}</span>{% endif %}</a>
 <a href="{{ url_for('features.wallet') }}" class="{{ 'active' if request.endpoint == 'features.wallet' }}"><span class="ic">💰</span> کیف پول</a>
-      <a href="{{ url_for('features.referral') }}" class="{{ 'active' if request.endpoint == 'features.referral' }}"><span class="ic">🎁</span> دعوت دوستان</a>
+      {% if site.get('referral_bonus_percent','0')|int > 0 %}<a href="{{ url_for('features.referral') }}" class="{{ 'active' if request.endpoint == 'features.referral' }}"><span class="ic">🎁</span> دعوت دوستان</a>{% endif %}
       <a href="{{ url_for('features.study_plan') }}" class="{{ 'active' if request.endpoint == 'features.study_plan' }}"><span class="ic">{{ icon('calendar-event', 17) }}</span> برنامه مطالعه</a>
 <a href="{{ url_for('student.profile') }}" class="{{ 'active' if request.endpoint == 'student.profile' }}"><span class="ic">{{ icon('user', 17) }}</span> تنظیمات حساب</a>
           {% if cur_user.is_admin %}

@@ -81,7 +81,7 @@
               <b>{{ p.name }}</b>
               <small>{{ p.desc }}</small>
               <span class="plan">🛡 تا {{ fa(p.max_installments) }} قسط</span>
-              {% if p.fee_pct %}<span class="plan">کارمزد {{ fa(p.fee_pct) }}٪</span>{% else %}<span class="plan">کارمزد رایگان</span>{% endif %}
+              {% if p.fee_pct %}<span class="plan">کارمزد ثبت‌شده: {{ fa(p.fee_pct) }}٪</span>{% else %}<span class="plan">کارمزد نهایی طبق اعلام سرویس</span>{% endif %}
             </div>
           </label>
           {% endfor %}
@@ -109,17 +109,17 @@
           {% endfor %}
         </div>
 
-        <div class="bnpl-fee" id="bnpl-fee">ℹ️ کارمزد و سود اقساط در این نسخه رایگان است (در اتصال واقعی، طبق قرارداد سرویس اقساطی محاسبه و شفاف نمایش داده می‌شود).</div>
+        <div class="bnpl-fee" id="bnpl-fee">مبلغ و کارمزد نهایی را در صفحه سرویس اقساطی بررسی و سپس تایید کنید.</div>
 
         <button class="btn btn-primary btn-lg bnpl-cta" type="submit">🚀 شروع خرید اقساطی — پرداخت قسط اول</button>
       </form>
 
       <div class="bnpl-trust">
-        <span>🛡 بدون ضامن و چک</span>
-        <span>⚡ فعال‌سازی آنی دوره</span>
-        <span>🎁 {{ fa(cashback_percent()) }}٪ Cashback پس از پرداخت کامل</span>
+        <span>🔗 انتقال به سرویس انتخاب‌شده</span>
+        <span>✅ فعال‌سازی پس از تایید پرداخت</span>
+        {% if cashback_percent() > 0 %}<span>🎁 {{ fa(cashback_percent()) }}٪ بازگشت به کیف پول پس از پرداخت موفق</span>{% endif %}
       </div>
-      <p class="bnpl-note">با انتخاب هر سرویس، به درگاه همان سرویس هدایت می‌شوید. قسط اول پیش‌پرداخت است و مابقی طبق برنامهٔ بالاست.<br>تاریخ‌ها شمسی و به‌روز هستند — تأخیر در پرداخت قسط، دسترسی به دوره را متوقف می‌کند.</p>
+      <p class="bnpl-note">شرایط اعتبارسنجی، کارمزد و تضمین‌های موردنیاز توسط سرویس اقساطی تعیین می‌شود. پیش از تایید نهایی، اطلاعات نمایش‌داده‌شده در درگاه را بررسی کنید.</p>
     </div>
   </div>
 </div>

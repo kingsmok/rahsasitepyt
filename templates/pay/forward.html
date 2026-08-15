@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% block title %}انتقال به {{ gateway_name }}{% endblock %}
+{% block content %}
+<section class="section">
+  <div class="container" style="max-width:520px">
+    <div class="card text-center" style="padding:38px">
+      <div class="spinner" style="margin:0 auto 18px;width:38px;height:38px;border:4px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin .8s linear infinite"></div>
+      <h1 style="font-size:20px;margin-bottom:8px">در حال انتقال به {{ gateway_name }}</h1>
+      <p class="text-2" style="font-size:13px;margin-bottom:18px">سفارش <b dir="ltr">{{ order.code }}</b>؛ اگر انتقال خودکار انجام نشد، دکمه زیر را بزنید.</p>
+      <form id="gateway-forward-form" method="post" action="{{ action_url }}">
+        {% for key, value in fields.items() %}<input type="hidden" name="{{ key }}" value="{{ value }}">{% endfor %}
+        <button class="btn btn-primary btn-lg" type="submit">ادامه به درگاه</button>
+      </form>
+    </div>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>window.setTimeout(function(){document.getElementById('gateway-forward-form').submit();},400);</script>
+{% endblock %}

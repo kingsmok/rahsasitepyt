@@ -77,6 +77,10 @@ class _SkipBootDDL(Exception):
 
 def create_app():
     app = Flask(__name__)
+    # قابلیت‌های نمایشی به‌صورت پیش‌فرض خاموش‌اند و در production هرگز فعال
+    # نمی‌شوند. این پرچم فقط برای تست خودکار/توسعهٔ صریح نگه داشته شده است.
+    from runtime import demo_features_enabled as _demo_features_enabled
+    app.config['DEMO_FEATURES_ENABLED'] = _demo_features_enabled()
     # ---------- لاگ ساختاریافته: کنسول + فایل چرخشی ----------
     import logging as _logging
     from logging.handlers import RotatingFileHandler as _RFH
@@ -206,6 +210,52 @@ def create_app():
             pass
         _lexc('app.py')
 
+    # مهاجرت افزایشی کوچک برای نوع برگزاری دوره و اطلاعات ارسال سفارش. ستون‌ها
+    # باید پیش از اولین SELECT روی نصب‌های قدیمی اضافه شوند.
+    try:
+        with app.app_context():
+            from sqlalchemy import inspect as _inspect, text as _text
+            inspector = _inspect(db.engine)
+            table_names = set(inspector.get_table_names())
+            quote = '`' if db.engine.dialect.name == 'mysql' else '"'
+
+            def _add_columns(table_name, definitions):
+                if table_name not in table_names:
+                    return
+                columns = {col['name'] for col in inspector.get_columns(table_name)}
+                table = f'{quote}{table_name}{quote}'
+                for name, ddl in definitions.items():
+                    if name not in columns:
+                        db.session.execute(_text(
+                            f'ALTER TABLE {table} ADD COLUMN {name} {ddl}'))
+
+            _add_columns('courses', {
+                'delivery_type': "VARCHAR(20) DEFAULT 'online'",
+                'allow_download': 'BOOLEAN DEFAULT 0',
+                'attendance_required_percent': 'INTEGER DEFAULT 75',
+            })
+            _add_columns('order_items', {
+                'quantity': 'INTEGER DEFAULT 1',
+            })
+            # جدول‌های جدید حضور و غیاب روی نصب‌های قدیمی نیز ساخته شوند.
+            from models import CourseMeeting, AttendanceRecord
+            CourseMeeting.__table__.create(db.engine, checkfirst=True)
+            AttendanceRecord.__table__.create(db.engine, checkfirst=True)
+            _add_columns('orders', {
+                'shipping_name': "VARCHAR(120) DEFAULT ''",
+                'shipping_phone': "VARCHAR(20) DEFAULT ''",
+                'shipping_province': "VARCHAR(80) DEFAULT ''",
+                'shipping_city': "VARCHAR(80) DEFAULT ''",
+                'shipping_address': "VARCHAR(500) DEFAULT ''",
+                'shipping_postal_code': "VARCHAR(20) DEFAULT ''",
+                'shipping_cost': 'INTEGER DEFAULT 0',
+                'fulfillment_status': "VARCHAR(30) DEFAULT 'not_required'",
+            })
+            db.session.commit()
+    except Exception as _schema_patch_err:
+        db.session.rollback()
+        app.logger.warning('additive schema patch skipped: %s', _schema_patch_err)
+
     # ---------- فیلترها ----------
     app.jinja_env.filters['fa'] = fa
     app.jinja_env.filters['money'] = money
@@ -268,23 +318,31 @@ def create_app():
     # آمار واقعی سایت — با کش کوتاه (۶۰ ثانیه) برای نمایش در قالب‌ها/ویجت‌ها
     def site_stats():
         def _compute():
-            from models import (User as _U, Course as _C, Lesson as _L,
+            from models import (User as _U, Course as _C, Section as _S, Lesson as _L,
                                 Review as _R, Enrollment as _E, BlogPost as _B,
                                 SuccessStory as _SS, Order as _O)
-            _avg_rating = db.session.query(db.func.avg(_R.rating)).filter(_R.is_approved == True).scalar() or 0
+            _avg_rating = db.session.query(db.func.avg(_R.rating)) \
+                .join(_C, _C.id == _R.course_id) \
+                .filter(_R.is_approved == True, _C.status == 'published').scalar() or 0
             # ساعت‌ها با SUM در SQL — قبلاً همه دوره‌ها در پایتون بارگذاری می‌شدند
-            _hours = db.session.query(db.func.coalesce(db.func.sum(_C.duration_hours), 0)).scalar() or 0
+            _hours = db.session.query(db.func.coalesce(db.func.sum(_C.duration_hours), 0)) \
+                .filter(_C.status == 'published').scalar() or 0
             st = dict(
-                students=_U.query.filter_by(role='student').count(),
-                users=_U.query.count(),
-                teachers=_U.query.filter(_U.role.in_(['teacher', 'admin'])).count(),
+                students=_U.query.filter_by(role='student', is_active=True).count(),
+                users=_U.query.filter_by(is_active=True).count(),
+                teachers=_U.query.filter(_U.role.in_(['teacher', 'admin']),
+                                         _U.is_active == True).count(),
                 courses=_C.query.filter_by(status='published').count(),
-                lessons=_L.query.count(),
+                lessons=db.session.query(_L.id).join(_S, _S.id == _L.section_id)
+                    .join(_C, _C.id == _S.course_id)
+                    .filter(_C.status == 'published').count(),
                 hours=int(_hours),
-                enrollments=_E.query.count(),
-                reviews=_R.query.filter_by(is_approved=True).count(),
+                enrollments=db.session.query(_E.id).join(_C, _C.id == _E.course_id)
+                    .filter(_C.status == 'published').count(),
+                reviews=db.session.query(_R.id).join(_C, _C.id == _R.course_id)
+                    .filter(_R.is_approved == True, _C.status == 'published').count(),
                 avg_rating=round(float(_avg_rating), 2),
-                satisfaction=round(float(_avg_rating) / 5 * 100) if _avg_rating else 90,
+                satisfaction=round(float(_avg_rating) / 5 * 100) if _avg_rating else 0,
                 posts=_B.query.filter_by(published=True).count(),
                 stories=_SS.query.count(),
                 paid_orders=_O.query.filter_by(status='paid').count(),
@@ -475,10 +533,12 @@ def create_app():
                 by_cat.setdefault(c.category_id, []).append(CourseLite(c))
             out = []
             for cat in cat_rows:
+                published = by_cat.get(cat.id, [])
+                if not published:
+                    continue
                 out.append(CatLite(cat.name, cat.slug, cat.icon or '🎓',
                                    cat.color or '#2563eb', cid=cat.id,
-                                   sort=cat.sort or 0,
-                                   courses=by_cat.get(cat.id, [])))
+                                   sort=cat.sort or 0, courses=published))
             return out
         except Exception:
             _lexc('app.py')
@@ -506,18 +566,30 @@ def create_app():
         return set()
 
     def _bc_cart():
-        return len(getattr(g, 'cart', []) or [])
+        return int(getattr(g, 'cart_count', 0) or 0)
+
+    def _bc_enrolled_ids():
+        cached = getattr(g, '_enrolled_ids_cache', None)
+        if cached is not None:
+            return cached
+        user = getattr(g, 'user', None)
+        if not user:
+            return set()
+        try:
+            from models import Enrollment
+            cached = {row.course_id for row in Enrollment.query.filter_by(user_id=user.id).all()}
+        except Exception:
+            cached = set()
+        g._enrolled_ids_cache = cached
+        return cached
 
     def _bc_current_post():
         return getattr(g, 'current_post', None)
 
     def _bc_cart_total():
         try:
-            from models import Course as _C
-            ids = [int(i) for i in (getattr(g, 'cart', None) or [])]
-            if not ids:
-                return 0
-            return sum(c.final_price for c in _C.query.filter(_C.id.in_(ids)).all())
+            from blueprints.products import _cart_items as _items, _cart_total as _total
+            return _total(_items())
         except Exception:
             return 0
 
@@ -573,6 +645,7 @@ def create_app():
             if not key:
                 _html_cache.clear()
     app.jinja_env.globals['clear_cache'] = clear_cache
+    app.clear_cache = clear_cache
 
     def _load_success_stories():
         def _q():
@@ -616,6 +689,7 @@ def create_app():
     app.jinja_env.globals.update(
         WIDGETS=_WIDGETS, bc_categories=_bc_cats, bc_cur_user=_bc_cur,
         bc_site=_bc_site, bc_fav_ids=_bc_fav_ids, bc_cart_count=_bc_cart,
+        bc_enrolled_ids=_bc_enrolled_ids,
         bc_tickets_count=_bc_tickets, bc_current_post=_bc_current_post,
         bc_cart_total=_bc_cart_total, courses_by_id=_courses_by_id,
         bc_reviews_pending=_bc_reviews_pending,
@@ -728,7 +802,7 @@ def create_app():
             "https://maps.google.com https://game.crisp.chat; "
             "worker-src 'self' blob:; "
             "child-src 'self' blob:; "
-            "form-action 'self'; "
+            "form-action 'self' https://bpm.shaparak.ir https://sep.shaparak.ir; "
             "base-uri 'self'; "
             # frame-ancestors نسخهٔ مدرن X-Frame-Options است — جلوگیری از
             # clickjacking/کپی‌برداری صفحه در iframe سایت فیشینگ
@@ -863,6 +937,7 @@ def create_app():
         if request.method == 'POST' and not request.path.startswith('/api') and \
                 not request.path.startswith('/builder/api') and \
                 not request.path.startswith('/install') and \
+                not request.path.startswith('/pay/verify/') and \
                 request.path != '/admin/update/webhook':
             token = request.form.get('_csrf_token') or request.headers.get('X-CSRF-Token')
             expected = session.get('_csrf_token') or ''
@@ -937,6 +1012,102 @@ def create_app():
             g.settings = _ttl_cache('all_settings', 60, _get_all_settings)
         except Exception:
             _lexc('app.py')
+
+        # مهاجرت ایمن نصب‌های قدیمی: داده‌های شناخته‌شدهٔ seed حذف نمی‌شوند تا
+        # سابقه و روابط دیتابیس آسیب نبیند، اما از دید عموم غیرفعال/پیش‌نویس
+        # می‌شوند. مدیر بعداً می‌تواند آن‌ها را بازبینی و حذف کند.
+        if not _demo_features_enabled():
+            def _disable_legacy_demo_data():
+                try:
+                    from models import (Coupon as _Coupon, BlogPost as _BlogPost,
+                                        Page as _Page, Product as _Product,
+                                        Ticket as _Ticket, ContactMessage as _Contact,
+                                        NewsletterEmail as _Newsletter, Quiz as _Quiz,
+                                        Assignment as _Assignment,
+                                        QuestionBank as _QuestionBank)
+                    demo_emails = (
+                        'demo@academy.ir', 'sara@academy.ir', 'amir@academy.ir',
+                        'mehdi@academy.ir', 'negar@academy.ir', 'hossein@academy.ir',
+                        'zahra@academy.ir',
+                    )
+                    demo_users = User.query.filter(User.email.in_(demo_emails)).all()
+                    demo_user_ids = [user.id for user in demo_users]
+                    demo_course_ids = [row[0] for row in db.session.query(Course.id)
+                                       .filter(db.or_(Course.seeded_students > 0,
+                                                      Course.slug == 'course-intro')).all()]
+                    legacy_seed_detected = bool(demo_users or demo_course_ids)
+                    User.query.filter(User.email.in_(demo_emails)).update(
+                        {User.is_active: False}, synchronize_session=False)
+                    if demo_user_ids:
+                        Order.query.filter(Order.user_id.in_(demo_user_ids)).update(
+                            {Order.status: 'canceled'}, synchronize_session=False)
+                        _Ticket.query.filter(_Ticket.user_id.in_(demo_user_ids)).update(
+                            {_Ticket.status: 'closed'}, synchronize_session=False)
+                    if demo_course_ids:
+                        _Quiz.query.filter(_Quiz.course_id.in_(demo_course_ids)).update(
+                            {_Quiz.is_published: False}, synchronize_session=False)
+                        _Assignment.query.filter(_Assignment.course_id.in_(demo_course_ids)).update(
+                            {_Assignment.is_published: False}, synchronize_session=False)
+                    if demo_course_ids:
+                        Course.query.filter(Course.id.in_(demo_course_ids)).update(
+                            {Course.status: 'draft', Course.featured: False,
+                             Course.seeded_students: 0, Course.views: 0},
+                            synchronize_session=False)
+                    if legacy_seed_detected:
+                        try:
+                            from seed import QUESTION_BANK as _SEED_QUESTIONS
+                            demo_question_texts = tuple(
+                                item[0] for group in _SEED_QUESTIONS.values() for item in group)
+                            if demo_question_texts:
+                                _QuestionBank.query.filter(_QuestionBank.text.in_(demo_question_texts)).delete(
+                                    synchronize_session=False)
+                        except Exception:
+                            _lexc('app.disable_seed_question_bank')
+                        _Coupon.query.filter(_Coupon.code.in_((
+                            'WELCOME20', 'NOWROOZ10', 'FIX500'
+                        ))).update({_Coupon.is_active: False}, synchronize_session=False)
+                    demo_post_titles = (
+                        '۱۰ ترفند پایتون که هر برنامه‌نویسی باید بداند',
+                        'راهنمای انتخاب اولین زبان برنامه‌نویسی',
+                        'چگونه در ۶ ماه توسعه‌دهنده وب شویم؟',
+                        '۵ مهارت نرم که هر متخصص فناوری به آن نیاز دارد',
+                    )
+                    if legacy_seed_detected:
+                        _BlogPost.query.filter(_BlogPost.title.in_(demo_post_titles)).update(
+                            {_BlogPost.published: False}, synchronize_session=False)
+                        _Product.query.filter(_Product.slug.in_((
+                            'academy-mug', 'glass-mug', 'dev-notebook', 'coder-tshirt'
+                        ))).update({_Product.is_active: False, _Product.featured: False,
+                                    _Product.stock: 0}, synchronize_session=False)
+                    if legacy_seed_detected:
+                        _Newsletter.query.filter(_Newsletter.email.in_((
+                            'alireza@gmail.com', 'niloofar@yahoo.com', 'mohsen73@gmail.com'
+                        ))).delete(synchronize_session=False)
+                        _Contact.query.filter_by(email='reza@mail.com').delete(
+                            synchronize_session=False)
+                    replacements = {
+                        'از صفر تا استخدام — با کد تخفیف WELCOME20 تا ۲۰٪ تخفیف بیشتر بگیرید!':
+                            'آموزش گام‌به‌گام همراه با تمرین‌های کاربردی.',
+                        'همین حالا ثبت‌نام کن و با کد تخفیف WELCOME20 از ۲۰٪ تخفیف بهره‌مند شو!':
+                            'حساب خود را بسازید و دوره‌های منتشرشده را ببینید.',
+                    }
+                    if legacy_seed_detected:
+                        for page in _Page.query.filter(_Page.content.contains('WELCOME20')).all():
+                            content = page.content or ''
+                            for old, new in replacements.items():
+                                content = content.replace(old, new)
+                            page.content = content.replace('WELCOME20', '')
+                    for key, value in (('sandbox_mode', '0'), ('sms_provider', 'disabled')):
+                        row = db.session.get(Setting, key)
+                        if row and row.value in ('1', 'demo', ''):
+                            row.value = value
+                    db.session.commit()
+                except Exception:
+                    db.session.rollback()
+                    _lexc('app.disable_legacy_demo_data')
+                return True
+            _ttl_cache('legacy_demo_disabled_v1', 86400, _disable_legacy_demo_data)
+
         # بکاپ خودکار دیتابیس: بررسی هر ۱ ساعت برای کاهش ترافیک دیسک
         # ⚠️ کپی فایل دیتابیس در نخ پس‌زمینه انجام می‌شود تا درخواست را قفل نکند
         def _run_backup_check():
@@ -1119,8 +1290,9 @@ def create_app():
         # انتخاب تم — طراحی کلی سایت (site_design) برنده است مگر پیش‌فرض (۱)
         from designs import SITE_DESIGNS
         theme = None
-        # پیش‌نمایش طرح با پارامتر URL (مثلا ?site_design=pd-05) — فقط برای بازدید
-        _pv = request.args.get('site_design', '')
+        # پیش‌نمایش طرح از URL فقط برای مدیر واردشده مجاز است؛ کاربران عمومی
+        # همیشه نسخهٔ اصلی سایت را می‌بینند.
+        _pv = request.args.get('site_design', '') if (g.user and g.user.is_admin) else ''
         sd = _pv if _pv in SITE_DESIGNS else g.settings.get('site_design', '1')
         if sd == '1' or sd not in SITE_DESIGNS:
             if g.user:
@@ -1153,7 +1325,15 @@ def create_app():
             g.eff_radius = SITE_DESIGNS[sd]['radius']
         # سبد خرید
         g.cart = session.get('cart', [])
-        g.cart_count = len(g.cart)
+        quantities = session.get('cart_qty', {}) or {}
+        def _cart_item_count(item):
+            if not str(item).startswith('p:'):
+                return 1
+            try:
+                return max(1, int(quantities.get(str(item), 1) or 1))
+            except (TypeError, ValueError):
+                return 1
+        g.cart_count = sum(_cart_item_count(item) for item in g.cart)
         # موتور سئو (بعد از بارگذاری تنظیمات)
         from models import SeoMeta
         g.seo = dict(title='', description='', keywords='', canonical='', noindex=False,
@@ -1360,9 +1540,9 @@ def create_app():
     def inject_captcha():
         """کادر کپچای ضداسپم برای فرم‌های عمومی"""
         from captcha import current_captcha
-        from markupsafe import Markup
+        from markupsafe import Markup, escape
         def captcha_box():
-            text = current_captcha()
+            text = escape(current_captcha())
             return Markup(
                 '<div class="form-group">'
                 '<label for="cap_inp">🧮 سوال امنیتی: <b>' + text + '</b></label>'
@@ -1403,12 +1583,29 @@ def create_app():
                 _st = getattr(g, 'settings', {}) or {}
                 return any(gateway_ready(_gw['id'], _st)
                            for _gw in GATEWAYS
-                           if _gw.get('kind') not in ('test', 'manual'))
+                           if _gw.get('kind') in ('real', 'bank'))
+            except Exception:
+                return False
+
+        def _bnpl_configured():
+            try:
+                from gateways import GATEWAYS, gateway_ready
+                _st = getattr(g, 'settings', {}) or {}
+                if _st.get('bnpl_enabled') != '1':
+                    return False
+                return any(_gw.get('kind') == 'installment' and
+                           gateway_ready(_gw['id'], _st) for _gw in GATEWAYS)
             except Exception:
                 return False
 
         from gamification import user_badges
         from permissions import has_permission, ROLES
+        from gateways import gateway_fa as _gateway_name
+        try:
+            from sms import provider_ready as _sms_provider_ready
+            _sms_ready = _sms_provider_ready(getattr(g, 'settings', {}) or {})
+        except Exception:
+            _sms_ready = False
         unread_count = 0
         _u = getattr(g, 'user', None)
         if _u:
@@ -1435,11 +1632,27 @@ def create_app():
                     # پرداخت بانکی، «محتوای فریب‌دهنده» محسوب می‌شود و یکی از
                     # دلایل علامت خوردن دامنه با «Dangerous site» است.
                     real_gateway_on=_real_gateway_configured(),
+                    gateway_name=_gateway_name,
+                    bnpl_available=_bnpl_configured(),
+                    sms_ready=_sms_ready,
+                    # در قالب‌ها نیز بخش‌های آزمایشی فقط در محیط تست صریح قابل مشاهده‌اند.
+                    demo_features_enabled=_demo_features_enabled(),
                     clarity_script=_clarity, crisp_script=_crisp,
                     bc_admin_menu=lambda: __import__('permissions', fromlist=['menu_for']).menu_for(_u),
                     seo=getattr(g, 'seo', dict(title='', description='', keywords='',
                                                canonical='', noindex=False, og_image='',
                                                og_type='website', schema=None)))
+
+    # ---------- سلامت سرویس (برای مانیتورینگ؛ بدون افشای جزئیات) ----------
+    @app.route('/health')
+    def health():
+        from flask import jsonify
+        try:
+            db.session.execute(db.text('SELECT 1'))
+            return jsonify(ok=True, status='healthy'), 200
+        except Exception:
+            db.session.rollback()
+            return jsonify(ok=False, status='unavailable'), 503
 
     # ---------- خطاها ----------
     _nf_log_throttle = {}

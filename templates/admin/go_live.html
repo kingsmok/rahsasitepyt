@@ -1,0 +1,96 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}راه‌اندازی نهایی{% endblock %}
+{% block acontent %}
+<div class="dash-head">
+  <div><h1>🚀 راه‌اندازی نهایی سایت</h1><p>همه تنظیمات ضروری در یک صفحه؛ اطلاعات محرمانه بعد از ذخیره دوباره نمایش داده نمی‌شوند.</p></div>
+  <span class="badge {{ 'badge-success' if score == 100 else 'badge-accent' }}">آمادگی {{ fa(score) }}٪</span>
+</div>
+
+<div class="grid" style="grid-template-columns:repeat(5,minmax(130px,1fr));gap:10px;margin-bottom:20px">
+  {% for key, label in [('public','برند و تماس'),('payment','پرداخت'),('sms','پیامک'),('smtp','ایمیل'),('content','محتوا')] %}
+  <div class="card" style="padding:14px;text-align:center"><b style="color:{{ 'var(--success)' if checks[key] else 'var(--warning)' }}">{{ '✓' if checks[key] else '○' }}</b><small style="display:block">{{ label }}</small></div>
+  {% endfor %}
+</div>
+
+<form method="post">
+  <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+
+  <section class="ss-card">
+    <h3>۱. اطلاعات عمومی واقعی</h3>
+    <div class="ss-grid">
+      <div class="ss-field"><label>نام مجموعه</label><input name="site_name" value="{{ vals.get('site_name','') }}" required></div>
+      <div class="ss-field"><label>توضیح کوتاه</label><input name="site_desc" value="{{ vals.get('site_desc','') }}" required></div>
+      <div class="ss-field"><label>تلفن</label><input name="phone" value="{{ vals.get('phone','') }}" dir="ltr"></div>
+      <div class="ss-field"><label>ایمیل عمومی</label><input type="email" name="email" value="{{ vals.get('email','') }}" dir="ltr"></div>
+      <div class="ss-field"><label>آدرس</label><input name="address" value="{{ vals.get('address','') }}"></div>
+      <div class="ss-field"><label>ساعات پاسخگویی</label><input name="support_hours" value="{{ vals.get('support_hours','') }}"></div>
+      <div class="ss-field"><label>آدرس اصلی سایت</label><input type="url" name="base_url" value="{{ vals.get('base_url','') }}" dir="ltr" placeholder="https://example.com"></div>
+      <div class="ss-field" style="grid-column:1/-1"><label>معرفی مجموعه</label><textarea name="about_text" rows="4">{{ vals.get('about_text','') }}</textarea></div>
+    </div>
+  </section>
+
+  <section class="ss-card">
+    <h3>۲. پرداخت واقعی</h3>
+    <p class="ss-hint">فقط درگاه دارای قرارداد و IP ثبت‌شده را تکمیل کنید. فیلد محرمانه خالی یعنی مقدار قبلی حفظ شود.</p>
+    <div class="ss-grid">
+      <div class="ss-field"><label>زرین‌پال Merchant</label><input name="zarinpal_merchant" value="{{ vals.get('zarinpal_merchant','') }}" dir="ltr"></div>
+      <div class="ss-field"><label>آیدی‌پی API Key</label><input type="password" name="idpay_api_key" value="" placeholder="خالی = بدون تغییر"></div>
+      <div class="ss-field"><label>زیبال Merchant</label><input name="zibal_merchant" value="{{ vals.get('zibal_merchant','') }}" dir="ltr"></div>
+      <div class="ss-field"><label>ملت Terminal</label><input name="melli_terminal" value="{{ vals.get('melli_terminal','') }}" dir="ltr"></div>
+      <div class="ss-field"><label>ملت Username</label><input name="melli_username" value="{{ vals.get('melli_username','') }}" dir="ltr"></div>
+      <div class="ss-field"><label>ملت Password</label><input type="password" name="melli_password" value="" placeholder="خالی = بدون تغییر"></div>
+      <div class="ss-field"><label>پارسیان Login Account / PIN</label><input type="password" name="parsian_login_account" value="" placeholder="خالی = بدون تغییر"></div>
+      <div class="ss-field"><label>سامان SEP Terminal</label><input name="sepah_terminal" value="{{ vals.get('sepah_terminal','') }}" dir="ltr"></div>
+      <div class="ss-field"><label>سداد Merchant</label><input name="sadad_merchant" value="{{ vals.get('sadad_merchant','') }}" dir="ltr"></div>
+      <div class="ss-field"><label>سداد Terminal</label><input name="sadad_terminal" value="{{ vals.get('sadad_terminal','') }}" dir="ltr"></div>
+      <div class="ss-field" style="grid-column:1/-1"><label>سداد Private Key</label><textarea name="sadad_key" rows="3" dir="ltr" placeholder="خالی = بدون تغییر"></textarea></div>
+      <div class="ss-field"><label>شماره کارت</label><input name="c2c_card" value="{{ vals.get('c2c_card','') }}" dir="ltr"></div>
+      <div class="ss-field"><label>نام صاحب کارت</label><input name="c2c_name" value="{{ vals.get('c2c_name','') }}"></div>
+    </div>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.gateways') }}">تست اتصال درگاه‌ها</a>
+  </section>
+
+  <section class="ss-card">
+    <h3>۳. پیامک و ایمیل واقعی</h3>
+    <div class="ss-grid">
+      <div class="ss-field"><label>ارائه‌دهنده پیامک</label><select name="sms_provider">
+        {% for value, label in [('disabled','غیرفعال'),('kavenegar','کاوه‌نگار'),('mellipayamak','ملی‌پیامک'),('farazsms','فراز')] %}<option value="{{ value }}" {{ 'selected' if vals.get('sms_provider','disabled') == value }}>{{ label }}</option>{% endfor %}
+      </select></div>
+      <div class="ss-field"><label>شماره تست</label><input name="sms_test_phone" value="{{ vals.get('sms_test_phone','') }}" dir="ltr"></div>
+      <div class="ss-field"><label>کاوه‌نگار API Key</label><input type="password" name="sms_kavenegar_key" value="" placeholder="خالی = بدون تغییر"></div>
+      <div class="ss-field"><label>کاوه‌نگار Sender</label><input name="sms_kavenegar_sender" value="{{ vals.get('sms_kavenegar_sender','') }}" dir="ltr"></div>
+      <div class="ss-field"><label>کاوه‌نگار Template</label><input name="sms_kavenegar_template" value="{{ vals.get('sms_kavenegar_template','') }}" dir="ltr"></div>
+      <div class="ss-field"><label>ملی‌پیامک Username</label><input name="sms_melli_username" value="{{ vals.get('sms_melli_username','') }}" dir="ltr"></div>
+      <div class="ss-field"><label>ملی‌پیامک Password</label><input type="password" name="sms_melli_password" value="" placeholder="خالی = بدون تغییر"></div>
+      <div class="ss-field"><label>ملی‌پیامک Sender</label><input name="sms_melli_sender" value="{{ vals.get('sms_melli_sender','') }}" dir="ltr"></div>
+      <div class="ss-field"><label>فراز Token</label><input type="password" name="sms_faraz_token" value="" placeholder="خالی = بدون تغییر"></div>
+      <div class="ss-field"><label>فراز Sender</label><input name="sms_faraz_sender" value="{{ vals.get('sms_faraz_sender','') }}" dir="ltr"></div>
+      <div class="ss-field"><label>SMTP Host</label><input name="smtp_host" value="{{ vals.get('smtp_host','') }}" dir="ltr"></div>
+      <div class="ss-field"><label>SMTP Port</label><input name="smtp_port" value="{{ vals.get('smtp_port','587') }}" dir="ltr"></div>
+      <div class="ss-field"><label>SMTP Username</label><input name="smtp_user" value="{{ vals.get('smtp_user','') }}" dir="ltr"></div>
+      <div class="ss-field"><label>SMTP Password</label><input type="password" name="smtp_pass" value="" placeholder="خالی = بدون تغییر"></div>
+      <div class="ss-field"><label>فرستنده ایمیل</label><input name="smtp_from" value="{{ vals.get('smtp_from','') }}" dir="ltr"></div>
+      <div class="ss-field"><label>TLS</label><select name="smtp_tls"><option value="1" {{ 'selected' if vals.get('smtp_tls','1') != '0' }}>فعال</option><option value="0" {{ 'selected' if vals.get('smtp_tls') == '0' }}>غیرفعال</option></select></div>
+    </div>
+    <div class="flex gap-1 wrap"><a class="btn btn-ghost btn-sm" href="{{ url_for('admin.sms_settings') }}">تست پیامک</a><a class="btn btn-ghost btn-sm" href="{{ url_for('admin.super_settings', tab='sms') }}">تست ایمیل</a></div>
+  </section>
+
+  <section class="ss-card">
+    <h3>۴. سیاست فروش و ارسال</h3>
+    <div class="ss-grid">
+      <div class="ss-field"><label>واحد پول</label><input name="currency" value="{{ vals.get('currency','تومان') }}"></div>
+      <div class="ss-field"><label>مهلت بازگشت وجه (روز)</label><input type="number" min="0" max="90" name="refund_days" value="{{ vals.get('refund_days','0') }}"></div>
+      <div class="ss-field"><label>هزینه ثابت ارسال</label><input type="number" min="0" name="shipping_flat_rate" value="{{ vals.get('shipping_flat_rate','0') }}"></div>
+      <div class="ss-field"><label>توضیح ارسال</label><textarea name="shipping_note" rows="2">{{ vals.get('shipping_note','') }}</textarea></div>
+    </div>
+  </section>
+
+  <section class="ss-card">
+    <h3>۵. محتوای واقعی</h3>
+    <p>اکنون {{ fa(courses_count) }} دوره منتشرشده و {{ fa(products_count) }} محصول فعال دارید. محتوای ساختگی ایجاد نمی‌شود.</p>
+    <div class="flex gap-1 wrap"><a class="btn btn-ghost" href="{{ url_for('admin.course_new') }}">افزودن دوره واقعی</a><a class="btn btn-ghost" href="{{ url_for('admin.products_admin') }}">مدیریت محصولات</a><a class="btn btn-ghost" href="{{ url_for('admin.blog') }}">مدیریت مقالات</a><a class="btn btn-ghost" href="{{ url_for('admin.users') }}">مدرسان و کاربران</a></div>
+  </section>
+
+  <div class="ss-save"><button class="btn btn-primary btn-lg" type="submit">ذخیره همه تنظیمات راه‌اندازی</button></div>
+</form>
+{% endblock %}

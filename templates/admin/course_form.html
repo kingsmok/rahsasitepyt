@@ -64,10 +64,28 @@
     <div class="form-group">
       <label for="f_duration_hours_1">مدت (ساعت)</label>
       <input id="f_duration_hours_1" class="form-control" type="number" name="duration_hours" value="{{ course.duration_hours if course else 10 }}" min="1">
-    </div>      <div class="form-group">
-        <label>مدت دسترسی (روز — 0 = مادام‌العمر)</label>
-        <input class="form-control" type="number" name="access_days" value="{{ course.access_days if course else 0 }}" min="0">
-      </div>
+    </div>
+    <div class="form-group">
+      <label>نوع برگزاری</label>
+      {% set delivery = course.delivery_type if course else 'online' %}
+      <select class="form-control" name="delivery_type">
+        <option value="online" {{ 'selected' if delivery == 'online' }}>آنلاین</option>
+        <option value="offline" {{ 'selected' if delivery == 'offline' }}>حضوری / آفلاین</option>
+        <option value="hybrid" {{ 'selected' if delivery == 'hybrid' }}>ترکیبی آنلاین و حضوری</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>حداقل حضور لازم برای دوره حضوری (درصد)</label>
+      <input class="form-control" type="number" name="attendance_required_percent" value="{{ course.attendance_required_percent if course else 75 }}" min="0" max="100">
+    </div>
+    <div class="form-group">
+      <label>مدت دسترسی (روز — 0 = نامحدود)</label>
+      <input class="form-control" type="number" name="access_days" value="{{ course.access_days if course else 0 }}" min="0">
+    </div>
+    <div class="form-group">
+      <label class="form-check" style="margin-top:28px"><input type="checkbox" name="allow_download" {{ 'checked' if course and course.allow_download }}> اجازه دانلود فایل‌های پیوست درس‌ها</label>
+      <p class="form-hint">برای دوره‌های بدون دانلود خاموش بماند. پخش ویدیو همچنان داخل پنل انجام می‌شود.</p>
+    </div>
     <div class="form-group">
       <label for="f_intro_1">لینک ویدئوی معرفی دوره</label>
       <input id="f_intro_1" class="form-control" name="intro_video" value="{{ course.intro_video if course else '' }}" placeholder="https://youtube.com/watch?v=... یا https://aparat.com/v/... یا لینک مستقیم mp4">

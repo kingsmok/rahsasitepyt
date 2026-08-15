@@ -66,13 +66,30 @@ def test_guest_redirected_from_admin(client, app):
 def test_admin_pages_render(client, app):
     _make_admin(app)
     _login_admin_2fa(client, app, 'admint@test.ir', 'admin123')
-    pages = ['/admin/', '/admin/courses', '/admin/users', '/admin/orders',
+    pages = ['/admin/', '/admin/go-live', '/admin/courses', '/admin/users', '/admin/orders',
              '/admin/blog', '/admin/tickets', '/admin/categories',
              '/admin/coupons', '/admin/quizzes', '/admin/designs',
              '/admin/gateways', '/admin/proofs', '/admin/pages']
     for p in pages:
         r = client.get(p)
         assert r.status_code == 200, f'{p} -> {r.status_code}'
+
+
+def test_go_live_saves_without_reflecting_secrets(client, app):
+    from models import Setting
+    _make_admin(app)
+    _login_admin_2fa(client, app, 'admint@test.ir', 'admin123')
+    token = _csrf(client, '/admin/go-live')
+    response = client.post('/admin/go-live', data={
+        '_csrf_token': token, 'site_name': 'مجموعه واقعی',
+        'site_desc': 'توضیح واقعی', 'email': 'info@example.ir',
+        'idpay_api_key': 'VERY-SECRET-KEY', 'currency': 'تومان',
+    }, follow_redirects=False)
+    assert response.status_code == 302
+    with app.app_context():
+        assert db.session.get(Setting, 'idpay_api_key').value == 'VERY-SECRET-KEY'
+    page = client.get('/admin/go-live')
+    assert 'VERY-SECRET-KEY' not in page.text
 
 
 def test_admin_can_create_category(client, app):
@@ -170,10 +187,11 @@ def _login_admin_2fa(client, app, email, password):
     tok = _csrf(client, '/auth/login')
     r = client.post('/auth/login', data={'_csrf_token': tok, 'email': email,
                                          'password': password}, follow_redirects=False)
-    # ادمین به /auth/admin-2fa هدایت می‌شود
+    # کد تست فقط در حافظه سرور است و هرگز داخل cookie session قرار نمی‌گیرد.
+    code2 = app.config.get('_TEST_AUTH_CODES', {}).get('admin-2fa')
+    assert code2, 'کد تست 2FA در حافظه سرور نیست'
     with client.session_transaction() as sess:
-        code2 = sess.get('admin_2fa')
-    assert code2, 'کد 2FA در سشن نیست'
+        assert 'admin_2fa' not in sess and 'admin_2fa_hash' in sess
     tok2 = _csrf(client, '/auth/admin-2fa')
     r = client.post('/auth/admin-2fa', data={'_csrf_token': tok2, 'code': code2},
                     follow_redirects=False)

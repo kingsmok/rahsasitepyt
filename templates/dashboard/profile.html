@@ -88,7 +88,7 @@
         <h4 class="mb-2" style="font-size:14.5px">🔒 تغییر رمز عبور (اختیاری)</h4>
         <div class="form-group">
           <label for="f_password_1">رمز جدید</label>
-          <input id="f_password_1" class="form-control" type="password" name="password" placeholder="حداقل ۶ کاراکتر">
+          <input id="f_password_1" class="form-control" type="password" name="password" placeholder="حداقل ۸ کاراکتر" minlength="8" autocomplete="new-password">
         </div>
       </div>
       <div style="border-top:1px dashed var(--border);padding-top:18px;margin-top:18px">
@@ -109,14 +109,16 @@
 
   <div>
     <div class="card" style="padding:22px;text-align:center">
-            <div class="card" style="padding:16px;margin-top:12px;background:var(--bg-2);border:none;text-align:right">
+      {% if site.get('referral_bonus_percent','0')|int > 0 and cur_user.referral_code %}
+      <div class="card" style="padding:16px;margin-top:12px;background:var(--bg-2);border:none;text-align:right">
         <small class="text-3" style="font-size:11px">🎁 لینک دعوت دوستان شما</small>
         <div class="flex gap-1" style="margin-top:6px">
-          <input id="my-ref-link" class="form-control" value="{{ request.host_url }}register?ref={{ cur_user.referral_code or '' }}" dir="ltr" readonly style="font-size:11px">
+          <input id="my-ref-link" class="form-control" value="{{ url_for('auth.register', ref=cur_user.referral_code, _external=True) }}" dir="ltr" readonly style="font-size:11px">
           <button class="btn btn-primary btn-sm" type="button" onclick="navigator.clipboard.writeText(document.getElementById('my-ref-link').value);this.textContent='✅'">📋</button>
         </div>
-        <small class="text-3" style="font-size:10.5px;display:block;margin-top:4px">با هر خرید دوستانتان، ۱۰٪ به کیف پول شما واریز می‌شود.</small>
+        <small class="text-3" style="font-size:10.5px;display:block;margin-top:4px">{{ fa(site.get('referral_bonus_percent')) }}٪ از اولین خرید موفق به کیف پول شما اضافه می‌شود.</small>
       </div>
+      {% endif %}
       <div class="card" style="padding:16px;margin-top:12px;background:var(--bg-2);border:none;text-align:right">
         <small class="text-3" style="font-size:11px">🏆 وضعیت گیمیفیکیشن</small>
         <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:12.5px">

@@ -31,8 +31,12 @@
           <small class="text-3">🛍 محصول — {{ obj.category or '' }}{% if obj.sku %} · {{ obj.sku }}{% endif %}</small>
         </div>
         {% endif %}
-        <span class="price" style="font-weight:800">{{ fa('{:,.0f}'.format(obj.final_price)) }} <small class="text-3">تومان</small></span>
-        <button class="btn btn-sm btn-danger" data-remove-item="{{ kind }}" data-id="{{ obj.id }}">🗑</button>
+        {% set qty = quantities.get((kind, obj.id), 1) %}
+        {% if kind == 'product' %}
+        <label class="cart-quantity">تعداد <input type="number" min="1" max="{{ obj.stock }}" value="{{ qty }}" data-product-qty="{{ obj.id }}" aria-label="تعداد {{ obj.title }}"></label>
+        {% endif %}
+        <span class="price" style="font-weight:800">{{ fa('{:,.0f}'.format(obj.final_price * qty)) }} <small class="text-3">تومان</small></span>
+        <button type="button" class="btn btn-sm btn-danger" data-remove-item="{{ kind }}" data-id="{{ obj.id }}" aria-label="حذف {{ obj.title }}">🗑</button>
       </div>
       {% endfor %}
       <div style="padding:16px 0;display:flex;justify-content:space-between;align-items:center">
@@ -61,6 +65,15 @@
 
 {% block scripts %}
 <script>
+document.querySelectorAll('[data-product-qty]').forEach(function (input) {
+  input.addEventListener('change', function () {
+    fetch('/api/product-cart/quantity', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({product_id: parseInt(input.dataset.productQty, 10), quantity: parseInt(input.value, 10)})
+    }).then(function (r) { return r.json().then(function (d) { return {ok:r.ok,data:d}; }); })
+      .then(function (result) { if(result.ok){ location.reload(); } else { toast(result.data.msg || 'تعداد نامعتبر است','error'); } });
+  });
+});
 document.querySelectorAll('[data-remove-item]').forEach(function (btn) {
   btn.addEventListener('click', function () {
     var kind = btn.dataset.removeItem;

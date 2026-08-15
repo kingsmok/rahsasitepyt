@@ -40,6 +40,7 @@ def menu_for(user):
         items = [
             ('sep', '📊 مدیریت کلی'),
             ('admin.overview', '📊 داشبورد'),
+            ('admin.go_live', '🚀 راه‌اندازی نهایی'),
             ('admin.users', '👥 کاربران'),
             ('admin.roles_manage', '👥 نقش‌ها و دسترسی‌ها'),
             ('admin.activity', '📋 لاگ فعالیت'),
@@ -101,7 +102,6 @@ def menu_for(user):
             ('admin.icons_browser', '🎨 آیکون‌ها'),
             ('admin.update_page', '🔄 بروزرسانی'),
             ('admin.install_manager', '🛠 مدیریت نصب و اتصالات'),
-            ('admin.super_settings', '⚙️ تنظیمات سوپر'),
         ]
     elif role == 'teacher':
         items = [

@@ -3,6 +3,7 @@ flask-sqlalchemy==3.1.1
 SQLAlchemy==2.0.30
 greenlet==3.0.3
 requests>=2.31
+defusedxml>=0.7.1
 # Pillow — نسخه امن (۹.۵ و پایین‌تر چند CVE دارند). Pillow 11+ از پایتون 3.9 پشتیبانی می‌کند
 Pillow>=11.0.0
 reportlab>=4.0

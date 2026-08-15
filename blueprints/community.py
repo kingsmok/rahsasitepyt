@@ -72,7 +72,7 @@ def topic_poll_create(tid):
     """ساخت نظرسنجی در تاپیک"""
     if not g.user:
         return redirect(url_for('auth.login'))
-    topic = ForumTopic.query.get_or_404(tid)
+    topic = db.get_or_404(ForumTopic, tid)
     question = request.form.get('question', '').strip()
     options_raw = request.form.get('options', '').strip()
     if not question or not options_raw:
@@ -91,7 +91,7 @@ def topic_poll_create(tid):
 
 @community_bp.route('/topic/<int:tid>', methods=['GET', 'POST'])
 def topic_view(tid):
-    topic = ForumTopic.query.get_or_404(tid)
+    topic = db.get_or_404(ForumTopic, tid)
     topic.views = (topic.views or 0) + 1
     db.session.commit()
     # ثبت رای نظرسنجی (قبل از پردازش پاسخ)
@@ -241,7 +241,7 @@ def live_book(sid):
     """رزرو کلاس آنلاین — ثبت حضور در لاگ"""
     if not g.user:
         return redirect(url_for('auth.login', next=request.path))
-    sess = LiveSession.query.get_or_404(sid)
+    sess = db.get_or_404(LiveSession, sid)
     db.session.add(ActivityLog(user_id=g.user.id, action='live_booking',
                                detail=f'رزرو کلاس «{sess.title}»'))
     db.session.commit()

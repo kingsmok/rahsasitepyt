@@ -9,6 +9,7 @@
     <div class="badges">
       {% if course.has_discount %}<span class="discount-flag">٪{{ fa(course.discount_percent) }} تخفیف</span>{% endif %}
       {% if course.is_free() %}<span class="badge badge-success">رایگان</span>{% endif %}
+      <span class="badge badge-gray">{{ {'online':'آنلاین','offline':'حضوری','hybrid':'ترکیبی'}.get(course.delivery_type or 'online', 'آنلاین') }}</span>
       {% if course.featured %}<span class="badge badge-accent">ویژه</span>{% endif %}
     </div>
     <button class="fav-btn {{ 'active' if cu and (cu.id, course.id) in fids }}" data-fav="{{ course.id }}" title="علاقه‌مندی">
@@ -41,7 +42,7 @@
         {% endif %}
       </div>
       <div class="flex gap-1">
-        {% if not (cu and course.id in cu_enrolled_ids) %}
+        {% if not (cu and course.id in bc_enrolled_ids()) %}
         <button type="button" class="btn btn-outline-primary btn-sm card-add-btn" data-add-cart="{{ course.id }}" title="افزودن به سبد خرید">🛒</button>
         {% endif %}
         <a class="btn btn-primary btn-sm" href="{{ url_for('site.course_detail', slug=course.slug) }}">مشاهده دوره</a>

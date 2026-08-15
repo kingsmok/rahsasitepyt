@@ -12,7 +12,7 @@ api_bp = Blueprint('api', __name__)
 @api_bp.route('/cart/add', methods=['POST'])
 def cart_add():
     """افزودن به سبد — اعتبارسنجی ورودی (ضد 500 با داده غیرعددی)"""
-    raw = request.json.get('course_id') if request.is_json else request.form.get('course_id')
+    raw = (request.get_json(silent=True) or {}).get('course_id') if request.is_json else request.form.get('course_id')
     try:
         course_id = int(raw or 0)
     except (TypeError, ValueError):
@@ -24,12 +24,13 @@ def cart_add():
     if course.id not in cart:
         cart.append(course.id)
         session['cart'] = cart
-    return jsonify(ok=True, count=len(cart), msg='به سبد خرید اضافه شد')
+    from blueprints.products import _cart_count
+    return jsonify(ok=True, count=_cart_count(cart), msg='به سبد خرید اضافه شد')
 
 
 @api_bp.route('/cart/remove', methods=['POST'])
 def cart_remove():
-    raw2 = request.json.get('course_id') if request.is_json else request.form.get('course_id')
+    raw2 = (request.get_json(silent=True) or {}).get('course_id') if request.is_json else request.form.get('course_id')
     try:
         course_id = int(raw2 or 0)
     except (TypeError, ValueError):
@@ -38,12 +39,14 @@ def cart_remove():
     if course_id in cart:
         cart.remove(course_id)
         session['cart'] = cart
-    return jsonify(ok=True, count=len(cart))
+    from blueprints.products import _cart_count
+    return jsonify(ok=True, count=_cart_count(cart))
 
 
 @api_bp.route('/cart/count')
 def cart_count():
-    return jsonify(count=len(session.get('cart', [])))
+    from blueprints.products import _cart_count
+    return jsonify(count=_cart_count())
 
 
 @api_bp.route('/cart/upsell')
@@ -90,7 +93,14 @@ def cart_upsell():
 def favorite_toggle():
     if not g.user:
         return jsonify(ok=False, msg='ابتدا وارد شوید', login=True), 401
-    course_id = int(request.json.get('course_id') if request.is_json else request.form.get('course_id') or 0)
+    raw = (request.get_json(silent=True) or {}).get('course_id') if request.is_json else request.form.get('course_id')
+    try:
+        course_id = int(raw or 0)
+    except (TypeError, ValueError):
+        return jsonify(ok=False, msg='شناسه دوره نامعتبر است'), 400
+    course = db.session.get(Course, course_id)
+    if not course or course.status != 'published':
+        return jsonify(ok=False, msg='دوره یافت نشد'), 404
     fav = Favorite.query.filter_by(user_id=g.user.id, course_id=course_id).first()
     if fav:
         db.session.delete(fav)
@@ -103,7 +113,7 @@ def favorite_toggle():
 
 @api_bp.route('/theme', methods=['POST'])
 def set_theme():
-    theme = (request.json.get('theme') if request.is_json else request.form.get('theme')) or ''
+    theme = ((request.get_json(silent=True) or {}).get('theme') if request.is_json else request.form.get('theme')) or ''
     from app import VALID_THEMES
     if theme not in VALID_THEMES:
         return jsonify(ok=False), 400
@@ -243,7 +253,11 @@ def media_upload():
 def media_delete():
     """حذف رسانه از طریق API — ادمین یا مالک"""
     from models import Media
-    mid = int(request.json.get('id') if request.is_json else request.form.get('id') or 0)
+    raw = (request.get_json(silent=True) or {}).get('id') if request.is_json else request.form.get('id')
+    try:
+        mid = int(raw or 0)
+    except (TypeError, ValueError):
+        return jsonify(ok=False, msg='شناسه نامعتبر است'), 400
     m = db.session.get(Media, mid)
     if not m:
         return jsonify(ok=False, msg='یافت نشد'), 404

@@ -45,14 +45,20 @@ def cashback_percent():
 
 
 def bnpl_enabled():
-    return _cfg('bnpl_enabled', '1') == '1'
+    """اقساط فقط پس از فعال‌سازی مدیر؛ تست داخلی از این قاعده مستثناست."""
+    from runtime import demo_features_enabled
+    return demo_features_enabled() or _cfg('bnpl_enabled', '0') == '1'
 
 
 def _providers():
-    """درگاه‌های اقساطی فعال (اسنپ‌پی/ترب/دیجی‌پی) به‌همراه طرح اقساطی‌شان."""
-    from gateways import gateway_plan, INSTALLMENT_PROVIDERS
+    """فقط سرویس‌های اقساطی واقعاً پیکربندی‌شده را برگردان."""
+    from gateways import gateway_plan, gateway_ready, INSTALLMENT_PROVIDERS
+    from runtime import demo_features_enabled
+    settings = getattr(g, 'settings', {}) or {}
     out = []
     for pid in INSTALLMENT_PROVIDERS:
+        if not gateway_ready(pid, settings) and not demo_features_enabled():
+            continue
         plan = gateway_plan(pid)
         if plan:
             plan['max_installments'] = min(plan['max_installments'], max_installments())
@@ -118,7 +124,10 @@ def bnpl_page(code):
     order = Order.query.filter_by(code=code, user_id=g.user.id).first_or_404()
     if order.status == 'paid':
         flash('این سفارش قبلاً پرداخت شده است.', 'info')
-        return redirect(url_for('shop.invoice', code=code))
+        return redirect(url_for('student.invoice', code=code))
+    if not bnpl_enabled():
+        flash('پرداخت اقساطی برای این فروشگاه فعال نیست.', 'info')
+        return redirect(url_for('shop.pay_start', code=code))
     providers = _providers()
     if not providers:
         flash('سرویس اقساطی فعالی در دسترس نیست. لطفاً بعداً تلاش کنید یا پرداخت یکجا را انتخاب کنید.', 'warning')
@@ -143,6 +152,9 @@ def bnpl_start(code):
     if not g.user:
         return redirect(url_for('auth.login'))
     order = Order.query.filter_by(code=code, user_id=g.user.id).first_or_404()
+    if not bnpl_enabled():
+        flash('پرداخت اقساطی فعال نیست.', 'error')
+        return redirect(url_for('shop.pay_start', code=code))
     gateway = request.form.get('gateway', '').strip()
     plans = {p['id']: p for p in _providers()}
     if gateway not in plans:

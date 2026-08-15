@@ -1,25 +1,25 @@
 {% extends 'base.html' %}
-{% block title %}{{ seo.title or "دریافت مشاوره رایگان — آکادمی آنلاین" }}{% endblock %}
+{% block title %}{{ seo.title or "درخواست مشاوره — آکادمی آنلاین" }}{% endblock %}
 
 {% block content %}
 <section class="section" style="padding-top:36px">
   <div class="container" style="max-width:720px">
     <nav class="breadcrumb" aria-label="مسیر صفحه">
       <a href="{{ url_for('site.index') }}">خانه</a><span class="sep">/</span>
-      <span>مشاوره رایگان</span>
+      <span>درخواست مشاوره</span>
     </nav>
     <div class="card" style="padding:38px;border-radius:20px">
       <div class="text-center mb-3">
         <div style="font-size:44px">🎯</div>
-        <h1 style="font-size:24px;margin:10px 0 6px">مشاوره رایگان انتخاب مسیر یادگیری</h1>
-        <p class="text-2" style="font-size:13.5px">نمی‌دانی از کجا شروع کنی؟ شماره‌ات را بگذار تا کارشناسان ما با تو تماس بگیرند و بهترین مسیر را پیشنهاد دهند.</p>
+        <h1 style="font-size:24px;margin:10px 0 6px">درخواست مشاوره انتخاب مسیر یادگیری</h1>
+        <p class="text-2" style="font-size:13.5px">هدف و راه تماس خود را ثبت کنید تا درخواست بررسی شود. شرایط و زمان پاسخگویی بر اساس اطلاعات واقعی مجموعه خواهد بود.</p>
       </div>
 
       <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:26px">
         <div class="card" style="padding:16px;text-align:center"><div style="font-size:24px">🧭</div><small class="text-2">انتخاب مسیر درست</small></div>
         <div class="card" style="padding:16px;text-align:center"><div style="font-size:24px">💬</div><small class="text-2">پاسخ به سوالات شما</small></div>
-        <div class="card" style="padding:16px;text-align:center"><div style="font-size:24px">🎁</div><small class="text-2">پیشنهاد تخفیف ویژه</small></div>
-        <div class="card" style="padding:16px;text-align:center"><div style="font-size:24px">⚡</div><small class="text-2">تماس سریع</small></div>
+        <div class="card" style="padding:16px;text-align:center"><div style="font-size:24px">📚</div><small class="text-2">مقایسه دوره‌ها</small></div>
+        <div class="card" style="padding:16px;text-align:center"><div style="font-size:24px">✅</div><small class="text-2">ثبت قابل پیگیری</small></div>
       </div>
 
       <form method="post">

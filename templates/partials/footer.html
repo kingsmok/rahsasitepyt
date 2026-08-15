@@ -8,7 +8,7 @@
         </a>
         <p style="margin-top:14px">{{ site.site_desc or '' }}</p>
         {% set st = site_stats() %}
-        <p style="margin-top:14px;color:var(--footer-text-2)">با بیش از {{ fa(st.students or 0) }} دانشجوی فعال، {{ fa(st.courses or 0) }} دوره تخصصی و همکاری با {{ fa(st.teachers or 0) }} مدرس برتر کشور، همراه مطمئن مسیر یادگیری شما هستیم.</p>
+        {% if st.students or st.courses or st.teachers %}<p style="margin-top:14px;color:var(--footer-text-2)">{{ fa(st.students or 0) }} دانشجو، {{ fa(st.courses or 0) }} دوره منتشرشده و {{ fa(st.teachers or 0) }} مدرس در سامانه ثبت شده‌اند.</p>{% endif %}
       </div>
 
       <div>
@@ -36,10 +36,11 @@
       <div>
         <h4>ارتباط با ما</h4>
         <ul class="footer-contact">
-          <li><span class="ic">{{ icon('map-pin', 16) }}</span><span>{{ site.address }}</span></li>
-          <li><span class="ic">{{ icon('phone', 16) }}</span><span>{{ fa(site.phone) }}</span></li>
-          {% if site.email %}<li><span class="ic">{{ icon('mail', 16) }}</span><span>{{ site.email }}</span></li>{% endif %}
-          <li><span class="ic">{{ icon('clock', 16) }}</span><span>{{ site.support_hours or 'شنبه تا پنجشنبه — ۹ تا ۲۱' }}</span></li>
+          {% if site.address %}<li><span class="ic">{{ icon('map-pin', 16) }}</span><span>{{ site.address }}</span></li>{% endif %}
+          {% if site.phone %}<li><span class="ic">{{ icon('phone', 16) }}</span><a href="tel:{{ site.phone }}">{{ fa(site.phone) }}</a></li>{% endif %}
+          {% if site.email %}<li><span class="ic">{{ icon('mail', 16) }}</span><a href="mailto:{{ site.email }}">{{ site.email }}</a></li>{% endif %}
+          {% if site.support_hours %}<li><span class="ic">{{ icon('clock', 16) }}</span><span>{{ site.support_hours }}</span></li>{% endif %}
+          {% if not site.address and not site.phone and not site.email %}<li><a href="{{ url_for('site.contact') }}">ارسال پیام از فرم تماس</a></li>{% endif %}
         </ul>
         <form action="{{ url_for('site.newsletter') }}" method="post" style="margin-top:14px">
 <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
@@ -58,7 +59,7 @@
         {% if site.telegram %}<a href="https://t.me/{{ site.telegram }}" target="_blank" rel="noopener" title="تلگرام">{{ icon('brand-telegram', 18) }}</a>{% endif %}
         {% if site.instagram %}<a href="https://instagram.com/{{ site.instagram }}" target="_blank" rel="noopener" title="اینستاگرام">{{ icon('brand-instagram', 18) }}</a>{% endif %}
         {% if site.whatsapp %}<a href="https://wa.me/{{ site.whatsapp }}" target="_blank" rel="noopener" title="واتساپ">{{ icon('brand-whatsapp', 18) }}</a>{% endif %}
-        <a href="https://youtube.com" target="_blank" rel="noopener" title="یوتیوب">{{ icon('brand-youtube', 18) }}</a>
+        {% if site.youtube %}<a href="https://youtube.com/{{ site.youtube }}" target="_blank" rel="noopener" title="یوتیوب">{{ icon('brand-youtube', 18) }}</a>{% endif %}
       </div>
     </div>
   </div>

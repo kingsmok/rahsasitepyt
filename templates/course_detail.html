@@ -22,10 +22,9 @@
   "name": "معرفی دوره {{ course.title }}",
   "description": "{{ (course.subtitle or course.description or '')[:250] }}",
   "thumbnailUrl": "{{ request.host_url.rstrip('/') }}/static/img/{{ course.image or 'hero.webp' }}",
-  "uploadDate": "{{ (course.updated_at or course.created_at or '').strftime('%Y-%m-%d') if (course.updated_at or course.created_at) else '2026-01-01' }}",
+  "uploadDate": "{{ (course.updated_at or course.created_at).strftime('%Y-%m-%d') }}",
   "contentUrl": "{{ request.host_url.rstrip('/') ~ course.intro_video if course.intro_video.startswith('/') else course.intro_video }}",
   "embedUrl": "{{ course.intro_video.replace('watch?v=', 'embed/') if 'youtube' in course.intro_video else course.intro_video }}",
-  "duration": "PT5M",
   "publisher": {"@type": "Organization", "name": "{{ site.site_name or 'آکادمی آنلاین' }}"},
   "inLanguage": "fa"
 }
@@ -36,16 +35,16 @@
   "@context": "https://schema.org",
   "@type": "FAQPage",
   "mainEntity": [
-    {"@type": "Question", "name": "آیا این دوره برای مبتدیان مناسب است؟",
-     "acceptedAnswer": {"@type": "Answer", "text": "{{ (course.audience or 'بله، این دوره از مفاهیم پایه شروع می‌شود و برای همه سطوح مناسب است.').split('\n')[0][:180] }}"}},
+    {"@type": "Question", "name": "این دوره برای چه افرادی مناسب است؟",
+     "acceptedAnswer": {"@type": "Answer", "text": "{{ (course.audience or 'اطلاعات مخاطبان دوره در توضیحات و سرفصل‌ها درج شده است.').split('\n')[0][:180] }}"}},
     {"@type": "Question", "name": "پیش‌نیاز شرکت در دوره چیست؟",
-     "acceptedAnswer": {"@type": "Answer", "text": "{{ (course.requirements or 'بدون پیش‌نیاز خاص — کافی است با کامپیوتر آشنا باشید.').split('\n')[0][:180] }}"}},
+     "acceptedAnswer": {"@type": "Answer", "text": "{{ (course.requirements or 'پیش‌نیازی برای این دوره ثبت نشده است.').split('\n')[0][:180] }}"}},
     {"@type": "Question", "name": "مدت زمان دوره چقدر است؟",
-     "acceptedAnswer": {"@type": "Answer", "text": "این دوره شامل {{ fa(course.lesson_count) }} جلسه ویدیویی و {{ fa(course.duration_hours) }} ساعت آموزش پروژه‌محور است."}},
-    {"@type": "Question", "name": "آیا گواهینامه پایان دوره ارائه می‌شود؟",
-     "acceptedAnswer": {"@type": "Answer", "text": "بله، پس از تکمیل دوره گواهینامه معتبر با کد رهگیری دریافت می‌کنید."}},
-    {"@type": "Question", "name": "ضمانت بازگشت وجه چگونه است؟",
-     "acceptedAnswer": {"@type": "Answer", "text": "تا ۷ روز پس از خرید، اگر از دوره راضی نبودید کل مبلغ بدون قید و شرط بازگردانده می‌شود."}}
+     "acceptedAnswer": {"@type": "Answer", "text": "این دوره شامل {{ fa(course.lesson_count) }} جلسه و {{ fa(course.duration_hours) }} ساعت محتوای ثبت‌شده است."}},
+    {"@type": "Question", "name": "آیا گواهی پایان دوره ارائه می‌شود؟",
+     "acceptedAnswer": {"@type": "Answer", "text": "پس از تکمیل دوره، گواهی پایان دوره با کد رهگیری در حساب کاربری فعال و از صفحه استعلام قابل بررسی می‌شود."}}{% if site.get('refund_days', '0')|int > 0 %},
+    {"@type": "Question", "name": "مهلت درخواست بازگشت وجه چقدر است؟",
+     "acceptedAnswer": {"@type": "Answer", "text": "مهلت ثبت درخواست {{ site.get('refund_days', '0')|int }} روز پس از خرید است و شرایط آن مطابق قوانین سایت بررسی می‌شود."}}{% endif %}
   ]
 }
 </script>
@@ -64,6 +63,7 @@
     <div class="badges">
       {% if course.has_discount %}<span class="badge badge-danger">٪{{ fa(course.discount_percent) }} تخفیف ویژه</span>{% endif %}
       <span class="badge badge-white">{{ course.level }}</span>
+      <span class="badge badge-white">{{ {'online':'آنلاین','offline':'حضوری','hybrid':'ترکیبی'}.get(course.delivery_type or 'online', 'آنلاین') }}</span>
       {% if course.is_free() %}<span class="badge badge-success">رایگان</span>{% endif %}
     </div>
     <h1>{{ course.title }}</h1>
@@ -77,12 +77,11 @@
       <span>👁 {{ fa(course.views) }} بازدید</span>
       <span>🆕 {{ course.created_at|jdate }}</span>
     </div>
-    <!-- نشان‌های اعتماد (E-E-A-T) -->
     <div class="hero-trust" style="margin-top:18px">
-      <span>🛡 ضمانت بازگشت وجه ۷ روزه</span>
-      <span>🏅 گواهینامه معتبر با کد رهگیری</span>
-      <span>💬 پشتیبانی مستقیم مدرس</span>
-      <span>♾ به‌روزرسانی مادام‌العمر</span>
+      {% if site.get('refund_days', '0')|int > 0 %}<span>🛡 {{ fa(site.get('refund_days', '0')) }} روز مهلت درخواست بازگشت وجه</span>{% endif %}
+      <span>🏅 گواهی پایان دوره قابل استعلام</span>
+      <span>📚 {{ fa(course.lesson_count) }} جلسه ثبت‌شده</span>
+      <span>👤 دسترسی از حساب کاربری</span>
     </div>
   </div>
 </section>
@@ -298,14 +297,6 @@
             {% endif %}
           </div>
           <div class="buy-body">
-            {% if not course.is_free() %}
-            <div class="countdown" data-countdown="{{ 60 * 60 * 7 }}">
-              <div class="cd"><b class="cd-h">07</b><small>ساعت</small></div>
-              <div class="cd"><b class="cd-m">00</b><small>دقیقه</small></div>
-              <div class="cd"><b class="cd-s">00</b><small>ثانیه</small></div>
-            </div>
-            {% endif %}
-
             {% if enrolled %}
             <a class="btn btn-success btn-lg btn-block" href="{{ url_for('student.learn', course_id=course.id) }}">▶ ادامه یادگیری</a>
             {% elif cur_user %}
@@ -317,24 +308,23 @@
             <div class="includes">
               <h4>این دوره شامل:</h4>
               <ul>
-                <li>{{ fa(course.lesson_count) }} جلسه ویدیویی</li>
+                <li>{{ fa(course.lesson_count) }} جلسه ثبت‌شده</li>
+                <li>نوع برگزاری: {{ {'online':'آنلاین','offline':'حضوری','hybrid':'ترکیبی'}.get(course.delivery_type or 'online', 'آنلاین') }}</li>
                 {% if course.access_days and course.access_days > 0 %}
                 <li>دسترسی {{ fa(course.access_days) }} روزه</li>
                 {% else %}
                 <li>دسترسی مادام‌العمر</li>
                 {% endif %}
-                <li>گواهینامه پایان دوره</li>
-                <li>پشتیبانی پاسخگویی تیکت</li>
-                <li>به‌روزرسانی رایگان</li>
+                <li>گواهی پایان دوره با کد رهگیری</li>
+                <li>ثبت و پیگیری تیکت پشتیبانی</li>
+                <li>دسترسی به محتوای منتشرشده دوره</li>
                 <li>قابل استفاده در موبایل و دسکتاپ</li>
               </ul>
             </div>
-            {% if real_gateway_on %}<div class="secure">🛡️ پرداخت امن از طریق درگاه بانکی معتبر</div>{% endif %}
-            {% if not course.is_free() and course.final_price >= 300000 %}
+            {% if real_gateway_on %}<div class="secure">🛡️ انتقال به درگاه بانکی پیکربندی‌شده</div>{% endif %}
+            {% if bnpl_available and not course.is_free() and course.final_price >= 300000 %}
             <div style="margin-top:12px;background:var(--bg-2);border-radius:10px;padding:10px 14px;font-size:12.5px;color:var(--text-2)">
-              💳 پرداخت <b>اقساطی</b> هم داریم:
-              {% set q = course.final_price * 30 // 100 %}
-              ۲ قسط ماهانه از <b>{{ fa('{:,.0f}'.format(q)) }} تومان</b> — در تسویه انتخاب کنید.
+              💳 امکان پرداخت اقساطی فعال است؛ تعداد قسط، مبلغ نهایی و شرایط سرویس در مراحل بعد نمایش داده می‌شود.
             </div>
             {% endif %}
           </div>
@@ -350,33 +340,35 @@
       </div>
       <div class="faq-list" style="max-width:820px;margin:0 auto" data-acc-group>
         <div class="accordion open">
-          <button class="acc-head"><span>👤 آیا این دوره برای مبتدیان مناسب است؟</span><span class="arrow">▼</span></button>
-          <div class="acc-body"><p class="text-2" style="padding:6px 4px">{{ (course.audience or 'بله، این دوره از مفاهیم پایه شروع می‌شود و برای همه سطوح مناسب است.').split('\n')[0] }}</p></div>
+          <button class="acc-head" type="button"><span>👤 این دوره برای چه افرادی مناسب است؟</span><span class="arrow">▼</span></button>
+          <div class="acc-body"><p class="text-2" style="padding:6px 4px">{{ (course.audience or 'اطلاعات مخاطبان دوره در توضیحات و سرفصل‌ها درج شده است.').split('\n')[0] }}</p></div>
         </div>
         <div class="accordion">
-          <button class="acc-head"><span>📌 پیش‌نیاز شرکت در دوره چیست؟</span><span class="arrow">▼</span></button>
-          <div class="acc-body"><p class="text-2" style="padding:6px 4px">{{ (course.requirements or 'بدون پیش‌نیاز خاص — کافی است با کامپیوتر آشنا باشید.').split('\n')[0] }}</p></div>
+          <button class="acc-head" type="button"><span>📌 پیش‌نیاز شرکت در دوره چیست؟</span><span class="arrow">▼</span></button>
+          <div class="acc-body"><p class="text-2" style="padding:6px 4px">{{ (course.requirements or 'پیش‌نیازی برای این دوره ثبت نشده است.').split('\n')[0] }}</p></div>
         </div>
         <div class="accordion">
-          <button class="acc-head"><span>⏱ مدت زمان دوره چقدر است؟</span><span class="arrow">▼</span></button>
-          <div class="acc-body"><p class="text-2" style="padding:6px 4px">این دوره شامل {{ fa(course.lesson_count) }} جلسه ویدیویی و {{ fa(course.duration_hours) }} ساعت آموزش پروژه‌محور است.</p></div>
+          <button class="acc-head" type="button"><span>⏱ مدت زمان دوره چقدر است؟</span><span class="arrow">▼</span></button>
+          <div class="acc-body"><p class="text-2" style="padding:6px 4px">این دوره شامل {{ fa(course.lesson_count) }} جلسه و {{ fa(course.duration_hours) }} ساعت محتوای ثبت‌شده است.</p></div>
         </div>
         <div class="accordion">
-          <button class="acc-head"><span>🏅 آیا گواهینامه پایان دوره ارائه می‌شود؟</span><span class="arrow">▼</span></button>
-          <div class="acc-body"><p class="text-2" style="padding:6px 4px">بله، پس از تکمیل دوره گواهینامه معتبر با کد رهگیری دریافت می‌کنید.</p></div>
+          <button class="acc-head" type="button"><span>🏅 آیا گواهی پایان دوره ارائه می‌شود؟</span><span class="arrow">▼</span></button>
+          <div class="acc-body"><p class="text-2" style="padding:6px 4px">پس از تکمیل دوره، گواهی پایان دوره با کد رهگیری در حساب شما فعال و از صفحه استعلام قابل بررسی می‌شود.</p></div>
         </div>
+        {% if site.get('refund_days', '0')|int > 0 %}
         <div class="accordion">
-          <button class="acc-head"><span>🛡 ضمانت بازگشت وجه چگونه است؟</span><span class="arrow">▼</span></button>
-          <div class="acc-body"><p class="text-2" style="padding:6px 4px">تا ۷ روز پس از خرید، اگر از دوره راضی نبودید کل مبلغ بدون قید و شرط بازگردانده می‌شود.</p></div>
+          <button class="acc-head" type="button"><span>🛡 مهلت درخواست بازگشت وجه چقدر است؟</span><span class="arrow">▼</span></button>
+          <div class="acc-body"><p class="text-2" style="padding:6px 4px">درخواست خود را حداکثر تا {{ fa(site.get('refund_days', '0')) }} روز پس از خرید ثبت کنید. شرایط بررسی در <a href="{{ url_for('site.terms') }}#refund">قوانین سایت</a> آمده است.</p></div>
         </div>
+        {% endif %}
       </div>
       <div style="text-align:center;margin-top:26px">
         {% if not enrolled %}
-        <a class="btn btn-primary btn-lg" href="{{ url_for('auth.register') if not cur_user else '#' }}" {% if cur_user %}onclick="document.querySelector('[data-add-cart]').click();return false"{% endif %}>🚀 همین حالا ثبت‌نام کن و با {{ fa(course.discount_percent) if course.has_discount else 'تخفیف' }}٪ تخفیف شروع کن</a>
+        <a class="btn btn-primary btn-lg" href="{{ url_for('auth.register') if not cur_user else '#' }}" {% if cur_user %}onclick="document.querySelector('[data-add-cart]').click();return false"{% endif %}>{% if course.has_discount %}ثبت‌نام با {{ fa(course.discount_percent) }}٪ تخفیف{% else %}ثبت‌نام در دوره{% endif %}</a>
         {% else %}
         <a class="btn btn-success btn-lg" href="{{ url_for('student.learn', course_id=course.id) }}">▶ ادامه یادگیری</a>
         {% endif %}
-        <span style="display:block;margin-top:10px;font-size:12px;color:var(--text-3)">پاسخگویی به سوالات شما در تیکت‌ها — پشتیبانی ۷ روز هفته</span>
+        <span style="display:block;margin-top:10px;font-size:12px;color:var(--text-3)">سوالات خود را از بخش تیکت‌های پشتیبانی ثبت و پیگیری کنید.</span>
       </div>
     </div>
 

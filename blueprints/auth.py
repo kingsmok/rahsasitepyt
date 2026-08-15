@@ -3,8 +3,10 @@
 import hmac
 import os
 import random
+import secrets
 import time
-from flask import Blueprint, render_template, request, redirect, url_for, flash, g, session
+from flask import (Blueprint, render_template, request, redirect, url_for, flash,
+                   g, session, current_app)
 from models import db, User
 from validators import is_valid_phone, is_valid_national_code
 from validators import log_exc as _lexc
@@ -30,13 +32,19 @@ def _codes_equal(a, b):
 
 
 def _is_demo_otp(settings):
-    """آیا باید کد تایید را روی صفحه نمایش بدهیم؟ فقط در حالت دمو/غیر-تولید،
-    یعنی وقتی پنل پیامکی واقعی تنظیم نشده است. در production هرگز کد روی صفحه
-    نمایش داده نمی‌شود تا جلوی سرقت کد/تسخیر حساب گرفته شود."""
+    """نمایش OTP فقط در تست خودکار/توسعهٔ صریح؛ هرگز روی سایت نهایی."""
     if _is_prod():
         return False
+    from runtime import demo_features_enabled
     provider = (settings.get('sms_provider') or '').strip()
-    return provider in ('', 'demo')
+    return demo_features_enabled() and provider in ('', 'disabled', 'demo')
+
+
+def _clear_otp_session():
+    """پاک‌کردن کد صادرشده وقتی ارسال واقعی انجام نشده است."""
+    for key in ('otp_phone', 'otp_code', 'otp_code_hash', 'otp_ts',
+                'otp_tries', 'otp_purpose'):
+        session.pop(key, None)
 
 
 def _safe_next(url):
@@ -54,6 +62,31 @@ auth_bp = Blueprint('auth', __name__)
 AVATAR_COLORS = ['#2563eb', '#7c3aed', '#059669', '#dc2626', '#ea580c',
                  '#db2777', '#0891b2', '#f59e0b', '#16a34a', '#9333ea']
 
+
+def _numeric_code(digits):
+    """کد عددی با مولد رمزنگاری امن (نه random سراسری قابل‌پیش‌بینی)."""
+    start = 10 ** (digits - 1)
+    return str(start + secrets.randbelow(9 * start))
+
+
+def _code_digest(code, purpose):
+    """OTP را قبل از قرارگرفتن در کوکی session به HMAC یک‌طرفه تبدیل کن."""
+    secret = str(current_app.config['SECRET_KEY']).encode('utf-8')
+    message = f'{purpose}:{code}'.encode('utf-8')
+    return hmac.new(secret, message, 'sha256').hexdigest()
+
+
+def _code_matches(code, stored_digest, purpose):
+    if not code or not stored_digest:
+        return False
+    return _codes_equal(_code_digest(code, purpose), stored_digest)
+
+
+def _remember_test_code(purpose, code):
+    """فقط تست سرور؛ کد هرگز در session/cookie مرورگر قرار نمی‌گیرد."""
+    if current_app.testing:
+        current_app.config.setdefault('_TEST_AUTH_CODES', {})[purpose] = code
+
 # ---------------------------------------------------------------- محدودیت نرخ مبتنی بر IP
 # نگهداری تلاش‌های ناموفق به‌ازای IP — مکمل محدودیت session (پاک‌کردن کوکی دور نمی‌زند)
 _LOGIN_ATTEMPTS = {}   # ip -> [timestamps]
@@ -64,11 +97,13 @@ LOCK_MINUTES = 15
 
 
 def _client_ip():
-    # پشتیبانی از پراکسی (X-Forwarded-For) — فقط در صورت اعتماد به پراکسی
-    xff = request.headers.get('X-Forwarded-For')
-    if xff:
-        return xff.split(',')[0].strip()
-    return request.remote_addr or '0.0.0.0'
+    # هدر X-Forwarded-For فقط پشت پراکسی مورداعتماد خوانده می‌شود؛ در غیر این
+    # صورت مهاجم می‌تواند IP را جعل و محدودیت تلاش ورود را دور بزند.
+    if os.environ.get('TRUST_PROXY') == '1':
+        xff = request.headers.get('X-Forwarded-For')
+        if xff:
+            return xff.split(',')[0].strip()
+    return request.remote_addr or 'unknown'
 
 
 def _ip_allowed():
@@ -193,15 +228,29 @@ def login():
             session['st'] = user.session_token
             session.pop('login_fails', None)
             _ip_success()
-            # تایید دومرحله‌ای برای مدیران
-            if user.role in ('admin', 'super_admin'):
-                code2 = str(random.randint(100000, 999999))
-                session['admin_2fa'] = code2
-                session['admin_2fa_ts'] = time.time()
+            # تایید دومرحله‌ای مدیر فقط وقتی مدیر آن را فعال کرده باشد. در تست
+            # خودکار نیز برای پوشش جریان امنیتی روشن می‌ماند.
+            from runtime import demo_features_enabled
+            admin_2fa_on = (g.settings.get('admin_2fa_enabled') == '1' or
+                            demo_features_enabled())
+            if user.role in ('admin', 'super_admin') and admin_2fa_on:
+                code2 = _numeric_code(6)
                 from sms import send_sms
-                send_sms(user.phone or '', f'کد تایید دومرحله‌ای ورود به پنل: {code2}', g.settings)
+                sent, _send_msg = send_sms(
+                    user.phone or '',
+                    f'کد تایید دومرحله‌ای ورود به پنل: {code2}', g.settings)
+                if not sent:
+                    # ورود نیمه‌کاره نباید یک سشن مدیر معتبر باقی بگذارد.
+                    session.clear()
+                    flash('ورود دومرحله‌ای انجام نشد؛ شماره مدیر و سامانه پیامک را از تنظیمات بررسی کنید.', 'error')
+                    return redirect(url_for('auth.login'))
+                session['admin_2fa_hash'] = _code_digest(code2, 'admin-2fa')
+                session['admin_2fa_ts'] = time.time()
+                _remember_test_code('admin-2fa', code2)
                 if _is_demo_otp(g.settings):
-                    flash(f'🔐 کد تایید دومرحله‌ای (دمو): {code2}', 'info')
+                    flash(f'🔐 کد تست دومرحله‌ای: {code2}', 'info')
+                else:
+                    flash('کد تایید به شماره مدیر ارسال شد.', 'success')
                 return redirect(url_for('auth.admin_2fa'))
             from models import ActivityLog
             db.session.add(ActivityLog(user_id=user.id, action='login',
@@ -246,10 +295,10 @@ def login():
 # ---------------------------------------------------------------- ورود با شماره تماس (OTP)
 @auth_bp.route('/phone-send', methods=['GET', 'POST'])
 def phone_send():
+    """ارسال کد تایید به شماره تماس از سرویس واقعی پیامک."""
     if g.settings.get('allow_phone_login') == '0':
-        flash('ورود با شماره تماس موقتاً غیرفعال است.', 'error')
+        flash('ورود با شماره تماس موقتاً غیرفعال است؛ با ایمیل وارد شوید.', 'error')
         return redirect(url_for('auth.login'))
-    """ارسال کد تایید به شماره تماس — در حالت دمو کد روی صفحه نمایش داده می‌شود"""
     phone = (request.form.get('phone') or request.args.get('phone') or '').strip()
     if not is_valid_phone(phone):
         flash('شماره تماس معتبر نیست — باید با 09 شروع شود و ۱۱ رقم باشد.', 'error')
@@ -264,21 +313,26 @@ def phone_send():
     if count >= 5 and now - session.get('otp_first_send', now) < 600:
         flash('تعداد تلاش‌ها بیش از حد مجاز است. ۱۰ دقیقه دیگر تلاش کنید.', 'error')
         return redirect(url_for('auth.login'))
-    code = str(random.randint(10000, 99999))
+    code = _numeric_code(5)
     session['otp_phone'] = phone
-    session['otp_code'] = code
+    session['otp_code_hash'] = _code_digest(code, 'phone-otp')
+    _remember_test_code('phone-otp', code)
     session['otp_ts'] = now
     session['otp_last_send'] = now
     session['otp_send_count'] = count + 1
     if 'otp_first_send' not in session:
         session['otp_first_send'] = now
-    # ارسال کد: اگر پنل پیامکی واقعی تنظیم شده باشد پیامک می‌شود، وگرنه حالت دمو
     from sms import send_otp
     ok, msg = send_otp(phone, code, g.settings)
-    if ok and not _is_demo_otp(g.settings):
+    if ok and _is_demo_otp(g.settings):
+        # فقط تست خودکار/توسعهٔ صریح؛ در production این شاخه غیرممکن است.
+        flash(f'🔐 کد تست: {code}', 'info')
+    elif ok:
         flash('📲 کد تایید به شماره شما پیامک شد.', 'success')
     else:
-        flash(f'📲 کد تایید شما (حالت دمو): {code}', 'info')
+        _clear_otp_session()
+        flash('کد ارسال نشد؛ سامانه پیامک در دسترس نیست. با ایمیل وارد شوید یا کمی بعد دوباره تلاش کنید.', 'error')
+        return redirect(url_for('auth.login'))
     return redirect(url_for('auth.phone_verify'))
 
 
@@ -294,16 +348,16 @@ def phone_verify():
         session['otp_tries'] = otp_tries
         if otp_tries > 5:
             session.pop('otp_phone', None)
-            session.pop('otp_code', None)
+            session.pop('otp_code_hash', None)
             session.pop('otp_tries', None)
             flash('تلاش‌های ناموفق بیش از حد — کد جدید درخواست کنید.', 'error')
             return redirect(url_for('auth.login'))
-        if not _codes_equal(code, session.get('otp_code')):
+        if not _code_matches(code, session.get('otp_code_hash'), 'phone-otp'):
             flash(f'کد تایید اشتباه است. ({5 - otp_tries + 1} تلاش باقی‌مانده)', 'error')
         elif time.time() - session.get('otp_ts', 0) > 600:
             flash('کد تایید منقضی شده است. دوباره ارسال کنید.', 'error')
             session.pop('otp_phone', None)
-            session.pop('otp_code', None)
+            session.pop('otp_code_hash', None)
             session.pop('otp_tries', None)
             return redirect(url_for('auth.login'))
         else:
@@ -323,7 +377,7 @@ def phone_verify():
             session['uid'] = user.id
             session['st'] = user.session_token
             session.pop('otp_phone', None)
-            session.pop('otp_code', None)
+            session.pop('otp_code_hash', None)
             session.pop('otp_ts', None)
             if not user.profile_complete():
                 return redirect(url_for('auth.complete_profile'))
@@ -337,12 +391,12 @@ def admin_2fa():
     """تایید دومرحله‌ای ورود مدیر"""
     if not g.user or g.user.role not in ('admin', 'super_admin'):
         return redirect(url_for('site.index'))
-    if not session.get('admin_2fa'):
+    if not session.get('admin_2fa_hash'):
         return redirect(url_for('student.dashboard'))
     if request.method == 'POST':
         # انقضای کد (۵ دقیقه)
         if time.time() - session.get('admin_2fa_ts', 0) > 300:
-            session.pop('admin_2fa', None)
+            session.pop('admin_2fa_hash', None)
             session.pop('admin_2fa_ts', None)
             session.pop('admin_2fa_tries', None)
             flash('کد تایید منقضی شده — دوباره وارد شوید.', 'error')
@@ -351,14 +405,14 @@ def admin_2fa():
         tries = session.get('admin_2fa_tries', 0) + 1
         session['admin_2fa_tries'] = tries
         if tries > 5:
-            session.pop('admin_2fa', None)
+            session.pop('admin_2fa_hash', None)
             session.pop('admin_2fa_ts', None)
             session.pop('admin_2fa_tries', None)
             flash('تلاش‌های ناموفق بیش از حد — دوباره وارد شوید.', 'error')
             return redirect(url_for('auth.login'))
         code = request.form.get('code', '').strip()
-        if _codes_equal(code, session.get('admin_2fa')):
-            session.pop('admin_2fa', None)
+        if _code_matches(code, session.get('admin_2fa_hash'), 'admin-2fa'):
+            session.pop('admin_2fa_hash', None)
             session.pop('admin_2fa_ts', None)
             session.pop('admin_2fa_tries', None)
             from models import ActivityLog
@@ -394,24 +448,29 @@ def forgot():
         # ارسال کد (مکانیزم مشترک OTP) — کد همیشه به شمارهٔ واقعی پیامک می‌شود.
         # ⚠️ امنیت: هرگز کد بازیابی را فقط با نمایش روی صفحهٔ «درخواست‌کننده» صادر نکن،
         # چون مهاجم با واردکردن شمارهٔ قربانی، کد را می‌بیند و رمز او را بازنشانی می‌کند
-        # (تسخیر حساب). کد فقط در حالت دمو/غیر-تولید روی صفحه نمایش داده می‌شود.
+        # (تسخیر حساب). نمایش کد فقط در تست خودکار داخلی مجاز است؛ در سایت واقعی هرگز.
         now = time.time()
         last = session.get('otp_last_send', 0)
         if now - last < 60:
             flash('لطفاً ۶۰ ثانیه صبر کنید.', 'error')
             return redirect(url_for('auth.forgot'))
-        code = str(random.randint(10000, 99999))
+        code = _numeric_code(5)
         session['otp_phone'] = phone
-        session['otp_code'] = code
+        session['otp_code_hash'] = _code_digest(code, 'password-reset')
+        _remember_test_code('password-reset', code)
         session['otp_ts'] = now
         session['otp_last_send'] = now
         session['otp_purpose'] = 'reset'
         from sms import send_otp
         ok, msg = send_otp(phone, code, g.settings)
-        if ok and not _is_demo_otp(g.settings):
+        if ok and _is_demo_otp(g.settings):
+            flash(f'🔐 کد بازیابی تست: {code}', 'info')
+        elif ok:
             flash('📲 کد بازیابی به شماره شما پیامک شد.', 'success')
         else:
-            flash(f'📲 کد بازیابی شما (حالت دمو): {code}', 'info')
+            _clear_otp_session()
+            flash('کد بازیابی ارسال نشد؛ سامانه پیامک در دسترس نیست. با پشتیبانی تماس بگیرید.', 'error')
+            return redirect(url_for('auth.forgot'))
         return redirect(url_for('auth.forgot_verify'))
     return render_template('auth/forgot.html')
 
@@ -427,16 +486,16 @@ def forgot_verify():
         code = request.form.get('code', '').strip()
         password = request.form.get('password', '')
         confirm = request.form.get('confirm', '')
-        if not _codes_equal(code, session.get('otp_code')):
+        if not _code_matches(code, session.get('otp_code_hash'), 'password-reset'):
             flash('کد تایید اشتباه است.', 'error')
         elif time.time() - session.get('otp_ts', 0) > 600:
             flash('کد منقضی شده است. دوباره تلاش کنید.', 'error')
             session.pop('otp_phone', None)
-            session.pop('otp_code', None)
+            session.pop('otp_code_hash', None)
             session.pop('otp_purpose', None)
             return redirect(url_for('auth.forgot'))
-        elif len(password) < 6:
-            flash('رمز جدید باید حداقل ۶ کاراکتر باشد.', 'error')
+        elif len(password) < 8:
+            flash('رمز جدید باید حداقل ۸ کاراکتر باشد.', 'error')
         elif password != confirm:
             flash('تکرار رمز مطابقت ندارد.', 'error')
         else:
@@ -447,7 +506,7 @@ def forgot_verify():
                 db.session.commit()
                 flash('رمز عبور شما با موفقیت تغییر کرد. حالا وارد شوید. ✅', 'success')
             session.pop('otp_phone', None)
-            session.pop('otp_code', None)
+            session.pop('otp_code_hash', None)
             session.pop('otp_purpose', None)
             return redirect(url_for('auth.login'))
     return render_template('auth/forgot_verify.html', phone=phone)
@@ -477,8 +536,10 @@ def complete_profile():
             err = 'ایمیل معتبر وارد کنید.'
         elif User.query.filter(User.email == email, User.id != g.user.id).first():
             err = 'این ایمیل قبلاً ثبت شده است.'
-        elif not g.user.password_hash and len(password) < 6:
-            err = 'برای حساب خود یک رمز عبور (حداقل ۶ کاراکتر) تعیین کنید.'
+        elif not g.user.password_hash and len(password) < 8:
+            err = 'برای حساب خود یک رمز عبور (حداقل ۸ کاراکتر) تعیین کنید.'
+        elif password and len(password) < 8:
+            err = 'رمز عبور جدید باید حداقل ۸ کاراکتر باشد.'
         if err:
             flash(err, 'error')
         else:

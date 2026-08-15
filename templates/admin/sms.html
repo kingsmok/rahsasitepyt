@@ -12,14 +12,15 @@
       <label>سرویس‌دهنده پیامک</label>
       <select class="form-control" name="sms_provider">
         {% for pid, p in providers.items() %}
-        <option value="{{ pid }}" {{ 'selected' if site.sms_provider == pid }}>{{ p.name }}</option>
+        <option value="{{ pid }}" {{ 'selected' if site.sms_provider == pid or (pid == 'disabled' and site.sms_provider in ('', 'demo', none)) }}>{{ p.name }}</option>
         {% endfor %}
       </select>
+      <p class="form-hint">تا قبل از تکمیل و تست سرویس واقعی، ورود پیامکی به کاربران نمایش داده نمی‌شود.</p>
     </div>
 
     <div class="card" style="background:var(--bg-2);border:none;padding:16px;margin-bottom:14px">
       <strong>کاوه‌نگار</strong>
-      <div class="form-group" style="margin-top:8px"><label>API Key</label><input class="form-control" dir="ltr" name="sms_kavenegar_key" value="{{ site.sms_kavenegar_key or '' }}" placeholder="6A7B..."></div>
+      <div class="form-group" style="margin-top:8px"><label>API Key</label><input class="form-control" dir="ltr" name="sms_kavenegar_key" value="" placeholder="خالی = بدون تغییر"></div>
       <div class="grid" style="grid-template-columns:2fr 1fr;gap:10px">
         <div class="form-group"><label>شماره فرستنده</label><input class="form-control" dir="ltr" name="sms_kavenegar_sender" value="{{ site.sms_kavenegar_sender or '' }}" placeholder="20005006600660"></div>
         <div class="form-group"><label>قالب OTP</label><input class="form-control" dir="ltr" name="sms_kavenegar_template" value="{{ site.sms_kavenegar_template or '' }}" placeholder="academy-otp"></div>
@@ -30,7 +31,7 @@
       <strong>ملی‌پیامک</strong>
       <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px">
         <div class="form-group"><label>نام کاربری</label><input class="form-control" dir="ltr" name="sms_melli_username" value="{{ site.sms_melli_username or '' }}"></div>
-        <div class="form-group"><label>رمز عبور</label><input class="form-control" dir="ltr" type="password" name="sms_melli_password" value="{{ site.sms_melli_password or '' }}"></div>
+        <div class="form-group"><label>رمز عبور</label><input class="form-control" dir="ltr" type="password" name="sms_melli_password" value="" placeholder="خالی = بدون تغییر"></div>
       </div>
       <div class="form-group"><label>شماره فرستنده</label><input class="form-control" dir="ltr" name="sms_melli_sender" value="{{ site.sms_melli_sender or '' }}" placeholder="5000271001"></div>
     </div>
@@ -38,7 +39,7 @@
     <div class="card" style="background:var(--bg-2);border:none;padding:16px;margin-bottom:14px">
       <strong>فراز اس‌ام‌اس (ایپنل)</strong>
       <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px">
-        <div class="form-group"><label>توکن</label><input class="form-control" dir="ltr" name="sms_faraz_token" value="{{ site.sms_faraz_token or '' }}" placeholder="username:password"></div>
+        <div class="form-group"><label>توکن</label><input class="form-control" dir="ltr" name="sms_faraz_token" value="" placeholder="خالی = بدون تغییر"></div>
         <div class="form-group"><label>شماره فرستنده</label><input class="form-control" dir="ltr" name="sms_faraz_sender" value="{{ site.sms_faraz_sender or '' }}"></div>
       </div>
     </div>
@@ -61,6 +62,6 @@
     <li>دکمه «ارسال پیام تست» را بزنید تا اتصال بررسی شود.</li>
     <li>از این لحظه، کد ورود (OTP) و اعلان‌های خرید به‌صورت خودکار پیامک می‌شوند.</li>
   </ol>
-  <p style="margin-top:8px">حالت «دمو» پیام‌ها را در لاگ سرور ثبت می‌کند و کد را روی صفحه نمایش می‌دهد.</p>
+  <p style="margin-top:8px;color:var(--success);font-weight:700">✓ حالت نمایشی غیرفعال است؛ کد تایید فقط از سرویس واقعی ارسال می‌شود.</p>
 </div>
 {% endblock %}

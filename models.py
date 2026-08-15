@@ -12,6 +12,7 @@ def utcnow():
     """زمان UTC بدون timezone (سازگار با SQLite و مقایسه‌ها)"""
     return datetime.now(UTC).replace(tzinfo=None)
 import json
+import os
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -20,18 +21,14 @@ from werkzeug.security import generate_password_hash, check_password_hash
 # ───────────────────────────────────────────────────────────────────────────
 # ۱) رمزهای جدید و تغییر رمزها → همیشه با الگوریتم قوی ورک‌زگ ذخیره می‌شوند
 #    (scrypt؛ در پایتون‌های قدیمی‌تر pbkdf2:sha256) — غیرقابل شکستن با روش‌های معمول
-# ۲) هش‌های قدیمی MD5 خام (۳۲ کاراکتر hex) فقط برای «ورود» پذیرفته می‌شوند و در
-#    همان ورود موفق، خودکار به هش قوی «ارتقا» می‌یابند. یعنی اگر در phpMyAdmin
-#    رمزی را دستی با MD5() ساختید، کاربر با همان رمز وارد می‌شود و سیستم خودش
-#    امنش می‌کند — بدون نیاز به دانستن رمز جدید.
-#    مثال phpMyAdmin:
-#      UPDATE users SET password_hash = MD5('رمزجدید') WHERE id = 5;
-# ۳) برای غیرفعال‌کردن پذیرش MD5 قدیمی، LEGACY_MD5 را False کنید.
+# ۲) پذیرش MD5 قدیمی در production پیش‌فرض غیرفعال است. فقط برای مهاجرت موقت
+#    می‌توان ALLOW_LEGACY_MD5=1 گذاشت؛ ورود موفق همان لحظه هش را قوی می‌کند.
+# ۳) بعد از پایان مهاجرت، متغیر بالا باید دوباره حذف/صفر شود.
 # ⚠️ چرا رمزهای جدید را مستقیم MD5 نمی‌کنیم؟ MD5 برای رمز عبور در چند ثانیه
 #    با جدول‌های رنگین‌کمانی شکسته می‌شود؛ حتی هش‌های قویِ ورک‌زگ هم روی
 #    هاست‌های معمولی فقط چند ده میلی‌ثانیه زمان می‌برند (تأثیری در سرعت ورود ندارد).
 # ═══════════════════════════════════════════════════════════════════════════
-LEGACY_MD5 = True
+LEGACY_MD5 = os.environ.get('ALLOW_LEGACY_MD5', '0') == '1'
 
 import hashlib as _hashlib
 import re as _re
@@ -40,13 +37,26 @@ _MD5_RE = _re.compile(r'^[0-9a-f]{32}$')
 
 
 def _md5_hex(text):
-    return _hashlib.md5((text or '').encode('utf-8')).hexdigest()
+    return _hashlib.md5((text or '').encode('utf-8'), usedforsecurity=False).hexdigest()
 
 
 def certificate_code(slug, email, enrollment_id):
-    """کد رهگیری گواهینامه — شناسهٔ عمومی و غیرحساس (MD5 طبق درخواست).
-    برای اینکه کدهای قبلاً چاپ‌شده (ساخته‌شده با SHA-1) هم معتبر بمانند،
-    استعلام‌کننده هر دو حالت را می‌پذیرد — این تابع فقط نسخهٔ جدید (MD5) را می‌سازد."""
+    """کد رهگیری جدید با HMAC؛ قابل جعل از روی ایمیل/شناسه نیست."""
+    import hmac
+    try:
+        from flask import current_app, has_app_context
+        secret = current_app.config['SECRET_KEY'] if has_app_context() else os.environ.get('SECRET_KEY', '')
+    except Exception:
+        secret = os.environ.get('SECRET_KEY', '')
+    if not secret:
+        raise RuntimeError('SECRET_KEY برای صدور گواهی تنظیم نشده است')
+    seed = f"{slug}|{email}|{enrollment_id}".encode('utf-8')
+    digest = hmac.new(str(secret).encode('utf-8'), seed, _hashlib.sha256).hexdigest()
+    return 'CRT-' + digest[:12].upper()
+
+
+def certificate_code_legacy_md5(slug, email, enrollment_id):
+    """نسخهٔ MD5 چاپ‌شده در انتشارهای قبلی؛ فقط برای استعلام."""
     seed = f"{slug}|{email}|{enrollment_id}"
     return 'CRT-' + _md5_hex(seed)[:10].upper()
 
@@ -54,7 +64,7 @@ def certificate_code(slug, email, enrollment_id):
 def certificate_code_legacy_sha1(slug, email, enrollment_id):
     """نسخهٔ قدیمی کد گواهینامه (SHA-1) — فقط برای استعلام کدهای چاپ‌شدهٔ قبل."""
     seed = f"{slug}|{email}|{enrollment_id}"
-    return 'CRT-' + _hashlib.sha1(seed.encode('utf-8')).hexdigest()[:10].upper()
+    return 'CRT-' + _hashlib.sha1(seed.encode('utf-8'), usedforsecurity=False).hexdigest()[:10].upper()
 
 db = SQLAlchemy()
 
@@ -291,9 +301,13 @@ class Course(db.Model):
     requirements = db.Column(db.Text)
     tags = db.Column(db.String(300))
     views = db.Column(db.Integer, default=0)
-    seeded_students = db.Column(db.Integer, default=0)  # شمار دانشجویان پایه (برای نمایش دمو)
+    # فقط برای سازگاری دیتابیس‌های قدیمی؛ در شمارش عمومی استفاده نمی‌شود.
+    seeded_students = db.Column(db.Integer, default=0)
     intro_video = db.Column(db.String(500), default='')   # ویدئوی معرفی (یوتیوب/آپارات/مستقیم)
     access_days = db.Column(db.Integer, default=0)        # مدت دسترسی به دوره (روز) — 0 = نامحدود
+    delivery_type = db.Column(db.String(20), default='online')  # online | offline | hybrid
+    allow_download = db.Column(db.Boolean, default=False)       # دانلود پیوست‌های درس
+    attendance_required_percent = db.Column(db.Integer, default=75)  # حداقل حضور دوره حضوری
     audience = db.Column(db.String(300), default='')      # مناسب برای چه افرادی
     created_at = db.Column(db.DateTime, default=utcnow)
 
@@ -367,9 +381,9 @@ class Course(db.Model):
             return self._agg_students
         try:
             from models import Enrollment as _E
-            return (self.seeded_students or 0) + _E.query.filter_by(course_id=self.id).count()
+            return _E.query.filter_by(course_id=self.id).count()
         except Exception:
-            return self.seeded_students or 0
+            return 0
 
     def is_free(self):
         return self.final_price == 0
@@ -467,6 +481,14 @@ class Order(db.Model):
     coupon = db.relationship('Coupon')
     bundle_id = db.Column(db.Integer, nullable=True)  # اگر سفارش از باندل باشد
     installment_count = db.Column(db.Integer, default=0)  # تعداد اقساط (0 = یکجا)
+    shipping_name = db.Column(db.String(120), default='')
+    shipping_phone = db.Column(db.String(20), default='')
+    shipping_province = db.Column(db.String(80), default='')
+    shipping_city = db.Column(db.String(80), default='')
+    shipping_address = db.Column(db.String(500), default='')
+    shipping_postal_code = db.Column(db.String(20), default='')
+    shipping_cost = db.Column(db.Integer, default=0)
+    fulfillment_status = db.Column(db.String(30), default='not_required')  # processing | stock_issue | shipped | delivered
 
     @property
     def status_fa(self):
@@ -500,7 +522,8 @@ class OrderItem(db.Model):
     order_id = db.Column(db.Integer, db.ForeignKey('orders.id'))
     course_id = db.Column(db.Integer, db.ForeignKey('courses.id'))
     product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=True)
-    price = db.Column(db.Integer, default=0)
+    price = db.Column(db.Integer, default=0)  # قیمت واحد در زمان سفارش
+    quantity = db.Column(db.Integer, default=1)
     course = db.relationship('Course')
     product = db.relationship('Product')
 
@@ -560,6 +583,8 @@ class Enrollment(db.Model):
 
     @property
     def percent(self):
+        if self.completed_at:
+            return 100
         total = self.course.lesson_count
         if not total:
             return 0
@@ -567,7 +592,44 @@ class Enrollment(db.Model):
 
     @property
     def is_completed(self):
-        return self.percent >= 100
+        return bool(self.completed_at) or self.percent >= 100
+
+
+class CourseMeeting(db.Model):
+    """جلسهٔ حضوری/ترکیبی برای ثبت حضور و غیاب."""
+    __tablename__ = 'course_meetings'
+    __table_args__ = (db.Index('idx_meeting_course_start', 'course_id', 'starts_at'),)
+    id = db.Column(db.Integer, primary_key=True)
+    course_id = db.Column(db.Integer, db.ForeignKey('courses.id'), nullable=False)
+    title = db.Column(db.String(200), nullable=False)
+    starts_at = db.Column(db.DateTime, nullable=False)
+    duration_min = db.Column(db.Integer, default=90)
+    notes = db.Column(db.String(500), default='')
+    is_closed = db.Column(db.Boolean, default=False)
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'))
+    created_at = db.Column(db.DateTime, default=utcnow)
+    course = db.relationship('Course', backref=db.backref('meetings', cascade='all, delete-orphan'))
+    creator = db.relationship('User')
+    records = db.relationship('AttendanceRecord', backref='meeting',
+                              cascade='all, delete-orphan', lazy=True)
+
+
+class AttendanceRecord(db.Model):
+    """وضعیت حضور هر ثبت‌نام در یک جلسهٔ حضوری."""
+    __tablename__ = 'attendance_records'
+    __table_args__ = (
+        db.UniqueConstraint('meeting_id', 'enrollment_id', name='uq_attendance_meeting_enrollment'),
+        db.Index('idx_attendance_enrollment', 'enrollment_id'),
+    )
+    id = db.Column(db.Integer, primary_key=True)
+    meeting_id = db.Column(db.Integer, db.ForeignKey('course_meetings.id'), nullable=False)
+    enrollment_id = db.Column(db.Integer, db.ForeignKey('enrollments.id'), nullable=False)
+    status = db.Column(db.String(20), default='absent')  # present | late | absent | excused
+    note = db.Column(db.String(300), default='')
+    marked_by = db.Column(db.Integer, db.ForeignKey('users.id'))
+    marked_at = db.Column(db.DateTime, default=utcnow, onupdate=utcnow)
+    enrollment = db.relationship('Enrollment', backref=db.backref('attendance_records', lazy=True))
+    marker = db.relationship('User')
 
 
 class Ticket(db.Model):
@@ -1447,6 +1509,6 @@ def annotate_course_stats(courses):
     for c in courses:
         if c.id in stat:
             c._agg_rating, c._agg_review_count = stat[c.id]
-        c._agg_students = (c.seeded_students or 0) + encount.get(c.id, 0)
+        c._agg_students = encount.get(c.id, 0)
     return courses
 

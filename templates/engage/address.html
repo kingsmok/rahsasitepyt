@@ -15,8 +15,8 @@
 <div class="section">
 <div class="container">
 <div class="addr-wrap">
-  <h1 style="font-size:24px;font-weight:900;text-align:center;margin-bottom:6px">📍 انتخاب آدرس و محاسبه هزینه ارسال</h1>
-  <p class="text-2" style="text-align:center;margin-bottom:26px">برای دریافت پکیج‌های آموزشی، آدرس خود را انتخاب کنید — هزینه پیک اسنپ/تپسی لحظه‌ای محاسبه می‌شود.</p>
+  <h1 style="font-size:24px;font-weight:900;text-align:center;margin-bottom:6px">📍 آدرس و شرایط ارسال</h1>
+  <p class="text-2" style="text-align:center;margin-bottom:26px">برای محصولات فیزیکی، استان و شهر را انتخاب کنید تا سیاست واقعی ارسال مجموعه نمایش داده شود.</p>
 
   <div class="addr-card">
     <div class="grid" style="grid-template-columns:1fr 1fr;gap:14px" id="prov-grid">
@@ -38,11 +38,7 @@
       <label>آدرس کامل پستی</label>
       <textarea class="form-control" id="address" rows="2" placeholder="خیابان، کوچه، پلاک، واحد..."></textarea>
     </div>
-    <div class="form-group" style="margin-top:14px">
-      <label>وزن تقریبی پکیج (کیلوگرم)</label>
-      <input type="number" class="form-control" id="weight" value="0.5" min="0.1" step="0.1" style="max-width:160px">
-    </div>
-    <button class="btn btn-primary btn-lg" id="calc-btn" style="margin-top:16px">🚀 محاسبه هزینه ارسال (اسنپ/تپسی)</button>
+    <button type="button" class="btn btn-primary btn-lg" id="calc-btn" style="margin-top:16px">نمایش شرایط ارسال</button>
 
     <div style="margin-top:22px">
       <h3 style="font-size:15px;font-weight:900;margin-bottom:12px">🗺 پیش‌نمایش نقشه</h3>
@@ -84,22 +80,20 @@
     box.classList.remove('show');
     if(!prov.value){note.textContent='لطفاً استان را انتخاب کنید.';return;}
     fetch('/api/address/shipping-estimate',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({province:prov.value,weight:parseFloat(document.getElementById('weight').value||0.5)})})
+      body:JSON.stringify({province:prov.value,city:city.value})})
       .then(function(r){return r.json()})
       .then(function(d){
         if(!d.ok){note.textContent=d.msg||'خطا';return;}
         box.innerHTML='';
-        d.providers.forEach(function(p){
-          var div=document.createElement('div');
-          div.className='est-prov';
-          div.innerHTML='<div style="font-size:26px">'+p.icon+'</div><b>'+p.name+'</b>'
-            +'<div style="font-size:20px;font-weight:900;color:var(--text)">'+new Intl.NumberFormat('fa-IR').format(p.price)+' <small style="font-size:11px">تومان</small></div>'
-            +'<small>'+p.estimate+' — حدود '+new Intl.NumberFormat('fa-IR').format(d.distance_km)+' کیلومتر</small>';
-          box.appendChild(div);
-        });
+        var div=document.createElement('div');
+        div.className='est-prov';
+        var price=d.price ? new Intl.NumberFormat('fa-IR').format(d.price)+' تومان' : 'پس از بررسی سفارش';
+        div.innerHTML='<div style="font-size:26px">📦</div><b>ارسال محصول</b>'
+          +'<div style="font-size:18px;font-weight:900;color:var(--text)">'+price+'</div>';
+        box.appendChild(div);
         box.classList.add('show');
-        note.textContent='⏱ تحویل امروز در تهران و کرج — سایر شهرها ۲۴ تا ۴۸ ساعت کاری. هزینه‌ها تقریبی و توسط پیک محاسبه نهایی می‌شود.';
-      });
+        note.textContent=d.note||'';
+      }).catch(function(){note.textContent='ارتباط با سرور برقرار نشد.';});
   });
 })();
 </script>

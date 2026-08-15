@@ -5,9 +5,9 @@
 <section class="section">
   <div class="container">
     <div class="section-head">
-      <span class="tag">👨‍🏫 تیم اساتید</span>
-      <h1 style="font-size:clamp(22px,3vw,32px)">اساتید برتر آکادمی</h1>
-      <p>یادگیری از متخصصان واقعی بازار کار</p>
+      <span class="tag">👨‍🏫 مدرسان</span>
+      <h1 style="font-size:clamp(22px,3vw,32px)">آشنایی با مدرسان</h1>
+      <p>سوابق و دوره‌های منتشرشده هر مدرس را ببینید</p>
     </div>
     <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:22px">
       {% for t in teachers %}
@@ -18,9 +18,11 @@
         <p style="-webkit-line-clamp:3;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical">{{ t.bio or '' }}</p>
         <div class="flex" style="justify-content:center;gap:14px;margin-top:14px;font-size:12.5px;color:var(--text-2)">
           <span>📚 {{ fa(teacher_courses.get(t.id, 0)) }} دوره</span>
-          <span>⭐ {{ fa(ratings.get(t.id, 5) if ratings.get(t.id) else 5) }} امتیاز</span>
+          <span>⭐ {{ fa(ratings.get(t.id)) if ratings.get(t.id) else 'بدون امتیاز' }}</span>
         </div>
       </a>
+      {% else %}
+      <div class="card empty-state" style="grid-column:1/-1"><div class="es-icon">👨‍🏫</div><h2>هنوز مدرسی معرفی نشده است</h2><p>پس از تکمیل پروفایل مدرسان، اطلاعات آن‌ها در این صفحه نمایش داده می‌شود.</p></div>
       {% endfor %}
     </div>
   </div>

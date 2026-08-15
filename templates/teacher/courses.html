@@ -15,9 +15,12 @@
         <a class="btn btn-ghost btn-sm" href="{{ url_for('teacher.course_students', cid=c.id) }}">دانشجویان</a>
         <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.course_edit', cid=c.id) }}">✏️ ویرایش</a>
         <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.course_lessons', cid=c.id) }}">جلسات</a>
+        {% if c.delivery_type != 'online' %}<a class="btn btn-ghost btn-sm" href="{{ url_for('teacher.attendance_sessions', cid=c.id) }}">حضور و غیاب</a>{% endif %}
       </div>
     </div>
   </div>
+  {% else %}
+  <div class="card empty-state" style="grid-column:1/-1"><div class="es-icon">📚</div><h2>هنوز دوره‌ای به شما اختصاص داده نشده است</h2><p>برای ایجاد یا تخصیص دوره با مدیر سایت هماهنگ کنید.</p></div>
   {% endfor %}
 </div>
 {% endblock %}

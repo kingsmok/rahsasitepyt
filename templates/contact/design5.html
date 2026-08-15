@@ -1,56 +1,14 @@
 {% extends 'base.html' %}
+{% from 'contact/_shared.html' import contact_methods, contact_form with context %}
 {% block title %}{{ seo.title or "تماس با ما" }}{% endblock %}
 {% block content %}
-<section class="about-hero" style="padding:56px 0">
-  <span class="badge badge-white mb-2" style="display:inline-flex">🎧 پشتیبانی آکادمی</span>
-  <h1>چطور می‌توانیم کمک کنیم؟</h1>
-  <p>تیم پشتیبانی ما همه‌روزه پاسخگوی شماست</p>
-</section>
-
-<section class="section">
-  <div class="container" style="max-width:900px">
-    <div class="grid" style="grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:30px">
-      <a class="card card-hover" style="padding:20px;text-align:center" href="{{ url_for('site.faq') }}">
-        <div style="font-size:30px">❓</div><strong style="font-size:13px;display:block;margin-top:8px">سوالات متداول</strong>
-        <small class="text-3" style="font-size:11.5px">جستجوی پاسخ</small>
-      </a>
-      <a class="card card-hover" style="padding:20px;text-align:center" href="{{ url_for('student.ticket_new') if cur_user else url_for('auth.login') }}">
-        <div style="font-size:30px">🎫</div><strong style="font-size:13px;display:block;margin-top:8px">ثبت تیکت</strong>
-        <small class="text-3" style="font-size:11.5px">پیگیری درخواست</small>
-      </a>
-      <a class="card card-hover" style="padding:20px;text-align:center" href="tel:{{ site.phone }}">
-        <div style="font-size:30px">📞</div><strong style="font-size:13px;display:block;margin-top:8px">تماس تلفنی</strong>
-        <small class="text-3" style="font-size:11.5px">{{ fa(site.phone) }}</small>
-      </a>
-      <a class="card card-hover" style="padding:20px;text-align:center" href="mailto:{{ site.email }}">
-        <div style="font-size:30px">✉️</div><strong style="font-size:13px;display:block;margin-top:8px">ایمیل</strong>
-        <small class="text-3" style="font-size:11.5px" dir="ltr">{{ site.email }}</small>
-      </a>
-    </div>
-    <div class="card" style="padding:34px">
-      <div class="flex between wrap gap-2" style="margin-bottom:20px">
-        <h3 style="font-size:18px">📨 ارسال پیام</h3>
-        <span class="badge badge-gray">پاسخگویی حداکثر ۲۴ ساعته</span>
-      </div>
-      <form method="post">
-      <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
-
-        <div class="grid" style="grid-template-columns:1fr 1fr;gap:14px">
-          <div class="form-group"><label for="f_name_1">نام و نام خانوادگی <span class="req">*</span></label><input id="f_name_1" class="form-control" name="name" required></div>
-          <div class="form-group"><label for="f_email_1">ایمیل</label><input id="f_email_1" class="form-control" type="email" name="email" dir="ltr"></div>
-        </div>
-        <div class="form-group"><label for="f_subject_1">موضوع</label>
-          <select id="f_subject_1" class="form-control" name="subject"><option>سوال درباره دوره‌ها</option><option>همکاری با آکادمی</option><option>پیشنهاد و انتقاد</option><option>مشکل در پرداخت</option><option>سایر</option></select>
-        </div>
-        <div class="form-group"><label for="f_message_1">متن پیام <span class="req">*</span></label><textarea id="f_message_1" class="form-control" name="message" style="min-height:150px" required></textarea></div>
-        <div class="flex gap-2">
-        {{ captcha_box() }}
-        
-          <button class="btn btn-primary btn-lg" type="submit">ارسال پیام ✈️</button>
-          <a class="btn btn-ghost btn-lg" href="{{ url_for('site.faq') }}">اول سوالات متداول را ببینید</a>
-        </div>
-      </form>
-    </div>
+<section class="about-hero" style="padding:54px 0"><div class="container"><span class="badge badge-white">پشتیبانی و ارتباط</span><h1 style="margin-top:10px">چطور می‌توانیم کمک کنیم؟</h1><p>سوالات متداول را ببینید یا درخواست خود را ثبت کنید.</p></div></section>
+<section class="section"><div class="container" style="max-width:920px">
+  <div class="grid" style="grid-template-columns:1fr 1fr;gap:14px;margin-bottom:22px">
+    <a class="card contact-method" href="{{ url_for('site.faq') }}"><span>❓</span><strong>سوالات متداول</strong><small>پاسخ‌های راهنما</small></a>
+    <a class="card contact-method" href="{{ url_for('student.ticket_new') if cur_user else url_for('auth.login') }}"><span>🎫</span><strong>تیکت پشتیبانی</strong><small>ثبت و پیگیری درخواست حساب</small></a>
   </div>
-</section>
+  {{ contact_methods(true) }}
+  <div class="card" style="padding:34px;margin-top:22px"><h2 style="font-size:18px;margin-bottom:18px">ارسال پیام عمومی</h2>{{ contact_form() }}</div>
+</div></section>
 {% endblock %}

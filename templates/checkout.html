@@ -36,7 +36,8 @@
               <small>🛍 محصول — {{ obj.category or '' }}{% if obj.sku %} · {{ obj.sku }}{% endif %}</small>
             </div>
             {% endif %}
-            <span class="price">{{ fa('{:,.0f}'.format(obj.final_price)) }} <small class="text-3">تومان</small></span>
+            {% set qty = session.get('cart_qty', {}).get('p:' ~ obj.id, 1) if kind == 'product' else 1 %}
+            <span class="price">{{ fa('{:,.0f}'.format(obj.final_price * qty)) }} <small class="text-3">تومان{% if qty|int > 1 %} — {{ fa(qty) }} عدد{% endif %}</small></span>
           </div>
           {% endfor %}
         </div>
@@ -48,18 +49,34 @@
           <div class="flex between">
             <span class="badge badge-success">کد {{ coupon.code }} اعمال شد — {{ fa(coupon.value) }}{{ '٪' if coupon.type == 'percent' else ' تومان' }} تخفیف</span>
             <form method="post">
-        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
-      <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
-<input type="hidden" name="action" value="remove_coupon"><button class="btn btn-danger btn-sm">حذف</button></form>
+              <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+              <input type="hidden" name="action" value="remove_coupon">
+              <button class="btn btn-danger btn-sm" type="submit">حذف کد</button>
+            </form>
           </div>
           {% else %}
           <form method="post" class="input-group">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
-            <input class="form-control" name="coupon" placeholder="مثلا WELCOME20">
+            <input class="form-control" name="coupon" placeholder="کد تخفیف را وارد کنید" autocomplete="off">
             <button class="btn btn-outline" type="submit">اعمال کد</button>
           </form>
           {% endif %}
         </div>
+
+        {% if has_physical %}
+        <div class="card mb-3" style="padding:22px">
+          <h4 style="font-size:15px;margin-bottom:6px">📦 اطلاعات تحویل محصولات فیزیکی</h4>
+          <p class="form-hint" style="margin-bottom:14px">این اطلاعات فقط برای پردازش و ارسال همین سفارش استفاده می‌شود.</p>
+          <div class="grid" style="grid-template-columns:1fr 1fr;gap:14px">
+            <div class="form-group"><label for="shipping-name">نام تحویل‌گیرنده *</label><input form="create-order-form" id="shipping-name" class="form-control" name="shipping_name" value="{{ request.form.get('shipping_name', cur_user.name or '') }}" required></div>
+            <div class="form-group"><label for="shipping-phone">شماره موبایل *</label><input form="create-order-form" id="shipping-phone" class="form-control" name="shipping_phone" value="{{ request.form.get('shipping_phone', cur_user.phone or '') }}" dir="ltr" inputmode="numeric" pattern="09[0-9]{9}" required></div>
+            <div class="form-group"><label for="shipping-province">استان *</label><input form="create-order-form" id="shipping-province" class="form-control" name="shipping_province" value="{{ request.form.get('shipping_province','') }}" required></div>
+            <div class="form-group"><label for="shipping-city">شهر *</label><input form="create-order-form" id="shipping-city" class="form-control" name="shipping_city" value="{{ request.form.get('shipping_city','') }}" required></div>
+            <div class="form-group" style="grid-column:1/-1"><label for="shipping-address">آدرس کامل *</label><textarea form="create-order-form" id="shipping-address" class="form-control" name="shipping_address" required>{{ request.form.get('shipping_address','') }}</textarea></div>
+            <div class="form-group"><label for="shipping-postal">کد پستی ۱۰ رقمی</label><input form="create-order-form" id="shipping-postal" class="form-control" name="shipping_postal_code" value="{{ request.form.get('shipping_postal_code','') }}" dir="ltr" inputmode="numeric" pattern="[0-9]{10}" maxlength="10"></div>
+          </div>
+        </div>
+        {% endif %}
 
         <!-- اطلاعات پرداخت -->
         <div class="card" style="padding:22px">
@@ -78,35 +95,36 @@
       </div>
 
       <!-- خلاصه -->
+      {% if bnpl_available and final >= 300000 %}
       <div class="card" style="padding:16px 20px;margin-bottom:14px">
-        <h3 style="font-size:14px;margin-bottom:10px">💳 پرداخت اقساطی</h3>
+        <h3 style="font-size:14px;margin-bottom:10px">💳 شیوه پرداخت</h3>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <label class="quiz-opt" style="padding:8px 14px"><input type="radio" name="installment_count" value="0" {{ 'checked' if not installment_count }}> پرداخت یکجا</label>
-          {% if final >= 300000 %}
-          <label class="quiz-opt" style="padding:8px 14px"><input type="radio" name="installment_count" value="2" {{ 'checked' if installment_count == 2 }}> ۲ قسط (۳۰٪ + ۷۰٪)</label>
-          <label class="quiz-opt" style="padding:8px 14px"><input type="radio" name="installment_count" value="3" {{ 'checked' if installment_count == 3 }}> ۳ قسط ماهانه</label>
-          <label class="quiz-opt" style="padding:8px 14px"><input type="radio" name="installment_count" value="4" {{ 'checked' if installment_count == 4 }}> ۴ قسط ماهانه</label>
-          {% else %}
-          <small class="text-3" style="font-size:12px">(برای سفارش‌های بالای ۳۰۰٬۰۰۰ تومان فعال می‌شود)</small>
-          {% endif %}
+          <label class="quiz-opt" style="padding:8px 14px"><input form="create-order-form" type="radio" name="installment_count" value="0" {{ 'checked' if not installment_count }}> پرداخت یکجا</label>
+          <label class="quiz-opt" style="padding:8px 14px"><input form="create-order-form" type="radio" name="installment_count" value="2" {{ 'checked' if installment_count == 2 }}> ۲ قسط</label>
+          <label class="quiz-opt" style="padding:8px 14px"><input form="create-order-form" type="radio" name="installment_count" value="3" {{ 'checked' if installment_count == 3 }}> ۳ قسط ماهانه</label>
+          <label class="quiz-opt" style="padding:8px 14px"><input form="create-order-form" type="radio" name="installment_count" value="4" {{ 'checked' if installment_count == 4 }}> ۴ قسط ماهانه</label>
         </div>
+        <p class="form-hint">مبلغ و سررسید دقیق اقساط در مرحله بعد و توسط سرویس انتخابی نمایش داده می‌شود.</p>
       </div>
+      {% endif %}
       <div class="summary-box" style="position:sticky;top:96px">
         <h3 class="mb-2">خلاصه سفارش</h3>
-        <div class="s-row"><span>جمع دوره‌ها</span><span>{{ fa('{:,.0f}'.format(subtotal)) }} تومان</span></div>
+        <div class="s-row"><span>جمع اقلام</span><span>{{ fa('{:,.0f}'.format(subtotal)) }} تومان</span></div>
         {% if discount %}
         <div class="s-row" style="color:var(--success)"><span>تخفیف کوپن</span><span>− {{ fa('{:,.0f}'.format(discount)) }} تومان</span></div>
         {% endif %}
         {% if loyalty_discount %}
-        <div class="s-row" style="color:var(--success)"><span>🎖 تخفیف دانشجوی قدیمی (۵٪)</span><span>− {{ fa('{:,.0f}'.format(loyalty_discount)) }} تومان</span></div>
+        <div class="s-row" style="color:var(--success)"><span>🎖 تخفیف وفاداری ({{ fa(loyalty_percent) }}٪)</span><span>− {{ fa('{:,.0f}'.format(loyalty_discount)) }} تومان</span></div>
         {% endif %}
+        {% if has_physical %}<div class="s-row"><span>هزینه ارسال</span><span>{{ fa('{:,.0f}'.format(shipping_cost)) ~ ' تومان' if shipping_cost else 'پس از بررسی' }}</span></div>{% endif %}
         <div class="s-row total"><span>قابل پرداخت</span><span class="price">{{ fa('{:,.0f}'.format(final)) }} <small class="text-3" style="font-size:12px">تومان</small></span></div>
-        <form method="post" style="margin-top:16px">
-        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+        <form method="post" id="create-order-form" style="margin-top:16px">
+          <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
           <input type="hidden" name="action" value="create_order">
-          <button class="btn btn-primary btn-lg btn-block" type="submit">ادامه و انتخاب درگاه پرداخت ←</button>
+          {% if not bnpl_available or final < 300000 %}<input type="hidden" name="installment_count" value="0">{% endif %}
+          <button class="btn btn-primary btn-lg btn-block" type="submit">ثبت سفارش و ادامه پرداخت</button>
         </form>
-        <p class="text-center mt-2" style="font-size:11.5px;color:var(--text-3)">با ادامه، شرایط استفاده را می‌پذیرید</p>
+        <p class="text-center mt-2" style="font-size:11.5px;color:var(--text-3)">با ادامه، <a href="{{ url_for('site.terms') }}" style="color:var(--primary);font-weight:700">قوانین استفاده</a> و <a href="{{ url_for('site.privacy') }}" style="color:var(--primary);font-weight:700">حریم خصوصی</a> را می‌پذیرید.</p>
         {% if real_gateway_on %}<div class="secure">🛡️ پرداخت امن با رمزنگاری SSL</div>{% endif %}
       </div>
     </div>

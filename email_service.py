@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""ارسال ایمیل واقعی (SMTP) + حالت دمو
+"""ارسال ایمیل واقعی (SMTP)؛ بدون fallback نمایشی.
 تنظیمات در پنل مدیریت → تنظیمات → ایمیل
 """
 import smtplib
@@ -20,8 +20,8 @@ def send_email(to_email, subject, html_body, settings):
     """ارسال ایمیل — خروجی (ok, message)"""
     host = (settings.get('smtp_host') or '').strip()
     if not host:
-        log.info(f'EMAIL(دمو) به {to_email}: {subject}')
-        return True, 'EMAIL_DEMO'
+        log.warning('Email skipped: SMTP is not configured')
+        return False, 'سرویس ایمیل SMTP پیکربندی نشده است.'
     try:
         port = int(settings.get('smtp_port') or 587)
         user = (settings.get('smtp_user') or '').strip()
@@ -57,10 +57,7 @@ def send_welcome(user, settings):
       <div style="padding:26px;color:#334155;font-size:14px;line-height:2">
         <p>سلام <b>{_esc(name)}</b> عزیز،</p>
         <p>به خانواده بزرگ {settings.get('site_name') or 'آکادمی آنلاین'} خوش آمدی! 🎉</p>
-        <p>حالا می‌توانی دوره‌های آموزشی را ببینی، بخرید و یاد بگیری. برای شروع، پیشنهاد می‌کنیم از <a href="{settings.get('base_url') or '/'}/courses" style="color:#f2640c;font-weight:bold">دوره‌های ما</a> دیدن کنی.</p>
-        <div style="background:#f5f7fa;border-radius:12px;padding:14px;margin:16px 0;font-size:13px">
-          💡 با کد تخفیف <b style="color:#f2640c">WELCOME20</b> از اولین خریدت ۲۰٪ تخفیف بگیر!
-        </div>
+        <p>حالا می‌توانی دوره‌های آموزشی را ببینی، مسیر یادگیری خود را مدیریت کنی و از امکانات حساب کاربری استفاده کنی. برای شروع، از <a href="{settings.get('base_url') or '/'}/courses" style="color:#f2640c;font-weight:bold">دوره‌های موجود</a> دیدن کن.</p>
       </div>
       <div style="background:#f8fafc;padding:14px;text-align:center;font-size:11px;color:#94a3b8">{settings.get('site_name') or 'آکادمی آنلاین'} — این ایمیل به‌صورت خودکار ارسال شده است.</div>
     </div>"""
@@ -76,8 +73,8 @@ def send_payment_notice(user, order, settings):
       <div style="background:#16a34a;color:#fff;padding:20px;text-align:center;font-size:18px;font-weight:bold">✅ پرداخت موفق</div>
       <div style="padding:26px;color:#334155;font-size:14px;line-height:2">
         <p>سلام <b>{_esc(user.name)}</b>،</p>
-        <p>پرداخت سفارش <b dir="ltr">{_esc(order.code)}</b> به مبلغ <b>{order.final_total:,}</b> تومان با موفقیت انجام شد و دوره‌هایت فعال شدند! 🎉</p>
-        <p><a href="{settings.get('base_url') or '/'}/dashboard/my-courses" style="color:#f2640c;font-weight:bold">شروع یادگیری ←</a></p>
+        <p>پرداخت سفارش <b dir="ltr">{_esc(order.code)}</b> به مبلغ <b>{order.final_total:,}</b> تومان با موفقیت تایید شد.</p>
+        <p><a href="{settings.get('base_url') or '/'}/dashboard/orders" style="color:#f2640c;font-weight:bold">مشاهده وضعیت سفارش ←</a></p>
       </div>
     </div>"""
     return send_email(user.email, f'پرداخت سفارش {_esc(order.code)} موفق بود ✅', html, settings)

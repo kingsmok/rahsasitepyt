@@ -62,12 +62,14 @@
     </div>
     {% endif %}
     {% for item in o.items %}
+    {% set obj = item.course or item.product %}
     <div class="cart-row" style="padding:10px 4px">
-      <img class="c-thumb" src="/static/img/{{ item.course.image }}" alt="" style="width:84px;height:52px">
-      <div class="c-info"><h4 style="font-size:13.5px">{{ item.course.title }}</h4></div>
-      <span class="price" style="font-size:13.5px">{{ fa('{:,.0f}'.format(item.price)) }} <small class="text-3" style="font-size:11px">تومان</small></span>
+      {% if obj and obj.image %}<img class="c-thumb" src="{{ obj.image if obj.image.startswith('http') else '/static/img/' + obj.image }}" alt="" style="width:84px;height:52px">{% endif %}
+      <div class="c-info"><h4 style="font-size:13.5px">{{ obj.title if obj else 'آیتم حذف‌شده' }}</h4><small class="text-3">{{ 'دوره' if item.course else 'محصول فیزیکی' }} — {{ fa(item.quantity or 1) }} عدد</small></div>
+      <span class="price" style="font-size:13.5px">{{ fa('{:,.0f}'.format(item.price * (item.quantity or 1))) }} <small class="text-3" style="font-size:11px">تومان</small></span>
     </div>
     {% endfor %}
+    {% if o.fulfillment_status != 'not_required' %}<div class="badge badge-primary" style="margin-top:8px">📦 {{ {'processing':'در حال پردازش ارسال','shipped':'ارسال‌شده','delivered':'تحویل‌شده','stock_issue':'در حال بررسی موجودی توسط پشتیبانی'}.get(o.fulfillment_status, o.fulfillment_status) }}</div>{% endif %}
     <div class="flex between" style="padding-top:10px">
       <span class="text-3" style="font-size:12.5px">درگاه: {{ gateway_names.get(o.gateway, o.gateway or '—') }}</span>
       <div class="flex gap-1">

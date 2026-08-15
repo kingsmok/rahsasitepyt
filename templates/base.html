@@ -36,6 +36,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="stylesheet" href="/static/css/base.css?v={{ asset_v() }}">
+  <link rel="stylesheet" href="/static/css/ux.css?v={{ asset_v() }}">
   {% set _ga = site.ga_code|tracking_id %}
   {% if _ga %}
   <!-- Google Analytics — شناسه از فیلتر tracking_id عبور می‌کند (ضد تزریق اسکریپت) -->
@@ -128,7 +129,7 @@
   </div>
 </footer>
 {% else %}
-<footer class="site-footer dk-footer-only">{% include 'partials/footer.html' %}</footer>
+<div class="dk-footer-only">{% include 'partials/footer.html' %}</div>
 {% endif %}
 <!-- فوتر موبایل (مجزا — فقط در موبایل نمایش داده می‌شود) -->
 {% if use_footer_m and use_footer_m.is_published %}
@@ -151,26 +152,6 @@
   {% endfor %}{% endfor %}{% endfor %}
 </nav>
 {% endif %}
-<!-- پنجره خروج هوشمند -->
-<div class="exit-offer" id="exit-offer" role="dialog" aria-modal="true" aria-label="پیشنهاد ویژه">
-  <div class="eo-card">
-    <button class="eo-close" type="button" aria-label="بستن">{{ icon('x', 14) }}</button>
-    <div style="font-size:40px;text-align:center">🎁</div>
-    <h2 style="text-align:center;font-size:19px;margin:8px 0 6px">صبر کن! یک هدیه داری 🎉</h2>
-    <p class="text-2" style="text-align:center;font-size:13px;margin-bottom:16px">همین حالا با کد زیر <b>۲۰٪ تخفیف</b> بگیر و اولین قدم را محکم بردار:</p>
-    <div style="text-align:center;margin-bottom:16px">
-      <div style="display:inline-flex;align-items:center;gap:8px">
-        <code id="exit-coupon" style="display:inline-block;background:var(--primary-soft);color:var(--primary);font-size:20px;font-weight:900;padding:8px 20px;border-radius:12px;letter-spacing:2px;direction:ltr">WELCOME20</code>
-        <button type="button" onclick="copyCoupon()" title="کپی کد تخفیف" style="width:40px;height:40px;border-radius:11px;background:var(--primary);color:#fff;font-size:15px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;box-shadow:0 6px 16px color-mix(in srgb,var(--primary) 35%,transparent)">📋</button>
-      </div>
-    </div>
-    <div class="flex gap-2" style="justify-content:center">
-      <a class="btn btn-primary" href="{{ url_for('site.courses') }}">🚀 مشاهده دوره‌ها</a>
-      <a class="btn btn-ghost" href="#" data-eo-close>بعداً</a>
-    </div>
-  </div>
-</div>
-
 <!-- بازگشت به بالا -->
 <button class="back-to-top" id="back-to-top" title="بازگشت به بالا" aria-label="بازگشت به بالا">{{ icon('arrow-up', 18) }}</button>
 
@@ -182,8 +163,8 @@
   <div class="sp-head">
     <span class="avatar" style="background:rgba(255,255,255,.25)">پ</span>
     <div>
-      <strong>پشتیبانی آکادمی</strong>
-      <small>آنلاین — پاسخگویی در سریع‌ترین زمان</small>
+      <strong>پشتیبانی {{ site.site_name or 'آکادمی' }}</strong>
+      <small>{{ site.support_hours or 'پیام خود را ثبت کنید؛ پاسخ از طریق تیکت ارسال می‌شود' }}</small>
     </div>
   </div>
   <div class="sp-body">
@@ -293,7 +274,7 @@
 })();
 </script>
 <script src="/static/js/app.js?v={{ asset_v() }}"></script>
-<script src="/static/js/jalali.js?v={{ asset_v() }}"></script>
+<script src="/static/js/ux.js?v={{ asset_v() }}"></script>
 <script>
 /* ===== پنل انتخاب تم (حالت نمایش) — باز/بستن + اعمال و ذخیره ===== */
 (function () {

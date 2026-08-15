@@ -355,7 +355,7 @@
     {% for it in d.get('items') or [] if it is mapping %}
       {% set v = (it.value or '')|string %}
       {% if '{' in v %}
-        {% set v = v.replace('{students}', fa(stt.students or 0)).replace('{courses}', fa(stt.courses or 0)).replace('{lessons}', fa(stt.lessons or 0)).replace('{hours}', fa(stt.hours or 0)).replace('{reviews}', fa(stt.reviews or 0)).replace('{teachers}', fa(stt.teachers or 0)).replace('{enrollments}', fa(stt.enrollments or 0)).replace('{stories}', fa(stt.stories or 0)).replace('{satisfaction}', fa(stt.satisfaction or 90)) %}
+        {% set v = v.replace('{students}', fa(stt.students or 0)).replace('{courses}', fa(stt.courses or 0)).replace('{lessons}', fa(stt.lessons or 0)).replace('{hours}', fa(stt.hours or 0)).replace('{reviews}', fa(stt.reviews or 0)).replace('{teachers}', fa(stt.teachers or 0)).replace('{enrollments}', fa(stt.enrollments or 0)).replace('{stories}', fa(stt.stories or 0)).replace('{satisfaction}', fa(stt.satisfaction or 0)) %}
       {% endif %}
       {% if v or it.label %}{% set _ = real_items.append({'value': v, 'label': it.label or ''}) %}{% endif %}
     {% endfor %}
@@ -363,7 +363,7 @@
     {% set _ = real_items.append({'value': fa(stt.courses or 0) ~ '+', 'label': 'دوره آموزشی'}) %}
     {% set _ = real_items.append({'value': fa(stt.students or 0) ~ '+', 'label': 'دانشجوی فعال'}) %}
     {% set _ = real_items.append({'value': fa(stt.hours or 0) ~ '+', 'label': 'ساعت آموزش'}) %}
-    {% set _ = real_items.append({'value': '٪' ~ fa(stt.satisfaction or 90), 'label': 'رضایت دانشجویان'}) %}
+    {% set _ = real_items.append({'value': '٪' ~ fa(stt.satisfaction or 0), 'label': 'رضایت دانشجویان'}) %}
   {% endif %}
   <div class="card" style="background:var(--grad-brand);color:#fff;border:none;padding:36px 26px;border-radius:var(--radius-lg)">
     <div class="grid" style="grid-template-columns:repeat({{ d.columns or 4 }}, 1fr);gap:20px">
@@ -432,12 +432,14 @@
   </div>
 
 {% elif t == 'exam_cta' %}
+  {% if bc_site().get('exam_enabled') == '1' or demo_features_enabled %}
   <div class="card" style="padding:34px 26px;border-radius:20px;text-align:center;background:linear-gradient(135deg,var(--primary),var(--primary-2,#7c3aed));color:#fff">
     <div style="font-size:36px">🎯</div>
     {% if d.get('title') %}<h2 style="font-size:clamp(19px,2.4vw,26px);font-weight:900;margin:10px 0 8px">{{ d.title }}</h2>{% endif %}
     {% if d.get('text') %}<p style="opacity:.92;font-size:13.5px;max-width:480px;margin:0 auto 18px">{{ d.text }}</p>{% endif %}
-    <a class="btn btn-lg" style="background:#fff;color:var(--primary);font-weight:900" href="/exam/practice">🚀 شروع آزمون تمرینی</a>
+    <a class="btn btn-lg" style="background:#fff;color:var(--primary);font-weight:900" href="/exam/practice">شروع آزمون تمرینی</a>
   </div>
+  {% endif %}
 
 {% elif t == 'faq' %}
   {% if not d.get('items') %}<div class="pb-empty-widget">؟ برای نمایش سوالات متداول، آیتم اضافه کنید</div>{% endif %}

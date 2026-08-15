@@ -2,46 +2,32 @@
 {% block title %}{{ seo.title or "درباره ما" }}{% endblock %}
 {% block content %}
 <section class="about-hero">
-  <h1>درباره {{ site.site_name or 'آکادمی آنلاین' }}</h1>
-  <p>ما یک تیم جوان، پرانرژی و عاشق یادگیری هستیم که هدف‌مان تغییر مسیر آموزش در ایران است.</p>
+  <div class="container">
+    <h1>درباره {{ site.site_name or 'آکادمی آنلاین' }}</h1>
+    <p>{{ site.site_desc or 'معرفی مجموعه آموزشی' }}</p>
+  </div>
 </section>
-
 <section class="section">
   <div class="container">
     <div class="grid" style="grid-template-columns:1fr 1fr;gap:44px;align-items:center">
       <div>
-        <span class="badge badge-primary mb-2">💡 داستان ما</span>
-        <h2 style="font-size:26px;margin-bottom:14px">از یک ایده ساده تا بزرگ‌ترین مرجع آموزش آنلاین</h2>
-        <p class="text-2" style="margin-bottom:14px">{{ site.about_text or '' }}</p>
-        <p class="text-2" style="margin-bottom:14px">ما معتقدیم آموزش باکیفیت حق همه است؛ به همین دلیل با بهره‌گیری از برترین مدرسان و جدیدترین روش‌های آموزشی، دوره‌هایی می‌سازیم که مستقیماً به نیازهای بازار کار پاسخ می‌دهند.</p>
-        <div class="flex gap-2 mt-3">
-          <a class="btn btn-primary btn-lg" href="{{ url_for('site.courses') }}">دوره‌های ما</a>
-          <a class="btn btn-outline btn-lg" href="{{ url_for('site.contact') }}">تماس با ما</a>
+        <span class="badge badge-primary mb-2">معرفی مجموعه</span>
+        <h2 style="font-size:26px;margin-bottom:14px">{{ site.site_name or 'آکادمی آنلاین' }}</h2>
+        <p class="text-2" style="margin-bottom:18px;white-space:pre-line">{{ site.about_text or 'متن معرفی مجموعه هنوز ثبت نشده است.' }}</p>
+        <div class="flex gap-2 mt-3 wrap">
+          <a class="btn btn-primary" href="{{ url_for('site.courses') }}">مشاهده دوره‌ها</a>
+          <a class="btn btn-outline" href="{{ url_for('site.contact') }}">راه‌های ارتباطی</a>
         </div>
       </div>
       <div class="card" style="padding:30px;background:var(--grad-brand);color:#fff;border:none">
-        <div class="grid" style="grid-template-columns:1fr 1fr;gap:22px">
-          <div style="text-align:center;padding:22px;background:rgba(255,255,255,.12);border-radius:16px"><div style="font-size:30px;font-weight:900">{{ fa(total_students) }}+</div><small>دانشجوی فعال</small></div>
-          <div style="text-align:center;padding:22px;background:rgba(255,255,255,.12);border-radius:16px"><div style="font-size:30px;font-weight:900">{{ fa(total_courses) }}+</div><small>دوره آموزشی</small></div>
-          <div style="text-align:center;padding:22px;background:rgba(255,255,255,.12);border-radius:16px"><div style="font-size:30px;font-weight:900">{{ fa(teachers) }}+</div><small>مدرس متخصص</small></div>
-          <div style="text-align:center;padding:22px;background:rgba(255,255,255,.12);border-radius:16px"><div style="font-size:30px;font-weight:900">{{ fa(total_satisfaction) }}٪</div><small>رضایت کاربران</small></div>
+        <h2 style="font-size:17px;margin-bottom:16px">آمار فعلی سامانه</h2>
+        <div class="grid" style="grid-template-columns:1fr 1fr;gap:16px">
+          <div class="about-stat"><b>{{ fa(total_students) }}</b><small>دانشجوی فعال</small></div>
+          <div class="about-stat"><b>{{ fa(total_courses) }}</b><small>دوره منتشرشده</small></div>
+          <div class="about-stat"><b>{{ fa(teachers) }}</b><small>مدرس فعال</small></div>
+          <div class="about-stat"><b>{{ fa(total_lessons) }}</b><small>جلسه ثبت‌شده</small></div>
         </div>
       </div>
-    </div>
-  </div>
-</section>
-
-<section class="section section-alt">
-  <div class="container">
-    <div class="section-head">
-      <span class="tag">🎯 ارزش‌های ما</span>
-      <h2>چه چیزهایی برای ما مهم است؟</h2>
-    </div>
-    <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:20px">
-      <div class="card card-hover feature-card"><div class="ic">🎯</div><h3>کیفیت</h3><p>محتوا توسط متخصصان صنعت تولید و بازبینی می‌شود.</p></div>
-      <div class="card card-hover feature-card"><div class="ic">🤝</div><h3>صداقت</h3><p>بدون وعده‌های پوچ؛ فقط آموزش واقعی و کاربردی.</p></div>
-      <div class="card card-hover feature-card"><div class="ic">💎</div><h3>قیمت منصفانه</h3><p>آموزش باکیفیت باید برای همه در دسترس باشد.</p></div>
-      <div class="card card-hover feature-card"><div class="ic">🚀</div><h3>پیشرفت</h3><p>هر روز بهتر از دیروز؛ در محتوا و تجربه کاربری.</p></div>
     </div>
   </div>
 </section>

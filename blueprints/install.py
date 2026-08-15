@@ -185,7 +185,8 @@ def run():
             'email': d.get('site_email', '').strip(),
             'base_url': d.get('site_url', '').strip(),
         }
-        create_demo = d.get('demo_student') == '1'
+        # نسخهٔ نهایی هیچ حساب یا محتوای نمایشی ایجاد نمی‌کند.
+        create_demo = False
 
         # اعتبارسنجی
         if not admin['name'] or len(admin['name']) < 3:
@@ -300,7 +301,7 @@ def repair():
             'password': d.get('admin_pass', '') or 'Admin12345!',
         }
         site = {}
-        create_demo = d.get('demo_student') == '1'
+        create_demo = False
         # تعمیر نیز تکه‌ای و idempotent است؛ مرورگر تا پایان درخواست بعدی می‌فرستد.
         result, s_msg, prog = run_install_request(
             db_url, admin, site, create_demo)

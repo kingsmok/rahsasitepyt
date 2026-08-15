@@ -7,12 +7,31 @@ try:
 except ImportError:  # پایتون < 3.11 (هاست‌های اشتراکی)
     from datetime import timezone as _tz_utc
     UTC = _tz_utc.utc
-from flask import Blueprint, render_template, request, redirect, url_for, flash, g, abort, session
+from flask import (Blueprint, render_template, request, redirect, url_for, flash,
+                   g, abort, session, current_app, send_from_directory)
 from models import (utcnow, db, User, Course, Enrollment, Favorite, Order, Ticket, ActivityLog, StudyDay)
 from validators import youtube_id, aparat_hash, is_valid_phone, is_valid_national_code
 from validators import log_exc as _lexc
 
 student_bp = Blueprint('student', __name__)
+
+
+def _local_video_filename(value):
+    """فقط نام فایل داخل static/video؛ URL خارجی یا مسیر مشکوک پذیرفته نمی‌شود."""
+    value = (value or '').strip()
+    if value.startswith('/static/video/'):
+        value = value[len('/static/video/'):]
+    if not value or value.startswith(('http://', 'https://', '/')):
+        return None
+    if '/' in value or '\\' in value or '..' in value:
+        return None
+    return value
+
+
+def _stream_token(user_id, lesson_id, quality='sd'):
+    from itsdangerous import URLSafeTimedSerializer
+    serializer = URLSafeTimedSerializer(current_app.config['SECRET_KEY'], salt='lesson-stream-v1')
+    return serializer.dumps({'u': int(user_id), 'l': int(lesson_id), 'q': quality})
 
 
 def _login_required():
@@ -93,7 +112,7 @@ def learn(course_id):
     r = _login_required()
     if r:
         return r
-    course = Course.query.get_or_404(course_id)
+    course = db.get_or_404(Course, course_id)
     enrollment = Enrollment.query.filter_by(user_id=g.user.id, course_id=course.id).first()
     if not enrollment:
         flash('شما در این دوره ثبت‌نام نکرده‌اید.', 'error')
@@ -109,6 +128,9 @@ def learn(course_id):
     lessons = course.lessons
     current = next((l for l in lessons if l.id == lesson_id), lessons[0] if lessons else None)
     done = set(enrollment.progress_list())
+    if current is None:
+        return render_template('dashboard/learn_empty.html', course=course,
+                               enrollment=enrollment, done=done)
     yt_id = youtube_id(current.video_url) if current.video_type == 'youtube' else None
     ap_hash = aparat_hash(current.video_url) if current.video_type == 'aparat' else None
     # دسترسی تدریجی: جلسات قفل تا تاریخ باز شدن
@@ -119,6 +141,11 @@ def learn(course_id):
             unlock = (enrollment.created_at + _td(days=l.release_days)).replace(tzinfo=None)
             if utcnow() < unlock:
                 locked[l.id] = (unlock - utcnow()).days + 1
+    if current.id in locked:
+        flash(f'این جلسه {locked[current.id]} روز دیگر باز می‌شود.', 'info')
+        first_open = next((lesson for lesson in lessons if lesson.id not in locked), None)
+        return redirect(url_for('student.learn', course_id=course.id,
+                                lesson=first_open.id if first_open else None))
     # چک‌پوینت یادگیری: بعد از هر ۵ جلسه، پیشنهاد کوییز
     from models import Quiz as _Quiz
     checkpoint_quiz = None
@@ -127,10 +154,75 @@ def learn(course_id):
             checkpoint_quiz = _Quiz.query.filter_by(course_id=course.id, is_placement=False).first()
     except Exception:
         _lexc('blueprints/student.py')
+    video_src = current.video_src
+    video_hd_src = current.video_url_hd or ''
+    if current.video_type == 'direct':
+        if _local_video_filename(current.video_url):
+            video_src = url_for('student.lesson_stream', lid=current.id, quality='sd',
+                                token=_stream_token(g.user.id, current.id, 'sd'))
+        if _local_video_filename(current.video_url_hd):
+            video_hd_src = url_for('student.lesson_stream', lid=current.id, quality='hd',
+                                   token=_stream_token(g.user.id, current.id, 'hd'))
     return render_template('dashboard/learn.html', course=course, enrollment=enrollment,
                            lessons=lessons, current=current, done=done,
                            yt_id=yt_id, ap_hash=ap_hash, locked=locked,
+                           video_src=video_src, video_hd_src=video_hd_src,
                            checkpoint_quiz=checkpoint_quiz)
+
+
+@student_bp.route('/stream/lesson/<int:lid>')
+def lesson_stream(lid):
+    """استریم Range-aware فایل محلی با توکن کوتاه‌عمر و کنترل ثبت‌نام."""
+    if not g.user:
+        abort(403)
+    from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
+    from models import Lesson, CourseTeacher
+    lesson = db.get_or_404(Lesson, lid)
+    quality = request.args.get('quality', 'sd')
+    if quality not in ('sd', 'hd'):
+        abort(400)
+    token = request.args.get('token', '')
+    serializer = URLSafeTimedSerializer(current_app.config['SECRET_KEY'], salt='lesson-stream-v1')
+    try:
+        payload = serializer.loads(token, max_age=2 * 60 * 60)
+    except (BadSignature, SignatureExpired):
+        abort(403)
+    if (payload.get('u') != g.user.id or payload.get('l') != lesson.id or
+            payload.get('q') != quality):
+        abort(403)
+    course = lesson.section.course
+    allowed = g.user.is_admin or course.teacher_id == g.user.id
+    if not allowed and g.user.role == 'teacher':
+        allowed = CourseTeacher.query.filter_by(course_id=course.id,
+                                                teacher_id=g.user.id).first() is not None
+    enrollment = None
+    if not allowed:
+        enrollment = Enrollment.query.filter_by(user_id=g.user.id, course_id=course.id).first()
+        allowed = enrollment is not None
+    if not allowed:
+        abort(403)
+    if enrollment:
+        from datetime import timedelta as _td
+        if course.access_days and course.access_days > 0:
+            expires_at = (enrollment.created_at + _td(days=course.access_days)).replace(tzinfo=None)
+            if utcnow() > expires_at:
+                abort(403)
+        if lesson.release_days and lesson.release_days > 0 and not lesson.is_free:
+            unlock_at = (enrollment.created_at + _td(days=lesson.release_days)).replace(tzinfo=None)
+            if utcnow() < unlock_at:
+                abort(403)
+    filename = _local_video_filename(lesson.video_url_hd if quality == 'hd' else lesson.video_url)
+    if not filename:
+        abort(404)
+    video_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                             'static', 'video')
+    response = send_from_directory(video_dir, filename, conditional=True,
+                                   as_attachment=False)
+    response.headers['Cache-Control'] = 'private, no-store, max-age=0'
+    extension = os.path.splitext(filename)[1].lower() or '.mp4'
+    response.headers['Content-Disposition'] = f'inline; filename="lesson-{lesson.id}{extension}"'
+    response.headers['X-Robots-Tag'] = 'noindex, nofollow, noarchive'
+    return response
 
 
 @student_bp.route('/learn/<int:course_id>/complete/<int:lesson_id>', methods=['POST'])
@@ -138,16 +230,30 @@ def complete_lesson(course_id, lesson_id):
     if not g.user:
         abort(403)
     enrollment = Enrollment.query.filter_by(user_id=g.user.id, course_id=course_id).first_or_404()
-    lessons = Course.query.get_or_404(course_id).lessons
+    course = db.get_or_404(Course, course_id)
+    lessons = course.lessons
     lesson = next((l for l in lessons if l.id == lesson_id), None)
     if not lesson:
         abort(404)
+    # مسیر POST مستقیم نباید محدودیت زمان دسترسی یا انتشار تدریجی را دور بزند.
+    from datetime import timedelta as _td
+    if course.access_days and course.access_days > 0:
+        expires_at = (enrollment.created_at + _td(days=course.access_days)).replace(tzinfo=None)
+        if utcnow() > expires_at:
+            abort(403)
+    if lesson.release_days and lesson.release_days > 0 and not lesson.is_free:
+        unlock_at = (enrollment.created_at + _td(days=lesson.release_days)).replace(tzinfo=None)
+        if utcnow() < unlock_at:
+            abort(403)
     done = set(enrollment.progress_list())
     action = request.form.get('action', 'complete')
     if action == 'complete':
         done.add(lesson_id)
-    else:
+    elif action == 'uncomplete':
         done.discard(lesson_id)
+        enrollment.completed_at = None
+    else:
+        abort(400)
     enrollment.save_progress(sorted(done))
     if enrollment.percent >= 100 and not enrollment.completed_at:
         enrollment.completed_at = utcnow()
@@ -171,7 +277,7 @@ def certificate(course_id):
     r = _login_required()
     if r:
         return r
-    course = Course.query.get_or_404(course_id)
+    course = db.get_or_404(Course, course_id)
     enrollment = Enrollment.query.filter_by(user_id=g.user.id, course_id=course.id).first_or_404()
     if not enrollment.is_completed:
         flash('برای دریافت گواهینامه باید تمام جلسات دوره را کامل کنید.', 'error')
@@ -237,8 +343,10 @@ def invoice_pdf(code):
     order = Order.query.filter_by(code=code).first_or_404()
     if order.user_id != g.user.id and not g.user.is_admin:
         abort(403)
-    items = [(oi.course.title if oi.course else 'دوره حذف‌شده',
-              1, oi.price, oi.price or 0)
+    items = [((oi.course.title if oi.course else
+               (oi.product.title if oi.product else 'آیتم حذف‌شده')),
+              max(1, int(oi.quantity or 1)), oi.price,
+              (oi.price or 0) * max(1, int(oi.quantity or 1)))
              for oi in order.items]
     from flask import Response
     try:
@@ -307,8 +415,8 @@ def profile():
             err = 'کد ملی معتبر نیست — کد ملی ۱۰ رقمی صحیح خود را وارد کنید.'
         elif nc and User.query.filter(User.national_code == nc, User.id != g.user.id).first():
             err = 'این کد ملی قبلاً ثبت شده است.'
-        elif password and len(password) < 6:
-            err = 'رمز عبور باید حداقل ۶ کاراکتر باشد.'
+        elif password and len(password) < 8:
+            err = 'رمز عبور باید حداقل ۸ کاراکتر باشد.'
         if err:
             flash(err, 'error')
             return redirect(url_for('student.profile'))

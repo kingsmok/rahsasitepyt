@@ -1,0 +1,27 @@
+{% extends 'teacher/base.html' %}
+{% block tcontent %}
+<div class="dash-head"><div><h1>🗓 حضور و غیاب «{{ course.title }}»</h1><p>{{ fa(meetings|length) }} جلسه ثبت‌شده</p></div><a class="btn btn-ghost" href="{{ url_for('teacher.course_students', cid=course.id) }}">دانشجویان دوره</a></div>
+<div class="grid" style="grid-template-columns:320px 1fr;gap:18px;align-items:start">
+  <form method="post" class="card" style="padding:20px">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+    <h2 style="font-size:15px;margin-bottom:14px">جلسه جدید</h2>
+    <div class="form-group"><label>عنوان جلسه</label><input class="form-control" name="title" required placeholder="مثلاً: کارگاه عملی جلسه اول"></div>
+    <div class="form-group"><label>تاریخ و ساعت</label><input class="form-control" type="datetime-local" name="starts_at" required></div>
+    <div class="form-group"><label>مدت (دقیقه)</label><input class="form-control" type="number" name="duration_min" min="15" max="720" value="90"></div>
+    <div class="form-group"><label>توضیحات</label><textarea class="form-control" name="notes" rows="2"></textarea></div>
+    <button class="btn btn-primary btn-block" type="submit">ساخت جلسه</button>
+  </form>
+  <div class="card" style="padding:20px">
+    <h2 style="font-size:15px;margin-bottom:14px">جلسات حضور و غیاب</h2>
+    {% for meeting in meetings %}
+    <div class="card" style="padding:14px;margin-bottom:10px;background:var(--bg-2);border:none">
+      <div class="flex between wrap gap-1">
+        <div><strong>{{ meeting.title }}</strong><small class="text-3" style="display:block">{{ meeting.starts_at|jdatetime }} — {{ fa(meeting.duration_min) }} دقیقه</small></div>
+        <span class="badge {{ 'badge-success' if meeting.is_closed else 'badge-accent' }}">{{ 'نهایی‌شده' if meeting.is_closed else 'باز' }}</span>
+      </div>
+      <div class="flex between wrap gap-1 mt-1"><small class="text-3">ثبت‌شده: {{ fa(counts[meeting.id].marked) }} — حاضر/تاخیر: {{ fa(counts[meeting.id].present) }}</small><div class="flex gap-1"><a class="btn btn-primary btn-sm" href="{{ url_for('teacher.attendance_mark', mid=meeting.id) }}">ثبت حضور</a><form method="post" action="{{ url_for('teacher.attendance_delete', mid=meeting.id) }}" onsubmit="return confirm('جلسه و رکوردهای حضور حذف شوند؟')"><input type="hidden" name="_csrf_token" value="{{ csrf_token }}"><button class="btn btn-danger btn-sm" type="submit">حذف</button></form></div></div>
+    </div>
+    {% else %}<div class="empty-state"><div class="es-icon">🗓</div><p>هنوز جلسه‌ای ساخته نشده است.</p></div>{% endfor %}
+  </div>
+</div>
+{% endblock %}

@@ -13,6 +13,21 @@ from jdates import fa
 products_bp = Blueprint('products', __name__)
 
 
+def _cart_count(cart=None, quantities=None):
+    cart = cart if cart is not None else session.get('cart', [])
+    quantities = quantities if quantities is not None else (session.get('cart_qty', {}) or {})
+    total = 0
+    for item in cart:
+        if str(item).startswith('p:'):
+            try:
+                total += max(1, int(quantities.get(str(item), 1) or 1))
+            except (TypeError, ValueError):
+                total += 1
+        else:
+            total += 1
+    return total
+
+
 # ---------------------------------------------------------------- لیست محصولات
 @products_bp.route('/products')
 def product_list():
@@ -29,9 +44,10 @@ def product_list():
     order = {'newest': Product.created_at.desc(), 'cheap': Product.price.asc(),
              'expensive': Product.price.desc(), 'popular': Product.views.desc()}.get(sort, Product.created_at.desc())
     items = query.order_by(order).all()
-    cats = [r[0] for r in db.session.query(Product.category).distinct().all() if r[0]]
+    cats = [r[0] for r in db.session.query(Product.category)
+            .filter(Product.is_active == True).distinct().all() if r[0]]
     g.seo['title'] = "فروشگاه محصولات — آکادمی آنلاین"
-    g.seo['description'] = "محصولات و کالاهای آموزشی با ارسال سریع — کیفیت تضمینی."
+    g.seo['description'] = f"فهرست {len(items)} محصول فعال؛ قیمت، موجودی و مشخصات هر محصول را پیش از خرید بررسی کنید."
     return render_template('products/list.html', items=items, cats=cats, q=q, cat=cat, sort=sort)
 
 
@@ -51,29 +67,81 @@ def product_detail(slug):
 # ---------------------------------------------------------------- افزودن به سبد (API)
 @products_bp.route('/api/product-cart/add', methods=['POST'])
 def product_cart_add():
-    pid = int(request.json.get('product_id') if request.is_json else request.form.get('product_id') or 0)
+    raw = (request.get_json(silent=True) or {}).get('product_id') if request.is_json else request.form.get('product_id')
+    try:
+        pid = int(raw or 0)
+    except (TypeError, ValueError):
+        return jsonify(ok=False, msg='شناسه محصول نامعتبر است'), 400
     p = db.session.get(Product, pid)
     if not p or not p.is_active:
         return jsonify(ok=False, msg='محصول یافت نشد'), 404
     if p.stock is not None and p.stock <= 0:
         return jsonify(ok=False, msg='این محصول ناموجود است'), 400
     cart = session.get('cart', [])
+    quantities = session.get('cart_qty', {})
     key = f'p:{p.id}'
+    try:
+        current = max(0, int(quantities.get(key, 0) or 0))
+    except (TypeError, ValueError):
+        current = 0
+    if current >= int(p.stock or 0):
+        return jsonify(ok=False, msg='بیشتر از موجودی قابل افزودن نیست'), 400
     if key not in cart:
         cart.append(key)
-        session['cart'] = cart
-    return jsonify(ok=True, count=len(cart), msg='به سبد خرید اضافه شد')
+    quantities[key] = current + 1
+    session['cart'] = cart
+    session['cart_qty'] = quantities
+    return jsonify(ok=True, count=_cart_count(cart, quantities), quantity=quantities[key], msg='به سبد خرید اضافه شد')
 
 
 @products_bp.route('/api/product-cart/remove', methods=['POST'])
 def product_cart_remove():
-    pid = int(request.json.get('product_id') if request.is_json else request.form.get('product_id') or 0)
+    raw = (request.get_json(silent=True) or {}).get('product_id') if request.is_json else request.form.get('product_id')
+    try:
+        pid = int(raw or 0)
+    except (TypeError, ValueError):
+        return jsonify(ok=False, msg='شناسه محصول نامعتبر است'), 400
     cart = session.get('cart', [])
     key = f'p:{pid}'
     if key in cart:
         cart.remove(key)
-        session['cart'] = cart
-    return jsonify(ok=True, count=len(cart))
+    quantities = session.get('cart_qty', {})
+    quantities.pop(key, None)
+    session['cart'] = cart
+    session['cart_qty'] = quantities
+    return jsonify(ok=True, count=_cart_count(cart, quantities))
+
+
+@products_bp.route('/api/product-cart/quantity', methods=['POST'])
+def product_cart_quantity():
+    data = request.get_json(silent=True) or {}
+    try:
+        pid = int(data.get('product_id') or 0)
+        quantity = int(data.get('quantity') or 0)
+    except (TypeError, ValueError):
+        return jsonify(ok=False, msg='مقدار نامعتبر است'), 400
+    product = db.session.get(Product, pid)
+    if not product or not product.is_active:
+        return jsonify(ok=False, msg='محصول یافت نشد'), 404
+    if quantity < 1 or quantity > min(99, int(product.stock or 0)):
+        return jsonify(ok=False, msg='تعداد با موجودی محصول سازگار نیست'), 400
+    key = f'p:{pid}'
+    cart = session.get('cart', [])
+    if key not in cart:
+        return jsonify(ok=False, msg='محصول در سبد نیست'), 404
+    quantities = session.get('cart_qty', {})
+    quantities[key] = quantity
+    session['cart_qty'] = quantities
+    return jsonify(ok=True, quantity=quantity)
+
+
+def cart_quantity(kind, obj):
+    if kind != 'product':
+        return 1
+    try:
+        return max(1, int((session.get('cart_qty', {}) or {}).get(f'p:{obj.id}', 1)))
+    except (TypeError, ValueError):
+        return 1
 
 
 # ---------------------------------------------------------------- سبد (مخلوط دوره + محصول)
@@ -83,7 +151,7 @@ def _cart_items():
     for raw in session.get('cart', []):
         if isinstance(raw, int) or str(raw).isdigit():
             c = db.session.get(Course, int(raw))
-            if c:
+            if c and c.status == 'published':
                 items.append(('course', c))
         elif str(raw).startswith('p:'):
             p = db.session.get(Product, int(str(raw)[2:]))
@@ -93,7 +161,7 @@ def _cart_items():
 
 
 def _cart_total(items):
-    return sum((o.final_price if k == 'course' else o.final_price) for k, o in items)
+    return sum(o.final_price * cart_quantity(k, o) for k, o in items)
 
 
 @products_bp.route('/api/cart/items')
@@ -101,7 +169,8 @@ def cart_items_api():
     items = _cart_items()
     return jsonify(ok=True, items=[{
         'kind': k, 'id': o.id, 'title': o.title,
-        'price': o.final_price, 'image': o.image if k == 'product' else (o.image or ''),
+        'price': o.final_price, 'quantity': cart_quantity(k, o),
+        'image': o.image if k == 'product' else (o.image or ''),
         'url': (url_for('products.product_detail', slug=o.slug) if k == 'product'
                 else url_for('site.course_detail', slug=o.slug)),
     } for k, o in items])

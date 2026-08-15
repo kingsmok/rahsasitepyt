@@ -92,6 +92,19 @@ def test_forgot_shows_code_only_in_demo(monkeypatch, client, app):
     assert 'کد بازیابی' in r2.get_data(as_text=True)
 
 
+def test_otp_plaintext_never_enters_client_session(client, app):
+    _set_sms_provider(app, 'demo')
+    token = _csrf(client, '/auth/login')
+    response = client.post('/auth/phone-send', data={
+        '_csrf_token': token, 'phone': '09120000888'
+    }, follow_redirects=False)
+    assert response.status_code == 302
+    with client.session_transaction() as sess:
+        assert 'otp_code' not in sess
+        assert 'otp_code_hash' in sess
+    assert app.config.get('_TEST_AUTH_CODES', {}).get('phone-otp')
+
+
 # ---------------------------------------------------------------
 # مقایسهٔ مقاوم در برابر Timing Attack
 # ---------------------------------------------------------------
@@ -106,10 +119,9 @@ def test_otp_uses_constant_time_comparison():
     """کدهای OTP/2FA باید با مقایسهٔ مقاوم (نه ==) بررسی شوند."""
     src = open('blueprints/auth.py', encoding='utf-8').read()
     # نباید هیچ مقایسهٔ مستقیم == برای کدها باقی مانده باشد
-    assert 'code != session.get(\'otp_code\')' not in src
-    assert 'code == session.get(\'admin_2fa\')' not in src
-    assert 'code != session.get(\'otp_code\')' not in src
-    assert src.count('_codes_equal(') >= 3  # OTP، 2FA، forgot-verify
+    assert "session['otp_code'] = code" not in src
+    assert "session['admin_2fa'] = code" not in src
+    assert src.count('_code_matches(') >= 4  # تابع + OTP، 2FA و بازیابی رمز
 
 
 def test_admin_2fa_code_not_flashed_in_production(monkeypatch, client, app):

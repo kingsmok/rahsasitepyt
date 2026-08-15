@@ -136,7 +136,7 @@ def edit(mid):
     r = _admin_required()
     if r:
         return r
-    m = SeoMeta.query.get_or_404(mid)
+    m = db.get_or_404(SeoMeta, mid)
     if request.method == 'POST':
         m.title = request.form.get('title', '').strip()
         m.description = request.form.get('description', '').strip()

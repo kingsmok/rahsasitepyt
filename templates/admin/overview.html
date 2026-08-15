@@ -1,6 +1,23 @@
 {% extends 'admin/base.html' %}
 {% block atitle %}داشبورد مدیریت{% endblock %}
 {% block acontent %}
+{% set payment_ready = real_gateway_on or site.c2c_card %}
+{% set setup_missing = (not site.site_desc) or (not site.email and not site.phone) or (not sms_ready) or (not payment_ready) or (published_courses_count == 0) %}
+{% if setup_missing %}
+<section class="card admin-onboarding" aria-labelledby="setup-title">
+  <div>
+    <span class="badge badge-primary">راه‌اندازی اولیه</span>
+    <h2 id="setup-title">سایت را برای کاربران آماده کنید</h2>
+    <p>موارد زیر را تکمیل کنید؛ بخش‌های تنظیم‌نشده به کاربران نمایش داده نمی‌شوند.</p>
+  </div>
+  <div class="onboarding-checks">
+    <a class="{{ 'done' if site.site_desc and (site.email or site.phone) }}" href="{{ url_for('admin.super_settings', tab='general') }}"><span>{{ '✓' if site.site_desc and (site.email or site.phone) else '۱' }}</span> برند و راه تماس</a>
+    <a class="{{ 'done' if sms_ready }}" href="{{ url_for('admin.super_settings', tab='sms') }}"><span>{{ '✓' if sms_ready else '۲' }}</span> پیامک واقعی</a>
+    <a class="{{ 'done' if payment_ready }}" href="{{ url_for('admin.gateways') }}"><span>{{ '✓' if payment_ready else '۳' }}</span> روش پرداخت</a>
+    <a class="{{ 'done' if published_courses_count }}" href="{{ url_for('admin.course_new') }}"><span>{{ '✓' if published_courses_count else '۴' }}</span> اولین دوره منتشرشده</a>
+  </div>
+</section>
+{% endif %}
 <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:22px">
   <div class="card stat-ic stat-ic-blue" style="padding:16px;text-align:center"><div class="num">{{ fa('{:,.0f}'.format(month_revenue)) }}</div><small>فروش این ماه</small><div class="text-3" style="font-size:11px;opacity:.8">{{ fa(month_orders) }} سفارش</div></div>
   <div class="card stat-ic stat-ic-green" style="padding:16px;text-align:center"><div class="num">{{ fa(new_today) }}</div><small>ثبت‌نام امروز</small></div>
@@ -62,11 +79,13 @@
             <td>{{ o.user.name }}</td>
             <td>{{ fa('{:,.0f}'.format(o.final_total)) }} ت</td>
             <td>
-              {% if o.status == 'paid' %}<span class="badge badge-success">پرداخت</span>
+              {% if o.status == 'paid' %}<span class="badge badge-success">پرداخت‌شده</span>
               {% elif o.status == 'pending' %}<span class="badge badge-accent">در انتظار</span>
               {% else %}<span class="badge badge-danger">{{ o.status_fa }}</span>{% endif %}
             </td>
           </tr>
+          {% else %}
+          <tr><td colspan="4" class="text-center text-3" style="padding:28px">هنوز سفارشی ثبت نشده است.</td></tr>
           {% endfor %}
         </tbody>
       </table>
@@ -82,6 +101,8 @@
         <div class="c-info"><h4 style="font-size:13px">{{ c.title }}</h4><small>{{ fa(c.views) }} بازدید — {{ fa(c.students_count) }} دانشجو</small></div>
         <span class="badge badge-gray">{{ fa(c.lesson_count) }} جلسه</span>
       </a>
+      {% else %}
+      <div class="empty-state" style="padding:26px 12px"><div class="es-icon" style="font-size:34px">📚</div><p>هنوز دوره‌ای منتشر نشده است.</p><a class="btn btn-primary btn-sm" href="{{ url_for('admin.course_new') }}">ساخت اولین دوره</a></div>
       {% endfor %}
     </div>
     <div class="card" style="padding:22px">
@@ -92,6 +113,8 @@
         <div style="flex:1"><strong style="font-size:13px">{{ u.name }}</strong><br><small class="text-3">{{ u.created_at|jdate }}</small></div>
         <span class="badge {{ 'badge-success' if u.is_admin else ('badge-primary' if u.role == 'teacher' else 'badge-gray') }}">{{ 'مدیر' if u.is_admin else ('مدرس' if u.role == 'teacher' else 'دانشجو') }}</span>
       </div>
+      {% else %}
+      <p class="text-3 text-center" style="padding:22px 8px">هنوز کاربری ثبت‌نام نکرده است.</p>
       {% endfor %}
     </div>
   </div>

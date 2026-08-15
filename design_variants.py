@@ -524,7 +524,7 @@ def about_section(t, idx):
     <div style="flex:1;min-width:240px;background:var(--card);border-radius:16px;padding:20px;border-top:4px solid {c['accent']}">
       <b>👁 چشم‌انداز</b><p class="dv-text-sm" style="color:var(--text-2);margin-top:6px">مرجع اول آموزش آنلاین با هویت ایرانی در منطقه.</p></div>
     <div style="flex:1;min-width:240px;background:var(--card);border-radius:16px;padding:20px;border-top:4px solid {c['secondary']}">
-      <b>🏆 افتخارات</b><p class="dv-text-sm" style="color:var(--text-2);margin-top:6px">۶ سال حضور مستمر، ۵۰ هزار دانشجو، ۲۰۰ دوره موفق.</p></div>
+      <b>🏆 دستاوردها</b><p class="dv-text-sm" style="color:var(--text-2);margin-top:6px">آمار و دستاوردهای تاییدشده مجموعه را اینجا وارد کنید.</p></div>
   </div>
   <div class="dv-flex dv-gap-3" style="margin-top:20px;flex-wrap:wrap">
     <div style="flex:2;min-width:240px"><b style="font-size:15px">اساتید برتر</b>{teachers}</div>

@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 """تست خط‌مشی هش‌گذاری — هش قوی جدید + پذیرش و ارتقای خودکار MD5 قدیمی"""
 import hashlib
-from models import User, db, certificate_code, certificate_code_legacy_sha1
+from models import (User, db, certificate_code, certificate_code_legacy_md5,
+                    certificate_code_legacy_sha1)
 
 
 def test_new_password_uses_strong_hash(app):
@@ -18,8 +19,10 @@ def test_new_password_uses_strong_hash(app):
         assert u.check_password('wrong') is False
 
 
-def test_legacy_md5_hash_accepted_and_upgraded(app):
-    """هش MD5 خام (مثل UPDATE با MD5() در phpMyAdmin) باید پذیرفته و ارتقا یابد"""
+def test_legacy_md5_hash_accepted_and_upgraded(app, monkeypatch):
+    """در مهاجرت صریح، هش MD5 قدیمی پذیرفته و فوراً ارتقا می‌یابد."""
+    import models
+    monkeypatch.setattr(models, 'LEGACY_MD5', True)
     with app.app_context():
         u = User(name='قدیمی', email='legacy@test.ir', phone='09120000222', role='student')
         u.password_hash = hashlib.md5('old-pass-99'.encode()).hexdigest()  # شبیه‌سازی دیتابیس قدیمی
@@ -35,15 +38,14 @@ def test_legacy_md5_hash_accepted_and_upgraded(app):
         assert User.query.filter_by(email='legacy@test.ir').first().check_password('wrong') is False
 
 
-def test_certificate_codes_md5_and_legacy(app):
-    """کد گواهینامه با MD5 ساخته می‌شود و کد قدیمی SHA-1 همچنان قابل استعلام است"""
+def test_certificate_codes_hmac_and_legacy(app):
+    """کد جدید HMAC است و هر دو قالب قدیمی برای استعلام باقی می‌مانند."""
     with app.app_context():
         c = certificate_code('python-course', 'u@example.com', 42)
-        old = certificate_code_legacy_sha1('python-course', 'u@example.com', 42)
-        assert c.startswith('CRT-') and len(c) == 14
-        # MD5 در پایهٔ کد جدید
+        old_md5 = certificate_code_legacy_md5('python-course', 'u@example.com', 42)
+        old_sha1 = certificate_code_legacy_sha1('python-course', 'u@example.com', 42)
+        assert c.startswith('CRT-') and len(c) == 16
+        assert c not in (old_md5, old_sha1)
         seed = 'python-course|u@example.com|42'
-        assert c == 'CRT-' + hashlib.md5(seed.encode()).hexdigest()[:10].upper()
-        # کد قدیمی متفاوت است (SHA-1) ولی تابعش سر جایش است
-        assert old != c
-        assert old == 'CRT-' + hashlib.sha1(seed.encode()).hexdigest()[:10].upper()
+        assert old_md5 == 'CRT-' + hashlib.md5(seed.encode()).hexdigest()[:10].upper()
+        assert old_sha1 == 'CRT-' + hashlib.sha1(seed.encode()).hexdigest()[:10].upper()

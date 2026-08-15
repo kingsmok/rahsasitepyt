@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """امکانات تعامل کاربران ایرانی
 
-- گردونه شانس (مشابه دیجی‌کالا): یک چرخش در روز برای کاربران — جایزه: کد تخفیف/اعتبار کیف پول
-- نقشه هوشمند (Map.ir / Neshan): انتخاب استان/شهر برای آدرس پستی + برآورد هزینه پیک اسنپ/تپسی
-- افیلیت مارکتینگ: لینک اختصاصی معرفی + پورسانت خودکار (۱۰٪ اولین خرید — متصل به shop)
+- گردونه جایزه: پیش‌فرض غیرفعال و فقط با فعال‌سازی صریح مدیر
+- انتخاب استان/شهر و نمایش سیاست واقعی ارسال ثبت‌شده توسط مدیر
+- افیلیت مارکتینگ: فقط با درصد پورسانت تنظیم‌شده توسط مدیر
 """
 import random
 import uuid
@@ -103,7 +103,10 @@ def _make_coupon(percent):
 
 @engage_bp.route('/spin')
 def spin_page():
-    """صفحه گردونه شانس"""
+    """صفحه گردونه شانس — فقط با فعال‌سازی صریح مدیر."""
+    if _cfg('spin_enabled', '0') != '1':
+        from flask import abort
+        abort(404)
     if not g.user:
         return redirect(url_for('auth.login', next='/spin'))
     today = _today()
@@ -123,7 +126,9 @@ def spin_page():
 
 @engage_bp.route('/api/spin', methods=['POST'])
 def api_spin():
-    """چرخش گردونه — یک بار در روز"""
+    """چرخش گردونه — یک بار در روز و فقط در صورت فعال‌بودن."""
+    if _cfg('spin_enabled', '0') != '1':
+        return jsonify(ok=False, msg='گردونه غیرفعال است'), 404
     if not g.user:
         return jsonify(ok=False, msg='ابتدا وارد شوید'), 401
     today = _today()
@@ -170,29 +175,19 @@ def api_cities():
 
 @engage_bp.route('/api/address/shipping-estimate', methods=['POST'])
 def api_shipping_estimate():
-    """برآورد هزینه ارسال با پیک اسنپ/تپسی بر اساس استان و فاصله تقریبی"""
+    """نمایش سیاست واقعی ارسال ثبت‌شده توسط مدیر؛ بدون قیمت‌سازی پیک."""
     data = request.get_json(force=True, silent=True) or {}
-    province = data.get('province', '')
-    weight = float(data.get('weight', 0.5) or 0.5)  # کیلوگرم
-    # فاصله تقریبی از تهران (کیلومتر) — جدول ساده
-    distance_km = {
-        'تهران': 30, 'البرز': 40, 'قم': 140, 'قزوین': 160, 'سمنان': 220,
-        'اصفهان': 440, 'همدان': 330, 'مرکزی': 280, 'زنجان': 290, 'مازندران': 250,
-        'گیلان': 320, 'گلستان': 400, 'خراسان رضوی': 900, 'خراسان شمالی': 700,
-        'خراسان جنوبی': 1000, 'کرمان': 1000, 'یزد': 630, 'فارس': 900,
-        'خوزستان': 850, 'بوشهر': 1000, 'هرمزگان': 1200, 'اردبیل': 600,
-        'آذربایجان شرقی': 620, 'آذربایجان غربی': 700, 'کردستان': 460,
-        'کرمانشاه': 510, 'ایلام': 690, 'لرستان': 490, 'چهارمحال': 580,
-        'کهگیلویه': 900, 'سیستان': 1500,
-    }.get(province, 600)
-    # هزینه پایه پیک: اسنپ ۸۵ هزار تومان + ۳۵۰۰/کیلومتر؛ تپسی ۸۰ هزار + ۳۰۰۰/کیلومتر
-    snap = 85000 + int(distance_km * 3500)
-    tapsi = 80000 + int(distance_km * 3000)
-    return jsonify(ok=True, distance_km=distance_km, weight=weight,
-                   providers=[dict(name='اسنپ', icon='🛵', price=snap,
-                                   estimate=f'{fa(distance_km)} کیلومتر — امروز'),
-                              dict(name='تپسی', icon='🚙', price=tapsi,
-                                   estimate=f'{fa(distance_km)} کیلومتر — امروز')])
+    province = str(data.get('province') or '').strip()
+    if province not in IRAN_CITIES:
+        return jsonify(ok=False, msg='استان معتبر انتخاب کنید'), 400
+    try:
+        price = max(0, int(_cfg('shipping_flat_rate', '0') or 0))
+    except (TypeError, ValueError):
+        price = 0
+    note = (_cfg('shipping_note', '') or
+            'هزینه و زمان ارسال پس از بررسی سفارش اعلام می‌شود.')
+    return jsonify(ok=True, price=price, note=note,
+                   pricing_mode='fixed' if price else 'coordination')
 
 
 @engage_bp.route('/address')
@@ -210,7 +205,14 @@ def address_page():
 # ============================================================
 @engage_bp.route('/affiliate')
 def affiliate_page():
-    """داشبورد افیلیت: لینک اختصاصی + آمار معرفی + پورسانت"""
+    """داشبورد افیلیت؛ فقط وقتی درصد واقعی توسط مدیر فعال شده باشد."""
+    try:
+        commission_percent = max(0, min(50, int(_cfg('referral_bonus_percent', '0') or 0)))
+    except (TypeError, ValueError):
+        commission_percent = 0
+    if not commission_percent:
+        from flask import abort
+        abort(404)
     if not g.user:
         return redirect(url_for('auth.login', next='/affiliate'))
     if not g.user.referral_code:
@@ -226,7 +228,7 @@ def affiliate_page():
                 _W.detail.like('%معرفی%')).scalar() or 0
     return render_template('engage/affiliate.html', link=link,
                            referred=referred, paid_refs=paid_refs,
-                           earnings=earnings, fa=fa)
+                           earnings=earnings, commission_percent=commission_percent, fa=fa)
 
 
 def init_engage(app):

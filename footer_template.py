@@ -9,7 +9,7 @@ FOOTER_ROWS = [
             # ستون ۱: درباره آکادمی
             [
                 {"id": "f_about", "type": "footer_about", "data": {
-                    "desc": "آکادمی آنلاین؛ مرجع تخصصی آموزش‌های آنلاین با بیش از ۵ سال سابقه. دوره‌های پروژه‌محور با برترین مدرسان، گواهینامه معتبر و پشتیبانی واقعی.",
+                    "desc": "",
                     "socials": True}}
             ],
             # ستون ۲: خدمات دانشجویان
@@ -70,11 +70,8 @@ FOOTER_ROWS = [
                 {"id": "f_pay", "type": "html", "data": {
                     "code": (
                         '<div class="f-pay-section">'
-                        '<span class="f-pay-title">💳 پرداخت آنلاین از طریق درگاه‌های پرداخت</span>'
-                        '<div class="f-pay-icons">'
-                        '<img src="/static/img/payments/zarinpal.svg" alt="زرین‌پال" title="زرین‌پال">'
-                        '<img src="/static/img/payments/idpay.svg" alt="آیدی‌پی" title="آیدی‌پی">'
-                        '</div></div>'
+                        '<span class="f-pay-title">💳 روش‌های پرداخت فعال و واقعی در مرحله تسویه‌حساب نمایش داده می‌شوند.</span>'
+                        '</div>'
                     )}}
             ],
         ],
@@ -85,7 +82,7 @@ FOOTER_ROWS = [
         "cols": [
             [
                 {"id": "f_copy", "type": "text", "data": {
-                    "content": "© ۱۴۰۴ آکادمی آنلاین — تمامی حقوق محفوظ است.",
+                    "content": "تمامی حقوق این وب‌سایت محفوظ است.",
                     "align": "right", "color": "", "size": "13"}}
             ],
             [

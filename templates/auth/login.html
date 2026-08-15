@@ -6,21 +6,23 @@
   <div class="auth-card">
     <a class="a-logo" href="{{ url_for('site.index') }}"><span class="ic">🎓</span>{{ site.site_name or 'آکادمی آنلاین' }}</a>
     <h1>ورود به حساب کاربری</h1>
-    <p class="a-sub">با ایمیل یا شماره تماس وارد شوید</p>
+    <p class="a-sub">اطلاعات حساب خود را وارد کنید</p>
 
-    <div class="auth-tabs">
-      <button type="button" class="active" data-atab="email">{{ icon('mail', 16) }} ایمیل و رمز</button>
-      <button type="button" data-atab="phone">{{ icon('device-mobile', 16) }} شماره تماس</button>
+    {% if sms_ready and site.allow_phone_login != '0' %}
+    <div class="auth-tabs" role="tablist" aria-label="روش ورود">
+      <button type="button" class="active" data-atab="email" role="tab" aria-controls="atab-email" aria-selected="true">{{ icon('mail', 16) }} ایمیل و رمز</button>
+      <button type="button" data-atab="phone" role="tab" aria-controls="atab-phone" aria-selected="false">{{ icon('device-mobile', 16) }} شماره تماس</button>
     </div>
+    {% endif %}
 
     <!-- ورود با ایمیل -->
-    <div class="auth-tab-pane" id="atab-email">
+    <div class="auth-tab-pane" id="atab-email" role="tabpanel">
       <form method="post">
       <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
 
         <div class="form-group">
           <label for="f_email_1">ایمیل</label>
-          <input id="f_email_1" class="form-control" type="email" name="email" placeholder="you@example.com" dir="ltr" required autofocus autocomplete="email">
+          <input id="f_email_1" class="form-control" type="email" name="email" value="{{ request.form.get('email','') }}" placeholder="you@example.com" dir="ltr" required autofocus autocomplete="email">
         </div>
         <div class="form-group">
           <label for="f_password_1">رمز عبور</label>
@@ -31,12 +33,13 @@
           <input type="checkbox" name="remember" checked>
         </label>
         <button class="btn btn-primary btn-lg btn-block" type="submit">ورود با ایمیل</button>
-        <div class="text-center mt-2"><a href="{{ url_for('auth.forgot') }}" style="font-size:12.5px;color:var(--text-2)">{{ icon('key', 14) }} رمز عبور را فراموش کرده‌اید؟</a></div>
+        {% if sms_ready %}<div class="text-center mt-2"><a href="{{ url_for('auth.forgot') }}" style="font-size:12.5px;color:var(--text-2)">{{ icon('key', 14) }} رمز عبور را فراموش کرده‌اید؟</a></div>{% endif %}
       </form>
     </div>
 
+    {% if sms_ready and site.allow_phone_login != '0' %}
     <!-- ورود با شماره تماس -->
-    <div class="auth-tab-pane" id="atab-phone" style="display:none">
+    <div class="auth-tab-pane" id="atab-phone" style="display:none" role="tabpanel">
       <form method="post" action="{{ url_for('auth.phone_send') }}">
 <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
         <div class="form-group">
@@ -51,6 +54,7 @@
         اگر حساب نداشته باشید، به صورت خودکار ساخته می‌شود.
       </p>
     </div>
+    {% endif %}
 
     <p class="a-alt">حساب کاربری ندارید؟ <a href="{{ url_for('auth.register') }}">همین حالا ثبت‌نام کنید</a></p>
   </div>
@@ -58,8 +62,9 @@
 <script>
   document.querySelectorAll('[data-atab]').forEach(function (btn) {
     btn.addEventListener('click', function () {
-      document.querySelectorAll('[data-atab]').forEach(function (b) { b.classList.remove('active'); });
+      document.querySelectorAll('[data-atab]').forEach(function (b) { b.classList.remove('active'); b.setAttribute('aria-selected', 'false'); });
       btn.classList.add('active');
+      btn.setAttribute('aria-selected', 'true');
       document.querySelectorAll('.auth-tab-pane').forEach(function (p) { p.style.display = 'none'; });
       document.getElementById('atab-' + btn.dataset.atab).style.display = 'block';
     });

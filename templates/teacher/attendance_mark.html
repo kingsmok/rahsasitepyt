@@ -1,0 +1,25 @@
+{% extends 'teacher/base.html' %}
+{% block tcontent %}
+<div class="dash-head"><div><h1>✅ {{ meeting.title }}</h1><p>{{ meeting.starts_at|jdatetime }} — {{ course.title }}</p></div><a class="btn btn-ghost" href="{{ url_for('teacher.attendance_sessions', cid=course.id) }}">بازگشت به جلسات</a></div>
+<form method="post" class="card" style="padding:20px">
+  <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>دانشجو</th><th>وضعیت</th><th>یادداشت</th></tr></thead>
+    <tbody>
+      {% for enrollment in enrollments %}{% set record = records.get(enrollment.id) %}
+      <tr>
+        <td><strong>{{ enrollment.user.name if enrollment.user else '—' }}</strong><small class="text-3" dir="ltr" style="display:block">{{ enrollment.user.phone if enrollment.user else '' }}</small></td>
+        <td><select class="form-control" name="status_{{ enrollment.id }}" style="min-width:130px">
+          {% for value, label in [('present','حاضر'),('late','با تاخیر'),('absent','غایب'),('excused','غیبت موجه')] %}<option value="{{ value }}" {{ 'selected' if (record.status if record else 'absent') == value }}>{{ label }}</option>{% endfor %}
+        </select></td>
+        <td><input class="form-control" name="note_{{ enrollment.id }}" value="{{ record.note if record else '' }}" placeholder="اختیاری"></td>
+      </tr>
+      {% else %}<tr><td colspan="3" class="text-center text-3">دانشجویی در این دوره ثبت‌نام نشده است.</td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+  <div class="flex between wrap gap-2 mt-2">
+    <label class="form-check"><input type="checkbox" name="close" value="1" {{ 'checked' if meeting.is_closed }}> نهایی‌کردن این جلسه برای محاسبه درصد حضور</label>
+    <button class="btn btn-primary btn-lg" type="submit">ذخیره حضور و غیاب</button>
+  </div>
+</form>
+{% endblock %}

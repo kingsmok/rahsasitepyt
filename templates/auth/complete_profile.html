@@ -16,27 +16,27 @@
 
       <div class="form-group">
         <label for="f_name_1">نام و نام خانوادگی <span class="req">*</span></label>
-        <input id="f_name_1" class="form-control" name="name" placeholder="مثلا: علی محمدی" required autofocus>
+        <input id="f_name_1" class="form-control" name="name" value="{{ request.form.get('name', cur_user.name or '') }}" placeholder="مثلاً: نام و نام خانوادگی" autocomplete="name" required autofocus>
       </div>
       <div class="form-group">
         <label for="f_national_code_1">کد ملی (اختیاری)</label>
-        <input id="f_national_code_1" class="form-control" name="national_code" placeholder="۱۰ رقم — در صورت تمایل" dir="ltr"
+        <input id="f_national_code_1" class="form-control" name="national_code" value="{{ request.form.get('national_code', cur_user.national_code or '') }}" placeholder="۱۰ رقم — در صورت تمایل" dir="ltr" inputmode="numeric"
                pattern="[0-9]{10}" maxlength="10">
         <p class="form-hint">اختیاری است و تنها برای صدور گواهینامه استفاده می‌شود. در صورت واردکردن، با الگوریتم استاندارد (سازمان ثبت احوال) اعتبارسنجی می‌شود.</p>
       </div>
       <div class="form-group">
         <label for="f_email_1">ایمیل <span class="req">*</span></label>
-        <input id="f_email_1" class="form-control" type="email" name="email" placeholder="you@example.com" dir="ltr" required>
+        <input id="f_email_1" class="form-control" type="email" name="email" value="{{ request.form.get('email', cur_user.email or '') }}" placeholder="you@example.com" dir="ltr" autocomplete="email" required>
       </div>
       {% if not cur_user.password_hash %}
       <div class="form-group">
         <label for="f_password_1">رمز عبور (برای ورودهای بعدی) <span class="req">*</span></label>
-        <input id="f_password_1" class="form-control" type="password" name="password" placeholder="حداقل ۶ کاراکتر" required>
+        <input id="f_password_1" class="form-control" type="password" name="password" placeholder="حداقل ۸ کاراکتر" minlength="8" autocomplete="new-password" required>
       </div>
       {% else %}
       <div class="form-group">
         <label for="f_password_2">رمز عبور جدید (اختیاری)</label>
-        <input id="f_password_2" class="form-control" type="password" name="password" placeholder="اگر می‌خواهید تغییر دهید">
+        <input id="f_password_2" class="form-control" type="password" name="password" placeholder="اگر می‌خواهید تغییر دهید" minlength="8" autocomplete="new-password">
       </div>
       {% endif %}
       <button class="btn btn-primary btn-lg btn-block" type="submit">💾 ثبت و تکمیل پروفایل</button>

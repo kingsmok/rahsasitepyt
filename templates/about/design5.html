@@ -1,45 +1,26 @@
 {% extends 'base.html' %}
 {% block title %}{{ seo.title or "درباره ما" }}{% endblock %}
 {% block content %}
-<section class="about-hero" style="padding:64px 0">
-  <span class="badge badge-white mb-2" style="display:inline-flex">🎓 دانشگاه آنلاین مهارت‌ها</span>
-  <h1>{{ site.site_name or 'آکادمی آنلاین' }}</h1>
-  <p>جایی که دانشجویان به مهارت می‌رسند و مهارت‌ها به شغل تبدیل می‌شوند.</p>
-</section>
-
-<section class="section">
+<section class="about-hero">
   <div class="container">
-    <div class="grid" style="grid-template-columns:1.2fr 1fr;gap:40px;align-items:start">
-      <div>
-        <span class="badge badge-primary mb-2">📖 معرفی</span>
-        <h2 style="font-size:24px;margin-bottom:12px">درباره آکادمی</h2>
-        <p class="text-2" style="font-size:14.5px;line-height:2.2;margin-bottom:14px">{{ site.about_text or '' }}</p>
-        <p class="text-2" style="font-size:14.5px;line-height:2.2">رویکرد ما «آموزش پروژه‌محور» است: شما در طول دوره، نمونه‌کارهای واقعی می‌سازید و برای بازار کار آماده می‌شوید. اساتید ما از فعالان صنعت هستند و تجربه‌های واقعی خود را با شما به اشتراک می‌گذارند.</p>
-        <div class="card mt-3" style="background:var(--bg-2);border:none;padding:22px">
-          <h4 style="font-size:15px;margin-bottom:12px">📚 برنامه‌های آکادمی</h4>
-          <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px">
-            <div style="display:flex;gap:8px;align-items:center"><span style="color:var(--primary)">✓</span> دوره‌های تخصصی</div>
-            <div style="display:flex;gap:8px;align-items:center"><span style="color:var(--primary)">✓</span> مسیرهای یادگیری</div>
-            <div style="display:flex;gap:8px;align-items:center"><span style="color:var(--primary)">✓</span> بوت‌کمپ عملی</div>
-            <div style="display:flex;gap:8px;align-items:center"><span style="color:var(--primary)">✓</span> وبینارهای رایگان</div>
-            <div style="display:flex;gap:8px;align-items:center"><span style="color:var(--primary)">✓</span> جلسات پرسش و پاسخ</div>
-            <div style="display:flex;gap:8px;align-items:center"><span style="color:var(--primary)">✓</span> مشاوره شغلی</div>
-          </div>
-        </div>
-      </div>
-      <div>
-        <div class="card" style="padding:26px;background:var(--grad-brand);color:#fff;border:none;border-radius:22px">
-          <h3 style="font-size:18px;margin-bottom:16px">آمار آکادمی در یک نگاه</h3>
-          <div style="display:flex;flex-direction:column;gap:14px">
-            <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,.1);border-radius:12px;padding:13px 18px"><span>👥 دانشجویان</span><b style="font-size:20px">{{ fa(total_students) }}+</b></div>
-            <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,.1);border-radius:12px;padding:13px 18px"><span>📚 دوره‌ها</span><b style="font-size:20px">{{ fa(total_courses) }}+</b></div>
-            <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,.1);border-radius:12px;padding:13px 18px"><span>👨‍🏫 اساتید</span><b style="font-size:20px">{{ fa(teachers) }}+</b></div>
-            <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,.1);border-radius:12px;padding:13px 18px"><span>⏱ ساعت آموزش</span><b style="font-size:20px">{{ fa(total_hours) }}+</b></div>
-          </div>
-        </div>
-        <a class="btn btn-primary btn-lg btn-block mt-3" href="{{ url_for('site.courses') }}">مشاهده همه دوره‌ها ←</a>
-      </div>
+    <span class="badge badge-white">معرفی مجموعه آموزشی</span>
+    <h1 style="margin-top:12px">{{ site.site_name or 'آکادمی آنلاین' }}</h1>
+    <p>{{ site.site_desc or '' }}</p>
+  </div>
+</section>
+<section class="section">
+  <div class="container" style="max-width:960px">
+    <div class="card" style="padding:34px;margin-bottom:24px">
+      <h2 style="font-size:21px;margin-bottom:12px">درباره مجموعه</h2>
+      <p class="text-2" style="font-size:14.5px;line-height:2.2;white-space:pre-line">{{ site.about_text or 'مدیر سایت هنوز متن معرفی را تکمیل نکرده است.' }}</p>
     </div>
+    <div class="grid" style="grid-template-columns:repeat(4,1fr);gap:14px">
+      <div class="card about-number"><b>{{ fa(total_students) }}</b><small>دانشجوی فعال</small></div>
+      <div class="card about-number"><b>{{ fa(total_courses) }}</b><small>دوره منتشرشده</small></div>
+      <div class="card about-number"><b>{{ fa(teachers) }}</b><small>مدرس فعال</small></div>
+      <div class="card about-number"><b>{{ fa(total_reviews) }}</b><small>نظر تاییدشده</small></div>
+    </div>
+    <div class="text-center mt-3"><a class="btn btn-primary" href="{{ url_for('site.contact') }}">تماس با مجموعه</a></div>
   </div>
 </section>
 {% endblock %}

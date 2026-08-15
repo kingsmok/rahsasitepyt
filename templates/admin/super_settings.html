@@ -160,6 +160,8 @@
   <h3>📉 صفحات ۴۰۴ ثبت‌شده <span class="ss-count">{{ fa(notfound|length) }} مورد</span></h3>
   <p class="ss-hint">آدرس‌های شکسته — با «تبدیل به ریدایرکت» آن‌ها را به صفحات درست هدایت کنید.</p>
   {% if notfound %}
+    <input type="hidden" id="nf-path" name="path" value="">
+    <input type="hidden" id="nf-target" name="target" value="">
     {% for nf in notfound %}
     <div class="ss-notfound">
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
@@ -167,12 +169,10 @@
         <span class="ss-count">👁 {{ fa(nf.count or 1) }} بار</span>
       </div>
       <div style="display:flex;gap:6px;align-items:center">
-        <input name="target" placeholder="مسیر درست..." style="border:1.5px solid var(--border);border-radius:9px;padding:7px 10px;font-size:12px;width:180px" form="nf-form-{{ loop.index }}">
-        <button class="btn btn-sm btn-primary" name="action" value="notfound_to_redirect" form="nf-form-{{ loop.index }}">⇄ تبدیل</button>
-        <input type="hidden" name="path" value="{{ nf.path }}" form="nf-form-{{ loop.index }}">
+        <input id="nf-target-{{ loop.index }}" placeholder="مسیر درست..." style="border:1.5px solid var(--border);border-radius:9px;padding:7px 10px;font-size:12px;width:180px">
+        <button class="btn btn-sm btn-primary" name="action" value="notfound_to_redirect" onclick="prepareNotfound({{ nf.path|tojson }}, 'nf-target-{{ loop.index }}')">⇄ تبدیل</button>
       </div>
     </div>
-    <form id="nf-form-{{ loop.index }}" method="post" style="display:none"><input type="hidden" name="_csrf_token" value="{{ csrf_token }}"></form>
     {% endfor %}
     <div style="margin-top:12px;text-align:left">
       <button class="btn btn-ghost btn-sm" name="action" value="notfound_clear" onclick="return confirm('همه لاگ ۴۰۴ پاک شود؟')">🧹 پاک‌سازی لاگ</button>
@@ -190,45 +190,57 @@
   <div class="ss-grid">
     <div class="ss-field"><label>واحد پول</label><input name="currency" value="{{ vals.get('currency','تومان') }}"></div>
     <div class="ss-field"><label>پیش‌شماره فاکتور</label><input name="invoice_prefix" value="{{ vals.get('invoice_prefix','AC') }}"></div>
-    <div class="ss-field"><label>حالت آزمایشی درگاه‌ها</label>
-      <select name="sandbox_mode"><option value="1" {{ 'selected' if vals.get('sandbox_mode')=='1' }}>فعال (آزمایشی)</option><option value="0" {{ 'selected' if vals.get('sandbox_mode')=='0' }}>غیرفعال (واقعی)</option></select></div>
+    <div class="ss-field"><label>وضعیت پرداخت</label><div class="setting-status setting-status--safe">✓ فقط درگاه‌های واقعی و کارت‌به‌کارت فعال‌اند</div><p class="ss-hint">پرداخت و صفحهٔ بانکی آزمایشی در نسخه نهایی غیرفعال است.</p></div>
     <div class="ss-field"><label>واترمارک ویدیو</label>
       <select name="watermark_enabled"><option value="1" {{ 'selected' if vals.get('watermark_enabled')=='1' }}>فعال</option><option value="0" {{ 'selected' if vals.get('watermark_enabled')=='0' }}>غیرفعال</option></select></div>
+    <div class="ss-field"><label>مهلت بازگشت وجه (روز)</label>
+      <input type="number" name="refund_days" min="0" max="90" value="{{ vals.get('refund_days','0') }}">
+      <p class="ss-hint">۰ یعنی ضمانت بازگشت وجه ارائه نمی‌شود. فقط سیاست واقعی مجموعه را وارد کنید.</p></div>
   </div>
+</div>
+
+<div class="ss-card">
+  <h3>💳 کارت‌به‌کارت</h3>
+  <div class="ss-grid">
+    <div class="ss-field"><label>شماره کارت</label><input name="c2c_card" value="{{ vals.get('c2c_card','') }}" dir="ltr" inputmode="numeric" placeholder="فقط شماره کارت واقعی مجموعه"></div>
+    <div class="ss-field"><label>نام صاحب کارت</label><input name="c2c_name" value="{{ vals.get('c2c_name','') }}"></div>
+  </div>
+  <p class="ss-hint">تا وقتی شماره کارت ثبت نشده باشد، این روش به خریدار نمایش داده نمی‌شود.</p>
 </div>
 
 <div class="ss-card">
   <h3>🏦 درگاه‌های آنلاین</h3>
   <div class="ss-grid">
     <div class="ss-field"><label>زرین‌پال — Merchant</label><input name="zarinpal_merchant" value="{{ vals.get('zarinpal_merchant','') }}" placeholder="xxxx-xxxx-xxxx-xxxx"></div>
-    <div class="ss-field"><label>آیدی‌پی — API Key</label><input name="idpay_api_key" value="{{ vals.get('idpay_api_key','') }}"></div>
+    <div class="ss-field"><label>آیدی‌پی — API Key</label><input name="idpay_api_key" value="" placeholder="خالی = بدون تغییر"></div>
     <div class="ss-field"><label>زیبال — Merchant</label><input name="zibal_merchant" value="{{ vals.get('zibal_merchant','') }}"></div>
-    <div class="ss-field"><label>ملی (به‌پرداخت) — Terminal</label><input name="melli_terminal" value="{{ vals.get('melli_terminal','') }}"></div>
-    <div class="ss-field"><label>ملی — Username</label><input name="melli_username" value="{{ vals.get('melli_username','') }}"></div>
-    <div class="ss-field"><label>ملی — Password</label><input type="password" name="melli_password" value="{{ vals.get('melli_password','') }}"></div>
-    <div class="ss-field"><label>سپه — Terminal</label><input name="sepah_terminal" value="{{ vals.get('sepah_terminal','') }}"></div>
-    <div class="ss-field"><label>سپه — Merchant</label><input name="sepah_merchant" value="{{ vals.get('sepah_merchant','') }}"></div>
-    <div class="ss-field"><label>سپه — Username</label><input name="sepah_username" value="{{ vals.get('sepah_username','') }}"></div>
-    <div class="ss-field"><label>سپه — Password</label><input type="password" name="sepah_password" value="{{ vals.get('sepah_password','') }}"></div>
-    <div class="ss-field"><label>سداد — Merchant</label><input name="sadad_merchant" value="{{ vals.get('sadad_merchant','') }}"></div>
+    <div class="ss-field"><label>به‌پرداخت ملت — Terminal</label><input name="melli_terminal" value="{{ vals.get('melli_terminal','') }}"></div>
+    <div class="ss-field"><label>به‌پرداخت ملت — Username</label><input name="melli_username" value="{{ vals.get('melli_username','') }}"></div>
+    <div class="ss-field"><label>به‌پرداخت ملت — Password</label><input type="password" name="melli_password" value="" placeholder="خالی = بدون تغییر"></div>
+    <div class="ss-field"><label>پارسیان — Login Account / PIN</label><input type="password" name="parsian_login_account" value="" placeholder="خالی = بدون تغییر"></div>
+    <div class="ss-field"><label>سامان SEP — Terminal</label><input name="sepah_terminal" value="{{ vals.get('sepah_terminal','') }}"><p class="ss-hint">برای پذیرندگی متصل به حساب بانک سپه نیز طبق قرارداد PSP استفاده می‌شود.</p></div>
+    <div class="ss-field"><label>سداد بانک ملی — Merchant</label><input name="sadad_merchant" value="{{ vals.get('sadad_merchant','') }}"></div>
     <div class="ss-field"><label>سداد — Terminal</label><input name="sadad_terminal" value="{{ vals.get('sadad_terminal','') }}"></div>
-    <div class="ss-field"><label>سداد — Key</label><input name="sadad_key" value="{{ vals.get('sadad_key','') }}"></div>
+    <div class="ss-field"><label>سداد — Key</label><input name="sadad_key" value="" placeholder="خالی = بدون تغییر"></div>
   </div>
 </div>
 
 <div class="ss-card">
   <h3>💳 اقساطی (BNPL) و Cashback</h3>
   <div class="ss-grid">
+    <div class="ss-field"><label>پرداخت اقساطی</label><select name="bnpl_enabled"><option value="0" {{ 'selected' if vals.get('bnpl_enabled','0')=='0' }}>غیرفعال</option><option value="1" {{ 'selected' if vals.get('bnpl_enabled')=='1' }}>فعال پس از تکمیل سرویس</option></select><p class="ss-hint">بدون تکمیل حداقل یک سرویس اقساطی، گزینه‌ای به کاربر نشان داده نمی‌شود.</p></div>
     <div class="ss-field"><label>اسنپ‌پی — Client ID</label><input name="snapp_client_id" value="{{ vals.get('snapp_client_id','') }}"></div>
-    <div class="ss-field"><label>اسنپ‌پی — Secret</label><input type="password" name="snapp_client_secret" value="{{ vals.get('snapp_client_secret','') }}"></div>
+    <div class="ss-field"><label>اسنپ‌پی — Secret</label><input type="password" name="snapp_client_secret" value="" placeholder="خالی = بدون تغییر"></div>
     <div class="ss-field"><label>اسنپ‌پی — Merchant</label><input name="snapp_merchant" value="{{ vals.get('snapp_merchant','') }}"></div>
-    <div class="ss-field"><label>دیجی‌پی — API Key</label><input name="digipay_api_key" value="{{ vals.get('digipay_api_key','') }}"></div>
+    <div class="ss-field"><label>دیجی‌پی — API Key</label><input name="digipay_api_key" value="" placeholder="خالی = بدون تغییر"></div>
     <div class="ss-field"><label>دیجی‌پی — Merchant</label><input name="digipay_merchant" value="{{ vals.get('digipay_merchant','') }}"></div>
     <div class="ss-field"><label>ترب — API URL</label><input name="tarb_api_url" value="{{ vals.get('tarb_api_url','') }}"></div>
-    <div class="ss-field"><label>ترب — API Key</label><input name="tarb_api_key" value="{{ vals.get('tarb_api_key','') }}"></div>
+    <div class="ss-field"><label>ترب — API Key</label><input name="tarb_api_key" value="" placeholder="خالی = بدون تغییر"></div>
     <div class="ss-field"><label>ترب — Merchant</label><input name="tarb_merchant" value="{{ vals.get('tarb_merchant','') }}"></div>
     <div class="ss-field"><label>حداکثر تعداد قسط</label><input type="number" name="bnpl_max_installments" value="{{ vals.get('bnpl_max_installments','4') }}"></div>
-    <div class="ss-field"><label>درصد Cashback پس از خرید</label><input type="number" name="cashback_percent" value="{{ vals.get('cashback_percent','2') }}"> <p class="ss-hint">مثلا ۲ = ۲٪ از مبلغ خرید به کیف پول برمی‌گردد</p></div>
+    <div class="ss-field"><label>درصد بازگشت به کیف پول</label><input type="number" min="0" max="50" name="cashback_percent" value="{{ vals.get('cashback_percent','0') }}"><p class="ss-hint">۰ یعنی غیرفعال؛ فقط درصد واقعی سیاست فروش را وارد کنید.</p></div>
+    <div class="ss-field"><label>درصد تخفیف وفاداری</label><input type="number" min="0" max="50" name="loyalty_discount_percent" value="{{ vals.get('loyalty_discount_percent','0') }}"><p class="ss-hint">برای کاربری که قبلاً خرید داشته است؛ ۰ یعنی غیرفعال.</p></div>
+    <div class="ss-field"><label>درصد پاداش معرفی</label><input type="number" min="0" max="50" name="referral_bonus_percent" value="{{ vals.get('referral_bonus_percent','0') }}"><p class="ss-hint">فقط اولین خرید کاربر معرفی‌شده؛ ۰ یعنی غیرفعال.</p></div>
   </div>
 </div>
 
@@ -248,18 +260,22 @@
   <div class="ss-grid">
     <div class="ss-field"><label>ارائه‌دهنده</label>
       <select name="sms_provider">
-        <option value="demo" {{ 'selected' if vals.get('sms_provider','demo')=='demo' }}>دمو (تست)</option>
+        <option value="disabled" {{ 'selected' if vals.get('sms_provider','disabled') in ('', 'disabled', 'demo') }}>غیرفعال</option>
         <option value="kavenegar" {{ 'selected' if vals.get('sms_provider')=='kavenegar' }}>کاوه‌نگار</option>
-        <option value="smsir" {{ 'selected' if vals.get('sms_provider')=='smsir' }}>SMS.ir</option>
+        <option value="mellipayamak" {{ 'selected' if vals.get('sms_provider')=='mellipayamak' }}>ملی‌پیامک</option>
+        <option value="farazsms" {{ 'selected' if vals.get('sms_provider')=='farazsms' }}>فراز اس‌ام‌اس</option>
       </select></div>
-    <div class="ss-field"><label>شماره تست (در حالت دمو)</label><input name="sms_test_phone" value="{{ vals.get('sms_test_phone','') }}"></div>
-    <div class="ss-field"><label>کاوه‌نگار — API Key</label><input name="sms_kavenegar_key" value="{{ vals.get('sms_kavenegar_key','') }}"></div>
+    <div class="ss-field"><label>شماره دریافت‌کننده تست</label><input name="sms_test_phone" value="{{ vals.get('sms_test_phone','') }}" placeholder="0912..."></div>
+    <div class="ss-field"><label>کاوه‌نگار — API Key</label><input name="sms_kavenegar_key" value="" placeholder="خالی = بدون تغییر"></div>
     <div class="ss-field"><label>کاوه‌نگار — خط ارسال</label><input name="sms_kavenegar_sender" value="{{ vals.get('sms_kavenegar_sender','') }}"></div>
     <div class="ss-field"><label>کاوه‌نگار — نام الگو</label><input name="sms_kavenegar_template" value="{{ vals.get('sms_kavenegar_template','') }}"></div>
-    <div class="ss-field"><label>SMS.ir — API Key</label><input name="sms_ir_api_key" value="{{ vals.get('sms_ir_api_key','') }}"></div>
-    <div class="ss-field"><label>SMS.ir — خط ارسال</label><input name="sms_ir_line" value="{{ vals.get('sms_ir_line','') }}"></div>
+    <div class="ss-field"><label>ملی‌پیامک — نام کاربری</label><input name="sms_melli_username" value="{{ vals.get('sms_melli_username','') }}"></div>
+    <div class="ss-field"><label>ملی‌پیامک — رمز عبور</label><input type="password" name="sms_melli_password" value="" placeholder="خالی = بدون تغییر"></div>
+    <div class="ss-field"><label>ملی‌پیامک — خط ارسال</label><input name="sms_melli_sender" value="{{ vals.get('sms_melli_sender','') }}"></div>
+    <div class="ss-field"><label>فراز — توکن</label><input name="sms_faraz_token" value="" placeholder="خالی = بدون تغییر"></div>
+    <div class="ss-field"><label>فراز — خط ارسال</label><input name="sms_faraz_sender" value="{{ vals.get('sms_faraz_sender','') }}"></div>
   </div>
-  <p class="ss-hint">💡 در حالت دمو، کد OTP در صفحه نمایش داده می‌شود — برای ارسال واقعی، کاوه‌نگار یا SMS.ir را پیکربندی کنید.</p>
+  <p class="ss-hint">کدهای ورود فقط از سرویس واقعی ارسال می‌شوند و هرگز روی صفحه یا لاگ نمایش داده نمی‌شوند.</p>
 </div>
 
 <div class="ss-card">
@@ -268,10 +284,15 @@
     <div class="ss-field"><label>SMTP Host</label><input name="smtp_host" value="{{ vals.get('smtp_host','') }}" placeholder="mail.academy.ir"></div>
     <div class="ss-field"><label>SMTP Port</label><input name="smtp_port" value="{{ vals.get('smtp_port','587') }}"></div>
     <div class="ss-field"><label>Username</label><input name="smtp_user" value="{{ vals.get('smtp_user','') }}"></div>
-    <div class="ss-field"><label>Password</label><input type="password" name="smtp_pass" value="{{ vals.get('smtp_pass','') }}"></div>
+    <div class="ss-field"><label>Password</label><input type="password" name="smtp_pass" value="" placeholder="خالی = بدون تغییر"></div>
     <div class="ss-field"><label>From (فرستنده)</label><input name="smtp_from" value="{{ vals.get('smtp_from','') }}"></div>
     <div class="ss-field"><label>TLS</label>
       <select name="smtp_tls"><option value="1" {{ 'selected' if vals.get('smtp_tls')!='0' }}>فعال</option><option value="0" {{ 'selected' if vals.get('smtp_tls')=='0' }}>غیرفعال</option></select></div>
+  </div>
+  <div style="display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin-top:14px">
+    <div class="ss-field" style="min-width:260px"><label>گیرنده ایمیل تست</label><input type="email" name="smtp_test_to" placeholder="خالی = ایمیل مدیر" dir="ltr"></div>
+    <button class="btn btn-ghost" type="submit" formaction="{{ url_for('admin.email_test') }}">ارسال ایمیل تست واقعی</button>
+    <a class="btn btn-ghost" href="{{ url_for('admin.sms_settings') }}">تست پیامک واقعی</a>
   </div>
 </div>
 {% endif %}
@@ -282,8 +303,8 @@
   <h3>🏪 مارکت‌پلیس‌ها</h3>
   <div class="ss-grid">
     <div class="ss-field"><label>دیجی‌کالا — API Base</label><input name="dk_api_base" value="{{ vals.get('dk_api_base','https://seller.digikala.com/api/v1') }}"></div>
-    <div class="ss-field"><label>دیجی‌کالا — Access Token</label><input type="password" name="dk_access_token" value="{{ vals.get('dk_access_token','') }}"></div>
-    <div class="ss-field"><label>باسلام — Webhook Secret</label><input type="password" name="basalam_webhook_secret" value="{{ vals.get('basalam_webhook_secret','') }}"></div>
+    <div class="ss-field"><label>دیجی‌کالا — Access Token</label><input type="password" name="dk_access_token" value="" placeholder="خالی = بدون تغییر"></div>
+    <div class="ss-field"><label>باسلام — Webhook Secret</label><input type="password" name="basalam_webhook_secret" value="" placeholder="خالی = بدون تغییر"></div>
     <div class="ss-field"><label>ایمالز — Seller ID</label><input name="emalls_seller_id" value="{{ vals.get('emalls_seller_id','') }}"></div>
     <div class="ss-field"><label>قیمت‌های رقابتی (JSON)</label><textarea rows="3" name="competitive_prices" placeholder='{"1": {"ترب": 850000, "دیجی‌کالا": 900000}}'>{{ vals.get('competitive_prices','') }}</textarea>
       <p class="ss-hint">برای نمودار مقایسه قیمت ویجت‌ها — کلید = آی‌دی دوره/محصول</p></div>
@@ -308,7 +329,9 @@ SECRET_KEY=...        ← کلید امنیتی سشن
 <div class="ss-card">
   <h3>🗺 نقشه و ارسال</h3>
   <div class="ss-grid">
-    <div class="ss-field"><label>Map.ir — API Key</label><input name="mapir_api_key" value="{{ vals.get('mapir_api_key','') }}"></div>
+    <div class="ss-field"><label>Map.ir — API Key</label><input name="mapir_api_key" value="" placeholder="خالی = بدون تغییر"></div>
+    <div class="ss-field"><label>هزینه ثابت ارسال (تومان)</label><input type="number" min="0" name="shipping_flat_rate" value="{{ vals.get('shipping_flat_rate','0') }}"><p class="ss-hint">۰ یعنی هزینه پس از بررسی سفارش اعلام می‌شود.</p></div>
+    <div class="ss-field"><label>توضیح زمان و روش ارسال</label><textarea name="shipping_note" rows="2">{{ vals.get('shipping_note','') }}</textarea></div>
     <div class="ss-field"><label>آدرس پایه سایت (Base URL)</label><input name="base_url" value="{{ vals.get('base_url','') }}" placeholder="https://academy.example.com"></div>
   </div>
 </div>
@@ -325,17 +348,27 @@ SECRET_KEY=...        ← کلید امنیتی سشن
     <div class="ss-field"><label>ثبت‌نام کاربران</label>
       <select name="allow_register"><option value="1" {{ 'selected' if vals.get('allow_register','1')=='1' }}>باز</option><option value="0" {{ 'selected' if vals.get('allow_register')=='0' }}>بسته</option></select></div>
     <div class="ss-field"><label>ورود با شماره تماس</label>
-      <select name="allow_phone_login"><option value="1" {{ 'selected' if vals.get('allow_phone_login','1')=='1' }}>فعال</option><option value="0" {{ 'selected' if vals.get('allow_phone_login')=='0' }}>غیرفعال</option></select></div>
+      <select name="allow_phone_login"><option value="1" {{ 'selected' if vals.get('allow_phone_login','1')=='1' }}>فعال</option><option value="0" {{ 'selected' if vals.get('allow_phone_login')=='0' }}>غیرفعال</option></select>
+      <p class="ss-hint">فقط پس از پیکربندی موفق پیامک در صفحه ورود نمایش داده می‌شود.</p></div>
+    <div class="ss-field"><label>تایید دومرحله‌ای مدیران</label>
+      <select name="admin_2fa_enabled"><option value="1" {{ 'selected' if vals.get('admin_2fa_enabled')=='1' }}>فعال</option><option value="0" {{ 'selected' if vals.get('admin_2fa_enabled','0')=='0' }}>غیرفعال</option></select>
+      <p class="ss-hint">قبل از فعال‌سازی، شماره مدیر و ارسال پیامک واقعی را آزمایش کنید.</p></div>
+    <div class="ss-field"><label>آزمون تمرینی/کنکور</label>
+      <select name="exam_enabled"><option value="0" {{ 'selected' if vals.get('exam_enabled','0')=='0' }}>غیرفعال</option><option value="1" {{ 'selected' if vals.get('exam_enabled')=='1' }}>فعال</option></select>
+      <p class="ss-hint">برای این مجموعه غیرفعال بماند؛ لینک‌ها و مسیرهای آزمون پنهان می‌شوند.</p></div>
+    <div class="ss-field"><label>گردونه جایزه</label>
+      <select name="spin_enabled"><option value="0" {{ 'selected' if vals.get('spin_enabled','0')=='0' }}>غیرفعال</option><option value="1" {{ 'selected' if vals.get('spin_enabled')=='1' }}>فعال با جوایز مالی فعلی</option></select>
+      <p class="ss-hint">به‌دلیل ایجاد اعتبار و کوپن واقعی، پیش‌فرض غیرفعال است.</p></div>
   </div>
 </div>
 
 <div class="ss-card">
   <h3>🧰 وضعیت سیستم</h3>
   <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px">
-    <div style="background:var(--bg-2);border-radius:12px;padding:14px 16px"><b style="color:var(--success)">●</b> دیتابیس: <b>{{ 'WAL' if True else '—' }}</b></div>
-    <div style="background:var(--bg-2);border-radius:12px;padding:14px 16px"><b style="color:var(--success)">●</b> ایندکس‌ها: <b>۳۳+</b></div>
+    <div style="background:var(--bg-2);border-radius:12px;padding:14px 16px"><b style="color:var(--success)">●</b> دیتابیس: <b>{{ db_engine_name|upper }}</b></div>
+    <div style="background:var(--bg-2);border-radius:12px;padding:14px 16px"><b style="color:var(--success)">●</b> ایندکس‌های ثبت‌شده: <b>{{ fa(index_count) }}</b></div>
     <div style="background:var(--bg-2);border-radius:12px;padding:14px 16px"><b style="color:var(--success)">●</b> CSRF: <b>فعال</b></div>
-    <div style="background:var(--bg-2);border-radius:12px;padding:14px 16px"><b style="color:var(--success)">●</b> Rate Limit: <b>فعال</b></div>
+    <div style="background:var(--bg-2);border-radius:12px;padding:14px 16px"><b style="color:var(--success)">●</b> محدودیت درخواست: <b>فعال</b></div>
   </div>
 </div>
 
@@ -369,6 +402,10 @@ SECRET_KEY=...        ← کلید امنیتی سشن
 </form>
 
 <script>
+function prepareNotfound(path, targetId){
+  document.getElementById('nf-path').value = path;
+  document.getElementById('nf-target').value = document.getElementById(targetId).value;
+}
 function fillEdit(id, source, target, code){
   document.getElementById('er-id').value = id;
   document.getElementById('er-source').value = source;

@@ -2,37 +2,25 @@
 {% block title %}{{ seo.title or "درباره ما" }}{% endblock %}
 {% block content %}
 <section class="section" style="padding-top:56px">
-  <div class="container" style="max-width:1100px">
-    <div class="grid" style="grid-template-columns:1fr 1fr;gap:48px;align-items:center">
-      <div>
-        <span class="badge badge-accent mb-2">🏛 درباره آکادمی</span>
-        <h1 style="font-size:clamp(26px,3.6vw,36px);font-weight:900;margin-bottom:16px">یادگیری واقعی،<br>با مدرسان واقعی</h1>
-        <p class="text-2" style="font-size:14.5px;line-height:2.2;margin-bottom:16px">{{ site.about_text or '' }}</p>
-        <div class="grid" style="grid-template-columns:1fr 1fr;gap:14px;margin-top:22px">
-          <div class="card" style="padding:18px;text-align:center;background:var(--bg-2);border:none"><div style="font-size:26px;font-weight:900;color:var(--primary)">{{ fa(total_students) }}+</div><small class="text-3">دانشجوی فعال</small></div>
-          <div class="card" style="padding:18px;text-align:center;background:var(--bg-2);border:none"><div style="font-size:26px;font-weight:900;color:var(--primary)">{{ fa(total_courses) }}+</div><small class="text-3">دوره تخصصی</small></div>
-          <div class="card" style="padding:18px;text-align:center;background:var(--bg-2);border:none"><div style="font-size:26px;font-weight:900;color:var(--primary)">{{ fa(teachers) }}+</div><small class="text-3">مدرس مجرب</small></div>
-          <div class="card" style="padding:18px;text-align:center;background:var(--bg-2);border:none"><div style="font-size:26px;font-weight:900;color:var(--primary)">{{ fa(total_satisfaction) }}٪</div><small class="text-3">رضایت کاربران</small></div>
-        </div>
+  <div class="container" style="max-width:1080px">
+    <div class="grid" style="grid-template-columns:1fr 1fr;gap:38px;align-items:stretch">
+      <div class="card" style="padding:34px;background:var(--grad-brand);color:#fff;border:none">
+        <span class="badge badge-white">معرفی</span>
+        <h1 style="font-size:30px;margin:16px 0 10px">{{ site.site_name or 'آکادمی آنلاین' }}</h1>
+        <p style="opacity:.88;line-height:2.2;white-space:pre-line">{{ site.about_text or 'متن معرفی مجموعه هنوز ثبت نشده است.' }}</p>
       </div>
-      <div>
-        <div style="background:var(--grad-brand);border-radius:26px;padding:36px;color:#fff;box-shadow:var(--shadow-lg)">
-          <div style="font-size:40px">💬</div>
-          <h3 style="font-size:19px;margin:14px 0 10px">«آموزش باکیفیت، حق همه است»</h3>
-          <p style="opacity:.9;font-size:14px;line-height:2.1">این شعار ماست؛ از روز اول تا امروز. ما به جای وعده‌های پوچ، مسیر واقعی یادگیری می‌سازیم — قدم به قدم، پروژه به پروژه.</p>
-          <div style="margin-top:18px;padding-top:16px;border-top:1px solid rgba(255,255,255,.25)">
-            <strong>تیم آکادمی آنلاین</strong>
-            <div style="font-size:12px;opacity:.8;margin-top:4px">بنیان‌گذاران و مدرسان</div>
-          </div>
-        </div>
-        <div style="margin-top:20px;background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px">
-          <h4 style="font-size:15px;margin-bottom:12px">📌 چرا آکادمی؟</h4>
-          <ul class="learn-list">
-            <li>دوره‌های به‌روز و متناسب با بازار کار ایران</li>
-            <li>مدرسان فعال در صنعت، نه فقط مدرس تئوری</li>
-            <li>دسترسی مادام‌العمر به محتوا و آپدیت‌ها</li>
-            <li>گواهینامه معتبر با کد رهگیری</li>
-          </ul>
+      <div class="card" style="padding:30px">
+        <h2 style="font-size:19px;margin-bottom:16px">اطلاعات سامانه</h2>
+        <ul class="learn-list">
+          <li>{{ fa(total_courses) }} دوره منتشرشده</li>
+          <li>{{ fa(total_lessons) }} جلسه ثبت‌شده</li>
+          <li>{{ fa(teachers) }} مدرس فعال</li>
+          <li>گواهی پایان دوره با کد رهگیری قابل استعلام</li>
+          <li>ثبت و پیگیری درخواست‌های پشتیبانی در حساب کاربری</li>
+        </ul>
+        <div class="flex gap-2 mt-3 wrap">
+          <a class="btn btn-primary" href="{{ url_for('site.courses') }}">دوره‌ها</a>
+          <a class="btn btn-ghost" href="{{ url_for('site.teachers') }}">مدرسان</a>
         </div>
       </div>
     </div>

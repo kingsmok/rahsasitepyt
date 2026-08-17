@@ -430,6 +430,7 @@ def robots():
         f"Disallow: /auth\n"
         f"Disallow: /api\n"
         f"Disallow: /install\n"
+        f"Disallow: /license\n"
         f"Disallow: /wallet\n"
         f"Disallow: /uploads\n"
         f"Disallow: /maintenance\nDisallow: /health\nDisallow: /static/uploads\n"

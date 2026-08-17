@@ -178,8 +178,13 @@ def test_installed_site_locks_repair_and_attach_without_owner(client, monkeypatc
     assert status.get_json() == {'installed': True, 'install_status': 'locked'}
 
 
-def test_install_detect_and_inspect_endpoints(client):
+def test_install_detect_and_inspect_endpoints(client, monkeypatch):
     """مسیرهای تشخیص/بررسی نباید به‌خاطر import جاافتاده ۵۰۰ بدهند."""
+    # وضعیت نصب این سناریو باید از artifact اجرای قبلی مستقل باشد.
+    import installer as _inst
+    from blueprints import install as _bp_install
+    monkeypatch.setattr(_inst, 'is_installed', lambda: False)
+    monkeypatch.setattr(_bp_install, 'is_installed', lambda: False)
     r = client.get('/install/detect')
     assert r.status_code == 200
     data = r.get_json()

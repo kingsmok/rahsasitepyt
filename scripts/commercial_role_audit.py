@@ -41,7 +41,7 @@ app.config.update(TESTING=True, INSTALL_GUARD=False)
 PUBLIC_STARTS = [
     '/', '/courses', '/products', '/teachers', '/blog', '/about', '/contact',
     '/faq', '/learning-paths', '/consultation', '/bundles', '/success-stories',
-    '/verify-certificate', '/become-teacher', '/terms', '/privacy',
+    '/verify-certificate', '/become-teacher', '/terms', '/privacy', '/license',
 ]
 ROLE_STARTS = {
     'guest': PUBLIC_STARTS + ['/auth/login', '/auth/register', '/cart'],

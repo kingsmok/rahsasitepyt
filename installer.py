@@ -295,7 +295,9 @@ def write_env_file(db_url, secret_key):
     with open(env_path, 'w', encoding='utf-8') as f:
         f.write('# ⚙️ تنظیمات محیطی — ساخته‌شده توسط نصب‌کننده آکادمی\n')
         for k in ('SECRET_KEY', 'FLASK_ENV', 'APP_ENV', 'ENABLE_DEMO_FEATURES',
-                  'INSTALL_REPAIR_TOKEN', 'DATABASE_URL', 'LOG_DIR', 'REDIS_URL',
+                  'INSTALL_REPAIR_TOKEN', 'LICENSE_ENFORCEMENT',
+                  'LICENSE_PUBLIC_KEY_FILE', 'LICENSE_PUBLIC_KEY', 'LICENSE_FILE',
+                  'DATABASE_URL', 'LOG_DIR', 'REDIS_URL',
                   'CLARITY_ID', 'CRISP_WEBSITE_ID',
                   'GROQ_API_KEY', 'BING_API_KEY', 'BING_KEY_LOCATION'):
             if k in lines and lines[k]:

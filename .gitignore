@@ -14,6 +14,14 @@ instance/.install_progress.json
 instance/.update_progress.json
 instance/update_history.json
 instance/.update_commit
+instance/license.json
+instance/vendor_license_private.pem
+license_private_key.pem
+*.license-private.pem
+# کلید عمومی مخصوص هر فروشنده هنگام build تزریق می‌شود، نه در سورس عمومی
+license_public_key.pem
+releases/
+*.commercial.zip
 
 # ── لاگ‌ها ──
 logs/

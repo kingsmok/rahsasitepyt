@@ -16,6 +16,19 @@
 - مدیر می‌تواند سایت را بدون تغییر یا حذف داده دوباره از دسترس عمومی خارج کند.
 - نصب‌های قدیمی که کلید `site_active` ندارند، برای جلوگیری از قطعی ناگهانی فعال باقی می‌مانند.
 
+## لایسنس فروش نرم‌افزار
+
+- توکن لایسنس با Ed25519 امضا می‌شود و بدون کلید خصوصی فروشنده قابل جعل نیست.
+- لایسنس می‌تواند به یک یا چند دامنه، wildcard زیردامنه، پلن، قابلیت و تاریخ انقضا متصل شود.
+- کلید خصوصی فقط روی سیستم فروشنده نگهداری و کلید عمومی همراه بسته مشتری توزیع می‌شود.
+- فعال‌سازی در `/license` انجام و فایل token با دسترسی محدود در `instance/license.json` ذخیره می‌شود.
+- API در حالت بدون لایسنس پاسخ استاندارد HTTP 402 می‌دهد و صفحات وب به فعال‌سازی هدایت می‌شوند.
+- callback پرداخت شروع‌شده از قفل لایسنس مستثناست تا تراکنش مشتری از بین نرود.
+- نبود کلید عمومی، نصب‌های قدیمی را قفل نمی‌کند؛ `LICENSE_ENFORCEMENT=1` بدون public key به‌صورت fail-closed متوقف می‌شود.
+- ZIP تجاری دارای `COMMERCIAL-BUILD.json` همیشه enforcement را فعال، fingerprint کلید عمومی را pin و در صورت حذف/تعویض کلید fail-closed عمل می‌کند.
+- private key فروشنده می‌تواند با رمزی که فقط از متغیر محیطی خوانده می‌شود رمزگذاری شود؛ رمز در آرگومان command line قرار نمی‌گیرد.
+- ابزار امن فروشنده: `scripts/license_tool.py` برای keygen، صدور و verify؛ سازنده ZIP: `scripts/build_commercial_package.py`. ضعف ذاتی توزیع سورس نیز صادقانه باقی است: فرد دارای دسترسی کامل به کد می‌تواند کنترل محلی را patch کند و برای سخت‌گیری بیشتر باید اعتبارسنجی سروری/ماژول کامپایل‌شده جداگانه ارائه شود.
+
 ## امنیت نصب و مدیر
 
 - مسیر تعمیر نصب و تعویض دیتابیس پس از نصب برای درخواست ناشناس قفل است.
@@ -86,12 +99,15 @@
 ## نتیجه تست
 
 ```text
-220 passed
-Commercial role crawl: 1,173 pages + 5,715 static references, 0 issues
+230 passed in 132.23s
+Commercial role crawl: 1,177 pages + 5,715 static references, 0 issues
+Commercial ZIP smoke: activate + HTTP 402/200 + health + manifest hashes, OK
+Commercial ZIP audit: 841 entries, no private key/.env/instance data
 Live public crawl: 47 routes, 0 errors
 Python compileall: OK
-JavaScript syntax: OK
-Jinja syntax (202 templates): OK
+Python 3.8 syntax parse (88 files): OK
+JavaScript syntax (7 files): OK
+Jinja syntax (203 templates): OK
 pip check: No broken requirements found
 Git diff check: OK
 ```

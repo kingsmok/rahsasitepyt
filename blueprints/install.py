@@ -41,9 +41,21 @@ def _install_json_error(e):
                        ' — لاگ سرور را ببینید.'), 500
 
 
+def _post_install_url():
+    try:
+        from licensing import get_license_manager
+        state = get_license_manager().status(request.host)
+        if state.enforced and not state.valid:
+            return url_for('license.activate')
+    except Exception:
+        pass
+    return '/'
+
+
 def _already_installed_json():
     """پاسخ JSON وقتی نصب قبلاً انجام شده — ضد دوبار کلیک و درخواست تکراری"""
-    return jsonify(ok=True, done=True, msg='نصب قبلاً انجام شده است.', redirect='/')
+    return jsonify(ok=True, done=True, msg='نصب قبلاً انجام شده است.',
+                   redirect=_post_install_url())
 
 
 def _login_installed_admin(email=''):
@@ -166,7 +178,7 @@ def attach_db():
         except Exception:
             pass
         session.pop('install_repair_authorized_at', None)
-        return jsonify(ok=True, done=True, msg=msg, redirect='/')
+        return jsonify(ok=True, done=True, msg=msg, redirect=_post_install_url())
     except Exception as e:
         current_app.logger.error('install attach error: %s\n%s', e, _tb.format_exc())
         return jsonify(ok=False, msg='خطا در اتصال دیتابیس: ' + str(e)[:250]), 500
@@ -233,7 +245,7 @@ def run():
             install_step=prog.get('step'),
             install_steps=prog.get('steps'),
             chunks=prog.get('chunks'),
-            redirect='/' if result is True else None,
+            redirect=_post_install_url() if result is True else None,
         )
     except Exception as e:
         current_app.logger.error('install run error: %s\n%s', e, _tb.format_exc())
@@ -374,7 +386,7 @@ def repair():
             install_step=prog.get('step'),
             install_steps=prog.get('steps'),
             chunks=prog.get('chunks'),
-            redirect='/' if result is True else None,
+            redirect=_post_install_url() if result is True else None,
         )
     except Exception as e:
         current_app.logger.error('install repair error: %s\n%s', e, _tb.format_exc())

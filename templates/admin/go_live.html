@@ -20,15 +20,22 @@
       </button>
     </form>
   </div>
-  {% if not launch_ready and not site_active %}<small style="display:block;margin-top:10px;color:var(--warning)">برای فعال‌سازی، «برند و تماس»، «محتوا» و در صورت وجود محتوای پولی «پرداخت واقعی» را تکمیل کنید.</small>{% endif %}
+  {% if not launch_ready and not site_active %}<small style="display:block;margin-top:10px;color:var(--warning)">برای فعال‌سازی، «برند و تماس»، «محتوا»، در صورت فروش «پرداخت واقعی» و در بسته تجاری «لایسنس معتبر» را تکمیل کنید.</small>{% endif %}
 </section>
 
-<div class="grid" style="grid-template-columns:repeat(5,minmax(130px,1fr));gap:10px;margin-bottom:20px">
+<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:20px">
   <div class="card" style="padding:14px;text-align:center;grid-column:1/-1"><b>امتیاز آمادگی: {{ fa(score) }}٪</b><small class="text-3" style="display:block">پیامک و ایمیل برای انتشار الزامی نیستند، اما برای بهره‌برداری کامل توصیه می‌شوند.</small></div>
-  {% for key, label in [('public','برند و تماس'),('payment','پرداخت'),('sms','پیامک'),('smtp','ایمیل'),('content','محتوا')] %}
+  {% for key, label in [('public','برند و تماس'),('payment','پرداخت'),('sms','پیامک'),('smtp','ایمیل'),('content','محتوا'),('license','لایسنس نسخه')] %}
   <div class="card" style="padding:14px;text-align:center"><b style="color:{{ 'var(--success)' if checks[key] else 'var(--warning)' }}">{{ '✓' if checks[key] else '○' }}</b><small style="display:block">{{ label }}</small></div>
   {% endfor %}
 </div>
+
+{% if current_license.enforced or current_license.configured %}
+<section class="card" style="padding:16px 18px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;border-right:4px solid {{ 'var(--success)' if current_license.valid else 'var(--danger)' }}">
+  <div><strong>{{ '✓ لایسنس تجاری معتبر' if current_license.valid else '⚠ لایسنس تجاری فعال نیست' }}</strong><small class="text-3" style="display:block">{{ current_license.message }}{% if current_license.license_id %} — {{ current_license.license_id }}{% endif %}</small></div>
+  <a class="btn btn-ghost btn-sm" href="{{ url_for('license.activate') }}">مدیریت لایسنس</a>
+</section>
+{% endif %}
 
 <form method="post">
   <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">

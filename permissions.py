@@ -100,6 +100,7 @@ _PREFIX_PERMISSIONS = {
     'builder.': 'manage_builder',
     'seo_admin.': 'manage_seo',
     'market.': 'manage_settings',
+    'license.': 'manage_settings',
     'services.admin_': 'manage_settings',
 }
 
@@ -176,7 +177,7 @@ def can_access_endpoint(user, endpoint):
         return True
     endpoint = endpoint or ''
     management_roles = {'admin', 'secretary', 'support', 'operator'}
-    if (endpoint.startswith(('admin.', 'builder.', 'seo_admin.', 'market.')) or
+    if (endpoint.startswith(('admin.', 'builder.', 'seo_admin.', 'market.', 'license.')) or
             endpoint.startswith('services.admin_')) and user.role not in management_roles:
         return False
     required = endpoint_permissions(endpoint)
@@ -204,7 +205,7 @@ def require_perm(permission):
 _ADMIN_MENU = [
     ('sep', '📊 مدیریت کلی'),
     ('admin.overview', '📊 داشبورد'), ('admin.go_live', '🚀 راه‌اندازی نهایی'),
-    ('admin.users', '👥 کاربران'), ('admin.roles_manage', '👥 نقش‌ها و دسترسی‌ها'),
+    ('license.activate', '🔐 لایسنس نسخه'), ('admin.users', '👥 کاربران'), ('admin.roles_manage', '👥 نقش‌ها و دسترسی‌ها'),
     ('admin.activity', '📋 لاگ فعالیت'),
     ('sep', '📚 محتوا و آموزش'),
     ('admin.courses', '📚 دوره‌ها'), ('admin.quizzes', '📝 آزمون‌ها'),

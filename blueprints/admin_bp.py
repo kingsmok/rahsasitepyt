@@ -218,6 +218,8 @@ def go_live():
         paid_content = any((item.final_price or 0) > 0
                            for item in published + active_products)
         content_ready = bool(published or active_products)
+        from licensing import get_license_manager
+        license_state = get_license_manager().status(request.host)
         checks = {
             'public': public_ready,
             # اگر کل محتوای منتشرشده رایگان است، درگاه شرط انتشار نیست.
@@ -225,15 +227,19 @@ def go_live():
             'sms': provider_ready(values),
             'smtp': bool(values.get('smtp_host') and values.get('smtp_from')),
             'content': content_ready,
+            # بسته community قفل ندارد؛ بسته تجاری باید لایسنس معتبر داشته باشد.
+            'license': license_state.valid or not license_state.enforced,
         }
-        launch_ready = checks['public'] and checks['content'] and checks['payment']
-        return checks, launch_ready, len(published), len(active_products), paid_content
+        launch_ready = (checks['public'] and checks['content'] and
+                        checks['payment'] and checks['license'])
+        return (checks, launch_ready, len(published), len(active_products),
+                paid_content, license_state)
 
     if request.method == 'POST':
         action = request.form.get('action', 'save')
         if action in ('activate', 'deactivate'):
             values = {row.key: row.value for row in Setting.query.all()}
-            checks, launch_ready, _cc, _pc, _paid = _readiness(values)
+            checks, launch_ready, _cc, _pc, _paid, _license = _readiness(values)
             if action == 'activate' and not launch_ready:
                 flash('انتشار انجام نشد؛ موارد الزامی علامت‌خورده را کامل کنید.', 'error')
                 return redirect(url_for('admin.go_live'))
@@ -281,12 +287,14 @@ def go_live():
         return redirect(url_for('admin.go_live'))
 
     values = {row.key: row.value for row in Setting.query.all()}
-    checks, launch_ready, courses_count, products_count, paid_content = _readiness(values)
+    (checks, launch_ready, courses_count, products_count,
+     paid_content, current_license) = _readiness(values)
     score = round(sum(1 for ready in checks.values() if ready) * 100 / len(checks))
     return render_template('admin/go_live.html', vals=values, checks=checks,
                            score=score, courses_count=courses_count,
                            products_count=products_count,
                            launch_ready=launch_ready, paid_content=paid_content,
+                           current_license=current_license,
                            site_active=values.get('site_active', '1') == '1')
 
 

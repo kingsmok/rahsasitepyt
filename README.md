@@ -137,6 +137,40 @@
 - PDF فاکتور فارسی با فونت محلی دارای مجوز، RTL صحیح و جدول چندصفحه‌ای تولید می‌شود.
 - پنل انتخاب تم روی نصب مشتری پیش‌فرض مخفی و روی دموی فروش قابل فعال‌سازی است.
 
+### لایسنس نسخه قابل‌فروش
+
+لایسنس تجاری با **Ed25519** امضا و به دامنه مشتری متصل می‌شود. کلید خصوصی فقط نزد فروشنده می‌ماند و داخل مخزن/ZIP/هاست مشتری قرار نمی‌گیرد. نبود public key رفتار نصب‌های قدیمی را تغییر نمی‌دهد؛ قرارگرفتن `license_public_key.pem` یا تنظیم `LICENSE_ENFORCEMENT=1` کنترل لایسنس را فعال می‌کند.
+
+```bash
+# فقط یک‌بار، روی سیستم امن فروشنده؛ رمز را در command line ننویسید
+export ACADEMY_KEY_PASSWORD='یک-رمز-قوی-و-طولانی'
+python scripts/license_tool.py keygen \
+  --private ~/academy-vendor-private.pem \
+  --public license_public_key.pem \
+  --password-env ACADEMY_KEY_PASSWORD
+
+# صدور لایسنس برای مشتری با همان متغیر رمز
+python scripts/license_tool.py issue \
+  --private ~/academy-vendor-private.pem \
+  --password-env ACADEMY_KEY_PASSWORD \
+  --license-id CUSTOMER-2026-001 \
+  --customer "نام مشتری" \
+  --domains academy.example.com,www.academy.example.com \
+  --expires 2027-12-31 --plan business
+```
+
+فقط `license_public_key.pem` را در بسته مشتری قرار دهید. مشتری توکن صادرشده را در `/license` وارد می‌کند. دامنه، امضا و انقضا بدون تماس با سرور خارجی بررسی می‌شوند.
+
+```bash
+# ساخت ZIP نهایی از فایل‌های tracked + public key، بدون private key/.env/instance
+python scripts/build_commercial_package.py \
+  --public-key license_public_key.pem \
+  --output releases/academy-business-1.0.0.zip \
+  --version 1.0.0
+```
+
+سازنده بسته روی مخزن dirty متوقف می‌شود، private key را رد می‌کند و داخل ZIP یک manifest شامل commit، fingerprint کلید و SHA-256 همه فایل‌ها می‌گذارد. اجرای بسته تجاری به وجود manifest حساس است، fingerprint کلید عمومی را pin می‌کند و در صورت حذف/تعویض کلید به‌صورت fail-closed متوقف می‌شود. چون محصول به‌صورت سورس Python تحویل می‌شود، این کنترل جعل کلید و دورزدن اتفاقی را می‌بندد اما در برابر خریدار دارای دسترسی کامل که خود کد را patch کند حفاظت مطلق نیست؛ برای آن سطح باید سرویس اعتبارسنجی آنلاین یا ماژول باینری جداگانه ارائه شود.
+
 ## 🚀 اجرا
 
 ```bash

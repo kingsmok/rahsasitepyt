@@ -467,6 +467,10 @@ def create_app():
         app.register_blueprint(install_bp)
     except Exception:
         _lexc('app.py')
+    # ── فعال‌سازی نسخه تجاری (امضای Ed25519 + اتصال دامنه) ──
+    # این جزء امنیتی core است؛ خطای import نباید با اجرای ناقص و بی‌صدا پنهان شود.
+    from blueprints.license import license_bp
+    app.register_blueprint(license_bp)
 
     # گارد نصب: اگر نصب انجام نشده، همه مسیرها → /install
     @app.before_request
@@ -492,6 +496,32 @@ def create_app():
         if not ok:
             return redirect(url_for('install.wizard') + '?repair=1')
         return None
+
+    @app.before_request
+    def _commercial_license_guard():
+        """در بسته دارای public key، همه درخواست‌ها به لایسنس معتبر نیاز دارند."""
+        from licensing import get_license_manager
+        manager = get_license_manager()
+        state = manager.status(request.host)
+        g.license_state = state
+        if not manager.enforced or state.valid:
+            return None
+        path = request.path or '/'
+        allowed = (
+            path.startswith(('/static/', '/install', '/license')) or
+            path in ('/health', '/favicon.ico') or
+            # callback تراکنش شروع‌شده نباید با انقضای ناگهانی لایسنس گم شود.
+            path.startswith('/pay/verify/') or path == '/pay/zarinpal-verify'
+        )
+        if allowed:
+            return None
+        if path.startswith('/api/') or request.accept_mimetypes.best == 'application/json':
+            from flask import jsonify as _jsonify
+            return _jsonify(ok=False, code='license_required',
+                            msg=state.message, license=state.as_public_dict()), 402
+        next_path = request.full_path.rstrip('?')
+        return redirect(url_for('license.activate', next=next_path))
+
     # Flask-Admin (پنل مدیریت کامل مدل‌ها)
     try:
         from admin_panel import init_admin
@@ -749,7 +779,7 @@ def create_app():
         if (_np.startswith('/pay') or _np.startswith('/checkout') or
                 _np.startswith('/cart') or _np.startswith('/dashboard') or
                 _np.startswith('/auth') or _np.startswith('/install') or
-                _np.startswith('/wallet') or _np.startswith('/admin')):
+                _np.startswith('/wallet') or _np.startswith('/admin') or _np.startswith('/license')):
             resp.headers['X-Robots-Tag'] = 'noindex, nofollow, noarchive'
         # تصاویر آپلودی ادمین/صفحه‌ساز (/static/img/uploads/...) — inline می‌مانند
         # (لوگو و تصاویر صفحه باید نمایش داده شوند) ولی با sandbox، پس حتی اگر
@@ -893,9 +923,12 @@ def create_app():
             except Exception:
                 pass  # در صورت خطای Redis → fallback به حافظه
         with _rl_lock:
-            rec = _rl_hits.get(ip)
+            # همانند کلید Redis، شمارنده هر endpoint جداست؛ در غیر این صورت
+            # درخواست عادی API می‌توانست سهمیه login/license همان IP را بسوزاند.
+            memory_key = (ip, request.path[:60])
+            rec = _rl_hits.get(memory_key)
             if not rec or now - rec[0] > window:
-                _rl_hits[ip] = [now, 1]
+                _rl_hits[memory_key] = [now, 1]
                 return True
             rec[1] += 1
             if rec[1] > limit:
@@ -924,6 +957,9 @@ def create_app():
         elif p == '/newsletter' and request.method == 'POST':
             if not _rate_limit(5, 60):
                 return 'درخواست بیش از حد — کمی صبر کنید.', 429
+        elif p == '/license' and request.method == 'POST':
+            if not _rate_limit(10, 300):
+                return 'تلاش فعال‌سازی بیش از حد — ۵ دقیقه صبر کنید.', 429
         elif p == '/install/repair' and request.method == 'POST':
             # نصب تکه‌ای چند درخواست لازم دارد؛ سقف برای کار عادی کافی و برای
             # brute-force رمز/کلید بازیابی محدود است.
@@ -1426,7 +1462,8 @@ def create_app():
             if (_p.startswith('/pay') or _p.startswith('/checkout') or
                     _p.startswith('/cart') or _p.startswith('/dashboard') or
                     _p.startswith('/auth') or _p.startswith('/install') or
-                    _p.startswith('/wallet') or _p.startswith('/uploads')):
+                    _p.startswith('/wallet') or _p.startswith('/uploads') or
+                    _p.startswith('/license')):
                 g.seo['noindex'] = True
         except Exception:
             _lexc('app.py')
@@ -1446,13 +1483,17 @@ def create_app():
             if request.method != 'GET':
                 return None
             p = request.path
-            for _x in ('/admin', '/builder', '/install', '/api', '/static', '/uploads',
-                       '/auth', '/dashboard', '/teacher-panel', '/student', '/community',
-                       '/exam', '/wallet', '/pay', '/cart', '/checkout', '/newsletter',
-                       '/feedback', '/form/'):
+            for _x in ('/admin', '/builder', '/install', '/license', '/api', '/static',
+                       '/uploads', '/auth', '/dashboard', '/teacher-panel', '/student',
+                       '/community', '/exam', '/wallet', '/pay', '/cart', '/checkout',
+                       '/newsletter', '/feedback', '/form/'):
                 if p.startswith(_x):
                     return None
-            if not any(p == x or p.startswith(x) for x in _HTML_PUBLIC):
+            # عضو '/' فقط خود صفحه خانه است؛ startswith('/') تمام مسیرها را
+            # cache می‌کرد و می‌توانست صفحه حساس/پویا مثل فعال‌سازی را stale کند.
+            is_public = p == '/' or any(
+                x != '/' and (p == x or p.startswith(x)) for x in _HTML_PUBLIC)
+            if not is_public:
                 return None
             if session.get('uid') or session.get('_flashes'):
                 return None
@@ -1689,6 +1730,7 @@ def create_app():
                     sms_ready=_sms_ready,
                     # در قالب‌ها نیز بخش‌های آزمایشی فقط در محیط تست صریح قابل مشاهده‌اند.
                     demo_features_enabled=_demo_features_enabled(),
+                    license_state=getattr(g, 'license_state', None),
                     clarity_script=_clarity, crisp_script=_crisp,
                     bc_admin_menu=lambda: __import__('permissions', fromlist=['menu_for']).menu_for(_u),
                     seo=getattr(g, 'seo', dict(title='', description='', keywords='',
@@ -1699,9 +1741,14 @@ def create_app():
     @app.route('/health')
     def health():
         from flask import jsonify
+        license_status = getattr(g, 'license_state', None)
+        if license_status and license_status.enforced and not license_status.valid:
+            return jsonify(ok=False, status='license_required',
+                           license=license_status.code), 503
         try:
             db.session.execute(db.text('SELECT 1'))
-            return jsonify(ok=True, status='healthy'), 200
+            return jsonify(ok=True, status='healthy',
+                           license=license_status.code if license_status else 'unknown'), 200
         except Exception:
             db.session.rollback()
             return jsonify(ok=False, status='unavailable'), 503

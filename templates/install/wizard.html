@@ -85,8 +85,14 @@ h3{font-size:16px;font-weight:800;margin-bottom:4px}
       <div id="health-rows" style="display:grid;gap:6px;font-size:12.5px"></div>
       <div id="repair-box" style="display:none;margin-top:12px;background:#fef3c7;border:1px solid #fcd34d;border-radius:12px;padding:14px">
         <b style="font-size:13px">⚠️ نصب ناقص است — دیتابیس سالم نیست</b>
-        <p style="font-size:12px;color:#92400e;margin:6px 0 10px">دکمه زیر جدول‌ها و داده‌های اولیه را دوباره می‌سازد (داده‌های موجود پاک نمی‌شوند).</p>
-        <button class="btn btn-p" style="width:auto;padding:10px 22px" onclick="runRepair(this)">🔧 تعمیر دیتابیس</button>
+        <p style="font-size:12px;color:#92400e;margin:6px 0 10px">برای جلوگیری از تصاحب سایت، رمز سوپرادمین فعلی را وارد کنید. اگر جدول کاربران خراب است، کلید <code>INSTALL_REPAIR_TOKEN</code> را از فایل <code>.env</code> سرور بردارید.</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+          <input id="repair_admin_name" placeholder="نام مدیر" autocomplete="name">
+          <input id="repair_admin_email" type="email" dir="ltr" placeholder="ایمیل سوپرادمین" autocomplete="username">
+          <input id="repair_admin_pass" type="password" dir="ltr" placeholder="رمز سوپرادمین" autocomplete="current-password">
+          <input id="repair_token" type="password" dir="ltr" placeholder="کلید بازیابی .env (در صورت نیاز)" autocomplete="off">
+        </div>
+        <button type="button" class="btn btn-p" style="width:auto;padding:10px 22px" onclick="runRepair(this)">🔧 تعمیر امن دیتابیس</button>
       </div>
     </div>
 
@@ -330,7 +336,12 @@ function runRepair(b, continuing){
   if (b){ b.disabled = true; b.innerHTML = '<span class="spin"></span> در حال تعمیر...'; }
   go(4);
   $('install-actions').style.display = 'none';
-  fetch('/install/repair', {method: 'POST', body: new FormData()})
+  var repairData = new FormData();
+  repairData.append('admin_name', $('repair_admin_name').value.trim());
+  repairData.append('admin_email', $('repair_admin_email').value.trim());
+  repairData.append('admin_pass', $('repair_admin_pass').value);
+  repairData.append('repair_token', $('repair_token').value);
+  fetch('/install/repair', {method: 'POST', body: repairData})
     .then(parseResp)
     .then(function(res){
       var d = res.d || {};

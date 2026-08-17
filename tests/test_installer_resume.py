@@ -60,6 +60,9 @@ def test_request_install_resumes_without_background_thread(tmp_path, monkeypatch
         assert conn.execute(text(
             "SELECT COUNT(*) FROM settings WHERE key='site_name'"
         )).scalar() == 1
+        assert conn.execute(text(
+            "SELECT value FROM settings WHERE key='site_active'"
+        )).scalar() == '0'
     engine.dispose()
 
 
@@ -152,6 +155,24 @@ def test_install_wizard_page_renders(client, monkeypatch):
     assert 'attach-box' in html
     assert 'btn-install' in html
     assert html.count('</html>') == 1
+
+
+def test_installed_site_locks_repair_and_attach_without_owner(client, monkeypatch):
+    """نصب فعال با رمز پیش‌فرض یا درخواست ناشناس قابل تصاحب/تعویض DB نیست."""
+    from blueprints import install as install_bp
+    monkeypatch.setattr(install_bp, 'is_installed', lambda: True)
+    repair = client.post('/install/repair', data={
+        'admin_name': 'مدیر', 'admin_email': 'admin@academy.ir',
+        'admin_pass': 'Admin12345!',
+    })
+    assert repair.status_code == 403
+    attach = client.post('/install/attach', data={'db_type': 'sqlite'})
+    assert attach.status_code == 403
+    inspect_response = client.post('/install/inspect-db', json={'db_type': 'sqlite'})
+    assert inspect_response.status_code == 403
+    status = client.get('/install/status')
+    assert status.status_code == 200
+    assert status.get_json() == {'installed': True, 'install_status': 'locked'}
 
 
 def test_install_detect_and_inspect_endpoints(client):

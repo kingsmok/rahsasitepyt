@@ -11,7 +11,10 @@ seo_bp = Blueprint('seo_admin', __name__, url_prefix='/admin/seo')
 
 
 def _admin_required():
-    if not g.user or not g.user.is_admin:
+    if not g.user:
+        return redirect(url_for('auth.login', next=request.path))
+    from permissions import has_permission
+    if not has_permission(g.user, 'manage_seo'):
         abort(403)
     return None
 

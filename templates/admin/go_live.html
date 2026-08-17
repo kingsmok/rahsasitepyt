@@ -3,10 +3,28 @@
 {% block acontent %}
 <div class="dash-head">
   <div><h1>🚀 راه‌اندازی نهایی سایت</h1><p>همه تنظیمات ضروری در یک صفحه؛ اطلاعات محرمانه بعد از ذخیره دوباره نمایش داده نمی‌شوند.</p></div>
-  <span class="badge {{ 'badge-success' if score == 100 else 'badge-accent' }}">آمادگی {{ fa(score) }}٪</span>
+  <span class="badge {{ 'badge-success' if site_active else 'badge-accent' }}">{{ 'فعال و منتشرشده' if site_active else 'غیرفعال برای عموم' }}</span>
 </div>
 
+<section class="card" style="padding:18px;margin-bottom:16px;border:1px solid {{ 'var(--success)' if site_active else 'var(--warning)' }}">
+  <div class="flex justify-between items-center gap-2 wrap">
+    <div>
+      <h2 style="font-size:15px;margin-bottom:5px">{{ '✅ سایت در دسترس عموم است' if site_active else '🔒 سایت هنوز عمومی نشده است' }}</h2>
+      <p class="text-3" style="margin:0">نصب تازه به‌صورت امن غیرفعال می‌ماند. مدیر می‌تواند همه صفحات را ببیند و پس از تکمیل موارد الزامی، سایت را منتشر کند.</p>
+    </div>
+    <form method="post" style="margin:0">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="action" value="{{ 'deactivate' if site_active else 'activate' }}">
+      <button class="btn {{ 'btn-outline' if site_active else 'btn-primary' }}" type="submit" {{ 'disabled' if not site_active and not launch_ready }}>
+        {{ 'غیرفعال‌کردن انتشار' if site_active else 'فعال‌سازی و انتشار سایت' }}
+      </button>
+    </form>
+  </div>
+  {% if not launch_ready and not site_active %}<small style="display:block;margin-top:10px;color:var(--warning)">برای فعال‌سازی، «برند و تماس»، «محتوا» و در صورت وجود محتوای پولی «پرداخت واقعی» را تکمیل کنید.</small>{% endif %}
+</section>
+
 <div class="grid" style="grid-template-columns:repeat(5,minmax(130px,1fr));gap:10px;margin-bottom:20px">
+  <div class="card" style="padding:14px;text-align:center;grid-column:1/-1"><b>امتیاز آمادگی: {{ fa(score) }}٪</b><small class="text-3" style="display:block">پیامک و ایمیل برای انتشار الزامی نیستند، اما برای بهره‌برداری کامل توصیه می‌شوند.</small></div>
   {% for key, label in [('public','برند و تماس'),('payment','پرداخت'),('sms','پیامک'),('smtp','ایمیل'),('content','محتوا')] %}
   <div class="card" style="padding:14px;text-align:center"><b style="color:{{ 'var(--success)' if checks[key] else 'var(--warning)' }}">{{ '✓' if checks[key] else '○' }}</b><small style="display:block">{{ label }}</small></div>
   {% endfor %}
@@ -14,6 +32,7 @@
 
 <form method="post">
   <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+  <input type="hidden" name="action" value="save">
 
   <section class="ss-card">
     <h3>۱. اطلاعات عمومی واقعی</h3>

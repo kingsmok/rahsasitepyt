@@ -737,8 +737,8 @@ def component_html(t):
     </form>
     <div style="background:#fff;border-radius:18px;padding:22px;border:1px solid {p}22;font-size:13px;color:{tx}88">
       <h3 style="font-weight:900;margin-bottom:14px;color:{tx}">📍 اطلاعات دسترسی</h3>
-      <div style="margin-bottom:10px">🏢 تهران، خیابان آزادی، پلاک ۱۲۳</div>
-      <div style="margin-bottom:10px">📞 ۰۲۱-۱۲۳۴۵۶۷۸</div>
+      <div style="margin-bottom:10px">🏢 آدرس ثبت‌شده مجموعه</div>
+      <div style="margin-bottom:10px">📞 شماره تماس مجموعه</div>
       <div style="margin-bottom:10px">✉️ ایمیل پشتیبانی</div>
       <div style="height:140px;border-radius:14px;background:linear-gradient(135deg,{s},{p}22);display:flex;align-items:center;justify-content:center;color:{p};font-weight:800;margin-top:12px">🗺 نقشه — شبکه سراسری پشتیبانی</div>
     </div>

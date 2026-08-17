@@ -13,7 +13,7 @@
         <div class="ds-head">
           {% if cur_user.avatar %}<img class="avatar avatar-lg" src="{{ cur_user.avatar_url }}" alt="" style="width:74px;height:74px;margin:0 auto 10px;display:block;object-fit:cover">{% else %}<span class="avatar avatar-lg" style="background:{{ cur_user.avatar_color }}">{{ cur_user.initials() }}</span>{% endif %}
           <strong>{{ cur_user.name }}</strong>
-          <small>{{ 'مدیر سایت' if cur_user.is_admin else ('مدرس' if cur_user.role == 'teacher' else 'دانشجو') }} — عضویت: {{ cur_user.created_at|jdate }}</small>
+          <small>{{ role_name(cur_user) }} — عضویت: {{ cur_user.created_at|jdate }}</small>
         </div>
         <nav aria-label="بخش‌های حساب کاربری">
           <a href="{{ url_for('student.dashboard') }}" class="{{ 'active' if request.endpoint == 'student.dashboard' }}"><span class="ic">{{ icon('dashboard', 17) }}</span> نمای کلی</a>
@@ -35,8 +35,11 @@
       {% if site.get('referral_bonus_percent','0')|int > 0 %}<a href="{{ url_for('features.referral') }}" class="{{ 'active' if request.endpoint == 'features.referral' }}"><span class="ic">🎁</span> دعوت دوستان</a>{% endif %}
       <a href="{{ url_for('features.study_plan') }}" class="{{ 'active' if request.endpoint == 'features.study_plan' }}"><span class="ic">{{ icon('calendar-event', 17) }}</span> برنامه مطالعه</a>
 <a href="{{ url_for('student.profile') }}" class="{{ 'active' if request.endpoint == 'student.profile' }}"><span class="ic">{{ icon('user', 17) }}</span> تنظیمات حساب</a>
-          {% if cur_user.is_admin %}
-          <div class="dd-divider" style="margin:8px"></div>
+          {% if cur_user.role == 'teacher' or can_manage_panel %}<div class="dd-divider" style="margin:8px"></div>{% endif %}
+          {% if cur_user.role == 'teacher' %}
+          <a href="{{ url_for('teacher.dashboard') }}" style="color:var(--primary)"><span class="ic">👨‍🏫</span> پنل مدرس</a>
+          {% endif %}
+          {% if can_manage_panel %}
           <a href="{{ url_for('admin.overview') }}" style="color:var(--primary)"><span class="ic">⚙️</span> پنل مدیریت</a>
           {% endif %}
         </nav>

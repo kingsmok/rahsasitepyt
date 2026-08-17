@@ -233,7 +233,7 @@ class User(db.Model):
 
     @property
     def is_teacher(self):
-        return self.role in ('admin', 'teacher')
+        return self.role in ('super_admin', 'admin', 'teacher')
 
     @property
     def avatar_url(self):

@@ -281,6 +281,13 @@ def write_env_file(db_url, secret_key):
     lines['FLASK_ENV'] = 'production'
     lines['APP_ENV'] = 'production'
     lines['ENABLE_DEMO_FEATURES'] = '0'
+    # کلید مالک سرور برای تعمیر اضطراری وقتی جدول کاربران قابل خواندن نیست.
+    # مقدار موجود هرگز چرخانده نمی‌شود تا در بحران قابل استفاده بماند.
+    repair_token = (lines.get('INSTALL_REPAIR_TOKEN') or '').strip()
+    if len(repair_token) < 32:
+        repair_token = secrets.token_urlsafe(32)
+    lines['INSTALL_REPAIR_TOKEN'] = repair_token
+    os.environ['INSTALL_REPAIR_TOKEN'] = repair_token
     if db_url:
         lines['DATABASE_URL'] = db_url
     else:
@@ -288,7 +295,8 @@ def write_env_file(db_url, secret_key):
     with open(env_path, 'w', encoding='utf-8') as f:
         f.write('# ⚙️ تنظیمات محیطی — ساخته‌شده توسط نصب‌کننده آکادمی\n')
         for k in ('SECRET_KEY', 'FLASK_ENV', 'APP_ENV', 'ENABLE_DEMO_FEATURES',
-                  'DATABASE_URL', 'LOG_DIR', 'REDIS_URL', 'CLARITY_ID', 'CRISP_WEBSITE_ID',
+                  'INSTALL_REPAIR_TOKEN', 'DATABASE_URL', 'LOG_DIR', 'REDIS_URL',
+                  'CLARITY_ID', 'CRISP_WEBSITE_ID',
                   'GROQ_API_KEY', 'BING_API_KEY', 'BING_KEY_LOCATION'):
             if k in lines and lines[k]:
                 f.write(f'{k}={lines[k]}\n')
@@ -336,13 +344,19 @@ DEFAULT_SETTINGS = {
     'phone': '',
     'address': '',
     'support_hours': '',
+    'site_design': '1',
     'home_design': 'builder',
+    'about_design': '1',
+    'contact_design': '1',
     'currency': 'تومان',
     'sandbox_mode': '0',
     'sms_provider': 'disabled',
     'admin_2fa_enabled': '0',
     'exam_enabled': '0',
     'spin_enabled': '0',
+    # نصب تازه تا زمانی که مدیر چک‌لیست «راه‌اندازی نهایی» را تایید نکند
+    # برای عموم منتشر نمی‌شود. مدیر همچنان سایت را کامل و پیش‌نمایش می‌کند.
+    'site_active': '0',
     'allow_register': '1',
     'allow_phone_login': '1',
     'maintenance': '0',

@@ -45,7 +45,8 @@
         <strong>{{ self.atitle() }}</strong>
       </div>
       <div class="admin-toolbar-actions">
-        <a href="{{ url_for('site.index') }}" target="_blank" rel="noopener" title="مشاهده سایت">{{ icon('external-link', 19) }}<span>سایت</span></a>
+        {% if site.get('site_active', '1') != '1' and has_perm(cur_user, 'manage_settings') %}<a href="{{ url_for('admin.go_live') }}" style="color:var(--warning)" title="سایت هنوز عمومی نشده است">🔒 <span>منتشر نشده</span></a>{% endif %}
+        <a href="{{ url_for('site.index') }}" target="_blank" rel="noopener" title="پیش‌نمایش سایت">{{ icon('external-link', 19) }}<span>پیش‌نمایش</span></a>
       </div>
     </header>
     <div class="admin-main" id="admin-content" tabindex="-1">

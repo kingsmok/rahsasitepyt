@@ -396,18 +396,15 @@ def admin_2fa():
     if request.method == 'POST':
         # انقضای کد (۵ دقیقه)
         if time.time() - session.get('admin_2fa_ts', 0) > 300:
-            session.pop('admin_2fa_hash', None)
-            session.pop('admin_2fa_ts', None)
-            session.pop('admin_2fa_tries', None)
+            # uid نیز باید حذف شود؛ وگرنه حذف صرف hash عملاً 2FA را دور می‌زند.
+            session.clear()
             flash('کد تایید منقضی شده — دوباره وارد شوید.', 'error')
             return redirect(url_for('auth.login'))
         # محدودیت تلاش (۵ بار) — ضد brute-force
         tries = session.get('admin_2fa_tries', 0) + 1
         session['admin_2fa_tries'] = tries
         if tries > 5:
-            session.pop('admin_2fa_hash', None)
-            session.pop('admin_2fa_ts', None)
-            session.pop('admin_2fa_tries', None)
+            session.clear()
             flash('تلاش‌های ناموفق بیش از حد — دوباره وارد شوید.', 'error')
             return redirect(url_for('auth.login'))
         code = request.form.get('code', '').strip()

@@ -30,6 +30,9 @@ from jdates import jdate_num, jtime, fa
 def consultations():
     """لیست درخواست‌های مشاوره (لیدهای فروش) — منوی منشی/ادمین"""
     if request.method == 'POST':
+        from permissions import has_permission
+        if not has_permission(g.user, 'track_leads') and not g.user.is_admin:
+            abort(403)
         mid = request.form.get('mid', type=int)
         msg = db.session.get(ContactMessage, mid) if mid else None
         if msg:

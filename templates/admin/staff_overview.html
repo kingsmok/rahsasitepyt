@@ -1,0 +1,29 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}داشبورد {{ current_role }}{% endblock %}
+{% block acontent %}
+<div class="dash-head">
+  <div><h1>سلام {{ cur_user.name }} 👋</h1><p>اطلاعات این صفحه متناسب با نقش «{{ current_role }}» نمایش داده می‌شود.</p></div>
+  <span class="badge badge-primary">{{ current_role }}</span>
+</div>
+
+<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:22px">
+  {% for icon_value, title, value, endpoint in cards %}
+  <a class="card" href="{{ url_for(endpoint) }}" style="padding:20px;display:block">
+    <span style="font-size:26px" aria-hidden="true">{{ icon_value }}</span>
+    <strong style="display:block;font-size:25px;margin-top:8px">{{ fa(value) }}</strong>
+    <small class="text-3">{{ title }}</small>
+  </a>
+  {% else %}
+  <div class="card empty-state" style="padding:24px">برای این نقش هنوز شاخصی تعریف نشده است.</div>
+  {% endfor %}
+</div>
+
+<section class="card" style="padding:20px">
+  <h2 style="font-size:15px;margin-bottom:14px">دسترسی‌های سریع</h2>
+  <div class="flex gap-1 wrap">
+    {% for endpoint, label in links %}
+    <a class="btn btn-ghost" href="{{ url_for(endpoint) }}">{{ label }}</a>
+    {% else %}<span class="text-3">دسترسی دیگری برای این نقش فعال نیست.</span>{% endfor %}
+  </div>
+</section>
+{% endblock %}

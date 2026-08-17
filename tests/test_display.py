@@ -103,9 +103,9 @@ def _make_admin(app):
 def test_admin_selects_site_design(client, app):
     """انتخاب طرح از پنل ادمین باید site_design را ذخیره و در رندر اعمال کند."""
     import re
-    from conftest import login
+    from test_admin_panel import _login_admin_2fa
     _make_admin(app)
-    login(client, 'admind@test.ir', 'admin123')
+    _login_admin_2fa(client, app, 'admind@test.ir', 'admin123')
     tok = _csrf_admin(client)
     r = client.post('/admin/designs', data={'_csrf_token': tok,
                                             'field': 'site_design', 'value': 'pd-03'},

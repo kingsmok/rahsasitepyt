@@ -360,7 +360,11 @@ def privacy():
 @site_bp.route('/maintenance')
 def maintenance():
     from flask import render_template
-    return render_template('maintenance.html'), 503 if g.settings.get('maintenance') == '1' else 200
+    unavailable = (g.settings.get('maintenance') == '1' or
+                   g.settings.get('site_active', '1') != '1')
+    return render_template('maintenance.html',
+                           prelaunch=g.settings.get('site_active', '1') != '1'), \
+        503 if unavailable else 200
 
 
 

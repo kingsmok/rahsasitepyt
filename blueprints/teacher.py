@@ -7,7 +7,7 @@ from validators import safe_referrer
 from models import (utcnow, db, User, Course, Section, Lesson, Enrollment, Order,
                     OrderItem, Assignment, AssignmentSubmission, LessonQuestion,
                     Quiz, QuizAttempt, ActivityLog, Notification, PayoutRequest,
-                    CourseMeeting, AttendanceRecord)
+                    CourseMeeting, AttendanceRecord, CourseTeacher)
 
 teacher_bp = Blueprint('teacher', __name__, url_prefix='/teacher-panel')
 
@@ -25,8 +25,25 @@ def _can_manage_course(course):
         return True
     if course.teacher_id == g.user.id:
         return True
-    from models import CourseTeacher
     return CourseTeacher.query.filter_by(course_id=course.id, teacher_id=g.user.id).first() is not None
+
+
+def _managed_course_ids():
+    """همه دوره‌های قابل مدیریت، شامل دوره‌های همکار مدرس و دسترسی مدیر."""
+    if g.user.role in ('admin', 'super_admin'):
+        return [row[0] for row in db.session.query(Course.id).all()]
+    primary = [row[0] for row in db.session.query(Course.id)
+               .filter(Course.teacher_id == g.user.id).all()]
+    shared = [row[0] for row in db.session.query(CourseTeacher.course_id)
+              .filter(CourseTeacher.teacher_id == g.user.id).all()]
+    return list(dict.fromkeys(primary + shared))
+
+
+def _managed_courses():
+    ids = _managed_course_ids()
+    if not ids:
+        return []
+    return Course.query.filter(Course.id.in_(ids)).order_by(Course.created_at.desc()).all()
 
 
 @teacher_bp.route('/')
@@ -34,17 +51,17 @@ def dashboard():
     r = _teacher_required()
     if r:
         return r
-    teacher_id = g.user.id
-    courses = Course.query.filter_by(teacher_id=teacher_id).all()
+    courses = _managed_courses()
     course_ids = [c.id for c in courses]
-    total_students = 0
-    for c in courses:
-        total_students += len(c.enrollments)
-    # درآمد: مجموع فروش دوره‌های خودش (سهم استاد ~ ۵۰٪)
+    total_students = Enrollment.query.filter(
+        Enrollment.course_id.in_(course_ids)).count() if course_ids else 0
+    # فقط تراکنش قطعی؛ سفارش pending/failed نباید درآمد استاد را بالا ببرد.
     revenue = 0
     if course_ids:
         revenue = db.session.query(func.coalesce(func.sum(OrderItem.price), 0)) \
-            .filter(OrderItem.course_id.in_(course_ids)).scalar() or 0
+            .join(Order, Order.id == OrderItem.order_id) \
+            .filter(OrderItem.course_id.in_(course_ids), Order.status == 'paid') \
+            .scalar() or 0
     # تکالیف در انتظار
     pending_asgs = AssignmentSubmission.query \
         .join(Assignment).filter(Assignment.course_id.in_(course_ids),
@@ -72,8 +89,7 @@ def my_courses():
     r = _teacher_required()
     if r:
         return r
-    courses = Course.query.filter_by(teacher_id=g.user.id).all()
-    return render_template('teacher/courses.html', courses=courses)
+    return render_template('teacher/courses.html', courses=_managed_courses())
 
 
 @teacher_bp.route('/students')
@@ -82,9 +98,7 @@ def students():
     r = _teacher_required()
     if r:
         return r
-    from models import Enrollment, CourseTeacher
-    my_ids = [c.id for c in Course.query.filter_by(teacher_id=g.user.id).all()]
-    my_ids += [ct.course_id for ct in CourseTeacher.query.filter_by(teacher_id=g.user.id).all()]
+    my_ids = _managed_course_ids()
     rows = []
     if my_ids:
         ens = (Enrollment.query
@@ -260,7 +274,7 @@ def assignments():
     r = _teacher_required()
     if r:
         return r
-    course_ids = [c.id for c in Course.query.filter_by(teacher_id=g.user.id).all()]
+    course_ids = _managed_course_ids()
     if not course_ids:
         return render_template('teacher/assignments.html', subs=[])
     subs = AssignmentSubmission.query \
@@ -275,8 +289,7 @@ def grade(sid):
     if r:
         return r
     sub = db.get_or_404(AssignmentSubmission, sid)
-    # بررسی: این تکلیف متعلق به دوره خود استاد است؟
-    if sub.assignment.course.teacher_id != g.user.id and g.user.role == 'teacher':
+    if not _can_manage_course(sub.assignment.course):
         abort(403)
     sub.score = request.form.get('score', 0, type=int)
     sub.feedback = request.form.get('feedback', '').strip()
@@ -295,7 +308,7 @@ def questions():
     r = _teacher_required()
     if r:
         return r
-    course_ids = [c.id for c in Course.query.filter_by(teacher_id=g.user.id).all()]
+    course_ids = _managed_course_ids()
     if not course_ids:
         return render_template('teacher/questions.html', qs=[])
     qs = LessonQuestion.query.filter(
@@ -312,7 +325,7 @@ def answer_question(qid):
     if r:
         return r
     q = db.get_or_404(LessonQuestion, qid)
-    if q.lesson.section.course.teacher_id != g.user.id and g.user.role == 'teacher':
+    if not _can_manage_course(q.lesson.section.course):
         abort(403)
     q.answer = request.form.get('answer', '').strip()
     q.answered_at = utcnow()
@@ -330,21 +343,26 @@ def revenue():
     r = _teacher_required()
     if r:
         return r
-    course_ids = [c.id for c in Course.query.filter_by(teacher_id=g.user.id).all()]
+    courses = _managed_courses()
     rows = []
     total = 0
-    for c in Course.query.filter_by(teacher_id=g.user.id).all():
+    for course in courses:
         sold = db.session.query(func.coalesce(func.sum(OrderItem.price), 0)) \
-            .filter(OrderItem.course_id == c.id,
-                    OrderItem.order_id.in_(
-                        db.session.query(Order.id).filter(Order.status == 'paid')
-                    )).scalar() or 0
-        cnt = Enrollment.query.filter_by(course_id=c.id).count()
-        rows.append({'course': c, 'sold': sold, 'count': cnt, 'share': round(int(sold or 0) * 0.5)})
+            .join(Order, Order.id == OrderItem.order_id) \
+            .filter(OrderItem.course_id == course.id, Order.status == 'paid') \
+            .scalar() or 0
+        count = Enrollment.query.filter_by(course_id=course.id).count()
+        rows.append({'course': course, 'sold': sold, 'count': count,
+                     'share': round(int(sold or 0) * 0.5)})
         total += int(sold or 0)
     pending = PayoutRequest.query.filter_by(teacher_id=g.user.id, status='pending').first()
+    paid_out = db.session.query(func.coalesce(func.sum(PayoutRequest.amount), 0)) \
+        .filter_by(teacher_id=g.user.id, status='paid').scalar() or 0
+    share = round(total * 0.5)
+    available = max(0, share - int(paid_out or 0) - (pending.amount if pending else 0))
     return render_template('teacher/revenue.html', rows=rows,
-                           total=total, share=round(total * 0.5), pending=pending)
+                           total=total, share=share, pending=pending,
+                           paid_out=paid_out, available=available)
 
 
 @teacher_bp.route('/payout/request', methods=['POST'])
@@ -352,11 +370,24 @@ def payout_request():
     r = _teacher_required()
     if r:
         return r
-    from models import PayoutRequest
+    if g.user.role != 'teacher':
+        abort(403)
     amount = request.form.get('amount', 0, type=int)
     account = request.form.get('account', '').strip()
+    course_ids = _managed_course_ids()
+    sold = 0
+    if course_ids:
+        sold = db.session.query(func.coalesce(func.sum(OrderItem.price), 0)) \
+            .join(Order, Order.id == OrderItem.order_id) \
+            .filter(OrderItem.course_id.in_(course_ids), Order.status == 'paid') \
+            .scalar() or 0
+    paid_out = db.session.query(func.coalesce(func.sum(PayoutRequest.amount), 0)) \
+        .filter_by(teacher_id=g.user.id, status='paid').scalar() or 0
+    available = max(0, round(int(sold or 0) * 0.5) - int(paid_out or 0))
     if amount < 50000:
         flash('حداقل مبلغ تسویه ۵۰,۰۰۰ تومان است.', 'error')
+    elif amount > available:
+        flash('مبلغ درخواست از مانده قابل تسویه بیشتر است.', 'error')
     elif not account:
         flash('شماره شبا یا کارت را وارد کنید.', 'error')
     elif PayoutRequest.query.filter_by(teacher_id=g.user.id, status='pending').first():

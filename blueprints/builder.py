@@ -1167,9 +1167,11 @@ def _persian_designs_meta():
 
 
 def _admin_required():
-    if not g.user or not g.user.is_admin:
-        flash('دسترسی غیرمجاز — این بخش مخصوص مدیر است.', 'error')
-        return redirect(url_for('site.index'))
+    if not g.user:
+        return redirect(url_for('auth.login', next=request.path))
+    from permissions import has_permission
+    if not has_permission(g.user, 'manage_builder'):
+        abort(403)
     return None
 
 

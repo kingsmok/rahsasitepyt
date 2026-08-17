@@ -924,6 +924,11 @@ def create_app():
         elif p == '/newsletter' and request.method == 'POST':
             if not _rate_limit(5, 60):
                 return 'درخواست بیش از حد — کمی صبر کنید.', 429
+        elif p == '/install/repair' and request.method == 'POST':
+            # نصب تکه‌ای چند درخواست لازم دارد؛ سقف برای کار عادی کافی و برای
+            # brute-force رمز/کلید بازیابی محدود است.
+            if not _rate_limit(40, 900):
+                return 'درخواست تعمیر بیش از حد — ۱۵ دقیقه صبر کنید.', 429
         return None
 
     # ---------- CSRF محافظت (توکن دستی در سشن) ----------
@@ -1197,6 +1202,27 @@ def create_app():
                 g.user = None
                 from flask import flash as _flash
                 _flash('سشن شما در دستگاه دیگری بسته شد. دوباره وارد شوید.', 'info')
+
+        # تا قبل از ورود صحیح کد دوم، uid موجود در سشن نباید امکان دورزدن 2FA
+        # با تایپ مستقیم /admin را بدهد.
+        if g.user and session.get('admin_2fa_hash'):
+            allowed_2fa = (request.path.startswith('/static/') or
+                           request.endpoint in ('auth.admin_2fa', 'auth.logout'))
+            if not allowed_2fa:
+                return redirect(url_for('auth.admin_2fa'))
+
+        # نصب تازه برای عموم غیرفعال است؛ نبودن کلید برای نصب‌های قدیمی به معنی
+        # فعال بودن است تا یک به‌روزرسانی، سایت در حال کار را ناگهان نبندد.
+        if g.settings.get('site_active', '1') != '1' and not (g.user and g.user.is_admin):
+            allowed_inactive = (
+                request.path.startswith(('/static/', '/install')) or
+                request.endpoint in ('health', 'site.maintenance', 'auth.login',
+                                     'auth.admin_2fa', 'auth.logout') or
+                (request.endpoint or '').startswith('admin.')
+            )
+            if not allowed_inactive:
+                return redirect(url_for('site.maintenance'))
+
         daily_reminders()
         # ---------- حفاظت از فایل‌های خصوصی (uploads) ----------
         # مسیرهای جدید /uploads/... و قدیمی /static/uploads/... هر دو چک می‌شوند
@@ -1293,16 +1319,21 @@ def create_app():
         # پیش‌نمایش طرح از URL فقط برای مدیر واردشده مجاز است؛ کاربران عمومی
         # همیشه نسخهٔ اصلی سایت را می‌بینند.
         _pv = request.args.get('site_design', '') if (g.user and g.user.is_admin) else ''
-        sd = _pv if _pv in SITE_DESIGNS else g.settings.get('site_design', '1')
-        if sd == '1' or sd not in SITE_DESIGNS:
+        _saved_design = g.settings.get('site_design', '')
+        sd = _pv if _pv in SITE_DESIGNS else (_saved_design or '1')
+        # اگر مدیر طرحی را ذخیره یا صریحاً preview کرده، تم همان طرح باید اعمال
+        # شود (طرح ۱ هم واقعاً theme-22 است). نبود تنظیم در نصب‌های قدیمی یعنی
+        # حالت آزاد و امکان انتخاب تم شخصی/کوکی؛ این سازگاری API تم را حفظ می‌کند.
+        _force_design_theme = bool(_pv in SITE_DESIGNS or _saved_design in SITE_DESIGNS)
+        if _force_design_theme:
+            theme = SITE_DESIGNS[sd]['theme']
+        else:
             if g.user:
                 theme = g.user.theme
             if not theme:
                 theme = request.cookies.get('lms_theme')
             if not theme or theme not in VALID_THEMES:
                 theme = g.settings.get('default_theme', 'theme-01')
-        else:
-            theme = SITE_DESIGNS[sd]['theme']
         if theme not in VALID_THEMES:
             theme = 'theme-01'
         g.theme = theme
@@ -1599,7 +1630,7 @@ def create_app():
                 return False
 
         from gamification import user_badges
-        from permissions import has_permission, ROLES
+        from permissions import has_permission, can_access_endpoint, ROLES
         from gateways import gateway_fa as _gateway_name
         try:
             from sms import provider_ready as _sms_provider_ready
@@ -1617,7 +1648,9 @@ def create_app():
         return dict(site=getattr(g, 'settings', {}), cur_user=_u, site_categories=cats,
                     unread_notifications=unread_count,
                     current_role=(ROLES.get(_u.role, {}).get('fa') if _u else ''),
+                    role_name=lambda user: ROLES.get(getattr(user, 'role', ''), {}).get('fa', 'کاربر'),
                     has_perm=has_permission,
+                    can_manage_panel=can_access_endpoint(_u, 'admin.overview') if _u else False,
                     my_badges=user_badges(_u) if _u else [],
                     cart_ids=getattr(g, 'cart', []), cart_count=getattr(g, 'cart_count', 0),
                     theme=getattr(g, 'theme', 'theme-01'),

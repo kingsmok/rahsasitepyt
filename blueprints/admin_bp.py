@@ -65,11 +65,20 @@ _SECRET_SETTING_KEYS = {
 
 
 def admin_required(view):
+    """گارد مرکزی پنل؛ مدیران و کارکنان فقط endpoint مجاز خود را می‌بینند."""
     @functools.wraps(view)
     def wrapped(*args, **kwargs):
-        if not g.user or not g.user.is_admin:
-            flash('دسترسی غیرمجاز — این بخش مخصوص مدیر سایت است.', 'error')
-            return redirect(url_for('site.index'))
+        if not g.user:
+            flash('برای ورود به پنل ابتدا وارد حساب خود شوید.', 'error')
+            return redirect(url_for('auth.login', next=request.path))
+        from permissions import can_access_endpoint
+        if not can_access_endpoint(g.user, request.endpoint):
+            # کاربر دانشجو/مدرس به صفحه عمومی برگردد؛ کارکنانی که صرفاً مجوز
+            # این بخش را ندارند پاسخ صریح 403 می‌گیرند.
+            if g.user.role not in ('admin', 'super_admin', 'secretary', 'support', 'operator'):
+                flash('دسترسی غیرمجاز — این بخش در نقش شما فعال نیست.', 'error')
+                return redirect(url_for('site.index'))
+            abort(403)
         return view(*args, **kwargs)
     return wrapped
 
@@ -82,6 +91,34 @@ def _sections_lessons(course):
 @admin_bp.route('/')
 @admin_required
 def overview():
+    # نقش‌های عملیاتی نباید داشبورد مالی کامل مدیر را ببینند. کارت‌ها بر اساس
+    # همان Permissionهایی ساخته می‌شوند که مسیرها را کنترل می‌کنند.
+    if g.user.role in ('secretary', 'support', 'operator'):
+        from permissions import has_permission, menu_for
+        cards = []
+        if has_permission(g.user, 'view_users'):
+            cards.append(('👥', 'کاربران فعال', User.query.filter_by(is_active=True).count(),
+                          'admin.users'))
+        if has_permission(g.user, 'view_orders'):
+            cards.append(('🧾', 'سفارش‌های در انتظار', Order.query.filter_by(status='pending').count(),
+                          'admin.orders'))
+        if has_permission(g.user, 'approve_payments'):
+            cards.append(('💳', 'فیش‌های در انتظار', PaymentProof.query.filter_by(status='pending').count(),
+                          'admin.proofs'))
+        if has_permission(g.user, 'reply_tickets'):
+            cards.append(('🎫', 'تیکت‌های باز', Ticket.query.filter(
+                Ticket.status.in_(['open', 'answered'])).count(), 'admin.tickets'))
+        if has_permission(g.user, 'view_consultations'):
+            cards.append(('🎯', 'مشاوره‌های خوانده‌نشده', ContactMessage.query.filter(
+                ContactMessage.subject.like('%مشاوره%'),
+                ContactMessage.is_read == False).count(), 'admin.consultations'))
+        if has_permission(g.user, 'view_daily_classes'):
+            cards.append(('🎥', 'کلاس‌های پیش رو', LiveSession.query.filter(
+                LiveSession.starts_at >= utcnow()).count(), 'admin.live_sessions'))
+        links = [(endpoint, label) for endpoint, label in menu_for(g.user)
+                 if endpoint not in ('sep', 'admin.overview')]
+        return render_template('admin/staff_overview.html', cards=cards, links=links)
+
     from datetime import timedelta
     total_revenue = db.session.query(func.coalesce(func.sum(Order.final_total), 0)) \
         .filter(Order.status == 'paid').scalar()
@@ -148,7 +185,11 @@ def overview():
 @admin_bp.route('/go-live', methods=['GET', 'POST'])
 @admin_required
 def go_live():
-    """مرکز یک‌صفحه‌ای تکمیل برند، سرویس‌ها، سیاست فروش و محتوای واقعی."""
+    """مرکز راه‌اندازی و انتشار کنترل‌شده سایت.
+
+    نصب تازه عمداً غیرفعال است. انتشار فقط زمانی انجام می‌شود که هویت عمومی،
+    محتوای واقعی و ـ در صورت وجود کالای پولی ـ یک درگاه واقعی آماده باشند.
+    """
     keys = [
         'site_name', 'site_desc', 'phone', 'email', 'address', 'support_hours',
         'about_text', 'base_url', 'currency', 'refund_days',
@@ -163,7 +204,54 @@ def go_live():
         'sms_faraz_token', 'sms_faraz_sender',
         'smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'smtp_from', 'smtp_tls',
     ]
+
+    def _readiness(values):
+        from gateways import GATEWAYS, gateway_ready
+        from sms import provider_ready
+        from models import Product
+        published = Course.query.filter_by(status='published').all()
+        active_products = Product.query.filter_by(is_active=True).all()
+        public_ready = bool(values.get('site_name') and values.get('site_desc') and
+                            (values.get('phone') or values.get('email')))
+        payment_ready = any(gateway_ready(item['id'], values)
+                            for item in GATEWAYS if item.get('kind') != 'test')
+        paid_content = any((item.final_price or 0) > 0
+                           for item in published + active_products)
+        content_ready = bool(published or active_products)
+        checks = {
+            'public': public_ready,
+            # اگر کل محتوای منتشرشده رایگان است، درگاه شرط انتشار نیست.
+            'payment': payment_ready or not paid_content,
+            'sms': provider_ready(values),
+            'smtp': bool(values.get('smtp_host') and values.get('smtp_from')),
+            'content': content_ready,
+        }
+        launch_ready = checks['public'] and checks['content'] and checks['payment']
+        return checks, launch_ready, len(published), len(active_products), paid_content
+
     if request.method == 'POST':
+        action = request.form.get('action', 'save')
+        if action in ('activate', 'deactivate'):
+            values = {row.key: row.value for row in Setting.query.all()}
+            checks, launch_ready, _cc, _pc, _paid = _readiness(values)
+            if action == 'activate' and not launch_ready:
+                flash('انتشار انجام نشد؛ موارد الزامی علامت‌خورده را کامل کنید.', 'error')
+                return redirect(url_for('admin.go_live'))
+            row = db.session.get(Setting, 'site_active')
+            value = '1' if action == 'activate' else '0'
+            if row:
+                row.value = value
+            else:
+                db.session.add(Setting(key='site_active', value=value))
+            db.session.commit()
+            clear = getattr(current_app, 'clear_cache', None)
+            if callable(clear):
+                clear()
+            flash('سایت برای عموم فعال شد. ✅' if value == '1' else
+                  'سایت از دسترس عموم خارج شد؛ مدیر همچنان پیش‌نمایش کامل دارد.',
+                  'success' if value == '1' else 'info')
+            return redirect(url_for('admin.go_live'))
+
         for key in keys:
             if key not in request.form:
                 continue
@@ -193,26 +281,13 @@ def go_live():
         return redirect(url_for('admin.go_live'))
 
     values = {row.key: row.value for row in Setting.query.all()}
-    from gateways import GATEWAYS, gateway_ready
-    from sms import provider_ready
-    public_ready = bool(values.get('site_name') and values.get('site_desc') and
-                        (values.get('phone') or values.get('email')))
-    payment_ready = any(gateway_ready(item['id'], values)
-                        for item in GATEWAYS if item.get('kind') != 'test')
-    sms_ready = provider_ready(values)
-    smtp_ready = bool(values.get('smtp_host') and values.get('smtp_from'))
-    courses_count = Course.query.filter_by(status='published').count()
-    from models import Product
-    products_count = Product.query.filter_by(is_active=True).count()
-    content_ready = bool(courses_count or products_count)
-    checks = {
-        'public': public_ready, 'payment': payment_ready,
-        'sms': sms_ready, 'smtp': smtp_ready, 'content': content_ready,
-    }
+    checks, launch_ready, courses_count, products_count, paid_content = _readiness(values)
     score = round(sum(1 for ready in checks.values() if ready) * 100 / len(checks))
     return render_template('admin/go_live.html', vals=values, checks=checks,
                            score=score, courses_count=courses_count,
-                           products_count=products_count)
+                           products_count=products_count,
+                           launch_ready=launch_ready, paid_content=paid_content,
+                           site_active=values.get('site_active', '1') == '1')
 
 
 # ---------------------------------------------------------------- دوره‌ها
@@ -437,16 +512,26 @@ def users():
 @admin_bp.route('/users/<int:uid>/role', methods=['POST'])
 @admin_required
 def user_role(uid):
+    if g.user.role not in ('admin', 'super_admin'):
+        abort(403)
+    from models import ROLES
     user = db.get_or_404(User, uid)
-    if user.id != g.user.id:
-        new_role = request.form.get('role', 'student')
-        # ادمین/سوپرادمین نمیتوانند توسط ادمین عادی تغییر نقش بدهند
-        if user.role in ('super_admin',) and g.user.role != 'super_admin':
-            flash('تغییر نقش سوپر ادمین مجاز نیست.', 'error')
-            return redirect(url_for('admin.users'))
-        user.role = new_role
-        db.session.commit()
-        flash('نقش کاربر به‌روزرسانی شد.', 'success')
+    if user.id == g.user.id:
+        flash('برای جلوگیری از قفل‌شدن پنل، نمی‌توانید نقش حساب فعلی خود را تغییر دهید.', 'error')
+        return redirect(url_for('admin.users'))
+    new_role = request.form.get('role', 'student').strip()
+    if new_role not in ROLES:
+        abort(400)
+    # فقط سوپرادمین می‌تواند نقش‌های مدیریتی را اعطا/تغییر دهد. کارکنان عملیاتی
+    # حتی با دسترسی سفارشی edit_users نمی‌توانند سطح دسترسی خود را بالا ببرند.
+    privileged = {'admin', 'super_admin'}
+    if (user.role in privileged or new_role in privileged) and \
+            g.user.role != 'super_admin':
+        abort(403)
+    user.role = new_role
+    user.new_session_token()  # نقش جدید فوراً روی همه سشن‌های قبلی اعمال شود
+    db.session.commit()
+    flash('نقش کاربر به‌روزرسانی شد.', 'success')
     return redirect(url_for('admin.users'))
 
 
@@ -454,10 +539,15 @@ def user_role(uid):
 @admin_required
 def user_toggle(uid):
     user = db.get_or_404(User, uid)
-    if user.id != g.user.id:
-        user.is_active = not user.is_active
-        db.session.commit()
-        flash('وضعیت کاربر تغییر کرد.', 'success')
+    if user.id == g.user.id:
+        flash('نمی‌توانید حسابی را که اکنون با آن وارد شده‌اید غیرفعال کنید.', 'error')
+        return redirect(url_for('admin.users'))
+    if user.role in ('admin', 'super_admin') and g.user.role != 'super_admin':
+        abort(403)
+    user.is_active = not user.is_active
+    user.new_session_token()
+    db.session.commit()
+    flash('وضعیت کاربر تغییر کرد.', 'success')
     return redirect(url_for('admin.users'))
 
 
@@ -1690,11 +1780,14 @@ def canned_reply_delete(rid):
 @admin_bp.route('/users/<int:uid>/login-as', methods=['POST'])
 @admin_required
 def user_login_as(uid):
-    """ورود به حساب کاربر توسط ادمین — با ثبت لاگ"""
+    """ورود به حساب کاربر توسط مدیر ارشد — با ثبت لاگ."""
+    if g.user.role not in ('admin', 'super_admin'):
+        abort(403)
     target = db.get_or_404(User, uid)
-    if target.role in ('super_admin',) and g.user.role != 'super_admin':
-        flash('ورود به حساب سوپر ادمین مجاز نیست.', 'error')
-        return redirect(url_for('admin.users'))
+    if target.id == g.user.id or not target.is_active:
+        abort(400)
+    if target.role in ('admin', 'super_admin') and g.user.role != 'super_admin':
+        abort(403)
     if not target.session_token:
         target.new_session_token()
     db.session.add(ActivityLog(user_id=g.user.id, action='login_as',
@@ -1814,22 +1907,43 @@ def menu_delete(mid):
 @admin_bp.route('/users/<int:uid>/profile')
 @admin_required
 def user_profile(uid):
+    from permissions import has_permission, can_access_endpoint
     u = db.get_or_404(User, uid)
-    enrollments = Enrollment.query.filter_by(user_id=uid).all()
-    orders = Order.query.filter_by(user_id=uid).order_by(Order.created_at.desc()).all()
-    tickets = Ticket.query.filter_by(user_id=uid).order_by(Ticket.created_at.desc()).all()
-    acts = ActivityLog.query.filter_by(user_id=uid).order_by(ActivityLog.created_at.desc()).limit(20).all()
+    is_manager = g.user.role in ('admin', 'super_admin')
+    can_view_courses = is_manager or has_permission(g.user, 'view_user_courses')
+    can_view_orders = is_manager or has_permission(g.user, 'view_orders')
+    can_view_tickets = is_manager or has_permission(g.user, 'reply_tickets')
+    can_view_activity = is_manager or has_permission(g.user, 'view_reports')
+    enrollments = Enrollment.query.filter_by(user_id=uid).all() if can_view_courses else []
+    orders = (Order.query.filter_by(user_id=uid).order_by(Order.created_at.desc()).all()
+              if can_view_orders else [])
+    tickets = (Ticket.query.filter_by(user_id=uid).order_by(Ticket.created_at.desc()).all()
+               if can_view_tickets else [])
+    acts = (ActivityLog.query.filter_by(user_id=uid)
+            .order_by(ActivityLog.created_at.desc()).limit(20).all()
+            if can_view_activity else [])
+    protected_user = u.role in ('admin', 'super_admin') and g.user.role != 'super_admin'
+    capabilities = {
+        'wallet': is_manager,
+        'reset_password': (not protected_user and has_permission(g.user, 'edit_users')),
+        'notify': can_access_endpoint(g.user, 'admin.user_notify'),
+        'courses': can_view_courses, 'orders': can_view_orders,
+        'tickets': can_view_tickets, 'activity': can_view_activity,
+    }
     return render_template('admin/user_profile.html', u=u, enrollments=enrollments,
-                           orders=orders, tickets=tickets, acts=acts)
+                           orders=orders, tickets=tickets, acts=acts,
+                           capabilities=capabilities)
 
 
 @admin_bp.route('/users/<int:uid>/reset-password', methods=['POST'])
 @admin_required
 def user_reset_password(uid):
     u = db.get_or_404(User, uid)
+    if u.role in ('admin', 'super_admin') and g.user.role != 'super_admin':
+        abort(403)
     new_pass = request.form.get('password', '').strip()
-    if len(new_pass) < 6:
-        flash('رمز باید حداقل ۶ کاراکتر باشد.', 'error')
+    if len(new_pass) < 8:
+        flash('رمز باید حداقل ۸ کاراکتر باشد.', 'error')
     else:
         u.set_password(new_pass)
         u.new_session_token()  # خروج از همه دستگاه‌ها
@@ -1848,9 +1962,16 @@ def user_add():
         phone = request.form.get('phone', '').strip()
         email = request.form.get('email', '').strip().lower()
         password = request.form.get('password', '').strip()
-        role = request.form.get('role', 'student')
-        if len(name) < 3 or len(password) < 6 or '@' not in email:
-            flash('نام، ایمیل معتبر و رمز (۶+ کاراکتر) الزامی است.', 'error')
+        role = request.form.get('role', 'student').strip()
+        from models import ROLES
+        if role not in ROLES:
+            abort(400)
+        if g.user.role not in ('admin', 'super_admin') and role != 'student':
+            abort(403)
+        if role in ('admin', 'super_admin') and g.user.role != 'super_admin':
+            abort(403)
+        if len(name) < 3 or len(password) < 8 or '@' not in email:
+            flash('نام، ایمیل معتبر و رمز (حداقل ۸ کاراکتر) الزامی است.', 'error')
         elif User.query.filter_by(email=email).first():
             flash('این ایمیل قبلاً ثبت شده.', 'error')
         elif phone and User.query.filter_by(phone=phone).first():
@@ -1874,7 +1995,9 @@ def user_add():
 @admin_bp.route('/users/<int:uid>/wallet', methods=['POST'])
 @admin_required
 def user_wallet(uid):
-    """مدیریت کیف پول کاربر — افزایش/کاهش موجودی"""
+    """مدیریت کیف پول کاربر — فقط مدیران اصلی."""
+    if g.user.role not in ('admin', 'super_admin'):
+        abort(403)
     from gamification import wallet_charge, wallet_spend
     u = db.get_or_404(User, uid)
     action = request.form.get('action', '')

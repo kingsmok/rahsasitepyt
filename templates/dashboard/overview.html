@@ -41,7 +41,7 @@
     <div style="margin-right:auto;display:flex;gap:8px">
       <a class="btn btn-ghost btn-sm" href="{{ url_for('features.study_plan') }}">📅 برنامه مطالعه</a>
       <a class="btn btn-ghost btn-sm" href="{{ url_for('features.leaderboard') }}">🏆 جدول برترین‌ها</a>
-      <a class="btn btn-ghost btn-sm" href="{{ url_for('features.referral') }}">🎁 دعوت دوستان</a>
+      {% if site.get('referral_bonus_percent','0')|int > 0 %}<a class="btn btn-ghost btn-sm" href="{{ url_for('features.referral') }}">🎁 دعوت دوستان</a>{% endif %}
     </div>
   </div>
 </div>

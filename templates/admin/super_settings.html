@@ -72,6 +72,7 @@
     <div class="ss-field"><label>آپلود لوگو</label><input type="file" name="custom_logo_file" accept="image/*"></div>
     <div class="ss-field"><label>عرض محتوا (kit_container)</label><input name="kit_container" value="{{ vals.get('kit_container','') }}" placeholder="مثلا 1240"></div>
     <div class="ss-field"><label>گردی گوشه (kit_radius)</label><input name="kit_radius" value="{{ vals.get('kit_radius','') }}" placeholder="مثلا 14"></div>
+    <div class="ss-field"><label>انتخاب تم توسط بازدیدکننده</label><select name="allow_theme_switcher"><option value="0" {{ 'selected' if vals.get('allow_theme_switcher','0')=='0' }}>مخفی — ظاهر ثابت برند (پیشنهادی)</option><option value="1" {{ 'selected' if vals.get('allow_theme_switcher')=='1' }}>نمایش پنل ۴۳ تم</option></select><p class="ss-hint">برای نسخه دمو روشن و برای سایت مشتری خاموش باشد.</p></div>
     <div class="ss-field"><label>متن درباره ما</label><textarea rows="3" name="about_text">{{ vals.get('about_text','') }}</textarea></div>
   </div>
   <p class="ss-hint">💡 لوگوی فعلی: <code>{{ vals.get('custom_logo','—') }}</code> — آپلود جدید جایگزین می‌شود.</p>
@@ -130,7 +131,7 @@
       <span style="color:var(--text-3)">←</span>
       <code dir="ltr" style="font-size:12px;padding:5px 10px;background:var(--bg-2);border-radius:8px">{{ r.target }}</code>
       <span style="display:flex;gap:5px;margin-right:auto">
-        <a class="btn btn-ghost btn-sm" href="#" onclick="event.preventDefault();fillEdit({{ r.id }},'{{ r.source|replace("'","&#39;") }}','{{ r.target|replace("'","&#39;") }}',{{ r.code }})">✏️</a>
+        <button class="btn btn-ghost btn-sm" type="button" onclick="fillEdit({{ r.id }},'{{ r.source|replace("'","&#39;") }}','{{ r.target|replace("'","&#39;") }}',{{ r.code }})" aria-label="ویرایش ریدایرکت">✏️</button>
         <button class="btn btn-ghost btn-sm" name="action" value="redirect_toggle" formaction="?tab=seo">{{ '🔴 غیرفعال' if r.is_active else '🟢 فعال' }}</button>
         <button class="btn btn-ghost btn-sm" name="action" value="redirect_delete" formaction="?tab=seo" onclick="return confirm('حذف شود؟')">🗑</button>
         <input type="hidden" name="rid" value="{{ r.id }}">

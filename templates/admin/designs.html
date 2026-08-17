@@ -9,14 +9,6 @@
   <a class="btn btn-primary" href="/" target="_blank">👁 مشاهده سایت</a>
 </div>
 
-{% with messages = get_flashed_messages(with_categories=true) %}
-  {% if messages %}
-    {% for cat, m in messages %}
-    <div class="alert alert-{{ 'success' if cat=='success' else 'danger' }}" style="margin-bottom:16px">{{ m }}</div>
-    {% endfor %}
-  {% endif %}
-{% endwith %}
-
 <!-- طرح فعال -->
 <div class="card" style="padding:18px 22px;margin-bottom:22px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
   <div style="flex:1;min-width:240px">

@@ -113,4 +113,20 @@ def test_physical_order_requires_and_stores_shipping_address(client, app):
         assert order.total == 160000
         code = order.code
     assert client.get(f'/invoice/{code}').status_code == 200
-    assert client.get(f'/invoice/{code}/pdf').status_code == 200
+    pdf = client.get(f'/invoice/{code}/pdf')
+    assert pdf.status_code == 200
+    assert pdf.content_type == 'application/pdf'
+    assert pdf.data.startswith(b'%PDF-')
+    assert len(pdf.data) > 10_000
+
+
+def test_missing_product_image_uses_real_fallback(client, app):
+    _make_products(app)
+    with app.app_context():
+        product = Product.query.filter_by(slug='mug-test').first()
+        product.image = 'deleted-file.jpg'
+        db.session.commit()
+        assert product.image_url == '/static/img/cover-product-mug.webp'
+    response = client.get('/product/mug-test')
+    assert response.status_code == 200
+    assert '/static/img/cover-product-mug.webp' in response.text

@@ -5,7 +5,7 @@ from flask import (Blueprint, render_template, request, redirect, url_for,
                    flash, g, jsonify, abort)
 from models import (db, SeoMeta, RedirectRule, NotFoundLog, Setting,
                     Course, BlogPost, Page, User, Category)
-from validators import safe_referrer
+from validators import safe_referrer, safe_int
 
 seo_bp = Blueprint('seo_admin', __name__, url_prefix='/admin/seo')
 
@@ -117,8 +117,8 @@ def save_score():
     r = _admin_required()
     if r:
         return r
-    mid = int(request.form.get('mid') or 0)
-    score = int(request.form.get('score') or 0)
+    mid = safe_int(request.form.get('mid'))
+    score = safe_int(request.form.get('score'))
     grade = request.form.get('grade', '').strip()
     # اعتبارسنجی: فقط مقادیر مجاز ذخیره شوند (جلوگیری از ذخیره داده خراب)
     if grade not in ('great', 'good', 'bad', ''):
@@ -177,19 +177,19 @@ def redirects():
                     flash('این مسیر قبلاً ثبت شده است.', 'error')
                 else:
                     db.session.add(RedirectRule(source=source, target=target,
-                                                code=int(request.form.get('code', 301) or 301)))
+                                                code=safe_int(request.form.get('code'), 301)))
                     db.session.commit()
                     flash('ریدایرکت اضافه شد ✅', 'success')
             else:
                 flash('مسیر مبدأ و مقصد الزامی است.', 'error')
         elif action == 'delete':
-            rr = db.session.get(RedirectRule, int(request.form.get('rid') or 0))
+            rr = db.session.get(RedirectRule, safe_int(request.form.get('rid')))
             if rr:
                 db.session.delete(rr)
                 db.session.commit()
                 flash('ریدایرکت حذف شد.', 'info')
         elif action == 'toggle':
-            rr = db.session.get(RedirectRule, int(request.form.get('rid') or 0))
+            rr = db.session.get(RedirectRule, safe_int(request.form.get('rid')))
             if rr:
                 rr.is_active = not rr.is_active
                 db.session.commit()

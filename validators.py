@@ -62,6 +62,19 @@ def aparat_hash(url):
     return m.group(1) if m else None
 
 
+def safe_int(value, default=0, min_value=None, max_value=None):
+    """تبدیل عدد فرم/JSON بدون ValueError و با محدوده اختیاری."""
+    try:
+        number = int(str(value).strip())
+    except (TypeError, ValueError, OverflowError):
+        number = int(default)
+    if min_value is not None:
+        number = max(int(min_value), number)
+    if max_value is not None:
+        number = min(int(max_value), number)
+    return number
+
+
 def human_size(n):
     try:
         n = int(n or 0)

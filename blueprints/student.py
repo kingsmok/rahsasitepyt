@@ -351,12 +351,13 @@ def invoice_pdf(code):
     from flask import Response
     try:
         from invoice_pdf import build_invoice_pdf
-        pdf_bytes = build_invoice_pdf(order, g.settings, g.user, items)
+        # اطلاعات خریدار باید صاحب سفارش باشد؛ مدیر ممکن است فاکتور کاربر دیگری را ببیند.
+        pdf_bytes = build_invoice_pdf(order, g.settings, order.user, items)
         return Response(pdf_bytes, mimetype='application/pdf',
                         headers={'Content-Disposition': f'inline; filename=invoice-{code}.pdf'})
     except Exception as e:
-        # fallback: HTML چاپی (در صورت نبود reportlab یا خطای فونت)
-        print('PDF error, falling back to print HTML:', e)
+        # fallback کنترل‌شده؛ جزئیات فقط در لاگ سرور ثبت می‌شود.
+        current_app.logger.exception('invoice PDF generation failed for %s: %s', code, e)
         html = render_template('dashboard/invoice_print.html', order=order)
         return Response(html, mimetype='text/html',
                         headers={'Content-Disposition': f'inline; filename=invoice-{code}.html'})

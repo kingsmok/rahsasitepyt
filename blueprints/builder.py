@@ -5,6 +5,7 @@ import re
 import uuid
 import glob
 import os
+import threading
 from flask import (Blueprint, render_template, request, redirect, url_for,
                    flash, g, jsonify, abort)
 from models import db, Page, Course, Category, BlogPost, User
@@ -1157,6 +1158,56 @@ def builder_cat_options():
 # ------------------------------------------------------------------
 # مسیرهای صفحه‌ساز
 # ------------------------------------------------------------------
+_LIBRARY_LOCK = threading.Lock()
+
+
+def _library_path(kind):
+    root = os.path.join(os.path.dirname(os.path.dirname(__file__)),
+                        'instance', 'libraries')
+    os.makedirs(root, exist_ok=True)
+    return os.path.join(root, kind + '_library.json')
+
+
+def _load_library(kind):
+    path = _library_path(kind)
+    try:
+        with open(path, encoding='utf-8') as handle:
+            value = json.load(handle)
+        return value if isinstance(value, list) else []
+    except (OSError, ValueError, TypeError):
+        return []
+
+
+def _append_library(kind, item):
+    """افزودن اتمیک قالب به instance؛ امن در برابر چند thread/worker."""
+    encoded = json.dumps(item, ensure_ascii=False)
+    if len(encoded.encode('utf-8')) > 500 * 1024:
+        return False, 'حجم قالب بیشتر از ۵۰۰ کیلوبایت است.'
+    path = _library_path(kind)
+    lock_path = path + '.lock'
+    with _LIBRARY_LOCK:
+        lock_handle = open(lock_path, 'a+')
+        try:
+            try:
+                import fcntl
+                fcntl.flock(lock_handle, fcntl.LOCK_EX)
+            except Exception:
+                pass
+            library = _load_library(kind)
+            library.append(item)
+            library = library[-100:]  # جلوگیری از رشد نامحدود فایل
+            temp_path = path + '.tmp-' + uuid.uuid4().hex[:8]
+            with open(temp_path, 'w', encoding='utf-8') as handle:
+                json.dump(library, handle, ensure_ascii=False)
+            os.replace(temp_path, path)
+        finally:
+            try:
+                lock_handle.close()
+            except Exception:
+                pass
+    return True, 'در کتابخانه ذخیره شد.'
+
+
 def _persian_designs_meta():
     """متادیتای ۲۰ طرح برای صفحه‌ساز (پالت + نام + دسته)"""
     from persian_themes import PERSIAN_THEMES
@@ -1181,13 +1232,8 @@ def index():
     if r:
         return r
     pages = Page.query.order_by(Page.updated_at.desc()).all()
-    try:
-        sl_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'section_library.json')
-        section_lib = json.loads(open(sl_path, encoding='utf-8').read()) if os.path.exists(sl_path) else []
-        pl_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'page_library.json')
-        page_lib = json.loads(open(pl_path, encoding='utf-8').read()) if os.path.exists(pl_path) else []
-    except Exception:
-        section_lib, page_lib = [], []
+    section_lib = _load_library('section')
+    page_lib = _load_library('page')
     types = {'home': 'خانه', 'header': 'هدر سایت', 'footer': 'فوتر سایت',
              'footer_mobile': 'فوتر موبایل', 'mobile_menu': 'منوی موبایل',
              'page': 'صفحه معمولی', '404': 'صفحه خطای ۴۰۴'}
@@ -1449,16 +1495,13 @@ def api_section_template():
     r = _admin_required()
     if r:
         return jsonify(ok=False), 403
-    data = request.get_json(force=True)
-    name = (data.get('name') or '').strip()
+    data = request.get_json(silent=True) or {}
+    name = (data.get('name') or '').strip()[:80]
     row = data.get('row')
-    if not name or not row:
-        return jsonify(ok=False, msg='نام و سکشن الزامی است')
-    lib = json.loads(open(os.path.join(os.path.dirname(__file__), '..', 'section_library.json'), encoding='utf-8').read()) if os.path.exists(os.path.join(os.path.dirname(__file__), '..', 'section_library.json')) else []
-    lib.append({'name': name, 'row': row})
-    with open(os.path.join(os.path.dirname(__file__), '..', 'section_library.json'), 'w', encoding='utf-8') as f:
-        json.dump(lib, f, ensure_ascii=False)
-    return jsonify(ok=True, msg='ذخیره شد')
+    if not name or not isinstance(row, dict) or not row:
+        return jsonify(ok=False, msg='نام و سکشن معتبر الزامی است'), 400
+    ok, message = _append_library('section', {'name': name, 'row': row})
+    return jsonify(ok=ok, msg=message), 200 if ok else 413
 
 
 @builder_bp.route('/builder/api/page-template', methods=['POST'])
@@ -1467,13 +1510,15 @@ def api_page_template():
     r = _admin_required()
     if r:
         return jsonify(ok=False), 403
-    data = request.get_json(force=True)
-    name = (data.get('name') or '').strip() or 'قالب بدون نام'
-    lib = json.loads(open(os.path.join(os.path.dirname(__file__), '..', 'page_library.json'), encoding='utf-8').read()) if os.path.exists(os.path.join(os.path.dirname(__file__), '..', 'page_library.json')) else []
-    lib.append({'name': name, 'rows': data.get('rows', []), 'settings': data.get('settings', {})})
-    with open(os.path.join(os.path.dirname(__file__), '..', 'page_library.json'), 'w', encoding='utf-8') as f:
-        json.dump(lib, f, ensure_ascii=False)
-    return jsonify(ok=True, msg='ذخیره شد')
+    data = request.get_json(silent=True) or {}
+    name = (data.get('name') or '').strip()[:80]
+    rows = data.get('rows')
+    settings = data.get('settings') or {}
+    if not name or not isinstance(rows, list) or not rows or not isinstance(settings, dict):
+        return jsonify(ok=False, msg='نام و محتوای معتبر صفحه الزامی است'), 400
+    ok, message = _append_library(
+        'page', {'name': name, 'rows': rows, 'settings': settings})
+    return jsonify(ok=ok, msg=message), 200 if ok else 413
 
 
 @builder_bp.route('/builder/api/upload', methods=['POST'])

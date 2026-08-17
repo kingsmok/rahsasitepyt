@@ -63,6 +63,9 @@ def test_request_install_resumes_without_background_thread(tmp_path, monkeypatch
         assert conn.execute(text(
             "SELECT value FROM settings WHERE key='site_active'"
         )).scalar() == '0'
+        assert conn.execute(text(
+            "SELECT value FROM settings WHERE key='allow_theme_switcher'"
+        )).scalar() == '0'
     engine.dispose()
 
 

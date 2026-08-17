@@ -53,10 +53,11 @@
 <script>
   var ALL = {{ variant.components|tojson }};
   function copyHtml(key){
-    navigator.clipboard.writeText(ALL[key] || '').then(function(){
+    var copier = window.copyText || function(value){ return navigator.clipboard.writeText(value); };
+    copier(ALL[key] || '').then(function(){
       var b=document.querySelector('[onclick="copyHtml(\''+key+'\')"]');
       if(b){var t=b.textContent;b.textContent='✓ کپی شد';setTimeout(function(){b.textContent=t;},1400);}
-    });
+    }).catch(function(){ if(window.toast){ toast('کپی خودکار ممکن نشد','error'); } });
   }
   function toggleJson(key){
     var pre=document.getElementById('json-'+key);

@@ -792,8 +792,8 @@ def create_app():
             "https://www.googletagmanager.com https://www.google-analytics.com "
             "https://www.clarity.ms https://client.crisp.chat; "
             "style-src 'self' 'unsafe-inline' https://client.crisp.chat; "
-            "img-src 'self' data: blob: https://www.google-analytics.com "
-            "https://www.googletagmanager.com https://image.crisp.chat https://client.crisp.chat; "
+            # تصاویر محصول/دوره ممکن است از CDN امنی که مدیر ثبت کرده بیایند.
+            "img-src 'self' data: blob: https:; "
             "font-src 'self' data: https://client.crisp.chat; "
             "connect-src 'self' https://www.google-analytics.com https://www.googletagmanager.com "
             "https://*.clarity.ms https://client.crisp.chat wss://client.relay.crisp.chat; "
@@ -1120,7 +1120,7 @@ def create_app():
                 import os as _os
                 bk_dir = _os.path.join(app.instance_path, 'backups')
                 _os.makedirs(bk_dir, exist_ok=True)
-                import glob as _glob, shutil as _shutil
+                import glob as _glob
                 _lock_f = None
                 try:
                     import fcntl
@@ -1131,15 +1131,34 @@ def create_app():
                 except Exception:
                     pass
                 try:
+                    # مسیر واقعی SQLite را از engine بگیر؛ DATABASE_URL ممکن است
+                    # به فایلی خارج از instance اشاره کند. برای MySQL بکاپ فایل
+                    # بی‌معناست و پنل بکاپ دامپ جداگانه می‌سازد.
+                    if db.engine.dialect.name != 'sqlite':
+                        return True
+                    source_db = db.engine.url.database
+                    if not source_db or source_db == ':memory:':
+                        return True
+                    source_db = _os.path.abspath(source_db)
+                    if not _os.path.isfile(source_db):
+                        app.logger.warning('automatic backup skipped; SQLite file missing: %s', source_db)
+                        return True
                     bks = sorted(_glob.glob(_os.path.join(bk_dir, 'academy-*.db')), key=_os.path.getmtime)
-                    need = True
-                    if bks:
-                        need = (time.time() - _os.path.getmtime(bks[-1])) > 86400
+                    need = not bks or (time.time() - _os.path.getmtime(bks[-1])) > 86400
                     if need:
+                        # sqlite3.backup با WAL سازگار و از copy2 ایمن‌تر است.
+                        import sqlite3 as _sqlite3
                         from datetime import datetime as _dt
-                        _shutil.copy2(_os.path.join(app.instance_path, 'academy.db'),
-                                      _os.path.join(bk_dir, f'academy-{_dt.now():%Y%m%d-%H%M}.db'))
-                        for old_bk in bks[:-7]:
+                        target_db = _os.path.join(
+                            bk_dir, f'academy-{_dt.now():%Y%m%d-%H%M}.db')
+                        src_conn = _sqlite3.connect(source_db, timeout=15)
+                        dst_conn = _sqlite3.connect(target_db)
+                        try:
+                            src_conn.backup(dst_conn)
+                        finally:
+                            dst_conn.close()
+                            src_conn.close()
+                        for old_bk in bks[-7::-1]:
                             try:
                                 _os.remove(old_bk)
                             except Exception:

@@ -62,13 +62,16 @@ def _feed_items():
         _dp = 0
         if hasattr(p, 'discount_price') and p.discount_price and p.discount_price < (p.price or 0):
             _dp = round((p.price - p.discount_price) * 100 / p.price)
+        product_image = p.image_url
+        if not product_image.startswith('https://'):
+            product_image = request.host_url.rstrip('/') + product_image
         items.append(dict(
             id=f'product-{p.id}', type='product', title=p.title,
             price=p.price or 0, final_price=_fp or 0,
             discount_pct=_dp,
             stock=p.stock or 0,
             url=url_for('products.product_detail', slug=p.slug, _external=True),
-            image=request.host_url.rstrip('/') + '/static/img/' + _feed_image(p.image),
+            image=product_image,
             category='محصولات آموزشی',
             in_stock=(p.stock or 0) > 0,
         ))

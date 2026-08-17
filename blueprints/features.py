@@ -19,6 +19,7 @@ from gamification import (award_points, record_streak, user_badges, wallet_spend
                           wallet_charge, wallet_bonus, make_referral_code)
 
 from jdates import jtime
+from validators import safe_int
 
 features_bp = Blueprint('features', __name__)
 
@@ -553,7 +554,7 @@ def exam_practice_start():
         return redirect(url_for('auth.login'))
     cat = request.form.get('category', '').strip()
     try:
-        count = min(40, max(5, int(request.form.get('count') or 10)))
+        count = safe_int(request.form.get('count'), 10, 5, 40)
     except (TypeError, ValueError):
         count = 10
     q = QuestionBank.query

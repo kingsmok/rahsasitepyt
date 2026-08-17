@@ -165,6 +165,9 @@ def course_detail(slug):
     db.session.commit()
     enrolled = bool(g.user and any(e.course_id == course.id for e in g.user.enrollments))
     co_teachers = [ct for ct in course.co_teachers] if hasattr(course, 'co_teachers') else []
+    # آزمون و ارسال تمرین تجربهٔ دانشجو است؛ مدیر/مدرس از پنل تخصصی خود
+    # مدیریت می‌کنند و در صفحه فروش با لینک منتهی به 403 مواجه نمی‌شوند.
+    can_access_coursework = enrolled
     is_fav = bool(g.user and Favorite.query.filter_by(user_id=g.user.id, course_id=course.id).first())
     related = Course.query.filter(Course.category_id == course.category_id,
                                   Course.id != course.id, Course.status == 'published').limit(3).all()
@@ -271,6 +274,7 @@ def course_detail(slug):
             done_ids = set(en.progress_list())
     return render_template('course_detail.html', course=course, related=related,
                            reviews=reviews, enrolled=enrolled, is_fav=is_fav,
+                           can_access_coursework=can_access_coursework,
                            done_ids=done_ids, blog_posts=blog_posts)
 
 

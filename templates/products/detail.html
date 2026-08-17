@@ -14,7 +14,7 @@
       <!-- گالری تصویر -->
       <div style="border-radius:20px;overflow:hidden;background:var(--bg-2);aspect-ratio:1/1;position:relative">
         {% if p.image %}
-        <img id="main-img" src="{{ p.image if p.image.startswith('http') else '/static/img/' + p.image }}" alt="{{ p.title }}" style="width:100%;height:100%;object-fit:cover">
+        <img id="main-img" src="{{ p.image_url }}" alt="{{ p.title }}" style="width:100%;height:100%;object-fit:cover">
         {% else %}
         <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:80px">🛍</div>
         {% endif %}
@@ -57,7 +57,7 @@
           <small class="text-3">اشتراک‌گذاری:</small>
           <a class="soc soc-tg" href="https://t.me/share/url?url={{ request.url|urlencode }}" target="_blank" rel="noopener" title="تلگرام">📨</a>
           <a class="soc soc-wa" href="https://wa.me/?text={{ request.url|urlencode }}" target="_blank" rel="noopener" title="واتساپ">💬</a>
-          <a class="soc" href="#" onclick="navigator.clipboard.writeText('{{ request.url }}');this.textContent='✅';setTimeout(()=>this.textContent='🔗',1200);return false;" title="کپی لینک">🔗</a>
+          <button class="soc" type="button" data-copy="{{ request.url }}" title="کپی لینک" aria-label="کپی لینک محصول">🔗</button>
         </div>
 
         <!-- مشخصات فنی -->

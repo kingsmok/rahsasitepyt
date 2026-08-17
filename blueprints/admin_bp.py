@@ -23,7 +23,7 @@ from models import (utcnow, db, User, Category, Course, Section, Lesson, Order, 
                     Page, RedirectRule)
 
 import re as _re
-from validators import human_size
+from validators import human_size, safe_int
 from validators import log_exc as _lexc
 from validators import safe_referrer
 from jdates import jdate_num, jtime
@@ -413,13 +413,13 @@ def course_lessons(cid):
                 db.session.commit()
                 flash('سکشن اضافه شد.', 'success')
         elif action == 'del_section':
-            sec = db.session.get(Section, int(request.form.get('sid') or 0))
+            sec = db.session.get(Section, safe_int(request.form.get('sid')))
             if sec and sec.course_id == course.id:
                 db.session.delete(sec)
                 db.session.commit()
                 flash('سکشن حذف شد.', 'info')
         elif action == 'add_lesson':
-            sec = db.session.get(Section, int(request.form.get('section_id') or 0))
+            sec = db.session.get(Section, safe_int(request.form.get('section_id')))
             title = request.form.get('title', '').strip()
             if sec and sec.course_id == course.id and title:
                 fl = _save_lesson_file(request.files.get('file'))
@@ -447,7 +447,7 @@ def course_lessons(cid):
                 db.session.commit()
                 flash('جلسه اضافه شد.', 'success')
         elif action == 'edit_lesson':
-            les = db.session.get(Lesson, int(request.form.get('lid') or 0))
+            les = db.session.get(Lesson, safe_int(request.form.get('lid')))
             if les:
                 les.title = request.form.get('title', '').strip() or les.title
                 les.video_type = request.form.get('video_type', les.video_type)
@@ -462,7 +462,7 @@ def course_lessons(cid):
                 db.session.commit()
                 flash('جلسه ویرایش شد.', 'success')
         elif action == 'del_lesson':
-            les = db.session.get(Lesson, int(request.form.get('lid') or 0))
+            les = db.session.get(Lesson, safe_int(request.form.get('lid')))
             if les and les.section.course_id == course.id:
                 db.session.delete(les)
                 db.session.commit()
@@ -483,11 +483,11 @@ def categories():
                 db.session.add(Category(name=name, slug=slugify(name), icon=request.form.get('icon', '📚'),
                                         color=request.form.get('color', '#2563eb'),
                                         description=request.form.get('description', ''),
-                                        sort=int(request.form.get('sort') or 0)))
+                                        sort=safe_int(request.form.get('sort'))))
                 db.session.commit()
                 flash('دسته‌بندی اضافه شد.', 'success')
         elif action == 'delete':
-            c = db.session.get(Category, int(request.form.get('cid') or 0))
+            c = db.session.get(Category, safe_int(request.form.get('cid')))
             if c:
                 db.session.delete(c)
                 db.session.commit()
@@ -652,15 +652,15 @@ def coupons():
                 exp = request.form.get('expires_at', '').strip()
                 db.session.add(Coupon(
                     code=code, type=request.form.get('type', 'percent'),
-                    value=int(request.form.get('value') or 0),
-                    max_uses=int(request.form.get('max_uses') or 0),
-                    min_amount=int(request.form.get('min_amount') or 0),
+                    value=safe_int(request.form.get('value')),
+                    max_uses=safe_int(request.form.get('max_uses')),
+                    min_amount=safe_int(request.form.get('min_amount')),
                     expires_at=(lambda _e: datetime.strptime(_e, '%Y-%m-%d') if _e else None)(
                         __import__('app', fromlist=['jalali_to_gregorian']).jalali_to_gregorian(exp) if exp else None)))
                 db.session.commit()
                 flash('کوپن ساخته شد.', 'success')
         elif action == 'delete':
-            c = db.session.get(Coupon, int(request.form.get('cid') or 0))
+            c = db.session.get(Coupon, safe_int(request.form.get('cid')))
             if c:
                 db.session.delete(c)
                 db.session.commit()
@@ -677,7 +677,7 @@ def blog():
     if request.method == 'POST':
         action = request.form.get('action')
         if action == 'delete':
-            p = db.session.get(BlogPost, int(request.form.get('pid') or 0))
+            p = db.session.get(BlogPost, safe_int(request.form.get('pid')))
             if p:
                 db.session.delete(p)
                 db.session.commit()
@@ -732,7 +732,7 @@ def _blog_form(post):
 def reviews():
     if request.method == 'POST':
         action = request.form.get('action')
-        rid = int(request.form.get('rid') or 0)
+        rid = safe_int(request.form.get('rid'))
         rv = db.session.get(Review, rid)
         if rv:
             if action == 'approve':
@@ -851,7 +851,7 @@ def newsletters():
 def tickets():
     if request.method == 'POST':
         action = request.form.get('action')
-        t = db.session.get(Ticket, int(request.form.get('tid') or 0))
+        t = db.session.get(Ticket, safe_int(request.form.get('tid')))
         if t:
             if action == 'reply':
                 reply_text = request.form.get('reply', '').strip()
@@ -1388,8 +1388,8 @@ def optimizer():
     import os
     items = []
     fmt = request.form.get('fmt', 'webp') if request.method == 'POST' else 'webp'
-    quality = int(request.form.get('quality', 80)) if request.method == 'POST' else 80
-    maxw = int(request.form.get('maxw', 0)) if request.method == 'POST' else 0
+    quality = safe_int(request.form.get('quality'), 80, 20, 95) if request.method == 'POST' else 80
+    maxw = safe_int(request.form.get('maxw'), 0, 0, 8000) if request.method == 'POST' else 0
     out_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                            'static', 'uploads', 'opt')
     os.makedirs(out_dir, exist_ok=True)
@@ -2673,8 +2673,8 @@ def super_settings():
                 'kit_container', 'kit_radius', 'site_design', 'home_design',
                 'about_design', 'contact_design',
                 # امنیت و نگهداری
-                'maintenance', 'allow_register', 'allow_phone_login', 'admin_2fa_enabled',
-                'exam_enabled', 'spin_enabled',
+                'maintenance', 'allow_register', 'allow_phone_login', 'allow_theme_switcher',
+                'admin_2fa_enabled', 'exam_enabled', 'spin_enabled',
             ]
             for k in keys:
                 # هر تب فقط فیلدهای خودش را ارسال می‌کند؛ تنظیمات تب‌های دیگر
@@ -2747,7 +2747,7 @@ def super_settings():
         if action == 'redirect_add':
             source = request.form.get('source', '').strip()
             target = request.form.get('target', '').strip()
-            code = int(request.form.get('code', 301) or 301)
+            code = safe_int(request.form.get('code'), 301)
             if not source.startswith('/'):
                 source = '/' + source
             if not target.startswith('/'):
@@ -2764,7 +2764,7 @@ def super_settings():
                 flash(f'ریدایرکت {source} → {target} اضافه شد ✅', 'success')
             return redirect(url_for('admin.super_settings', tab='seo'))
         if action == 'redirect_edit':
-            rid = int(request.form.get('rid') or 0)
+            rid = safe_int(request.form.get('rid'))
             rr = db.session.get(RedirectRule, rid)
             if rr:
                 source = request.form.get('source', '').strip()
@@ -2778,19 +2778,19 @@ def super_settings():
                 else:
                     rr.source = source[:300]
                     rr.target = target[:300]
-                    rr.code = int(request.form.get('code', 301) or 301)
+                    rr.code = safe_int(request.form.get('code'), 301)
                     db.session.commit()
                     flash('ریدایرکت ویرایش شد ✅', 'success')
             return redirect(url_for('admin.super_settings', tab='seo'))
         if action == 'redirect_delete':
-            rr = db.session.get(RedirectRule, int(request.form.get('rid') or 0))
+            rr = db.session.get(RedirectRule, safe_int(request.form.get('rid')))
             if rr:
                 db.session.delete(rr)
                 db.session.commit()
                 flash('ریدایرکت حذف شد.', 'info')
             return redirect(url_for('admin.super_settings', tab='seo'))
         if action == 'redirect_toggle':
-            rr = db.session.get(RedirectRule, int(request.form.get('rid') or 0))
+            rr = db.session.get(RedirectRule, safe_int(request.form.get('rid')))
             if rr:
                 rr.is_active = not rr.is_active
                 db.session.commit()
@@ -2852,6 +2852,32 @@ def themes():
 # ================================================================
 # فروشگاه — مدیریت محصولات فیزیکی
 # ================================================================
+def _product_int(value, maximum=2_000_000_000):
+    try:
+        return max(0, min(maximum, int(value or 0)))
+    except (TypeError, ValueError):
+        return 0
+
+
+def _save_product_image(file_storage):
+    """ذخیره امن تصویر محصول و برگرداندن مسیر نسبی static/img."""
+    if not file_storage or not file_storage.filename:
+        return None
+    from validators import (ALLOWED_IMAGE_EXT, file_content_is_safe,
+                            safe_filename as _safe_filename)
+    safe = _safe_filename(file_storage.filename, ALLOWED_IMAGE_EXT)
+    ext = os.path.splitext(safe or '')[1].lower()
+    if not safe or not file_content_is_safe(file_storage.stream, ext):
+        flash('تصویر محصول معتبر نیست؛ فقط JPG، PNG، WebP، GIF یا AVIF امن مجاز است.', 'error')
+        return None
+    directory = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                             'static', 'img', 'uploads', 'products')
+    os.makedirs(directory, exist_ok=True)
+    filename = f'product-{uuid.uuid4().hex[:12]}{ext}'
+    file_storage.save(os.path.join(directory, filename))
+    return 'uploads/products/' + filename
+
+
 @admin_bp.route('/products', methods=['GET', 'POST'])
 @admin_required
 def products_admin():
@@ -2867,19 +2893,25 @@ def products_admin():
             while _P.query.filter_by(slug=slug).first():
                 slug += '-2'
             from validators import clamp_field
+            image_file = request.files.get('image_file')
+            uploaded_image = _save_product_image(image_file)
+            if image_file and image_file.filename and not uploaded_image:
+                return redirect(url_for('admin.products_admin'))
+            image = (uploaded_image or request.form.get('image', '').strip() or
+                     'cover-product-mug.webp')
             _p = _P(
                 title=title, slug=slug,
                 description=clamp_field(request.form.get('description'), 'default'),
-                price=int(request.form.get('price') or 0),
-                discount_price=int(request.form.get('discount_price') or 0),
-                image=request.form.get('image', '').strip(),
+                price=_product_int(request.form.get('price')),
+                discount_price=_product_int(request.form.get('discount_price')),
+                image=image,
                 category=clamp_field(request.form.get('category'), 'default'),
                 sku=clamp_field(request.form.get('sku'), 'default'),
                 dimensions=clamp_field(request.form.get('dimensions'), 'default'),
                 weight=clamp_field(request.form.get('weight'), 'default'),
                 material=clamp_field(request.form.get('material'), 'default'),
                 features=request.form.get('features', '').strip(),
-                stock=int(request.form.get('stock') or 0),
+                stock=_product_int(request.form.get('stock'), maximum=10_000_000),
                 featured=bool(request.form.get('featured')),
                 is_active=True,
             )
@@ -2898,18 +2930,22 @@ def product_admin_edit(pid):
     p = db.get_or_404(_P, pid)
     if request.method == 'POST':
         from validators import clamp_field
+        image_file = request.files.get('image_file')
+        uploaded_image = _save_product_image(image_file)
+        if image_file and image_file.filename and not uploaded_image:
+            return redirect(url_for('admin.product_admin_edit', pid=p.id))
         p.title = clamp_field(request.form.get('title'), 'title') or p.title
         p.description = clamp_field(request.form.get('description'), 'default')
-        p.price = int(request.form.get('price') or 0)
-        p.discount_price = int(request.form.get('discount_price') or 0)
-        p.image = request.form.get('image', '').strip()
+        p.price = _product_int(request.form.get('price'))
+        p.discount_price = _product_int(request.form.get('discount_price'))
+        p.image = uploaded_image or request.form.get('image', '').strip() or p.image
         p.category = clamp_field(request.form.get('category'), 'default')
         p.sku = clamp_field(request.form.get('sku'), 'default')
         p.dimensions = clamp_field(request.form.get('dimensions'), 'default')
         p.weight = clamp_field(request.form.get('weight'), 'default')
         p.material = clamp_field(request.form.get('material'), 'default')
         p.features = request.form.get('features', '').strip()
-        p.stock = int(request.form.get('stock') or 0)
+        p.stock = _product_int(request.form.get('stock'), maximum=10_000_000)
         p.featured = bool(request.form.get('featured'))
         p.is_active = bool(request.form.get('is_active'))
         db.session.commit()

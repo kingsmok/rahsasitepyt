@@ -3,7 +3,7 @@
 {% block acontent %}
 <div class="dash-head"><div><h1>🛍 ویرایش «{{ p.title }}»</h1></div><a class="btn btn-ghost" href="{{ url_for('admin.products_admin') }}">← محصولات</a></div>
 <div class="card" style="padding:24px;max-width:860px">
-  <form method="post">
+  <form method="post" enctype="multipart/form-data">
     <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
     <div class="grid" style="grid-template-columns:1fr 1fr;gap:14px">
       <div class="form-group"><label>عنوان *</label><input class="form-control" name="title" required value="{{ p.title }}"></div>
@@ -22,7 +22,17 @@
       <div class="form-group"><label>جنس</label><input class="form-control" name="material" value="{{ p.material or '' }}" placeholder="شیشه"></div>
     </div>
     <div class="form-group"><label>ویژگی‌ها (هر خط یک مورد)</label><textarea class="form-control" name="features" rows="4" placeholder="بسته‌بندی کادویی&#10;قابل استفاده در مایکروویو">{{ p.features or '' }}</textarea></div>
-    <div class="form-group"><label>تصویر (نام فایل در static/img یا URL)</label><input class="form-control" name="image" value="{{ p.image or '' }}" placeholder="cover-python.webp یا https://..."></div>
+    <div class="form-group">
+      <label>تصویر محصول</label>
+      <div class="flex gap-2 wrap" style="align-items:flex-start">
+        <img src="{{ p.image_url }}" alt="پیش‌نمایش {{ p.title }}" style="width:120px;height:120px;object-fit:cover;border-radius:14px;border:1px solid var(--border)">
+        <div style="flex:1;min-width:260px">
+          <input class="form-control" type="file" name="image_file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif">
+          <input class="form-control" style="margin-top:8px" name="image" value="{{ p.image or '' }}" placeholder="یا نام فایل محلی / آدرس HTTPS">
+          <p class="form-hint">آپلود جدید اولویت دارد. تصویر مربعی با حداقل ۸۰۰×۸۰۰ پیشنهاد می‌شود.</p>
+        </div>
+      </div>
+    </div>
     <div class="flex gap-2" style="gap:16px;margin-bottom:16px">
       <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" name="featured" value="1" {{ 'checked' if p.featured }} style="width:17px;height:17px;accent-color:var(--primary)"> ویژه</label>
       <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" name="is_active" value="1" {{ 'checked' if p.is_active }} style="width:17px;height:17px;accent-color:var(--primary)"> فعال (نمایش در سایت)</label>

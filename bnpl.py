@@ -16,6 +16,7 @@ from datetime import datetime, timedelta
 from models import (db, utcnow, Order, User, WalletTransaction, Setting,
                     Installment)
 from jdates import jdate, fa, jdatetime
+from validators import safe_int
 
 bnpl_bp = Blueprint('bnpl', __name__)
 
@@ -134,7 +135,7 @@ def bnpl_page(code):
         return redirect(url_for('shop.pay_start', code=code))
     # تعداد قسط: از query (پیش‌انتخاب) یا تعداد قسط فعلی سفارش یا حداکثر
     try:
-        n = int(request.args.get('n', order.installment_count or max_installments()))
+        n = safe_int(request.args.get('n'), order.installment_count or max_installments(), 2, 4)
     except Exception:
         n = max_installments()
     max_n = min(max_installments(), max(p['max_installments'] for p in providers))

@@ -235,7 +235,8 @@
   </div>
 </nav>
 
-<!-- ===== پنل انتخاب تم (حالت‌های نمایش) ===== -->
+<!-- ===== پنل انتخاب تم (اختیاری؛ پیش‌فرض نصب تجاری خاموش) ===== -->
+{% if site.get('allow_theme_switcher', '1') == '1' %}
 <button class="theme-fab" id="theme-fab" type="button" aria-label="تغییر ظاهر سایت" title="تغییر تم و حالت نمایش">{{ icon('palette', 24) }}</button>
 <div class="theme-panel" id="theme-panel" role="dialog" aria-label="انتخاب تم و حالت نمایش">
   <div class="flex between" style="margin-bottom:10px">
@@ -256,6 +257,7 @@
     {% endfor %}
   </div>
 </div>
+{% endif %}
 
 <script>
 /* افزودن خودکار توکن CSRF به همه فرم‌های POST */

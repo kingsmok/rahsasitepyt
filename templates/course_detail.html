@@ -119,16 +119,16 @@
             <h3><span class="ic">📝</span> آزمون‌ها و تمرین‌های دوره</h3>
             <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px">
               {% for qz in course.quizzes %}
-              <a class="card card-hover" style="padding:14px;text-decoration:none" href="{{ url_for('features.quiz_view', qid=qz.id) }}">
+              {% if can_access_coursework %}<a class="card card-hover" style="padding:14px;text-decoration:none" href="{{ url_for('features.quiz_view', qid=qz.id) }}">{% else %}<div class="card" style="padding:14px;opacity:.78" aria-label="پس از ثبت‌نام در دسترس است">{% endif %}
                 <strong style="font-size:13px">📝 {{ qz.title }}</strong>
-                <small class="text-3" style="display:block">{{ fa(qz.questions|length) }} سوال</small>
-              </a>
+                <small class="text-3" style="display:block">{{ fa(qz.questions|length) }} سوال{% if not can_access_coursework %} · 🔒 ویژه دانشجویان دوره{% endif %}</small>
+              {% if can_access_coursework %}</a>{% else %}</div>{% endif %}
               {% endfor %}
               {% for asg in course.assignments %}
-              <a class="card card-hover" style="padding:14px;text-decoration:none" href="{{ url_for('features.assignment_view', aid=asg.id) }}">
+              {% if can_access_coursework %}<a class="card card-hover" style="padding:14px;text-decoration:none" href="{{ url_for('features.assignment_view', aid=asg.id) }}">{% else %}<div class="card" style="padding:14px;opacity:.78" aria-label="پس از ثبت‌نام در دسترس است">{% endif %}
                 <strong style="font-size:13px">📌 {{ asg.title }}</strong>
-                <small class="text-3" style="display:block">تمرین دوره</small>
-              </a>
+                <small class="text-3" style="display:block">تمرین دوره{% if not can_access_coursework %} · 🔒 ویژه دانشجویان دوره{% endif %}</small>
+              {% if can_access_coursework %}</a>{% else %}</div>{% endif %}
               {% endfor %}
             </div>
           </div>

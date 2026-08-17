@@ -21,7 +21,7 @@ from models import (utcnow, db, User, Category, Course, Section, Lesson, Order, 
                     Installment, TicketReply, SuccessStory, Media, ExamAttempt,
                     CourseTeacher, QuestionBank, SeoMeta, Page, Notification)
 from blueprints.admin_bp import admin_bp, admin_required
-from validators import safe_filename, human_size, log_exc as _lexc
+from validators import safe_filename, safe_int, human_size, log_exc as _lexc
 from jdates import jdate_num, jtime, fa
 
 
@@ -64,12 +64,12 @@ def success_stories():
             db.session.add(_Story(
                 name=name,
                 role=request.form.get('role', '').strip(),
-                course_id=int(request.form.get('course_id') or 0) or None,
+                course_id=safe_int(request.form.get('course_id')) or None,
                 story=request.form.get('story', '').strip(),
                 result=request.form.get('result', '').strip(),
                 color=request.form.get('color', '#7c3aed'),
                 is_active=bool(request.form.get('is_active')),
-                sort=int(request.form.get('sort') or 0),
+                sort=safe_int(request.form.get('sort')),
             ))
             db.session.commit()
             flash('داستان موفقیت اضافه شد. 🌟', 'success')

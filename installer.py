@@ -359,6 +359,9 @@ DEFAULT_SETTINGS = {
     'site_active': '0',
     'allow_register': '1',
     'allow_phone_login': '1',
+    # پنل ۴۳ تم برای دمو/محصول قابل فعال‌سازی است، اما روی سایت مشتری
+    # به‌صورت پیش‌فرض نمایش داده نمی‌شود تا ظاهر برند ثابت بماند.
+    'allow_theme_switcher': '0',
     'maintenance': '0',
     'bnpl_enabled': '0',
     'cashback_percent': '0',

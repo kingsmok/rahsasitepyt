@@ -30,7 +30,7 @@
               <small>🎓 دوره — {{ obj.level }} — {{ fa(obj.duration_hours) }} ساعت</small>
             </div>
             {% else %}
-            <img class="c-thumb" src="{{ obj.image if obj.image.startswith('http') else '/static/img/' + obj.image }}" alt="">
+            <img class="c-thumb" src="{{ obj.image_url }}" alt="">
             <div class="c-info">
               <h4>{{ obj.title }}</h4>
               <small>🛍 محصول — {{ obj.category or '' }}{% if obj.sku %} · {{ obj.sku }}{% endif %}</small>

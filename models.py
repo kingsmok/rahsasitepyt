@@ -1450,6 +1450,20 @@ class Product(db.Model):
     updated_at = db.Column(db.DateTime, default=utcnow, onupdate=utcnow)
 
     @property
+    def image_url(self):
+        """آدرس تصویر با fallback؛ فایل حذف‌شده یا مسیر ناسالم UI را نمی‌شکند."""
+        import os as _os
+        value = (self.image or '').strip()
+        if value.startswith('https://'):
+            return value
+        name = value[len('/static/img/'):] if value.startswith('/static/img/') else value.lstrip('/')
+        if name and '..' not in name and '\\' not in name:
+            path = _os.path.join(_os.path.dirname(__file__), 'static', 'img', name)
+            if _os.path.isfile(path):
+                return '/static/img/' + name
+        return '/static/img/cover-product-mug.webp'
+
+    @property
     def final_price(self):
         return self.discount_price if self.discount_price and self.discount_price < self.price else self.price
 

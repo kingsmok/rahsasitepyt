@@ -61,6 +61,13 @@ def test_theme_panel_present(client, app):
     assert 'فیروزه‌ای اصفهان' in body  # تم ایرانی pd-01
 
 
+def test_theme_panel_can_be_hidden_for_commercial_brand(client, app):
+    _set(app, 'allow_theme_switcher', '0')
+    body = client.get('/').get_data(as_text=True)
+    assert 'id="theme-fab"' not in body
+    assert 'id="theme-panel"' not in body
+
+
 def test_theme_panel_shows_all_themes(client, app):
     """هر ۴۳ تم باید در پنل حضور داشته باشد."""
     from app import THEMES

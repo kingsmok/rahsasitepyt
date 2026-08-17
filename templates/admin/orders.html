@@ -19,7 +19,7 @@
         <td>{{ o.user.name }}</td>
         <td>{{ fa(o.items|length) }} دوره</td>
         <td><strong>{{ fa('{:,.0f}'.format(o.final_total)) }}</strong> <small class="text-3">تومان</small></td>
-        <td>{{ {'zarinpal': 'زرین‌پال', 'idpay': 'آیدی پی', 'zibal': 'زیبال', 'sandbox': 'آزمایشی'}.get(o.gateway, '—') }}</td>
+        <td>{{ gateway_name(o.gateway) }}</td>
         <td>{{ o.created_at|jdate }}</td>
         <td>
           {% if o.status == 'paid' %}<span class="badge badge-success">پرداخت‌شده</span>

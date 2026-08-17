@@ -9,31 +9,43 @@
   <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
   <div style="display:flex;flex-direction:column;gap:16px">
 
+    <div class="card" style="padding:22px;border-right:4px solid #16a34a">
+      <h2 style="font-size:15px;margin-bottom:4px">💳 کارت‌به‌کارت</h2>
+      <p class="text-3" style="font-size:12px;margin-bottom:14px">فقط در صورت ثبت شماره کارت واقعی مجموعه به خریدار نمایش داده می‌شود.</p>
+      <div class="grid" style="grid-template-columns:2fr 1fr;gap:14px">
+        <div class="form-group"><label>شماره کارت</label><input class="form-control" dir="ltr" inputmode="numeric" name="c2c_card" value="{{ site.c2c_card or '' }}" placeholder="شماره کارت واقعی"></div>
+        <div class="form-group"><label>نام صاحب کارت</label><input class="form-control" name="c2c_name" value="{{ site.c2c_name or '' }}"></div>
+      </div>
+    </div>
+
     <!-- بانک‌ها -->
     <div class="card" style="padding:22px;border-right:4px solid #1d4a75">
       <h2 style="font-size:15px;margin-bottom:4px">🏦 درگاه‌های مستقیم بانکی</h2>
       <p class="text-3" style="font-size:12px;margin-bottom:14px">نیازمند ثبت IP سرور در پنل بانک + قرارداد شاپرک</p>
       <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px">
         <div class="card" style="padding:16px;background:var(--bg-2);border:none">
-          <strong>بانک ملی (به‌پرداخت)</strong>
+          <strong>به‌پرداخت ملت</strong>
           <div class="form-group" style="margin-top:10px"><label>شماره ترمینال</label><input class="form-control" dir="ltr" name="melli_terminal" value="{{ site.melli_terminal or '' }}"></div>
           <div class="form-group"><label>نام کاربری</label><input class="form-control" dir="ltr" name="melli_username" value="{{ site.melli_username or '' }}"></div>
-          <div class="form-group"><label>رمز عبور</label><input class="form-control" dir="ltr" type="password" name="melli_password" value="{{ site.melli_password or '' }}"></div>
+          <div class="form-group"><label>رمز عبور</label><input class="form-control" dir="ltr" type="password" name="melli_password" value="" placeholder="خالی = بدون تغییر"></div>
           <button class="btn btn-ghost btn-sm" formaction="{{ url_for('admin.gateway_test', gw='melli') }}">🔌 تست اتصال</button>
         </div>
         <div class="card" style="padding:16px;background:var(--bg-2);border:none">
-          <strong>بانک سپه</strong>
+          <strong>پرداخت الکترونیک پارسیان (PEC)</strong>
+          <div class="form-group" style="margin-top:10px"><label>Login Account / PIN</label><input class="form-control" dir="ltr" type="password" name="parsian_login_account" value="" placeholder="خالی = بدون تغییر"></div>
+          <button class="btn btn-ghost btn-sm" formaction="{{ url_for('admin.gateway_test', gw='parsian') }}">🔌 تست اتصال</button>
+        </div>
+        <div class="card" style="padding:16px;background:var(--bg-2);border:none">
+          <strong>پرداخت الکترونیک سامان (SEP)</strong>
+          <p class="form-hint">در صورت قرارداد پذیرندگی بانک سپه با SEP، همین ترمینال استفاده می‌شود.</p>
           <div class="form-group" style="margin-top:10px"><label>شماره ترمینال</label><input class="form-control" dir="ltr" name="sepah_terminal" value="{{ site.sepah_terminal or '' }}"></div>
-          <div class="form-group"><label>کد مرچنت (اختیاری)</label><input class="form-control" dir="ltr" name="sepah_merchant" value="{{ site.sepah_merchant or '' }}"></div>
-          <div class="form-group"><label>نام کاربری</label><input class="form-control" dir="ltr" name="sepah_username" value="{{ site.sepah_username or '' }}"></div>
-          <div class="form-group"><label>رمز عبور</label><input class="form-control" dir="ltr" type="password" name="sepah_password" value="{{ site.sepah_password or '' }}"></div>
           <button class="btn btn-ghost btn-sm" formaction="{{ url_for('admin.gateway_test', gw='sepah') }}">🔌 تست اتصال</button>
         </div>
         <div class="card" style="padding:16px;background:var(--bg-2);border:none">
-          <strong>بانک صادرات (سداد)</strong>
+          <strong>سداد بانک ملی</strong>
           <div class="form-group" style="margin-top:10px"><label>کد مرچنت</label><input class="form-control" dir="ltr" name="sadad_merchant" value="{{ site.sadad_merchant or '' }}"></div>
           <div class="form-group"><label>شماره ترمینال</label><input class="form-control" dir="ltr" name="sadad_terminal" value="{{ site.sadad_terminal or '' }}"></div>
-          <div class="form-group"><label>کلید ترمینال (RSA)</label><textarea class="form-control" dir="ltr" name="sadad_key" rows="3" placeholder="-----BEGIN PRIVATE KEY-----">{{ site.sadad_key or '' }}</textarea></div>
+          <div class="form-group"><label>کلید ترمینال (RSA)</label><textarea class="form-control" dir="ltr" name="sadad_key" rows="3" placeholder="-----BEGIN PRIVATE KEY-----"></textarea></div>
           <button class="btn btn-ghost btn-sm" formaction="{{ url_for('admin.gateway_test', gw='saderat') }}">🔌 تست اتصال</button>
         </div>
       </div>
@@ -47,20 +59,20 @@
         <div class="card" style="padding:16px;background:var(--bg-2);border:none">
           <strong>🛵 اسنپ‌پی</strong>
           <div class="form-group" style="margin-top:10px"><label>Client ID</label><input class="form-control" dir="ltr" name="snapp_client_id" value="{{ site.snapp_client_id or '' }}"></div>
-          <div class="form-group"><label>Client Secret</label><input class="form-control" dir="ltr" type="password" name="snapp_client_secret" value="{{ site.snapp_client_secret or '' }}"></div>
+          <div class="form-group"><label>Client Secret</label><input class="form-control" dir="ltr" type="password" name="snapp_client_secret" value="" placeholder="خالی = بدون تغییر"></div>
           <div class="form-group"><label>کد مرچنت</label><input class="form-control" dir="ltr" name="snapp_merchant" value="{{ site.snapp_merchant or '' }}"></div>
           <button class="btn btn-ghost btn-sm" formaction="{{ url_for('admin.gateway_test', gw='snapppay') }}">🔌 تست اتصال</button>
         </div>
         <div class="card" style="padding:16px;background:var(--bg-2);border:none">
           <strong>🛍 دیجی‌پی</strong>
-          <div class="form-group" style="margin-top:10px"><label>API Key</label><input class="form-control" dir="ltr" name="digipay_api_key" value="{{ site.digipay_api_key or '' }}"></div>
+          <div class="form-group" style="margin-top:10px"><label>API Key</label><input class="form-control" dir="ltr" name="digipay_api_key" value="" placeholder="خالی = بدون تغییر"></div>
           <div class="form-group"><label>کد مرچنت</label><input class="form-control" dir="ltr" name="digipay_merchant" value="{{ site.digipay_merchant or '' }}"></div>
           <button class="btn btn-ghost btn-sm" formaction="{{ url_for('admin.gateway_test', gw='digipay') }}">🔌 تست اتصال</button>
         </div>
         <div class="card" style="padding:16px;background:var(--bg-2);border:none">
           <strong>🛒 کارت اعتباری ترب</strong>
-          <div class="form-group" style="margin-top:10px"><label>آدرس API</label><input class="form-control" dir="ltr" name="tarb_api_url" value="{{ site.tarb_api_url or 'https://api.tarb.example.ir' }}"></div>
-          <div class="form-group"><label>API Key</label><input class="form-control" dir="ltr" name="tarb_api_key" value="{{ site.tarb_api_key or '' }}"></div>
+          <div class="form-group" style="margin-top:10px"><label>آدرس API</label><input class="form-control" dir="ltr" name="tarb_api_url" value="{{ site.tarb_api_url or '' }}" placeholder="آدرس API ارائه‌شده در قرارداد"></div>
+          <div class="form-group"><label>API Key</label><input class="form-control" dir="ltr" name="tarb_api_key" value="" placeholder="خالی = بدون تغییر"></div>
           <div class="form-group"><label>کد مرچنت</label><input class="form-control" dir="ltr" name="tarb_merchant" value="{{ site.tarb_merchant or '' }}"></div>
           <button class="btn btn-ghost btn-sm" formaction="{{ url_for('admin.gateway_test', gw='tarb') }}">🔌 تست اتصال</button>
         </div>
@@ -79,7 +91,7 @@
         </div>
         <div class="card" style="padding:16px;background:var(--bg-2);border:none">
           <strong>🅸 آیدی‌پی</strong>
-          <div class="form-group" style="margin-top:10px"><label>API Key</label><input class="form-control" dir="ltr" name="idpay_api_key" value="{{ site.idpay_api_key or '' }}"></div>
+          <div class="form-group" style="margin-top:10px"><label>API Key</label><input class="form-control" dir="ltr" name="idpay_api_key" value="" placeholder="خالی = بدون تغییر"></div>
           <button class="btn btn-ghost btn-sm" formaction="{{ url_for('admin.gateway_test', gw='idpay') }}">🔌 تست اتصال</button>
         </div>
         <div class="card" style="padding:16px;background:var(--bg-2);border:none">

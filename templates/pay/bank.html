@@ -1,10 +1,10 @@
 {% extends 'base.html' %}
-{% block title %}{{ seo.title or "شبیه‌ساز پرداخت (حالت دمو)" }}{% endblock %}
+{% block title %}{{ seo.title or "محیط تست داخلی پرداخت" }}{% endblock %}
 
 {% block content %}
 {#
   ⚠️ مهم (امنیت / Google Safe Browsing):
-  این صفحه یک «شبیه‌ساز» داخلی برای تست جریان پرداخت است و هرگز نباید
+  این صفحه فقط ابزار داخلی آزمون جریان پرداخت است و هرگز نباید
   ظاهر یا فرم درگاه بانکی واقعی را تقلید کند. فرم دریافت «شماره کارت»،
   «CVV2» و «رمز دوم» از این صفحه حذف شده است، چون صفحه‌ای که ظاهر بانک
   را تقلید کند و اطلاعات کارت بخواهد توسط Google Safe Browsing به‌عنوان
@@ -18,7 +18,7 @@
 
       <div style="background:var(--bg-2);border-bottom:1px solid var(--border);padding:20px 24px;text-align:center">
         <div style="font-size:34px">🧪</div>
-        <h1 style="font-size:19px;margin:8px 0 4px">شبیه‌ساز پرداخت — حالت دمو</h1>
+        <h1 style="font-size:19px;margin:8px 0 4px">محیط تست داخلی پرداخت</h1>
         <p class="text-2" style="font-size:12.5px;margin:0">
           این صفحه <b>درگاه بانکی نیست</b> و به شبکه شتاب/شاپرک متصل نمی‌شود.
         </p>
@@ -28,12 +28,12 @@
         <div class="card" style="background:var(--danger-soft);color:var(--danger);border:none;padding:14px 18px;font-size:12.5px;margin-bottom:20px;line-height:1.9">
           🔒 <b>هشدار امنیتی:</b> هرگز شماره کارت، CVV2 یا رمز دوم خود را در این صفحه
           یا هر صفحه‌ای غیر از درگاه رسمی بانک (دامنه <span dir="ltr">shaparak.ir</span>) وارد نکنید.
-          در این حالت دمو هیچ اطلاعات بانکی از شما خواسته و دریافت نمی‌شود.
+          در محیط تست داخلی هیچ اطلاعات بانکی از شما خواسته و دریافت نمی‌شود.
         </div>
 
         {% if gw and gw != 'sandbox' %}
         <div class="card" style="background:var(--bg-2);border:none;padding:12px 16px;font-size:12px;color:var(--text-2);margin-bottom:20px">
-          ⚠️ پیکربندی واقعی «{{ gw_meta.get('name') or gw }}» ثبت نشده است — پرداخت به‌صورت شبیه‌سازی‌شده ادامه پیدا می‌کند.
+          ⚠️ پیکربندی واقعی «{{ gw_meta.get('name') or gw }}» ثبت نشده است — پرداخت فقط در محیط تست داخلی ادامه پیدا می‌کند.
         </div>
         {% endif %}
 
@@ -49,13 +49,13 @@
         </div>
 
         <p class="text-3" style="font-size:12px;margin-bottom:16px;line-height:2">
-          برای شبیه‌سازی نتیجه پرداخت، یکی از دکمه‌های زیر را بزنید. هیچ مبلغی کسر نمی‌شود
+          برای بررسی نتیجه پرداخت در تست خودکار، یکی از دکمه‌های زیر را بزنید. هیچ مبلغی کسر نمی‌شود
           و هیچ تراکنش بانکی واقعی انجام نمی‌گیرد.
         </p>
 
         <form method="post" action="{{ url_for('features.wallet_confirm') if wallet_mode else url_for('shop.bank', code=order.code) }}">
           <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
-          <button class="btn btn-primary btn-lg btn-block" name="decision" value="ok" type="submit">✓ شبیه‌سازی پرداخت موفق</button>
+          <button class="btn btn-primary btn-lg btn-block" name="decision" value="ok" type="submit">✓ ثبت نتیجه موفق در تست</button>
           <button class="btn btn-ghost btn-block mt-2" name="decision" value="cancel" type="submit">✕ انصراف از پرداخت</button>
         </form>
       </div>

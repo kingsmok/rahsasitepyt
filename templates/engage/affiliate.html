@@ -16,11 +16,11 @@
 <div class="container">
 <div class="aff-wrap">
   <h1 style="font-size:24px;font-weight:900;text-align:center;margin-bottom:6px">🤝 برنامه همکاری در فروش</h1>
-  <p class="text-2" style="text-align:center;margin-bottom:24px">لینک اختصاصی خود را با دوستانتان به اشتراک بگذارید و به ازای هر خرید، <b style="color:var(--accent)">۱۰٪ پورسانت</b> بگیرید!</p>
+  <p class="text-2" style="text-align:center;margin-bottom:24px">لینک اختصاصی خود را با دوستانتان به اشتراک بگذارید و به ازای هر خرید، <b style="color:var(--accent)">{{ fa(commission_percent) }}٪ پورسانت</b> بگیرید!</p>
 
   <div class="aff-card">
     <h3 style="font-size:15px;font-weight:900">🔗 لینک اختصاصی معرفی شما</h3>
-    <p class="text-3" style="font-size:12.5px;margin-top:4px">هر کسی با این لینک ثبت‌نام کند و اولین خریدش را انجام دهد، ۱۰٪ مبلغ به کیف پول شما واریز می‌شود.</p>
+    <p class="text-3" style="font-size:12.5px;margin-top:4px">هر کسی با این لینک ثبت‌نام کند و اولین خریدش را انجام دهد، {{ fa(commission_percent) }}٪ مبلغ به کیف پول شما واریز می‌شود.</p>
     <div class="aff-link-box">
       <input id="aff-link" value="{{ link }}" readonly>
       <button class="btn btn-primary" onclick="navigator.clipboard.writeText(document.getElementById('aff-link').value);this.textContent='✓ کپی شد'">کپی لینک</button>
@@ -30,15 +30,15 @@
       <div class="aff-stat"><b>{{ fa(referred) }}</b><small>معرفی‌شده</small></div>
       <div class="aff-stat"><b>{{ fa(paid_refs) }}</b><small>خرید موفق</small></div>
       <div class="aff-stat"><b>{{ fa('{:,.0f}'.format(earnings)) }}</b><small>پورسانت (تومان)</small></div>
-      <div class="aff-stat"><b>۱۰٪</b><small>نرخ پورسانت</small></div>
+      <div class="aff-stat"><b>{{ fa(commission_percent) }}٪</b><small>نرخ پورسانت</small></div>
     </div>
 
     <div style="background:var(--accent-soft);border:1px dashed var(--accent);border-radius:14px;padding:14px 18px;font-size:12.5px;color:var(--text-2);line-height:2">
       💡 <b>چطور کار می‌کند؟</b><br>
       ۱. لینک بالا را کپی کنید و در شبکه‌های اجتماعی / گروه‌ها بگذارید.<br>
       ۲. دوست شما با لینک شما ثبت‌نام می‌کند (کد شما خودکار ذخیره می‌شود).<br>
-      ۳. بعد از اولین خرید موفق او، <b>۱۰٪ مبلغ</b> بلافاصله به کیف پول شما واریز و از «کیف پول» قابل برداشت است.<br>
-      ۴. از «داشبورد ← کیف پول» موجودی خود را ببینید و برداشت کنید.
+      ۳. بعد از اولین خرید موفق او، <b>{{ fa(commission_percent) }}٪ مبلغ</b> به کیف پول شما اضافه می‌شود.<br>
+      ۴. از «داشبورد ← کیف پول» موجودی و شرایط استفاده را ببینید.
     </div>
   </div>
 </div>

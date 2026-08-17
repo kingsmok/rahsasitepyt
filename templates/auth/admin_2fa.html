@@ -12,7 +12,7 @@
         <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
         <div class="form-group">
           <label for="a2fa">کد تایید</label>
-          <input id="a2fa" class="form-control" name="code" dir="ltr" maxlength="6" required autofocus placeholder="123456" style="text-align:center;font-size:20px;letter-spacing:6px">
+          <input id="a2fa" class="form-control" name="code" dir="ltr" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required autofocus placeholder="••••••" style="text-align:center;font-size:20px;letter-spacing:6px">
         </div>
         <button class="btn btn-primary btn-lg btn-block" type="submit">✅ تایید و ورود به پنل</button>
       </form>

@@ -13,33 +13,33 @@
 
       <div class="form-group">
         <label for="f_name_1">نام و نام خانوادگی <span class="req">*</span></label>
-        <input id="f_name_1" class="form-control" name="name" placeholder="مثلا: علی محمدی" required autofocus>
+        <input id="f_name_1" class="form-control" name="name" value="{{ request.form.get('name','') }}" placeholder="مثلاً: علی محمدی" required autofocus autocomplete="name">
       </div>
       <div class="grid" style="grid-template-columns:1fr 1fr;gap:12px">
         <div class="form-group">
           <label for="f_phone_1">شماره موبایل <span class="req">*</span></label>
-          <input id="f_phone_1" class="form-control" name="phone" placeholder="09xxxxxxxxx" dir="ltr" autocomplete="tel"
+          <input id="f_phone_1" class="form-control" name="phone" value="{{ request.form.get('phone','') }}" placeholder="09xxxxxxxxx" dir="ltr" inputmode="numeric" autocomplete="tel"
                  pattern="09[0-9]{9}" required title="شماره موبایل ۱۱ رقمی">
         </div>
         <div class="form-group">
           <label for="f_national_code_1">کد ملی (اختیاری)</label>
-          <input id="f_national_code_1" class="form-control" name="national_code" placeholder="۱۰ رقم — در صورت تمایل" dir="ltr" autocomplete="off"
+          <input id="f_national_code_1" class="form-control" name="national_code" value="{{ request.form.get('national_code','') }}" placeholder="۱۰ رقم — در صورت تمایل" dir="ltr" inputmode="numeric" autocomplete="off"
                  pattern="[0-9]{10}" maxlength="10" title="کد ملی ۱۰ رقمی">
           <p class="form-hint">اختیاری است و تنها برای صدور گواهینامه استفاده می‌شود. جزئیات در <a href="{{ url_for('site.privacy') }}">حریم خصوصی</a>.</p>
         </div>
       </div>
       <div class="form-group">
         <label for="f_email_1">ایمیل <span class="req">*</span></label>
-        <input id="f_email_1" class="form-control" type="email" name="email" placeholder="you@example.com" dir="ltr" required>
+        <input id="f_email_1" class="form-control" type="email" name="email" value="{{ request.form.get('email','') }}" placeholder="you@example.com" dir="ltr" autocomplete="email" required>
       </div>
       <div class="grid" style="grid-template-columns:1fr 1fr;gap:12px">
         <div class="form-group">
           <label for="f_password_1">رمز عبور <span class="req">*</span></label>
-          <input id="f_password_1" class="form-control" type="password" name="password" placeholder="حداقل ۶ کاراکتر" required>
+          <input id="f_password_1" class="form-control" type="password" name="password" placeholder="حداقل ۸ کاراکتر" minlength="8" autocomplete="new-password" required>
         </div>
         <div class="form-group">
           <label for="f_confirm_1">تکرار رمز عبور <span class="req">*</span></label>
-          <input id="f_confirm_1" class="form-control" type="password" name="confirm" placeholder="تکرار رمز" required>
+          <input id="f_confirm_1" class="form-control" type="password" name="confirm" placeholder="تکرار رمز" minlength="8" autocomplete="new-password" required>
         </div>
       </div>
       <button class="btn btn-primary btn-lg btn-block" type="submit">ایجاد حساب 🚀</button>

@@ -16,6 +16,13 @@ def _make_products(app):
         return [p.id for p in Product.query.all()]
 
 
+def _csrf(client, path):
+    response = client.get(path)
+    match = re.search(r'name="_csrf_token" value="([^"]+)"', response.text)
+    assert match
+    return match.group(1)
+
+
 def test_products_list_page(client, app):
     _make_products(app)
     r = client.get('/products')
@@ -59,6 +66,7 @@ def test_add_product_cart_invalid(client, app):
     login(client, 'demo@test.ir', 'demo123')
     r = client.post('/api/product-cart/add', json={'product_id': 99999})
     assert r.status_code in (400, 404)
+    assert client.post('/api/product-cart/add', json={'product_id': 'bad'}).status_code == 400
 
 
 def test_cart_items(client, app):
@@ -69,3 +77,40 @@ def test_cart_items(client, app):
     client.post('/api/product-cart/add', json={'product_id': p.id})
     r = client.get('/api/cart/items')
     assert r.status_code == 200
+    assert r.get_json()['items'][0]['quantity'] == 1
+    update = client.post('/api/product-cart/quantity', json={'product_id': p.id, 'quantity': 3})
+    assert update.status_code == 200
+    assert client.get('/api/cart/items').get_json()['items'][0]['quantity'] == 3
+
+
+def test_physical_order_requires_and_stores_shipping_address(client, app):
+    _make_products(app)
+    login(client, 'demo@test.ir', 'demo123')
+    with app.app_context():
+        product = Product.query.filter_by(slug='mug-test').first()
+    client.post('/api/product-cart/add', json={'product_id': product.id})
+    client.post('/api/product-cart/quantity', json={'product_id': product.id, 'quantity': 2})
+    token = _csrf(client, '/checkout')
+    missing = client.post('/checkout', data={
+        '_csrf_token': token, 'action': 'create_order'
+    })
+    assert missing.status_code == 400
+
+    token = _csrf(client, '/checkout')
+    response = client.post('/checkout', data={
+        '_csrf_token': token, 'action': 'create_order',
+        'shipping_name': 'تحویل گیرنده', 'shipping_phone': '09120000888',
+        'shipping_province': 'تهران', 'shipping_city': 'تهران',
+        'shipping_address': 'خیابان آزمایش، پلاک ۱۲',
+        'shipping_postal_code': '1234567890',
+    }, follow_redirects=False)
+    assert response.status_code == 302
+    with app.app_context():
+        order = Order.query.filter_by(shipping_phone='09120000888').first()
+        assert order and order.shipping_city == 'تهران'
+        assert order.fulfillment_status == 'processing'
+        assert order.items[0].quantity == 2
+        assert order.total == 160000
+        code = order.code
+    assert client.get(f'/invoice/{code}').status_code == 200
+    assert client.get(f'/invoice/{code}/pdf').status_code == 200

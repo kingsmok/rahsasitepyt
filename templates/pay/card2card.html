@@ -24,7 +24,7 @@
 
       {% if existing and existing.status == 'pending' %}
       <div class="card" style="background:var(--warning);color:#fff;border:none;padding:14px 18px;font-size:13px;margin-bottom:20px">
-        ⏳ فیش شما با شماره پیگیری <b dir="ltr">{{ existing.ref_number }}</b> در انتظار تایید پشتیبانی است. پس از تایید، دوره به‌صورت خودکار فعال می‌شود.
+        ⏳ فیش شما با شماره پیگیری <b dir="ltr">{{ existing.ref_number }}</b> در انتظار تایید پشتیبانی است. پس از تایید، سفارش به‌صورت خودکار پردازش می‌شود.
       </div>
       {% endif %}
 
@@ -41,7 +41,7 @@
           </div>
           <div class="form-group">
             <label for="c2c_amount">مبلغ واریزی (تومان)</label>
-            <input id="c2c_amount" class="form-control" name="amount" type="number" dir="ltr" value="{{ order.final_total }}">
+            <input id="c2c_amount" class="form-control" name="amount" type="number" dir="ltr" value="{{ order.final_total }}" readonly required>
           </div>
           <div class="form-group">
             <label for="c2c_file">تصویر فیش (jpg/png/pdf)</label>

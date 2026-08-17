@@ -6,6 +6,7 @@ try:
 except ImportError:  # پایتون < 3.11
     from datetime import timezone as _tz_utc
     UTC = _tz_utc.utc
+import os
 import random
 from validators import gen_national_code
 from models import (utcnow, db, User, Category, Course, Section, Lesson, Review, Order,
@@ -308,6 +309,9 @@ def seed_products():
 
 
 def seed():
+    from runtime import demo_features_enabled
+    if not demo_features_enabled():
+        raise RuntimeError('ساخت داده‌های نمایشی غیرفعال است (ENABLE_DEMO_FEATURES=0).')
     print('📦 شروع بارگذاری داده‌های اولیه...')
     # ---------- تنظیمات سایت ----------
     settings = {
@@ -669,7 +673,10 @@ def _make_sample_files():
 
 
 def seed_pages():
-    """صفحات اولیه صفحه‌ساز: هدر، فوتر، خانه و منوی موبایل"""
+    """صفحات نمایشی صفحه‌ساز؛ فقط برای توسعهٔ محلی صریح."""
+    from runtime import demo_features_enabled
+    if not demo_features_enabled():
+        raise RuntimeError('ساخت صفحات نمایشی غیرفعال است.')
     import json as _json
     print('🧩 ساخت صفحات صفحه‌ساز...')
 
@@ -756,7 +763,7 @@ def seed_pages():
                      'sub': 'دوره‌های پروژه‌محور با برترین مدرسان ایران — از برنامه‌نویسی تا مارکتینگ. همین امروز شروع کن!',
                      'btn_text': '🚀 مشاهده همه دوره‌ها', 'btn_url': '/courses', 'align': 'right'},
                     {'img': 'cover-python.webp', 'title': 'دوره جامع پایتون با ۵۰٪ تخفیف ویژه',
-                     'sub': 'از صفر تا استخدام — با کد تخفیف WELCOME20 تا ۲۰٪ تخفیف بیشتر بگیرید!',
+                     'sub': 'آموزش گام‌به‌گام همراه با تمرین‌های کاربردی.',
                      'btn_text': 'مشاهده دوره پایتون', 'btn_url': '/course/دوره-جامع-برنامه‌نویسی-پایتون-1', 'align': 'center'},
                     {'img': 'cover-django.webp', 'title': 'ساخت فروشگاه اینترنتی با Django',
                      'sub': 'دوره پروژه‌محور — مناسب بازار کار ایران',
@@ -810,7 +817,7 @@ def seed_pages():
         ]]},
         {'id': 'hm_cta', 'settings': {'gap': 0, 'py': 30}, 'cols': [[
             {'id': 'hm_cta1', 'type': 'cta', 'data': {
-                'title': 'آماده شروع یادگیری هستی؟ 🚀', 'text': 'همین حالا ثبت‌نام کن و با کد تخفیف WELCOME20 از ۲۰٪ تخفیف بهره‌مند شو!',
+                'title': 'آماده شروع یادگیری هستی؟ 🚀', 'text': 'حساب خود را بساز و دوره‌های منتشرشده را ببین!',
                 'btn_text': 'ثبت‌نام رایگان', 'btn_url': '/auth/register', 'style': 'gradient'}}
         ]]},
         {'id': 'hm_news', 'settings': {'gap': 0, 'py': 20}, 'cols': [[
@@ -825,6 +832,13 @@ def seed_pages():
 
 
 if __name__ == '__main__':
+    # جلوگیری از ورود تصادفی داده‌های ساختگی به سایت واقعی. اجرای این فایل فقط
+    # برای توسعهٔ محلی و با opt-in صریح مجاز است.
+    from runtime import demo_features_enabled
+    if not demo_features_enabled():
+        raise SystemExit(
+            '⛔ داده‌های نمایشی غیرفعال‌اند. برای تست محلی، فقط خارج از production، '
+            'ENABLE_DEMO_FEATURES=1 را موقتاً تنظیم کنید.')
     from app import app
     with app.app_context():
         db.create_all()

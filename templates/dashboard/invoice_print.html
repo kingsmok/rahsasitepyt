@@ -36,18 +36,21 @@
   {% if order.ref_id %}<div class="row"><span class="muted">کد رهگیری پرداخت</span><strong dir="ltr">{{ order.ref_id }}</strong></div>{% endif %}
 
   <table>
-    <thead><tr><th>دوره</th><th>مدرس</th><th>قیمت</th></tr></thead>
+    <thead><tr><th>آیتم</th><th>نوع / ارائه‌دهنده</th><th>تعداد</th><th>جمع</th></tr></thead>
     <tbody>
       {% for item in order.items %}
       <tr>
-        <td>{{ item.course.title }}</td>
-        <td>{{ item.course.teacher.name if item.course.teacher else '—' }}</td>
-        <td>{{ fa('{:,.0f}'.format(item.price)) }} تومان</td>
+        <td>{{ item.course.title if item.course else (item.product.title if item.product else 'آیتم حذف‌شده') }}</td>
+        <td>{{ item.course.teacher.name if item.course and item.course.teacher else ('محصول فیزیکی' if item.product else '—') }}</td>
+        <td>{{ fa(item.quantity or 1) }}</td>
+        <td>{{ fa('{:,.0f}'.format(item.price * (item.quantity or 1))) }} تومان</td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
 
+  {% if order.fulfillment_status != 'not_required' %}<div class="row"><span class="muted">نشانی تحویل</span><span>{{ order.shipping_province }}، {{ order.shipping_city }}، {{ order.shipping_address }}</span></div>{% endif %}
+  {% if order.shipping_cost %}<div class="row"><span class="muted">هزینه ارسال</span><span>{{ fa('{:,.0f}'.format(order.shipping_cost)) }} تومان</span></div>{% endif %}
   {% if order.discount %}<div class="row"><span class="muted">تخفیف</span><span style="color:#16a34a">− {{ fa('{:,.0f}'.format(order.discount)) }} تومان</span></div>{% endif %}
   <div class="total"><span>مبلغ نهایی قابل پرداخت</span><span>{{ fa('{:,.0f}'.format(order.final_total)) }} تومان</span></div>
   <div class="foot">این فاکتور توسط {{ site.site_name or 'آکادمی آنلاین' }} صادر شده است — برای استعلام صحت، با پشتیبانی تماس بگیرید.</div>

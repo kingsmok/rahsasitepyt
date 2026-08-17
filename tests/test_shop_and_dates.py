@@ -65,6 +65,21 @@ def test_full_purchase_flow(client, app):
     assert enr is not None
 
 
+def test_failed_order_is_reset_before_retry(client, app):
+    """سفارش ناموفق پیش از تلاش مجدد pending می‌شود."""
+    from models import Order, User, db
+    with app.app_context():
+        user = User.query.filter_by(email='demo@test.ir').first()
+        db.session.add(Order(code='AC-RETRY-1', user_id=user.id, total=1000,
+                             final_total=1000, status='failed'))
+        db.session.commit()
+    login(client, 'demo@test.ir', 'demo123')
+    response = client.get('/pay/AC-RETRY-1')
+    assert response.status_code == 200
+    with app.app_context():
+        assert Order.query.filter_by(code='AC-RETRY-1').first().status == 'pending'
+
+
 def test_double_payment_no_duplicate(client, app):
     """پرداخت تکراری نباید لاگ/کوپن دوباره بسازد"""
     test_full_purchase_flow(client, app)  # یک پرداخت کامل

@@ -2,18 +2,27 @@
 {% block tcontent %}
 <div class="dash-head"><div><h1 style="font-size:20px">👥 دانشجویان «{{ course.title }}»</h1><p>{{ fa(enrollments|length) }} دانشجو</p></div>
   <div class="flex gap-1">
+    {% if course.delivery_type != 'online' %}<a class="btn btn-primary" href="{{ url_for('teacher.attendance_sessions', cid=course.id) }}">🗓 حضور و غیاب</a>{% endif %}
     <a class="btn btn-ghost" href="{{ url_for('admin.course_students_export', cid=course.id) }}">⬇ خروجی اکسل</a>
   </div></div>
 <div class="card" style="padding:22px">
   <div class="table-wrap"><table class="table">
-    <thead><tr><th>دانشجو</th><th>پیشرفت</th><th>تاریخ ثبت‌نام</th><th>گواهی</th></tr></thead>
+    <thead><tr><th>دانشجو</th><th>پیشرفت</th>{% if course.delivery_type != 'online' %}<th>حضور</th>{% endif %}<th>تاریخ ثبت‌نام</th><th>گواهی</th>{% if course.delivery_type != 'online' %}<th>تکمیل</th>{% endif %}</tr></thead>
     <tbody>
       {% for e in enrollments %}
       <tr>
         <td><strong>{{ e.user.name if e.user else '—' }}</strong><br><small class="text-3" dir="ltr">{{ e.user.phone if e.user else '' }}</small></td>
         <td><div style="display:flex;align-items:center;gap:8px"><div style="width:100px;height:7px;background:var(--bg-2);border-radius:99px;overflow:hidden"><div style="width:{{ e.percent }}%;height:100%;background:var(--grad-brand)"></div></div><small>{{ fa(e.percent) }}٪</small></div></td>
+        {% if course.delivery_type != 'online' %}<td>{% if closed_meetings %}<span class="badge {{ 'badge-success' if attendance_percent.get(e.id,0) >= (course.attendance_required_percent or 75) else 'badge-accent' }}">{{ fa(attendance_percent.get(e.id,0)) }}٪</span>{% else %}<span class="text-3">بدون جلسه نهایی</span>{% endif %}</td>{% endif %}
         <td>{{ e.created_at|jdate }}</td>
         <td>{{ e.completed_at|jdate if e.completed_at else '—' }}</td>
+        {% if course.delivery_type != 'online' %}<td>
+          <form method="post" action="{{ url_for('teacher.enrollment_completion', eid=e.id) }}">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="action" value="{{ 'undo' if e.completed_at else 'complete' }}">
+            <button class="btn btn-sm {{ 'btn-ghost' if e.completed_at else 'btn-success' }}" type="submit">{{ 'لغو تکمیل' if e.completed_at else 'تایید تکمیل حضوری' }}</button>
+          </form>
+        </td>{% endif %}
       </tr>
       {% endfor %}
     </tbody>

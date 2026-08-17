@@ -2,10 +2,12 @@
 """پنل استاد — دوره‌های خودش، دانشجویان، تکالیف، پرسش‌ها، درآمد"""
 from flask import Blueprint, render_template, request, redirect, url_for, flash, g, abort
 from sqlalchemy import func
+from datetime import datetime
 from validators import safe_referrer
 from models import (utcnow, db, User, Course, Section, Lesson, Enrollment, Order,
                     OrderItem, Assignment, AssignmentSubmission, LessonQuestion,
-                    Quiz, QuizAttempt, ActivityLog, Notification, PayoutRequest)
+                    Quiz, QuizAttempt, ActivityLog, Notification, PayoutRequest,
+                    CourseMeeting, AttendanceRecord)
 
 teacher_bp = Blueprint('teacher', __name__, url_prefix='/teacher-panel')
 
@@ -16,6 +18,15 @@ def _teacher_required():
     if g.user.role not in ('teacher', 'admin', 'super_admin'):
         abort(403)
     return None
+
+
+def _can_manage_course(course):
+    if g.user.role in ('admin', 'super_admin'):
+        return True
+    if course.teacher_id == g.user.id:
+        return True
+    from models import CourseTeacher
+    return CourseTeacher.query.filter_by(course_id=course.id, teacher_id=g.user.id).first() is not None
 
 
 @teacher_bp.route('/')
@@ -89,10 +100,159 @@ def course_students(cid):
     r = _teacher_required()
     if r:
         return r
-    course = Course.query.filter_by(id=cid, teacher_id=g.user.id).first_or_404()
+    course = db.get_or_404(Course, cid)
+    if not _can_manage_course(course):
+        abort(403)
     enrollments = Enrollment.query.filter_by(course_id=cid).all()
+    closed_meetings = CourseMeeting.query.filter_by(course_id=cid, is_closed=True).count()
+    attendance_percent = {}
+    if closed_meetings and enrollments:
+        rows = db.session.query(AttendanceRecord.enrollment_id, func.count(AttendanceRecord.id)) \
+            .join(CourseMeeting, CourseMeeting.id == AttendanceRecord.meeting_id) \
+            .filter(CourseMeeting.course_id == cid, CourseMeeting.is_closed == True,
+                    AttendanceRecord.status.in_(['present', 'late'])) \
+            .group_by(AttendanceRecord.enrollment_id).all()
+        present_counts = dict(rows)
+        attendance_percent = {
+            enrollment.id: round(present_counts.get(enrollment.id, 0) * 100 / closed_meetings)
+            for enrollment in enrollments
+        }
     return render_template('teacher/students.html', course=course,
-                           enrollments=enrollments)
+                           enrollments=enrollments, closed_meetings=closed_meetings,
+                           attendance_percent=attendance_percent)
+
+
+@teacher_bp.route('/enrollments/<int:eid>/completion', methods=['POST'])
+def enrollment_completion(eid):
+    r = _teacher_required()
+    if r:
+        return r
+    enrollment = db.get_or_404(Enrollment, eid)
+    if not _can_manage_course(enrollment.course):
+        abort(403)
+    if enrollment.course.delivery_type == 'online':
+        abort(400)
+    action = request.form.get('action', 'complete')
+    if action == 'complete':
+        closed = CourseMeeting.query.filter_by(course_id=enrollment.course_id,
+                                               is_closed=True).count()
+        if closed:
+            attended = AttendanceRecord.query.join(
+                CourseMeeting, CourseMeeting.id == AttendanceRecord.meeting_id
+            ).filter(
+                CourseMeeting.course_id == enrollment.course_id,
+                CourseMeeting.is_closed == True,
+                AttendanceRecord.enrollment_id == enrollment.id,
+                AttendanceRecord.status.in_(['present', 'late'])
+            ).count()
+            percent = round(attended * 100 / closed)
+            required = enrollment.course.attendance_required_percent or 75
+            if percent < required:
+                flash(f'درصد حضور دانشجو {percent}٪ است و به حداقل {required}٪ نرسیده.', 'error')
+                return redirect(url_for('teacher.course_students', cid=enrollment.course_id))
+        enrollment.completed_at = utcnow()
+        enrollment.save_progress([lesson.id for lesson in enrollment.course.lessons])
+        flash('دوره برای این دانشجو تکمیل شد.', 'success')
+    elif action == 'undo':
+        enrollment.completed_at = None
+        enrollment.save_progress([])
+        flash('وضعیت تکمیل دانشجو لغو شد.', 'info')
+    else:
+        abort(400)
+    db.session.commit()
+    return redirect(url_for('teacher.course_students', cid=enrollment.course_id))
+
+
+@teacher_bp.route('/courses/<int:cid>/attendance', methods=['GET', 'POST'])
+def attendance_sessions(cid):
+    r = _teacher_required()
+    if r:
+        return r
+    course = db.get_or_404(Course, cid)
+    if not _can_manage_course(course):
+        abort(403)
+    if course.delivery_type == 'online':
+        flash('حضور و غیاب فقط برای دوره حضوری یا ترکیبی فعال است.', 'info')
+        return redirect(url_for('teacher.my_courses'))
+    if request.method == 'POST':
+        title = request.form.get('title', '').strip()
+        starts_raw = request.form.get('starts_at', '').strip()
+        try:
+            starts_at = datetime.fromisoformat(starts_raw)
+            duration = max(15, min(720, int(request.form.get('duration_min') or 90)))
+        except (TypeError, ValueError):
+            flash('تاریخ، ساعت یا مدت جلسه معتبر نیست.', 'error')
+        else:
+            if not title:
+                flash('عنوان جلسه الزامی است.', 'error')
+            else:
+                db.session.add(CourseMeeting(
+                    course_id=course.id, title=title, starts_at=starts_at,
+                    duration_min=duration,
+                    notes=request.form.get('notes', '').strip()[:500],
+                    created_by=g.user.id))
+                db.session.commit()
+                flash('جلسه حضوری برای حضور و غیاب ساخته شد.', 'success')
+                return redirect(url_for('teacher.attendance_sessions', cid=cid))
+    meetings = CourseMeeting.query.filter_by(course_id=cid) \
+        .order_by(CourseMeeting.starts_at.desc()).all()
+    counts = {}
+    for meeting in meetings:
+        counts[meeting.id] = {
+            'marked': len(meeting.records),
+            'present': sum(1 for record in meeting.records if record.status in ('present', 'late')),
+        }
+    return render_template('teacher/attendance_sessions.html', course=course,
+                           meetings=meetings, counts=counts)
+
+
+@teacher_bp.route('/attendance/<int:mid>', methods=['GET', 'POST'])
+def attendance_mark(mid):
+    r = _teacher_required()
+    if r:
+        return r
+    meeting = db.get_or_404(CourseMeeting, mid)
+    if not _can_manage_course(meeting.course):
+        abort(403)
+    enrollments = Enrollment.query.filter_by(course_id=meeting.course_id).all()
+    records = {record.enrollment_id: record for record in meeting.records}
+    if request.method == 'POST':
+        allowed_statuses = {'present', 'late', 'absent', 'excused'}
+        for enrollment in enrollments:
+            status = request.form.get(f'status_{enrollment.id}', 'absent')
+            if status not in allowed_statuses:
+                status = 'absent'
+            record = records.get(enrollment.id)
+            if not record:
+                record = AttendanceRecord(meeting_id=meeting.id,
+                                          enrollment_id=enrollment.id)
+                db.session.add(record)
+            record.status = status
+            record.note = request.form.get(f'note_{enrollment.id}', '').strip()[:300]
+            record.marked_by = g.user.id
+            record.marked_at = utcnow()
+        meeting.is_closed = request.form.get('close') == '1'
+        db.session.commit()
+        flash('حضور و غیاب ذخیره شد.', 'success')
+        return redirect(url_for('teacher.attendance_mark', mid=meeting.id))
+    return render_template('teacher/attendance_mark.html', meeting=meeting,
+                           course=meeting.course, enrollments=enrollments,
+                           records=records)
+
+
+@teacher_bp.route('/attendance/<int:mid>/delete', methods=['POST'])
+def attendance_delete(mid):
+    r = _teacher_required()
+    if r:
+        return r
+    meeting = db.get_or_404(CourseMeeting, mid)
+    if not _can_manage_course(meeting.course):
+        abort(403)
+    course_id = meeting.course_id
+    db.session.delete(meeting)
+    db.session.commit()
+    flash('جلسه حضور و غیاب حذف شد.', 'info')
+    return redirect(url_for('teacher.attendance_sessions', cid=course_id))
 
 
 @teacher_bp.route('/assignments')
@@ -114,7 +274,7 @@ def grade(sid):
     r = _teacher_required()
     if r:
         return r
-    sub = AssignmentSubmission.query.get_or_404(sid)
+    sub = db.get_or_404(AssignmentSubmission, sid)
     # بررسی: این تکلیف متعلق به دوره خود استاد است؟
     if sub.assignment.course.teacher_id != g.user.id and g.user.role == 'teacher':
         abort(403)
@@ -151,7 +311,7 @@ def answer_question(qid):
     r = _teacher_required()
     if r:
         return r
-    q = LessonQuestion.query.get_or_404(qid)
+    q = db.get_or_404(LessonQuestion, qid)
     if q.lesson.section.course.teacher_id != g.user.id and g.user.role == 'teacher':
         abort(403)
     q.answer = request.form.get('answer', '').strip()

@@ -192,12 +192,113 @@ def clean_pages(db, Page):
                 pg.content = json.dumps(parsed, ensure_ascii=False)
 
 
+def clean_legacy_records(db):
+    """غیرفعال‌کردن رکوردهای شناخته‌شدهٔ seed بدون شکستن روابط مالی."""
+    from models import (User, Course, Coupon, BlogPost, Product, Order, Ticket,
+                        NewsletterEmail, ContactMessage, Quiz, Assignment,
+                        QuestionBank)
+    demo_emails = (
+        'demo@academy.ir', 'sara@academy.ir', 'amir@academy.ir',
+        'mehdi@academy.ir', 'negar@academy.ir', 'hossein@academy.ir',
+        'zahra@academy.ir',
+    )
+    users = User.query.filter(User.email.in_(demo_emails), User.is_active == True).all()
+    if users:
+        changes.append(f'{len(users)} حساب نمایشی غیرفعال شد (حذف نشد تا سوابق مالی سالم بماند)')
+        demo_ids = [user.id for user in users]
+        demo_orders = Order.query.filter(Order.user_id.in_(demo_ids), Order.status != 'canceled').all()
+        demo_tickets = Ticket.query.filter(Ticket.user_id.in_(demo_ids), Ticket.status != 'closed').all()
+        if demo_orders:
+            changes.append(f'{len(demo_orders)} سفارش نمایشی لغو شد')
+        if demo_tickets:
+            changes.append(f'{len(demo_tickets)} تیکت نمایشی بسته شد')
+        if APPLY:
+            for user in users:
+                user.is_active = False
+            for order in demo_orders:
+                order.status = 'canceled'
+            for ticket in demo_tickets:
+                ticket.status = 'closed'
+
+    courses = Course.query.filter(Course.seeded_students > 0).all()
+    if courses:
+        changes.append(f'{len(courses)} دورهٔ seed به پیش‌نویس منتقل و شمار ساختگی دانشجو صفر شد')
+        course_ids = [course.id for course in courses]
+        quizzes = Quiz.query.filter(Quiz.course_id.in_(course_ids), Quiz.is_published == True).all()
+        assignments = Assignment.query.filter(Assignment.course_id.in_(course_ids), Assignment.is_published == True).all()
+        if quizzes or assignments:
+            changes.append(f'{len(quizzes)} آزمون و {len(assignments)} تکلیف نمایشی از انتشار خارج شد')
+        if APPLY:
+            for course in courses:
+                course.status = 'draft'
+                course.featured = False
+                course.seeded_students = 0
+                course.views = 0
+            for item in quizzes + assignments:
+                item.is_published = False
+
+    try:
+        from seed import QUESTION_BANK as SEED_QUESTIONS
+        texts = tuple(item[0] for group in SEED_QUESTIONS.values() for item in group)
+        questions = QuestionBank.query.filter(QuestionBank.text.in_(texts)).all() if texts else []
+    except Exception:
+        questions = []
+    if questions:
+        changes.append(f'{len(questions)} سوال seed از بانک سوال حذف شد')
+        if APPLY:
+            for question in questions:
+                db.session.delete(question)
+
+    coupons = Coupon.query.filter(Coupon.code.in_(('WELCOME20', 'NOWROOZ10', 'FIX500')),
+                                  Coupon.is_active == True).all()
+    if coupons:
+        changes.append(f'{len(coupons)} کوپن نمونه غیرفعال شد')
+        if APPLY:
+            for coupon in coupons:
+                coupon.is_active = False
+
+    post_titles = (
+        '۱۰ ترفند پایتون که هر برنامه‌نویسی باید بداند',
+        'راهنمای انتخاب اولین زبان برنامه‌نویسی',
+        'چگونه در ۶ ماه توسعه‌دهنده وب شویم؟',
+        '۵ مهارت نرم که هر متخصص فناوری به آن نیاز دارد',
+    )
+    posts = BlogPost.query.filter(BlogPost.title.in_(post_titles), BlogPost.published == True).all()
+    if posts:
+        changes.append(f'{len(posts)} مقالهٔ نمونه از انتشار خارج شد')
+        if APPLY:
+            for post in posts:
+                post.published = False
+
+    products = Product.query.filter(Product.slug.in_((
+        'academy-mug', 'glass-mug', 'dev-notebook', 'coder-tshirt'
+    )), Product.is_active == True).all()
+    if products:
+        changes.append(f'{len(products)} محصول نمونه غیرفعال و موجودی آن صفر شد')
+        if APPLY:
+            for product in products:
+                product.is_active = False
+                product.featured = False
+                product.stock = 0
+
+    newsletters = NewsletterEmail.query.filter(NewsletterEmail.email.in_((
+        'alireza@gmail.com', 'niloofar@yahoo.com', 'mohsen73@gmail.com'
+    ))).all()
+    contacts = ContactMessage.query.filter_by(email='reza@mail.com').all()
+    if newsletters or contacts:
+        changes.append(f'{len(newsletters)} عضو خبرنامه و {len(contacts)} پیام تماس نمونه حذف شد')
+        if APPLY:
+            for row in newsletters + contacts:
+                db.session.delete(row)
+
+
 def main():
     from app import app
     from models import db, Setting, Page
     with app.app_context():
         clean_settings(db, Setting)
         clean_pages(db, Page)
+        clean_legacy_records(db)
         if APPLY:
             db.session.commit()
 

@@ -4,11 +4,13 @@
    - تصاویر/فونت‌ها: cache-first با به‌روزرسانی پس‌زمینه
    - HTML و API: هرگز کش نمی‌شوند
 */
-var CACHE = 'academy-v2';
+var CACHE = 'academy-v3';
 var CORE = [
   '/static/css/base.css',
+  '/static/css/ux.css',
   '/static/css/builder.css',
   '/static/js/app.js',
+  '/static/js/ux.js',
   '/static/js/builder.js',
   '/static/js/player.js'
 ];

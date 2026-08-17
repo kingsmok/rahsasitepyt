@@ -2,49 +2,23 @@
 {% block title %}{{ seo.title or "درباره ما" }}{% endblock %}
 {% block content %}
 <section class="section" style="padding-top:60px">
-  <div class="container" style="max-width:760px;text-align:center">
-    <span class="badge badge-primary mb-2">✨ درباره ما</span>
-    <h1 style="font-size:clamp(26px,4vw,38px);font-weight:900;margin-bottom:14px">{{ site.site_name or 'آکادمی آنلاین' }}</h1>
-    <p class="text-2" style="font-size:15.5px;line-height:2.2">{{ site.about_text or '' }}</p>
-  </div>
-</section>
-
-<section class="section" style="padding-top:10px">
-  <div class="container" style="max-width:760px">
-    <div class="section-head"><span class="tag">🗓 مسیر ما</span><h2>تایم‌لاین آکادمی</h2></div>
-    <div style="border-right:3px solid var(--primary);padding-right:26px;margin-right:20px">
-      <div style="position:relative;margin-bottom:30px">
-        <span style="position:absolute;right:-35px;top:4px;width:14px;height:14px;border-radius:50%;background:var(--primary)"></span>
-        <h3 style="font-size:16px">۱۳۹۸ — شروع کار</h3>
-        <p class="text-2" style="font-size:13.5px">آکادمی با ۵ دوره و ۳ مدرس فعالیت خود را آغاز کرد.</p>
-      </div>
-      <div style="position:relative;margin-bottom:30px">
-        <span style="position:absolute;right:-35px;top:4px;width:14px;height:14px;border-radius:50%;background:var(--accent)"></span>
-        <h3 style="font-size:16px">۱۴۰۰ — ده هزارمین دانشجو</h3>
-        <p class="text-2" style="font-size:13.5px">رشد ۱۰ برابری جامعه دانشجویی و اضافه‌شدن ۳۰ دوره جدید.</p>
-      </div>
-      <div style="position:relative;margin-bottom:30px">
-        <span style="position:absolute;right:-35px;top:4px;width:14px;height:14px;border-radius:50%;background:var(--success)"></span>
-        <h3 style="font-size:16px">۱۴۰۲ — گواهینامه‌های معتبر</h3>
-        <p class="text-2" style="font-size:13.5px">سیستم صدور گواهینامه با کد رهگیری راه‌اندازی شد.</p>
-      </div>
-      <div style="position:relative">
-        <span style="position:absolute;right:-35px;top:4px;width:14px;height:14px;border-radius:50%;background:var(--primary)"></span>
-        <h3 style="font-size:16px">۱۴۰۴ — امروز</h3>
-        <p class="text-2" style="font-size:13.5px">{{ fa(total_students) }}+ دانشجو، {{ fa(total_courses) }}+ دوره و {{ fa(teachers) }}+ مدرس.</p>
-      </div>
+  <div class="container" style="max-width:820px">
+    <div class="section-head">
+      <span class="tag">درباره مجموعه</span>
+      <h1>{{ site.site_name or 'آکادمی آنلاین' }}</h1>
+      <p>{{ site.site_desc or '' }}</p>
     </div>
-  </div>
-</section>
-
-<section class="section section-alt">
-  <div class="container">
-    <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:18px">
-      <div class="card card-hover stat-card"><span class="ic stat-ic-blue">🎓</span><div><div class="num">{{ fa(total_students) }}+</div><div class="lbl">دانشجو</div></div></div>
-      <div class="card card-hover stat-card"><span class="ic stat-ic-green">📚</span><div><div class="num">{{ fa(total_courses) }}+</div><div class="lbl">دوره</div></div></div>
-      <div class="card card-hover stat-card"><span class="ic stat-ic-orange">👨‍🏫</span><div><div class="num">{{ fa(teachers) }}+</div><div class="lbl">مدرس</div></div></div>
-      <div class="card card-hover stat-card"><span class="ic stat-ic-red">💬</span><div><div class="num">۲۴/۷</div><div class="lbl">پشتیبانی</div></div></div>
+    <div class="card" style="padding:32px;margin-bottom:22px;border-right:4px solid var(--primary)">
+      <h2 style="font-size:19px;margin-bottom:12px">معرفی</h2>
+      <p class="text-2" style="line-height:2.2;white-space:pre-line">{{ site.about_text or 'مدیر سایت هنوز متن معرفی مجموعه را ثبت نکرده است.' }}</p>
     </div>
+    <div class="grid" style="grid-template-columns:repeat(2,1fr);gap:14px">
+      <div class="card stat-card"><span class="ic stat-ic-blue">🎓</span><div><div class="num">{{ fa(total_students) }}</div><div class="lbl">دانشجوی فعال</div></div></div>
+      <div class="card stat-card"><span class="ic stat-ic-green">📚</span><div><div class="num">{{ fa(total_courses) }}</div><div class="lbl">دوره منتشرشده</div></div></div>
+      <div class="card stat-card"><span class="ic stat-ic-orange">👨‍🏫</span><div><div class="num">{{ fa(teachers) }}</div><div class="lbl">مدرس فعال</div></div></div>
+      <div class="card stat-card"><span class="ic stat-ic-red">⏱</span><div><div class="num">{{ fa(total_hours) }}</div><div class="lbl">ساعت محتوای ثبت‌شده</div></div></div>
+    </div>
+    <div class="text-center mt-3"><a class="btn btn-primary" href="{{ url_for('site.courses') }}">فهرست دوره‌ها</a></div>
   </div>
 </section>
 {% endblock %}

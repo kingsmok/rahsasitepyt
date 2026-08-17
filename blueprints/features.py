@@ -22,6 +22,17 @@ from jdates import jtime
 
 features_bp = Blueprint('features', __name__)
 
+
+@features_bp.before_request
+def _disabled_feature_guard():
+    """ویژگی‌های غیرفعال نباید با واردکردن مستقیم URL در دسترس باشند."""
+    if request.path.startswith('/exam/practice'):
+        from runtime import demo_features_enabled
+        if not demo_features_enabled() and g.settings.get('exam_enabled') != '1':
+            abort(404)
+    return None
+
+
 _FA = str.maketrans('0123456789', '۰۱۲۳۴۵۶۷۸۹')
 
 
@@ -58,7 +69,7 @@ def _need_enrollment(quiz):
 
 @features_bp.route('/quiz/<int:qid>')
 def quiz_view(qid):
-    quiz = Quiz.query.get_or_404(qid)
+    quiz = db.get_or_404(Quiz, qid)
     if not _need_enrollment(quiz):
         return redirect(url_for('auth.login') if not g.user else url_for('site.course_detail', slug=quiz.course.slug))
     best = None
@@ -74,7 +85,7 @@ def quiz_view(qid):
 
 @features_bp.route('/quiz/<int:qid>/start')
 def quiz_start(qid):
-    quiz = Quiz.query.get_or_404(qid)
+    quiz = db.get_or_404(Quiz, qid)
     if not _need_enrollment(quiz):
         return redirect(url_for('auth.login') if not g.user else url_for('features.quiz_view', qid=qid))
     if not quiz.questions:
@@ -86,7 +97,7 @@ def quiz_start(qid):
 
 @features_bp.route('/quiz/<int:qid>/submit', methods=['POST'])
 def quiz_submit(qid):
-    quiz = Quiz.query.get_or_404(qid)
+    quiz = db.get_or_404(Quiz, qid)
     if not _need_enrollment(quiz):
         return redirect(url_for('auth.login') if not g.user else url_for('features.quiz_view', qid=qid))
     total = len(quiz.questions)
@@ -142,7 +153,7 @@ def quiz_submit(qid):
 # ================================================================
 @features_bp.route('/assignment/<int:aid>', methods=['GET', 'POST'])
 def assignment_view(aid):
-    asg = Assignment.query.get_or_404(aid)
+    asg = db.get_or_404(Assignment, aid)
     _r = _enrolled_or_403(asg.course_id)
     if _r is not None and not isinstance(_r, Enrollment):
         return _r
@@ -190,7 +201,7 @@ def assignment_view(aid):
 @features_bp.route('/lesson/<int:lid>/ask', methods=['POST'])
 def lesson_ask(lid):
     from models import Lesson
-    lesson = Lesson.query.get_or_404(lid)
+    lesson = db.get_or_404(Lesson, lid)
     _r = _enrolled_or_403(lesson.section.course_id)
     if _r is not None and not isinstance(_r, Enrollment):
         return _r
@@ -307,7 +318,7 @@ def course_feedback(course_id):
     if not g.user:
         return redirect(url_for('auth.login'))
     from models import CourseFeedback, Enrollment
-    course = Course.query.get_or_404(course_id)
+    course = db.get_or_404(Course, course_id)
     # فقط ثبت‌نام‌شده‌ها — جلوگیری از بازخورد جعلی (IDOR)
     enrolled = Enrollment.query.filter_by(user_id=g.user.id, course_id=course_id).first()
     if not enrolled:
@@ -348,7 +359,7 @@ def support_chat():
 def chat_send():
     if not g.user:
         return jsonify(ok=False), 401
-    body = (request.json.get('body') if request.is_json else request.form.get('body', '')).strip()
+    body = (((request.get_json(silent=True) or {}).get('body') if request.is_json else request.form.get('body', '')) or '').strip()
     if not body:
         return jsonify(ok=False, msg='پیام خالی است'), 400
     db.session.add(ChatMessage(user_id=g.user.id, body=body[:1000]))
@@ -472,6 +483,12 @@ def wallet_confirm():
 def referral():
     if not g.user:
         return redirect(url_for('auth.login'))
+    try:
+        referral_percent = max(0, min(50, int(g.settings.get('referral_bonus_percent') or 0)))
+    except (TypeError, ValueError):
+        referral_percent = 0
+    if not referral_percent:
+        abort(404)
     if not g.user.referral_code:
         make_referral_code(g.user)
         db.session.commit()
@@ -498,12 +515,13 @@ def referral():
     elif total_purchased >= 3_000_000:
         rank = 'برنزی'
     next_rank_gap = max(0, 3_000_000 - total_purchased)
-    link = request.host_url.rstrip('/') + '/register?ref=' + g.user.referral_code
+    link = url_for('auth.register', ref=g.user.referral_code, _external=True)
     g.seo['title'] = "دعوت دوستان — آکادمی آنلاین"
     return render_template('features/referral.html', link=link,
                            invited=len(invited_users), invited_users=invited_users,
                            invited_orders=invited_orders, total_purchased=total_purchased,
                            bonuses=bonuses, bonus_sum=bonus_sum, rank=rank,
+                           referral_percent=referral_percent,
                            next_rank_gap=next_rank_gap)
 
 
@@ -534,7 +552,10 @@ def exam_practice_start():
     if not g.user:
         return redirect(url_for('auth.login'))
     cat = request.form.get('category', '').strip()
-    count = min(40, max(5, int(request.form.get('count') or 10)))
+    try:
+        count = min(40, max(5, int(request.form.get('count') or 10)))
+    except (TypeError, ValueError):
+        count = 10
     q = QuestionBank.query
     if cat:
         q = q.filter_by(category=cat)
@@ -613,7 +634,7 @@ def exam_practice_result(aid):
     from models import ExamAttempt, QuestionBank
     if not g.user:
         return redirect(url_for('auth.login'))
-    attempt = ExamAttempt.query.get_or_404(aid)
+    attempt = db.get_or_404(ExamAttempt, aid)
     if attempt.user_id != g.user.id and g.user.role not in ('admin', 'super_admin'):
         flash('این آزمون متعلق به شما نیست.', 'error')
         return redirect(url_for('features.exam_practice'))

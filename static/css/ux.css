@@ -1,0 +1,201 @@
+/* ============================================================
+   لایهٔ تجربه کاربری سراسری — پنل‌ها، فرم‌ها و نمایش موبایل
+   ============================================================ */
+.sr-only,.visually-hidden{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
+
+/* کنترل‌های قابل لمس و وضعیت‌های روشن */
+button,input,select,textarea{min-height:42px}
+input[type="checkbox"],input[type="radio"],input[type="color"]{min-height:0}
+.form-control::placeholder,input::placeholder,textarea::placeholder{color:var(--text-3);opacity:.85}
+.form-control:disabled,input:disabled,select:disabled,textarea:disabled{cursor:not-allowed;opacity:.68;background:var(--bg-2)}
+.form-hint a{color:var(--primary);font-weight:700;text-decoration:underline;text-underline-offset:3px}
+.form-error{display:flex;align-items:center;gap:6px;color:var(--danger);font-size:12px;font-weight:700;margin-top:6px}
+.password-field{position:relative}
+.password-field .form-control{padding-left:48px}
+.password-toggle{position:absolute;left:6px;top:50%;transform:translateY(-50%);width:38px;height:38px;min-height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center;color:var(--text-2);background:var(--bg-2);z-index:2}
+.password-toggle:hover{color:var(--primary);background:var(--primary-soft)}
+.password-strength{height:4px;border-radius:99px;background:var(--border);margin-top:7px;overflow:hidden}
+.password-strength>i{display:block;height:100%;width:0;background:var(--danger);transition:width .2s,background .2s}
+.setting-status{padding:10px 13px;border-radius:10px;font-size:12.5px;font-weight:750;line-height:1.8;background:var(--bg-2);color:var(--text-2)}
+.setting-status--safe{background:var(--success-soft);color:var(--success);border:1px solid color-mix(in srgb,var(--success) 25%,transparent)}
+
+/* اعلان‌ها برای صفحه‌خوان و موبایل */
+.toasts{z-index:10000}
+.toast{min-width:280px;align-items:center}
+.toast>span:nth-child(2){flex:1;overflow-wrap:anywhere}
+.toast .close{min-width:36px;min-height:36px;border-radius:9px}
+.toast .close:hover{background:var(--bg-2)}
+
+/* جدول‌ها: اسکرول واضح و سطرهای خواناتر */
+.table-wrap{position:relative;max-width:100%;scrollbar-gutter:stable;overscroll-behavior-inline:contain}
+.table th{position:sticky;top:0;z-index:1}
+.table td{overflow-wrap:anywhere}
+.table tbody tr:focus-within{background:var(--primary-soft)}
+.empty-state{max-width:620px;margin-inline:auto}
+.empty-state .btn{margin-top:4px}
+
+/* فرم‌های تنظیمات و راه‌اندازی */
+.ss-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:22px 24px;margin-bottom:18px;box-shadow:var(--shadow-sm)}
+.ss-card h3{font-size:15px;font-weight:900;margin-bottom:16px;padding-bottom:10px;border-bottom:1px dashed var(--border)}
+.ss-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+.ss-field label{display:block;font-size:12px;font-weight:800;color:var(--text-2);margin-bottom:6px}
+.ss-field input,.ss-field select,.ss-field textarea{width:100%;padding:10px 13px;border:1.5px solid var(--border);border-radius:10px;background:var(--card);color:var(--text)}
+.ss-field input:focus,.ss-field select:focus,.ss-field textarea:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-soft)}
+.ss-hint{font-size:11px;color:var(--text-3);margin-top:4px;line-height:1.8}
+.ss-save{position:sticky;bottom:10px;z-index:20;display:flex;justify-content:flex-end;padding:12px;background:color-mix(in srgb,var(--card) 94%,transparent);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow-lg)}
+
+/* پنل مدیریت مستقل از هدر و ابزارهای شناور سایت */
+.admin-body{padding-bottom:0!important;background:var(--bg)}
+.admin-body>.site-header,.admin-body>.dk-footer-only,.admin-body>.mb-footer-only,
+.admin-body>.support-fab,.admin-body>.support-pop,.admin-body>.mobile-menu-fab,
+.admin-body>.mobile-menu,.admin-body>.theme-fab,.admin-body>.theme-panel,
+.admin-body>.back-to-top{display:none!important}
+.admin-body #main-content{min-height:100vh}
+.admin-layout{grid-template-columns:270px minmax(0,1fr);min-height:100vh;background:var(--bg)}
+.admin-shell{min-width:0;display:flex;flex-direction:column}
+.as-sidebar{width:270px;height:100vh;max-height:none;inset:auto;position:sticky;top:0;z-index:410;border-radius:0;box-shadow:none}
+.as-brand-copy{min-width:0;flex:1}
+.as-brand-copy strong{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.as-close{display:none;width:38px;height:38px;min-height:38px;color:#fff;border-radius:10px;background:rgba(255,255,255,.1);align-items:center;justify-content:center}
+.as-search-wrap{position:relative;margin:12px 12px 4px;display:flex;align-items:center}
+.as-search-wrap>span{position:absolute;right:12px;pointer-events:none;font-size:13px}
+.as-search-wrap input{width:100%;min-height:42px;padding:8px 36px 8px 10px;border:1px solid rgba(255,255,255,.12);border-radius:11px;background:rgba(255,255,255,.07);color:#fff;font:inherit;font-size:12.5px;outline:none}
+.as-search-wrap input::placeholder{color:#94a3b8}
+.as-search-wrap input:focus{border-color:#ff8c3a;box-shadow:0 0 0 3px rgba(242,100,12,.18)}
+.as-nav{display:flex;flex-direction:column;gap:2px;padding:5px 10px 14px}
+.as-group{font-size:10.5px;font-weight:800;color:#71849a;padding:15px 10px 4px;letter-spacing:.2px}
+.as-link{min-height:42px;padding:9px 11px}
+.as-link-icon{width:23px;text-align:center;flex:0 0 23px}
+.as-link-label{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.as-no-result{font-size:12px;color:#94a3b8;text-align:center;padding:24px 10px}
+.as-footer-links{border-top:1px solid rgba(255,255,255,.1);margin-top:9px;padding-top:9px}
+.admin-toolbar{min-height:68px;position:sticky;top:0;z-index:200;display:flex;align-items:center;gap:14px;padding:9px 26px;background:color-mix(in srgb,var(--card) 92%,transparent);border-bottom:1px solid var(--border);backdrop-filter:blur(14px)}
+.admin-toolbar-title{display:flex;flex-direction:column;min-width:0}
+.admin-toolbar-title small{font-size:10.5px;color:var(--text-3)}
+.admin-toolbar-title strong{font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.admin-nav-toggle{display:none;align-items:center;gap:7px;padding:8px 12px;min-height:42px;border-radius:11px;background:var(--primary);color:#fff;font-weight:800}
+.admin-toolbar-actions{margin-right:auto}
+.admin-toolbar-actions a{display:flex;align-items:center;gap:6px;min-height:42px;padding:7px 12px;border-radius:10px;background:var(--bg-2);font-size:12px;font-weight:800}
+.admin-toolbar-actions a:hover{color:var(--primary);background:var(--primary-soft)}
+.admin-main{padding:26px;min-width:0;background:var(--bg);flex:1}
+.admin-sidebar-backdrop{display:none;position:fixed;inset:0;z-index:390;background:rgba(2,6,23,.55);backdrop-filter:blur(2px)}
+.admin-onboarding{padding:22px;margin-bottom:22px;border-right:4px solid var(--primary);display:grid;grid-template-columns:minmax(220px,.7fr) minmax(360px,1.3fr);gap:22px;align-items:center}
+.admin-onboarding h2{font-size:18px;margin:8px 0 4px}
+.admin-onboarding p{font-size:12.5px;color:var(--text-2)}
+.onboarding-checks{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.onboarding-checks a{display:flex;align-items:center;gap:9px;min-height:44px;padding:8px 11px;border:1px solid var(--border);border-radius:11px;background:var(--card-2);font-size:12.5px;font-weight:750}
+.onboarding-checks a:hover{border-color:var(--primary);color:var(--primary)}
+.onboarding-checks a>span{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--primary);color:#fff;font-size:11px;flex:0 0 26px}
+.onboarding-checks a.done{color:var(--success);border-color:color-mix(in srgb,var(--success) 28%,var(--border));background:var(--success-soft)}
+.onboarding-checks a.done>span{background:var(--success)}
+
+/* منوی موبایل */
+.mobile-nav-open{overflow:hidden}
+.mobile-menu{visibility:hidden}
+.mobile-menu.open{visibility:visible}
+
+/* منوی جمع‌شوندهٔ دانشجو و مدرس */
+.panel-nav-toggle{display:none;width:100%;align-items:center;justify-content:space-between;gap:10px;padding:11px 14px;border:1px solid var(--border);border-radius:12px;background:var(--card);color:var(--text);font-weight:800;box-shadow:var(--shadow-sm)}
+.panel-nav-toggle span:nth-child(2){margin-left:auto}
+.teacher-layout{display:grid;grid-template-columns:230px minmax(0,1fr);gap:24px;align-items:start}
+.teacher-side{padding:16px;position:sticky;top:96px}
+.teacher-nav{display:flex;flex-direction:column;gap:2px}
+
+/* تماس */
+.contact-methods{display:grid;gap:12px}
+.contact-methods--compact{grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}
+.contact-method{padding:18px;display:grid;grid-template-columns:42px 1fr;column-gap:10px;align-items:center;min-width:0}
+.contact-method>span{grid-row:1/3;width:42px;height:42px;border-radius:12px;background:var(--primary-soft);display:flex;align-items:center;justify-content:center;font-size:20px}
+.contact-method strong{font-size:13.5px}
+.contact-method small{color:var(--text-3);overflow-wrap:anywhere}
+a.contact-method:hover{border-color:var(--primary);transform:translateY(-2px)}
+.contact-method--empty{grid-template-columns:42px 1fr}
+
+/* درباره ما */
+.about-stat{padding:20px;background:rgba(255,255,255,.12);border-radius:14px;text-align:center}
+.about-stat b,.about-number b{display:block;font-size:28px;font-weight:900}
+.about-stat small,.about-number small{display:block;margin-top:3px}
+.about-number{padding:22px;text-align:center}
+.about-number b{color:var(--primary)}
+.about-number small{color:var(--text-3)}
+
+/* سبد خرید */
+.cart-quantity{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-2)}
+.cart-quantity input{width:64px;min-height:38px;padding:5px 8px;border:1px solid var(--border);border-radius:9px;text-align:center}
+
+/* پرداخت */
+.payment-card{padding:34px}
+.gateway-fieldset{border:0;min-width:0}
+.gateway-copy{display:block;min-width:0;flex:1}
+.gateway-copy>span{display:block}
+.payment-actions{display:flex;gap:12px;align-items:stretch}
+.payment-actions>.btn{flex:1}
+.wallet-payment-form{margin-top:12px;padding-top:16px;border-top:1px dashed var(--border)}
+.wallet-balance-note{text-align:center;margin-top:14px;color:var(--text-3);font-size:12.5px}
+.payment-empty{padding:28px 10px}
+.payment-empty h2{font-size:18px}
+
+/* محتوای احراز هویت آرام‌تر و خواناتر */
+.auth-card{isolation:isolate}
+.auth-card form{position:relative}
+.auth-card .btn-block{min-height:48px}
+.auth-tabs button{min-height:44px}
+.auth-tab-pane[role="tabpanel"]:focus{outline:none}
+
+@media (max-width:1024px){
+  .panel-nav-toggle{display:flex;margin-bottom:10px}
+  .dash-layout{display:block;margin-top:0}
+  .dash-side{display:none;position:static;margin-bottom:16px;max-height:min(68vh,620px);overflow:auto}
+  .dash-side.panel-nav-open{display:block;animation:scaleIn .18s ease both}
+  .teacher-layout{display:block}
+  .teacher-side{display:none;position:static;margin-bottom:16px;max-height:min(68vh,620px);overflow:auto}
+  .teacher-side.panel-nav-open{display:block;animation:scaleIn .18s ease both}
+}
+
+@media (max-width:900px){
+  .admin-layout{display:block;min-height:100vh}
+  .admin-nav-toggle{display:flex}
+  .as-sidebar{display:block;position:fixed;right:0;top:0;bottom:0;left:auto;width:min(88vw,310px);height:100dvh;max-height:none;border-radius:0;transform:translateX(110%);transition:transform .24s ease;box-shadow:-18px 0 48px rgba(2,6,23,.25);visibility:hidden}
+  .admin-nav-open .as-sidebar{transform:translateX(0);visibility:visible}
+  .admin-nav-open .admin-sidebar-backdrop{display:block}
+  .as-close{display:flex}
+  .admin-toolbar{padding:8px 14px;min-height:62px}
+  .admin-main{padding:18px 14px 28px}
+  .admin-toolbar-actions a span{display:none}
+  .admin-toolbar-actions a{width:42px;padding:7px;justify-content:center}
+  .admin-body.admin-nav-open{overflow:hidden}
+}
+
+@media (max-width:700px){
+  .admin-onboarding{grid-template-columns:1fr;padding:18px;gap:16px}
+  .onboarding-checks{grid-template-columns:1fr}
+  .container{padding-inline:14px}
+  .section{padding:38px 0}
+  .grid[style*="grid-template-columns"]{grid-template-columns:minmax(0,1fr)!important}
+  .flex.between{align-items:flex-start;gap:12px;flex-wrap:wrap}
+  .dash-head{align-items:stretch}
+  .dash-head>div:first-child{min-width:0}
+  .dash-head h1{font-size:19px}
+  .dash-head>.btn,.dash-head>form{width:100%}
+  .dash-head>.btn{justify-content:center}
+  .table-wrap{margin-inline:-2px;border-radius:12px}
+  table.table{min-width:620px}
+  .table th,.table td{padding:11px 12px}
+  .card{max-width:100%}
+  .auth-wrap{padding:28px 12px;align-items:flex-start}
+  .auth-card{padding:26px 18px;border-radius:17px}
+  .payment-card{padding:24px 16px}
+  .payment-actions{flex-direction:column}
+  .gateway-card{padding:13px}
+  .input-group{flex-direction:column}
+  .input-group .btn{width:100%}
+  .modal{padding:24px 16px;border-radius:17px}
+  .toasts{right:10px;left:10px;bottom:12px}
+  .toast{min-width:0;width:100%}
+  .ss-save{bottom:8px;justify-content:stretch}
+  .ss-save .btn{width:100%}
+}
+
+@media (prefers-reduced-motion:reduce){
+  .as-sidebar{transition:none}
+}

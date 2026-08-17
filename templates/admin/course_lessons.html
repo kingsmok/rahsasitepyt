@@ -64,7 +64,8 @@
                 <option value="aparat" {{ 'selected' if l.video_type == 'aparat' }}>🎥 آپارات</option>
                 <option value="none" {{ 'selected' if l.video_type == 'none' }}>📄 بدون ویدیو (متن)</option>
               </select>
-              <input class="form-control" name="video_url" value="{{ l.video_url or '' }}" placeholder="لینک ویدیو (یوتیوب/آپارات/لینک مستقیم)" dir="ltr" style="grid-column:1/-1">
+              <input class="form-control" name="video_url" value="{{ l.video_url or '' }}" placeholder="نام فایل محلی یا لینک ویدیو" dir="ltr" style="grid-column:1/-1">
+              <small class="form-hint" style="grid-column:1/-1">نام فایل داخل static/video با لینک امضاشده پخش می‌شود؛ لینک خارجی تابع سیاست همان میزبان است.</small>
               <input class="form-control" name="duration" value="{{ l.duration }}" placeholder="00:10:00" dir="ltr">
               <label for="f_file_1" class="form-check" style="align-self:center"><input type="checkbox" name="is_free" {{ 'checked' if l.is_free }}> رایگان</label>
               <input id="f_file_1" class="form-control" type="file" name="file" accept=".zip,.rar,.pdf,.csv,.xlsx,.sql,.txt,.py,.ipynb" style="grid-column:1/-1;font-size:12px">
@@ -95,7 +96,8 @@
             <option value="none">📄 بدون ویدیو (متن)</option>
           </select>
           <input class="form-control" name="duration" placeholder="مدت 00:10:00" dir="ltr">
-          <input class="form-control" name="video_url" placeholder="لینک ویدیو — یوتیوب / آپارات / لینک مستقیم mp4" dir="ltr" style="grid-column:1/-1">
+          <input class="form-control" name="video_url" placeholder="نام فایل داخل static/video یا لینک یوتیوب/آپارات/مستقیم" dir="ltr" style="grid-column:1/-1">
+          <small class="form-hint" style="grid-column:1/-1">برای کنترل دسترسی بهتر، نام فایل محلی وارد کنید؛ ذخیره مطلق ویدیو در مرورگر قابل تضمین نیست.</small>
           <input class="form-control" type="file" name="file" accept=".zip,.rar,.pdf,.csv,.xlsx,.sql,.txt,.py,.ipynb" style="grid-column:1/-1;font-size:12px">
           <textarea class="form-control" name="content" placeholder="توضیحات جلسه (اختیاری)" style="grid-column:1/-1;min-height:60px"></textarea>
           <label class="form-check" style="align-self:center"><input type="checkbox" name="is_free"> جلسه رایگان</label>

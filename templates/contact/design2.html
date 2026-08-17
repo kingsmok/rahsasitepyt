@@ -1,38 +1,12 @@
 {% extends 'base.html' %}
+{% from 'contact/_shared.html' import contact_methods, contact_form with context %}
 {% block title %}{{ seo.title or "تماس با ما" }}{% endblock %}
 {% block content %}
-<section class="section" style="padding-top:56px">
-  <div class="container" style="max-width:680px;text-align:center">
-    <span class="badge badge-primary mb-2">💬 در تماس باشیم</span>
-    <h1 style="font-size:clamp(26px,4vw,36px);font-weight:900;margin-bottom:10px">تماس با ما</h1>
-    <p class="text-2" style="font-size:14.5px;margin-bottom:34px">برای هر سوالی، ما اینجاییم. معمولاً کمتر از ۲۴ ساعت پاسخ می‌دهیم.</p>
-    <div class="grid" style="grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:34px">
-      <a class="card card-hover" style="padding:20px;text-align:center" href="tel:{{ site.phone }}">
-        <div style="font-size:28px">📞</div><strong style="font-size:13px;display:block;margin-top:8px">تلفن</strong>
-        <small class="text-3" style="font-size:12px">{{ fa(site.phone) }}</small>
-      </a>
-      <a class="card card-hover" style="padding:20px;text-align:center" href="mailto:{{ site.email }}">
-        <div style="font-size:28px">✉️</div><strong style="font-size:13px;display:block;margin-top:8px">ایمیل</strong>
-        <small class="text-3" style="font-size:12px" dir="ltr">{{ site.email }}</small>
-      </a>
-      <a class="card card-hover" style="padding:20px;text-align:center" href="{{ url_for('site.faq') }}">
-        <div style="font-size:28px">❓</div><strong style="font-size:13px;display:block;margin-top:8px">سوالات متداول</strong>
-        <small class="text-3" style="font-size:12px">پاسخ سریع سوالات</small>
-      </a>
-    </div>
-    <div class="card" style="padding:32px;text-align:right">
-      <h3 style="font-size:17px;margin-bottom:18px;text-align:center">📨 فرم تماس</h3>
-      <form method="post">
-      <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
-
-        <div class="form-group"><label for="f_name_1">نام و نام خانوادگی <span class="req">*</span></label><input id="f_name_1" class="form-control" name="name" required></div>
-        <div class="form-group"><label for="f_email_1">ایمیل</label><input id="f_email_1" class="form-control" type="email" name="email" dir="ltr"></div>
-        <div class="form-group"><label for="f_subject_1">موضوع</label><input id="f_subject_1" class="form-control" name="subject" placeholder="موضوع پیام"></div>
-        <div class="form-group"><label for="f_message_1">متن پیام <span class="req">*</span></label><textarea id="f_message_1" class="form-control" name="message" style="min-height:130px" required></textarea></div>
-        {{ captcha_box() }}
-          <button class="btn btn-primary btn-lg btn-block" type="submit">ارسال پیام ✈️</button>
-      </form>
-    </div>
+<section class="section" style="padding-top:58px">
+  <div class="container" style="max-width:760px">
+    <div class="text-center mb-3"><span class="badge badge-primary">ارتباط با مجموعه</span><h1 style="font-size:32px;margin:10px 0">تماس با ما</h1><p class="text-2">پیام خود را ثبت کنید یا از راه‌های تماس واقعی زیر استفاده کنید.</p></div>
+    {{ contact_methods(true) }}
+    <div class="card" style="padding:32px;margin-top:22px"><h2 class="text-center" style="font-size:18px;margin-bottom:18px">ارسال پیام</h2>{{ contact_form() }}</div>
   </div>
 </section>
 {% endblock %}

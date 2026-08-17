@@ -1,53 +1,69 @@
 {% extends 'base.html' %}
-{% block title %}{{ seo.title or "انتخاب درگاه" }}{% endblock %}
+{% block title %}{{ seo.title or "انتخاب روش پرداخت" }}{% endblock %}
 
 {% block content %}
 <section class="section" style="padding-top:36px">
   <div class="container" style="max-width:720px">
-    <div class="card" style="padding:34px">
+    <div class="card payment-card">
       <div class="text-center mb-3">
-        <div style="font-size:46px">💳</div>
-        <h1 style="font-size:22px;margin:10px 0 4px">انتخاب درگاه پرداخت</h1>
+        <div style="font-size:46px" aria-hidden="true">💳</div>
+        <h1 style="font-size:22px;margin:10px 0 4px">انتخاب روش پرداخت</h1>
         <p class="text-2" style="font-size:13px">سفارش <b class="text-primary" dir="ltr">{{ order.code }}</b> — مبلغ <b class="price">{{ fa('{:,.0f}'.format(order.final_total)) }}</b> تومان</p>
       </div>
 
-      <form method="post">
+      {% if gateways %}
+      <form method="post" id="gateway-form">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
-        <div class="grid" style="gap:12px;margin-bottom:22px">
-          {% for gw in gateways %}
-          <label class="gateway-card {{ 'selected' if gw.id == 'zarinpal' or loop.first }}">
-            <span class="g-ic">{{ gw.icon }}</span>
-            <div>
-              <div class="g-name">{{ gw.name }}</div>
-              <div class="g-desc">{{ gw.desc }}</div>
-              <div class="g-fee">کارمزد: {{ gw.fee }}</div>
-            </div>
-            <input type="radio" name="gateway" value="{{ gw.id }}" class="hide" {{ 'checked' if (preselected and gw.id == preselected) or ((not preselected) and (gw.id == 'zarinpal' or loop.first)) }}>
-            <span class="g-radio"></span>
-          </label>
-          {% endfor %}
-        </div>
+        <fieldset class="gateway-fieldset">
+          <legend class="sr-only">روش پرداخت را انتخاب کنید</legend>
+          <div class="grid" style="gap:12px;margin-bottom:22px">
+            {% for gw in gateways %}
+            <label class="gateway-card {{ 'selected' if (preselected and gw.id == preselected) or ((not preselected) and loop.first) }}">
+              <span class="g-ic" aria-hidden="true">{{ gw.icon }}</span>
+              <span class="gateway-copy">
+                <span class="g-name">{{ gw.name }}</span>
+                <span class="g-desc">{{ gw.desc }}</span>
+                <span class="g-fee">کارمزد: {{ gw.fee }}</span>
+              </span>
+              <input type="radio" name="gateway" value="{{ gw.id }}" class="hide" {{ 'checked' if (preselected and gw.id == preselected) or ((not preselected) and loop.first) }} required>
+              <span class="g-radio" aria-hidden="true"></span>
+            </label>
+            {% endfor %}
+          </div>
+        </fieldset>
 
         {% if sandbox_mode %}
-        <div class="card" style="background:var(--bg-2);border:none;padding:14px 18px;font-size:12.5px;color:var(--text-2);margin-bottom:22px">
-          ℹ️ حالت آزمایشی فعال است — پرداخت‌ها واقعی نیستند. برای فعال‌سازی پرداخت واقعی، شناسه مرچنت درگاه را در تنظیمات پنل مدیریت وارد و «حالت آزمایشی» را خاموش کنید.
+        <div class="setting-status" style="margin-bottom:22px">
+          محیط تست خودکار فعال است و تراکنش واقعی انجام نمی‌شود.
         </div>
         {% endif %}
 
-        <div class="flex gap-2">
-          <button class="btn btn-primary btn-lg" style="flex:1" type="submit">پرداخت {{ fa('{:,.0f}'.format(order.final_total)) }} تومان ←</button>
-          <a class="btn btn-ghost btn-lg" href="{{ url_for('student.orders') }}">انصراف</a>
+        <div class="payment-actions">
+          <button class="btn btn-primary btn-lg" type="submit">ادامه پرداخت {{ fa('{:,.0f}'.format(order.final_total)) }} تومان</button>
+          <a class="btn btn-ghost btn-lg" href="{{ url_for('student.orders') }}">بازگشت به سفارش‌ها</a>
         </div>
-        <form method="post" action="{{ url_for('shop.checkout_wallet') }}" style="margin-top:10px">
-          <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
-          <input type="hidden" name="code" value="{{ order.code }}">
-          {% if cur_user.wallet_balance and cur_user.wallet_balance >= order.final_total %}
-          <button class="btn btn-outline-success btn-lg btn-block" type="submit">💰 پرداخت با کیف پول (موجودی: {{ fa('{:,.0f}'.format(cur_user.wallet_balance)) }} تومان)</button>
-          {% else %}
-          <button class="btn btn-ghost btn-lg btn-block" type="button" disabled title="موجودی کافی نیست">💰 کیف پول (موجودی: {{ fa('{:,.0f}'.format(cur_user.wallet_balance or 0)) }})</button>
-          {% endif %}
-        </form>
       </form>
+      {% else %}
+      <div class="empty-state payment-empty">
+        <div class="es-icon" aria-hidden="true">🔒</div>
+        <h2>روش پرداخت فعالی وجود ندارد</h2>
+        <p>سفارش شما محفوظ است. برای هماهنگی پرداخت با پشتیبانی تماس بگیرید یا بعداً دوباره تلاش کنید.</p>
+        <div class="payment-actions">
+          {% if cur_user %}<a class="btn btn-primary" href="{{ url_for('student.ticket_new') }}">ثبت تیکت پشتیبانی</a>{% endif %}
+          <a class="btn btn-ghost" href="{{ url_for('student.orders') }}">مشاهده سفارش‌ها</a>
+        </div>
+      </div>
+      {% endif %}
+
+      {% if cur_user.wallet_balance and cur_user.wallet_balance >= order.final_total %}
+      <form method="post" action="{{ url_for('shop.checkout_wallet') }}" class="wallet-payment-form">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="code" value="{{ order.code }}">
+        <button class="btn btn-outline btn-lg btn-block" type="submit">💰 پرداخت با کیف پول — موجودی {{ fa('{:,.0f}'.format(cur_user.wallet_balance)) }} تومان</button>
+      </form>
+      {% elif cur_user.wallet_balance %}
+      <p class="wallet-balance-note">موجودی کیف پول: {{ fa('{:,.0f}'.format(cur_user.wallet_balance or 0)) }} تومان — برای این سفارش کافی نیست.</p>
+      {% endif %}
     </div>
   </div>
 </section>

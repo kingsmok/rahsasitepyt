@@ -8,10 +8,10 @@
       <a href="{{ url_for('site.faq') }}">راهنمای خرید</a>
     </div>
     <div class="dk-topbar-left">
-      <span>{{ icon('shield-check', 15) }} ۷ روز ضمانت بازگشت وجه</span>
+      {% if site.get('refund_days', '0')|int > 0 %}<a href="{{ url_for('site.terms') }}#refund">{{ icon('shield-check', 15) }} {{ fa(site.get('refund_days', '0')) }} روز مهلت بازگشت وجه</a>{% endif %}
       {# ادعای «پرداخت امن شتاب» فقط وقتی نمایش داده می‌شود که درگاه بانکی واقعی
          پیکربندی شده باشد — ادعای نادرست دربارهٔ درگاه بانکی = محتوای فریب‌دهنده #}
-      {% if real_gateway_on %}<span>{{ icon('credit-card', 15) }} پرداخت امن شتاب</span>{% endif %}
+      {% if real_gateway_on %}<span>{{ icon('credit-card', 15) }} درگاه بانکی فعال</span>{% endif %}
       {# شماره تماس فقط در صورت ثبت مقدار واقعی — شماره نمونه = اطلاعات تماس جعلی #}
       {% if site.phone %}<a href="tel:{{ site.phone }}">{{ icon('phone', 15) }} {{ fa(site.phone) }}</a>{% endif %}
       {% if cur_user %}
@@ -29,7 +29,7 @@
     <div class="dk-main">
       <a class="dk-logo" href="{{ url_for('site.index') }}">
         <span class="dk-logo-ic">{{ icon('school', 22) }}</span>
-        <span><b>{{ site.site_name or 'آکادمی آنلاین' }}</b><small>مرجع آموزش آنلاین فارسی</small></span>
+        <span><b>{{ site.site_name or 'آکادمی آنلاین' }}</b><small>{{ site.site_desc or 'آموزش آنلاین' }}</small></span>
       </a>
 
       <form class="dk-search" action="{{ url_for('site.courses') }}" method="get">
@@ -108,14 +108,16 @@
             </div>
             {% else %}
             <h5 style="font-size:13px;font-weight:800;margin-bottom:10px">{{ icon('lock', 16) }} ورود به حساب</h5>
+            {% if sms_ready and site.allow_phone_login != '0' %}
             <form class="dk-acc-form" action="{{ url_for('auth.phone_send') }}" method="post">
 <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
-              <input type="text" name="phone" placeholder="شماره موبایل 09..." dir="ltr" pattern="09[0-9]{9}" required>
-              <button type="submit">{{ icon('device-mobile', 16) }} ورود با شماره تماس</button>
+              <input type="text" name="phone" placeholder="شماره موبایل 09..." dir="ltr" inputmode="numeric" autocomplete="tel" pattern="09[0-9]{9}" required>
+              <button type="submit">{{ icon('device-mobile', 16) }} دریافت کد ورود</button>
             </form>
+            {% endif %}
             <div class="dk-acc-alt">
-              <a href="{{ url_for('auth.register') }}">{{ icon('sparkles', 16) }} ثبت‌نام (کد ملی + موبایل)</a>
-              <a href="{{ url_for('auth.login') }}">{{ icon('mail', 16) }} ورود با ایمیل</a>
+              <a href="{{ url_for('auth.register') }}">{{ icon('sparkles', 16) }} ساخت حساب کاربری</a>
+              <a href="{{ url_for('auth.login') }}">{{ icon('mail', 16) }} ورود با ایمیل{% if sms_ready %} یا موبایل{% endif %}</a>
             </div>
             {% endif %}
           </aside>

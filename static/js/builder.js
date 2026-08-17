@@ -112,14 +112,12 @@ function defaults(type) {
     else if (f.type === 'checkbox') d[f.key] = false;
     else d[f.key] = '';
   });
-  /* اسلایدر: سه اسلاید نمونه پیش‌فرض */
+  /* محتوای شروع خنثی؛ بدون آمار یا ضمانت ساختگی */
   if (type === 'slider') {
     var imgs = IMAGES.filter(function (i) { return i.indexOf('cover-') === 0; });
     imgs = imgs.length ? imgs : IMAGES;
     d.slides = [
-      { img: imgs[0] || '', title: 'دوره‌های حرفه‌ای را همین حالا شروع کنید', sub: 'با بیش از ۲۲۰ درس عملی و مدرسین مجرب، مهارت آینده خود را بسازید.', btn_text: 'مشاهده دوره‌ها', btn_url: '/courses', align: 'right' },
-      { img: imgs[1] || imgs[0] || '', title: 'یادگیری با ضمانت بازگشت وجه', sub: 'تا ۷ روز ضمانت بازگشت کامل وجه دارید؛ اگر راضی نبودید پولتان برمی‌گردد.', btn_text: 'ثبت‌نام رایگان', btn_url: '/register', align: 'center' },
-      { img: imgs[2] || imgs[0] || '', title: 'همراه با پشتیبانی مدرس', sub: 'در مسیر یادگیری تنها نیستید؛ هر سوالی دارید از مدرس بپرسید.', btn_text: 'دوره‌ها', btn_url: '/courses', align: 'right' }
+      { img: imgs[0] || '', title: 'دوره‌های آموزشی', sub: 'فهرست دوره‌های منتشرشده را ببینید و گزینه مناسب را انتخاب کنید.', btn_text: 'مشاهده دوره‌ها', btn_url: '/courses', align: 'right' }
     ];
     d.height = '420'; d.overlay = '60'; d.autoplay = true; d.interval = '5';
     d.dots = true; d.arrows = true; d.swipe = true;

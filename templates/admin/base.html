@@ -1,31 +1,57 @@
 {% extends 'base.html' %}
 {% block title %}{% block atitle %}پنل مدیریت{% endblock %} — {{ site.site_name or 'آکادمی آنلاین' }}{% endblock %}
+{% block body_class %}admin-body{% endblock %}
 
 {% block content %}
 <div class="admin-layout">
-  <aside class="as-sidebar">
-      <div class="as-brand">
-        <span class="as-logo">🎓</span>
-        <div><strong>{{ site.site_name or 'آکادمی' }}</strong><small>{{ current_role or 'پنل مدیریت' }}</small></div>
+  <aside class="as-sidebar" id="admin-sidebar" aria-label="منوی پنل مدیریت">
+    <div class="as-brand">
+      <span class="as-logo" aria-hidden="true">🎓</span>
+      <div class="as-brand-copy"><strong>{{ site.site_name or 'آکادمی' }}</strong><small>{{ current_role or 'پنل مدیریت' }}</small></div>
+      <button class="as-close" type="button" data-admin-nav-close aria-label="بستن منوی مدیریت">{{ icon('x', 18) }}</button>
+    </div>
+    <div class="as-search-wrap">
+      <label class="sr-only" for="admin-menu-search">جستجو در منوی مدیریت</label>
+      <span aria-hidden="true">🔎</span>
+      <input id="admin-menu-search" type="search" placeholder="جستجوی بخش‌ها..." autocomplete="off" data-admin-menu-search>
+    </div>
+    <nav class="as-nav">
+      {% set menu = bc_admin_menu() %}
+      {% for ep, label in menu %}
+      {% if ep == 'sep' %}
+      <div class="as-group" data-admin-group>{{ label }}</div>
+      {% else %}
+      <a href="{{ url_for(ep) }}" data-admin-link class="as-link {{ 'active' if request.endpoint and request.endpoint.startswith(ep.split('.')[0] + '.') and (ep.split('.')[1] == request.endpoint.split('.')[1] or request.endpoint in [ep]) }}">
+        <span class="as-link-icon" aria-hidden="true">{{ label.split(' ',1)[0] }}</span>
+        <span class="as-link-label">{{ label.split(' ',1)[1] if ' ' in label else label }}</span>
+      </a>
+      {% endif %}
+      {% endfor %}
+      <p class="as-no-result" data-admin-no-result hidden>بخشی با این عنوان پیدا نشد.</p>
+      <div class="as-footer-links">
+        <a class="as-link" href="{{ url_for('site.index') }}" target="_blank" rel="noopener"><span aria-hidden="true">🌐</span><span>مشاهده سایت</span></a>
+        <a class="as-link" href="{{ url_for('auth.logout') }}"><span aria-hidden="true">🚪</span><span>خروج امن</span></a>
       </div>
-      <nav style="display:flex;flex-direction:column;gap:2px;padding:10px">
-        {% set menu = bc_admin_menu() %}
-        {% for ep, label in menu %}
-        {% if ep == 'sep' %}
-        <div style="font-size:10.5px;font-weight:800;color:var(--text-3);padding:14px 12px 4px;letter-spacing:.3px">{{ label }}</div>
-        {% else %}
-        <a href="{{ url_for(ep) }}" class="as-link {{ 'active' if request.endpoint and request.endpoint.startswith(ep.split('.')[0] + '.') and (ep.split('.')[1] == request.endpoint.split('.')[1] or request.endpoint in [ep]) }}">
-          <span>{{ label.split(' ',1)[0] }}</span> {{ label.split(' ',1)[1] if ' ' in label else '' }}
-        </a>
-        {% endif %}
-        {% endfor %}
-        <div style="border-top:1px solid var(--border);margin:8px 0;padding-top:8px">
-          <a class="as-link" href="{{ url_for('site.index') }}" target="_blank">🌐 مشاهده سایت</a>
-          <a class="as-link" href="{{ url_for('auth.logout') }}">🚪 خروج</a>
-        </div>
-      </nav>
-    </aside>  <main class="admin-main">
-    {% block acontent %}{% endblock %}
-  </main>
+    </nav>
+  </aside>
+
+  <div class="admin-shell">
+    <header class="admin-toolbar">
+      <button class="admin-nav-toggle" type="button" data-admin-nav-toggle aria-controls="admin-sidebar" aria-expanded="false">
+        {{ icon('menu-2', 20) }} <span>منو</span>
+      </button>
+      <div class="admin-toolbar-title">
+        <small>پنل مدیریت</small>
+        <strong>{{ self.atitle() }}</strong>
+      </div>
+      <div class="admin-toolbar-actions">
+        <a href="{{ url_for('site.index') }}" target="_blank" rel="noopener" title="مشاهده سایت">{{ icon('external-link', 19) }}<span>سایت</span></a>
+      </div>
+    </header>
+    <div class="admin-main" id="admin-content" tabindex="-1">
+      {% block acontent %}{% endblock %}
+    </div>
+  </div>
+  <button class="admin-sidebar-backdrop" type="button" data-admin-nav-close aria-label="بستن منو"></button>
 </div>
 {% endblock %}

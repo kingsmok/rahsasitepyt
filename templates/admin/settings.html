@@ -25,7 +25,7 @@
     </div>
     <div class="grid" style="grid-template-columns:1fr 1fr;gap:12px">
       <div class="form-group"><label>نام کاربری</label><input class="form-control" dir="ltr" name="smtp_user" value="{{ site.smtp_user or '' }}"></div>
-      <div class="form-group"><label>رمز عبور</label><input class="form-control" dir="ltr" type="password" name="smtp_pass" value="{{ site.smtp_pass or '' }}"></div>
+      <div class="form-group"><label>رمز عبور</label><input class="form-control" dir="ltr" type="password" name="smtp_pass" value="" placeholder="خالی = بدون تغییر"></div>
     </div>
     <div class="grid" style="grid-template-columns:1fr 1fr;gap:12px">
       <div class="form-group"><label>فرستنده (From)</label><input class="form-control" dir="ltr" name="smtp_from" value="{{ site.smtp_from or '' }}" placeholder="noreply@academy.ir"></div>
@@ -36,7 +36,7 @@
       <input class="form-control" name="smtp_test_to" placeholder="ایمیل برای تست (خالی = خودتان)" dir="ltr" style="max-width:260px">
       <button class="btn btn-ghost" formaction="{{ url_for('admin.email_test') }}">📤 ارسال ایمیل تست</button>
     </div>
-    <p class="form-hint">بدون تنظیم SMTP، ایمیل‌ها در حالت دمو ثبت می‌شوند (لاگ سرور).</p>
+    <p class="form-hint">بدون تنظیم SMTP ایمیلی ارسال نمی‌شود. پس از ذخیره، حتماً ارسال آزمایشی واقعی را بررسی کنید.</p>
   </div>
   <h3 style="font-size:16px;margin:22px 0 16px">🎨 برند و ظاهر</h3>
   <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:14px">
@@ -79,7 +79,7 @@
   <div class="form-group">
     <label for="f_zarinpal_merchant_1">شناسه مرچنت زرین‌پال</label>
     <input id="f_zarinpal_merchant_1" class="form-control" name="zarinpal_merchant" value="{{ site.zarinpal_merchant or '' }}" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" dir="ltr">
-    <p class="form-hint">اگر خالی باشد، تمام درگاه‌ها در حالت آزمایشی (sandbox) کار می‌کنند.</p>
+    <p class="form-hint">اگر خالی باشد، زرین‌پال به کاربر نمایش داده نمی‌شود؛ پرداخت ساختگی جایگزین نخواهد شد.</p>
   </div>
   <div class="grid" style="grid-template-columns:2fr 1fr;gap:14px">
     <div class="form-group">
@@ -98,16 +98,8 @@
       <option value="0" {{ 'selected' if (site.watermark_enabled or '1') == '0' }}>غیرفعال</option>
     </select>
   </div>
-  <div class="form-group">
-    <label for="f_sandbox_mode_1">حالت آزمایشی پرداخت</label>
-    <select id="f_sandbox_mode_1" class="form-control" name="sandbox_mode" style="max-width:220px">
-      <option value="0" {{ 'selected' if (site.sandbox_mode or '0') == '0' }}>غیرفعال (توصیه‌شده برای سایت واقعی)</option>
-      <option value="1" {{ 'selected' if (site.sandbox_mode or '0') == '1' }}>فعال (شبیه‌ساز پرداخت — فقط تست محلی)</option>
-    </select>
-    <p class="form-hint" style="color:var(--danger)">
-      ⚠️ روی سایت آنلاین حتماً «غیرفعال» بماند. صفحه شبیه‌ساز پرداخت اگر برای عموم باز باشد،
-      ممکن است توسط Google Safe Browsing به‌عنوان فیشینگ شناسایی و کل دامنه در کروم مسدود شود.
-    </p>
+  <div class="setting-status setting-status--safe" style="margin-bottom:18px">
+    ✓ پرداخت آزمایشی غیرفعال است؛ فقط روش‌های واقعیِ پیکربندی‌شده نمایش داده می‌شوند.
   </div>
 
   <h3 style="font-size:16px;margin:22px 0 16px">🧩 تنظیمات صفحه‌ساز (Kit)</h3>

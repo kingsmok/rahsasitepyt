@@ -13,7 +13,7 @@
       <div class="card" style="background:var(--bg-2);border:none;padding:18px 22px;text-align:right;margin-bottom:22px;font-size:13.5px">
         <div style="display:flex;justify-content:space-between;margin-bottom:8px"><span class="text-2">کد سفارش</span><b dir="ltr">{{ order.code }}</b></div>
         <div style="display:flex;justify-content:space-between;margin-bottom:8px"><span class="text-2">مبلغ پرداخت‌شده</span><b>{{ fa('{:,.0f}'.format(order.final_total)) }} تومان</b></div>
-        <div style="display:flex;justify-content:space-between"><span class="text-2">درگاه</span><b>{{ {'zarinpal':'زرین‌پال','idpay':'آیدی پی','zibal':'زیبال','sandbox':'درگاه آزمایشی'}.get(order.gateway or '', order.gateway or '—') }}</b></div>
+        <div style="display:flex;justify-content:space-between"><span class="text-2">درگاه</span><b>{{ gateway_name(order.gateway) }}</b></div>
       </div>
 
       <div class="flex gap-2" style="justify-content:center;flex-wrap:wrap">

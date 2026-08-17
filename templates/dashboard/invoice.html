@@ -48,21 +48,30 @@
 
       <div class="table-wrap">
         <table class="table">
-          <thead><tr><th>دوره</th><th>مدرس</th><th>قیمت</th></tr></thead>
+          <thead><tr><th>آیتم</th><th>نوع / ارائه‌دهنده</th><th>تعداد</th><th>جمع</th></tr></thead>
           <tbody>
             {% for item in order.items %}
             <tr>
-              <td><strong>{{ item.course.title }}</strong></td>
-              <td>{{ item.course.teacher.name if item.course.teacher else '—' }}</td>
-              <td>{{ fa('{:,.0f}'.format(item.price)) }} تومان</td>
+              <td><strong>{{ item.course.title if item.course else (item.product.title if item.product else 'آیتم حذف‌شده') }}</strong></td>
+              <td>{{ item.course.teacher.name if item.course and item.course.teacher else ('محصول فیزیکی' if item.product else '—') }}</td>
+              <td>{{ fa(item.quantity or 1) }}</td>
+              <td>{{ fa('{:,.0f}'.format(item.price * (item.quantity or 1))) }} تومان</td>
             </tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
 
+      {% if order.fulfillment_status != 'not_required' %}
+      <div class="card" style="margin-top:16px;padding:16px;background:var(--bg-2);border:none">
+        <strong>نشانی تحویل:</strong> {{ order.shipping_name }}، {{ order.shipping_province }}، {{ order.shipping_city }}، {{ order.shipping_address }}
+        {% if order.shipping_postal_code %}<span dir="ltr"> — {{ order.shipping_postal_code }}</span>{% endif %}
+      </div>
+      {% endif %}
+
       <div style="max-width:320px;margin-right:auto;margin-top:18px">
-        <div class="s-row"><span>جمع کل</span><span>{{ fa('{:,.0f}'.format(order.total)) }} تومان</span></div>
+        <div class="s-row"><span>جمع اقلام</span><span>{{ fa('{:,.0f}'.format(order.total - (order.shipping_cost or 0))) }} تومان</span></div>
+        {% if order.shipping_cost %}<div class="s-row"><span>هزینه ارسال</span><span>{{ fa('{:,.0f}'.format(order.shipping_cost)) }} تومان</span></div>{% endif %}
         {% if order.discount %}<div class="s-row" style="color:var(--success)"><span>تخفیف</span><span>− {{ fa('{:,.0f}'.format(order.discount)) }} تومان</span></div>{% endif %}
         <div class="s-row total"><span>مبلغ نهایی</span><span class="price">{{ fa('{:,.0f}'.format(order.final_total)) }} تومان</span></div>
       </div>

@@ -8,16 +8,18 @@
 
 <div class="grid" style="grid-template-columns:1fr 320px;gap:22px;align-items:start">
   <div class="card" style="padding:22px">
-    <h3 style="font-size:16px;margin-bottom:14px">دوره‌های سفارش</h3>
+    <h3 style="font-size:16px;margin-bottom:14px">اقلام سفارش</h3>
     <div class="table-wrap">
       <table class="table">
-        <thead><tr><th>دوره</th><th>مدرس</th><th>قیمت</th></tr></thead>
+        <thead><tr><th>نوع</th><th>عنوان</th><th>جزئیات</th><th>تعداد</th><th>جمع</th></tr></thead>
         <tbody>
           {% for item in order.items %}
           <tr>
-            <td><strong>{{ item.course.title }}</strong></td>
-            <td>{{ item.course.teacher.name if item.course.teacher else '—' }}</td>
-            <td>{{ fa('{:,.0f}'.format(item.price)) }} تومان</td>
+            <td>{{ 'دوره' if item.course else 'محصول فیزیکی' }}</td>
+            <td><strong>{{ item.course.title if item.course else (item.product.title if item.product else 'حذف‌شده') }}</strong></td>
+            <td>{{ item.course.teacher.name if item.course and item.course.teacher else (item.product.sku if item.product and item.product.sku else '—') }}</td>
+            <td>{{ fa(item.quantity or 1) }}</td>
+            <td>{{ fa('{:,.0f}'.format(item.price * (item.quantity or 1))) }} تومان</td>
           </tr>
           {% endfor %}
         </tbody>
@@ -31,11 +33,32 @@
     <div class="s-row"><span>جمع</span><span>{{ fa('{:,.0f}'.format(order.total)) }} تومان</span></div>
     {% if order.discount %}<div class="s-row" style="color:var(--success)"><span>تخفیف</span><span>{{ fa('{:,.0f}'.format(order.discount)) }} تومان</span></div>{% endif %}
     <div class="s-row total"><span>نهایی</span><span>{{ fa('{:,.0f}'.format(order.final_total)) }} تومان</span></div>
-    <div class="s-row"><span>درگاه</span><span>{{ order.gateway or '—' }}</span></div>
+    <div class="s-row"><span>درگاه</span><span>{{ gateway_name(order.gateway) }}</span></div>
     <div class="s-row"><span>رهگیری</span><span dir="ltr">{{ order.ref_id or '—' }}</span></div>
     <div class="s-row"><span>وضعیت</span><span>{% if order.status == 'paid' %}<span class="badge badge-success">پرداخت‌شده</span>{% elif order.status == 'pending_verify' %}<span class="badge badge-accent">در انتظار تایید فیش</span>{% elif order.status == 'pending' %}<span class="badge badge-accent">در انتظار</span>{% else %}<span class="badge badge-danger">{{ order.status_fa }}</span>{% endif %}</span></div>
   </div>
 </div>
+
+{% if order.fulfillment_status != 'not_required' %}
+<div class="card mt-3" style="padding:22px">
+  <h3 style="font-size:16px;margin-bottom:14px">📦 اطلاعات ارسال</h3>
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px">
+    <div><small class="text-3">تحویل‌گیرنده</small><strong style="display:block">{{ order.shipping_name }}</strong></div>
+    <div><small class="text-3">موبایل</small><strong style="display:block" dir="ltr">{{ order.shipping_phone }}</strong></div>
+    <div><small class="text-3">استان / شهر</small><strong style="display:block">{{ order.shipping_province }} / {{ order.shipping_city }}</strong></div>
+    <div><small class="text-3">کد پستی</small><strong style="display:block" dir="ltr">{{ order.shipping_postal_code or '—' }}</strong></div>
+    <div style="grid-column:1/-1"><small class="text-3">آدرس</small><strong style="display:block">{{ order.shipping_address }}</strong></div>
+  </div>
+  <div class="s-row" style="margin-top:12px"><span>هزینه ارسال</span><span>{{ fa('{:,.0f}'.format(order.shipping_cost or 0)) }} تومان</span></div>
+  <form method="post" action="{{ url_for('admin.order_fulfillment', oid=order.id) }}" class="flex gap-1 mt-2">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+    <select class="form-control" name="status" style="max-width:220px">
+      {% for value, label in [('stock_issue','نیازمند بررسی موجودی'),('processing','در حال پردازش'),('shipped','ارسال‌شده'),('delivered','تحویل‌شده')] %}<option value="{{ value }}" {{ 'selected' if order.fulfillment_status == value }}>{{ label }}</option>{% endfor %}
+    </select>
+    <button class="btn btn-primary" type="submit">ذخیره وضعیت ارسال</button>
+  </form>
+</div>
+{% endif %}
 
 {% if proofs %}
 <div class="card mt-3" style="padding:22px">

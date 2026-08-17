@@ -37,29 +37,29 @@ HOME_DESIGNS = {
                 {'id': 'd1_w1', 'type': 'slider', 'data': {
                     'height': '440', 'autoplay': True, 'interval': '5', 'dots': True, 'arrows': True,
                     'slides': [
-                        {'img': 'hero.webp', 'title': 'آینده‌ات را با مهارت‌های دیجیتال قدرتمندتر بساز',
-                         'sub': 'دوره‌های پروژه‌محور با برترین مدرسان ایران — همین امروز شروع کن!',
-                         'btn_text': '🚀 مشاهده همه دوره‌ها', 'btn_url': '/courses', 'align': 'right'},
-                        {'img': 'cover-python.webp', 'title': 'دوره جامع پایتون با تخفیف ویژه',
-                         'sub': 'از صفر تا استخدام — با کد WELCOME20 تخفیف بگیرید!',
+                        {'img': 'hero.webp', 'title': 'دوره‌های آموزشی منتشرشده',
+                         'sub': 'سرفصل، مدرس، مدت و شرایط هر دوره را پیش از ثبت‌نام بررسی کنید.',
+                         'btn_text': 'مشاهده همه دوره‌ها', 'btn_url': '/courses', 'align': 'right'},
+                        {'img': 'cover-python.webp', 'title': 'مسیر یادگیری خود را انتخاب کنید',
+                         'sub': 'آموزش گام‌به‌گام با تمرین و پروژه‌های کاربردی.',
                          'btn_text': 'مشاهده دوره پایتون', 'btn_url': '/courses', 'align': 'center'},
                     ]}}]],
             },
             {'id': 'd1_feat', 'settings': {'gap': 22, 'py': 60}, 'cols': [[
                 {'id': 'd1_w2', 'type': 'feature', 'data': {'columns': '3', 'items': [
-                    {'icon': '🎬', 'title': 'ویدیوهای باکیفیت', 'text': 'تدریس قدم‌به‌قدم Full HD با دسترسی مادام‌العمر'},
-                    {'icon': '🏅', 'title': 'گواهینامه معتبر', 'text': 'دریافت گواهی پایان دوره با کد رهگیری'},
-                    {'icon': '🎓', 'title': 'اساتید حرفه‌ای', 'text': 'همکاری با برترین مدرسان بازار'},
-                    {'icon': '🧩', 'title': 'پروژه‌محور', 'text': 'یادگیری با ساخت پروژه‌های واقعی'},
-                    {'icon': '💬', 'title': 'پشتیبانی فعال', 'text': 'پاسخگویی سریع در تیکت و پیام‌رسان‌ها'},
-                    {'icon': '🛡️', 'title': 'پرداخت امن', 'text': 'درگاه‌های معتبر با ضمانت بازگشت وجه'},
+                    {'icon': '🎬', 'title': 'جلسات دوره', 'text': 'مشاهده سرفصل و مدت هر دوره پیش از خرید'},
+                    {'icon': '🏅', 'title': 'گواهی قابل استعلام', 'text': 'کد رهگیری منحصربه‌فرد پس از تکمیل دوره'},
+                    {'icon': '🎓', 'title': 'پروفایل مدرس', 'text': 'مشاهده معرفی و دوره‌های منتشرشده مدرس'},
+                    {'icon': '📈', 'title': 'پیگیری پیشرفت', 'text': 'ثبت جلسات تکمیل‌شده در حساب کاربری'},
+                    {'icon': '💬', 'title': 'تیکت پشتیبانی', 'text': 'ثبت و پیگیری درخواست از داخل حساب'},
+                    {'icon': '🛡️', 'title': 'روش‌های پرداخت فعال', 'text': 'نمایش فقط روش‌هایی که مدیر تکمیل کرده است'},
                 ]}}]],
             },
             {'id': 'd1_cats', 'settings': {'gap': 16, 'py': 60, 'bg': '#ffffff', 'radius': 24}, 'cols': [[
                 {'id': 'd1_w3', 'type': 'categories', 'data': {'title': 'موضوع مورد علاقه‌ات را انتخاب کن', 'limit': '9', 'columns': '4'}}]],
             },
             {'id': 'd1_courses', 'settings': {'gap': 24, 'py': 60}, 'cols': [[
-                {'id': 'd1_w4', 'type': 'courses', 'data': {'title': '⭐ پرفروش‌ترین دوره‌ها', 'subtitle': 'انتخاب بیشتر دانشجویان', 'limit': '8', 'columns': '4', 'sort': 'popular'}}]],
+                {'id': 'd1_w4', 'type': 'courses', 'data': {'title': 'دوره‌های منتشرشده', 'subtitle': 'سرفصل و جزئیات دوره‌ها را مقایسه کنید', 'limit': '8', 'columns': '4', 'sort': 'newest'}}]],
             },
             {'id': 'd1_stats', 'settings': {'gap': 0, 'py': 50}, 'cols': [[
                 # ⚠️ آمار پویا از دیتابیس — عدد ثابت جعلی روی سایت واقعی
@@ -84,7 +84,7 @@ HOME_DESIGNS = {
             {'id': 'd1_cta', 'settings': {'gap': 0, 'py': 30}, 'cols': [[
                 {'id': 'd1_w8', 'type': 'cta', 'data': {
                     'title': 'آماده شروع یادگیری هستی؟ 🚀',
-                    'text': 'همین حالا ثبت‌نام کن و با کد WELCOME20 از تخفیف بهره‌مند شو!',
+                    'text': 'حساب خود را بسازید و از دوره‌های منتشرشده دیدن کنید.',
                     'btn_text': 'ثبت‌نام رایگان', 'btn_url': '/auth/register'}}]],
             },
                         {'id': 'd1_exam', 'settings': {'gap': 0, 'py': 40}, 'cols': [[
@@ -143,28 +143,23 @@ HOME_DESIGNS = {
                     'btn_text': 'شروع یادگیری', 'btn_url': '/courses'}}]],
             },
             {'id': 'd3_count', 'settings': {'gap': 0, 'py': 50}, 'cols': [[
-                {'id': 'd3_w2', 'type': 'counter', 'data': {'columns': '4', 'color': '#f2640c', 'items': [
-                    {'target': '150', 'suffix': '+', 'label': 'دوره'},
-                    {'target': '50000', 'suffix': '+', 'label': 'دانشجو'},
-                    {'target': '2000', 'suffix': '+', 'label': 'ساعت ویدیو'},
-                    {'target': '120', 'suffix': '+', 'label': 'مدرس'}]}}]],
+                {'id': 'd3_w2', 'type': 'stats', 'data': {'columns': '4', 'items': [
+                    {'value': '{courses}', 'label': 'دوره منتشرشده'},
+                    {'value': '{students}', 'label': 'دانشجو'},
+                    {'value': '{hours}', 'label': 'ساعت آموزش'},
+                    {'value': '{teachers}', 'label': 'مدرس'}]}}]],
             },
             {'id': 'd3_courses', 'settings': {'gap': 24, 'py': 60}, 'cols': [[
                 {'id': 'd3_w3', 'type': 'courses', 'data': {'title': 'دوره‌های ویژه', 'limit': '8', 'columns': '4', 'sort': 'popular'}}]],
             },
             {'id': 'd3_testi', 'settings': {'gap': 22, 'py': 60, 'bg': '#ffffff', 'radius': 24}, 'cols': [[
-                {'id': 'd3_w4', 'type': 'testimonials', 'data': {'columns': '3', 'items': [
-                    {'name': 'رضا موسوی', 'role': 'دانشجوی ML', 'stars': '5', 'color': '#0891b2', 'text': 'کیفیت تدریس فوق‌العاده بود.'},
-                    {'name': 'سارا رحیمی', 'role': 'دانشجوی ری‌اکت', 'stars': '5', 'color': '#16a34a', 'text': 'بهترین سرمایه‌گذاری آموزشی من.'}]}}]],
+                {'id': 'd3_w4', 'type': 'testimonials', 'data': {'columns': '3', 'items': []}}]],
             },
             {'id': 'd3_stories', 'settings': {'gap': 22, 'py': 60}, 'cols': [[
                 {'id': 'd3_ws', 'type': 'success_stories', 'data': {'title': '🌟 داستان‌های موفقیت دانشجویان', 'limit': '3'}}]],
             },
             {'id': 'd3_price', 'settings': {'gap': 24, 'py': 60}, 'cols': [[
-                {'id': 'd3_w5', 'type': 'pricing', 'data': {'columns': '3', 'items': [
-                    {'name': 'پایه', 'price': 'رایگان', 'period': 'برای همیشه', 'features': 'دسترسی به دوره‌های رایگان\nگواهینامه رایگان\nپشتیبانی انجمن', 'btn_text': 'شروع رایگان', 'btn_url': '/auth/register'},
-                    {'name': 'حرفه‌ای', 'price': '۲۹۰,۰۰۰', 'period': 'ماهانه', 'features': 'دسترسی به همه دوره‌ها\nگواهینامه معتبر\nپشتیبانی تیکت اولویت‌دار', 'btn_text': 'انتخاب', 'btn_url': '/auth/register', 'featured': True},
-                    {'name': 'سازمانی', 'price': 'تماس بگیرید', 'period': 'سالیانه', 'features': 'آموزش تیمی\nگزارش پیشرفت\nمدرس اختصاصی', 'btn_text': 'ارتباط', 'btn_url': '/contact'}]}}]],
+                {'id': 'd3_w5', 'type': 'courses', 'data': {'title': 'تازه‌ترین دوره‌ها', 'subtitle': 'اطلاعات واقعی از دوره‌های منتشرشده', 'limit': '4', 'columns': '4', 'sort': 'newest'}}]],
             },
                         {'id': 'd3_exam', 'settings': {'gap': 0, 'py': 40}, 'cols': [[
                 {'id': 'd3_we', 'type': 'exam_cta', 'data': {'title': 'آماده آزمون کنکور؟ 🎯', 'text': 'با شبیه‌ساز آزمون، سوالات تصادفی از بانک سوال را با تایمر تمرین کن.'}}]],
@@ -183,8 +178,8 @@ HOME_DESIGNS = {
                 {'id': 'd4_w1', 'type': 'slider', 'data': {
                     'height': '420', 'autoplay': True, 'interval': '6', 'dots': True, 'arrows': True,
                     'slides': [
-                        {'img': 'cover-django.webp', 'title': 'جشنواره فروش ویژه 🎉', 'sub': 'تا ۵۰٪ تخفیف روی پرفروش‌ترین دوره‌ها — فرصت محدود!', 'btn_text': 'خرید با تخفیف', 'btn_url': '/courses?sort=cheap', 'align': 'center'},
-                        {'img': 'cover-python.webp', 'title': 'دوره جامع پایتون', 'sub': 'پرفروش‌ترین دوره آکادمی', 'btn_text': 'مشاهده', 'btn_url': '/courses', 'align': 'right'},
+                        {'img': 'cover-django.webp', 'title': 'دوره‌های منتشرشده', 'sub': 'سرفصل و شرایط هر دوره را پیش از ثبت‌نام بررسی کنید.', 'btn_text': 'مشاهده دوره‌ها', 'btn_url': '/courses?sort=cheap', 'align': 'center'},
+                        {'img': 'cover-python.webp', 'title': 'مسیر یادگیری خود را شروع کنید', 'sub': 'دوره‌های موجود را بر اساس نیاز خود مقایسه کنید.', 'btn_text': 'مشاهده', 'btn_url': '/courses', 'align': 'right'},
                     ]}}]],
             },
             {'id': 'd4_products', 'settings': {'gap': 24, 'py': 60}, 'cols': [[
@@ -196,10 +191,10 @@ HOME_DESIGNS = {
             },
             {'id': 'd4_feat', 'settings': {'gap': 22, 'py': 60}, 'cols': [[
                 {'id': 'd4_w4', 'type': 'feature', 'data': {'columns': '4', 'items': [
-                    {'icon': '🚚', 'title': 'دسترسی فوری', 'text': 'بلافاصله پس از پرداخت'},
-                    {'icon': '💰', 'title': 'تخفیف دائمی', 'text': 'قیمت‌های رقابتی'},
-                    {'icon': '🛡️', 'title': 'ضمانت بازگشت', 'text': 'تا ۷ روز ضمانت'},
-                    {'icon': '🎁', 'title': 'هدیه ویژه', 'text': 'برای خریدهای بالای ۱ میلیون'}]}}]],
+                    {'icon': '📚', 'title': 'اطلاعات دوره', 'text': 'سرفصل، مدرس و مدت ثبت‌شده'},
+                    {'icon': '💰', 'title': 'قیمت شفاف', 'text': 'نمایش مبلغ نهایی پیش از پرداخت'},
+                    {'icon': '🛡️', 'title': 'روش پرداخت فعال', 'text': 'فقط درگاه‌های تکمیل‌شده'},
+                    {'icon': '👤', 'title': 'حساب کاربری', 'text': 'پیگیری سفارش و دسترسی‌ها'}]}}]],
             },
             {'id': 'd4_stories', 'settings': {'gap': 22, 'py': 60}, 'cols': [[
                 {'id': 'd4_ws', 'type': 'success_stories', 'data': {'title': '🌟 داستان‌های موفقیت دانشجویان', 'limit': '3'}}]],
@@ -208,7 +203,7 @@ HOME_DESIGNS = {
                 {'id': 'd4_we', 'type': 'exam_cta', 'data': {'title': 'آماده آزمون کنکور؟ 🎯', 'text': 'با شبیه‌ساز آزمون، سوالات تصادفی از بانک سوال را با تایمر تمرین کن.'}}]],
             },
 {'id': 'd4_cta', 'settings': {'gap': 0, 'py': 30}, 'cols': [[
-                {'id': 'd4_w5', 'type': 'cta', 'data': {'title': 'پیشنهاد محدود ⏳', 'text': 'همین حالا دوره‌ها را با تخفیف تهیه کن.', 'btn_text': 'مشاهده تخفیف‌ها', 'btn_url': '/courses?sort=cheap'}}]],
+                {'id': 'd4_w5', 'type': 'cta', 'data': {'title': 'دوره مناسب خود را پیدا کنید', 'text': 'دوره‌ها را بر اساس موضوع، سطح و قیمت مقایسه کنید.', 'btn_text': 'مشاهده دوره‌ها', 'btn_url': '/courses'}}]],
             },
         ]),
 
@@ -229,13 +224,13 @@ HOME_DESIGNS = {
                 {'id': 'd5_w5', 'type': 'courses', 'data': {'title': 'جدیدترین دوره‌ها', 'limit': '8', 'columns': '4', 'sort': 'newest'}}]],
             },
             {'id': 'd5_teach', 'settings': {'gap': 22, 'py': 60}, 'cols': [[
-                {'id': 'd5_w6', 'type': 'teachers', 'data': {'title': 'هیئت علمی', 'limit': '4', 'columns': '4'}}]],
+                {'id': 'd5_w6', 'type': 'teachers', 'data': {'title': 'مدرسان', 'limit': '4', 'columns': '4'}}]],
             },
             {'id': 'd5_faq', 'settings': {'gap': 0, 'py': 60}, 'cols': [[
                 {'id': 'd5_w7', 'type': 'faq', 'data': {'title': 'پرسش‌های متداول', 'items': [
-                    {'q': 'چگونه دوره بخرم؟', 'a': 'دوره را به سبد اضافه کنید و با درگاه امن پرداخت کنید.'},
-                    {'q': 'دسترسی تا کی معتبر است؟', 'a': 'مادام‌العمر — با همه آپدیت‌های بعدی.'},
-                    {'q': 'گواهینامه دارید؟', 'a': 'بله، با کد رهگیری منحصربه‌فرد.'}]}}]],
+                    {'q': 'چگونه دوره بخرم؟', 'a': 'دوره را به سبد اضافه کنید و یکی از روش‌های پرداخت فعال را انتخاب کنید.'},
+                    {'q': 'دوره‌های خریداری‌شده کجا هستند؟', 'a': 'پس از تایید پرداخت در بخش دوره‌های من نمایش داده می‌شوند.'},
+                    {'q': 'گواهی پایان دوره چگونه است؟', 'a': 'پس از تکمیل دوره با کد رهگیری قابل استعلام صادر می‌شود.'}]}}]],
             },
             {'id': 'd5_stories', 'settings': {'gap': 22, 'py': 60}, 'cols': [[
                 {'id': 'd5_ws', 'type': 'success_stories', 'data': {'title': '🌟 داستان‌های موفقیت دانشجویان', 'limit': '3'}}]],
@@ -244,7 +239,7 @@ HOME_DESIGNS = {
                 {'id': 'd5_we', 'type': 'exam_cta', 'data': {'title': 'آماده آزمون کنکور؟ 🎯', 'text': 'با شبیه‌ساز آزمون، سوالات تصادفی از بانک سوال را با تایمر تمرین کن.'}}]],
             },
 {'id': 'd5_cta', 'settings': {'gap': 0, 'py': 30}, 'cols': [[
-                {'id': 'd5_w8', 'type': 'cta', 'data': {'title': 'به خانواده آکادمی بپیوند 🎓', 'text': 'بیش از ۵۰ هزار دانشجو از ما یاد می‌گیرند.', 'btn_text': 'ثبت‌نام', 'btn_url': '/auth/register'}}]],
+                {'id': 'd5_w8', 'type': 'cta', 'data': {'title': 'حساب یادگیری خود را بسازید 🎓', 'text': 'ثبت‌نام کنید و دوره‌های منتشرشده را در یک پنل مدیریت کنید.', 'btn_text': 'ثبت‌نام', 'btn_url': '/auth/register'}}]],
             },
         ]),
 }

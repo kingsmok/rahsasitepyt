@@ -14,7 +14,7 @@
       <div class="form-group" style="text-align:center">
         <label for="f_code_1">کد تایید (۵ رقم)</label>
         <input id="f_code_1" class="form-control" name="code" placeholder="•••••" dir="ltr" required
-               pattern="[0-9]{5}" maxlength="5" autofocus
+               pattern="[0-9]{5}" maxlength="5" inputmode="numeric" autocomplete="one-time-code" autofocus
                style="text-align:center;letter-spacing:8px;font-weight:900;font-size:20px">
       </div>
       <button class="btn btn-primary btn-lg btn-block" type="submit">✓ تایید و ورود</button>
@@ -27,7 +27,7 @@
     </form>
 
     <p class="form-hint" style="text-align:center;margin-top:14px">
-      🧪 در حالت دمو، کد تایید در پیام قبلی نمایش داده شده است.
+      کد تا ۱۰ دقیقه معتبر است. اگر پیامک را دریافت نکردید، پس از یک دقیقه دوباره تلاش کنید.
     </p>
   </div>
 </div>

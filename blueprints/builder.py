@@ -625,10 +625,10 @@ SECTION_TEMPLATES = {
     'hero_text': dict(name='هیرو متنی', icon='📝', desc='تیتر بزرگ + دکمه CTA', rows=[{'id': 'st_ht', 'settings': {'gap': 0, 'py': 70}, 'cols': [[{'id': 'st_t1', 'type': 'heading', 'data': {'text': 'عنوان اصلی صفحه شما', 'tag': 'h1', 'align': 'center', 'mb': '12'}}, {'id': 'st_t2', 'type': 'text', 'data': {'content': 'توضیح کوتاه درباره کسب‌وکار شما.', 'align': 'center', 'size': '16'}}, {'id': 'st_t3', 'type': 'button', 'data': {'text': 'شروع کنید', 'url': '/courses', 'style': 'primary', 'size': 'lg', 'align': 'center'}}]]}]),
     'features': dict(name='بخش ویژگی‌ها', icon='✨', desc='شبکه ۳ ستونه ویژگی‌ها', rows=[{'id': 'st_feat', 'settings': {'gap': 22, 'py': 60}, 'cols': [[{'id': 'st_f1', 'type': 'feature', 'data': {'columns': '3', 'items': [{'icon': '🎯', 'title': 'ویژگی اول', 'text': 'توضیح اول'}, {'icon': '⚡', 'title': 'ویژگی دوم', 'text': 'توضیح دوم'}, {'icon': '🛡️', 'title': 'ویژگی سوم', 'text': 'توضیح سوم'}]}}]]}]),
     'courses_grid': dict(name='گرید دوره‌ها', icon='📚', desc='نمایش دوره‌های آموزشی', rows=[{'id': 'st_cg', 'settings': {'gap': 24, 'py': 60}, 'cols': [[{'id': 'st_c1', 'type': 'courses', 'data': {'title': 'دوره‌های آموزشی', 'limit': '4', 'columns': '4', 'sort': 'newest'}}]]}]),
-    'stats': dict(name='بخش آمار', icon='📊', desc='آمارهای سایت با پس‌زمینه رنگی', rows=[{'id': 'st_st', 'settings': {'gap': 0, 'py': 50}, 'cols': [[{'id': 'st_s1', 'type': 'stats', 'data': {'columns': '4', 'items': [{'value': '۱۵۰+', 'label': 'دوره'}, {'value': '۵۰,۰۰۰+', 'label': 'دانشجو'}, {'value': '۲,۰۰۰+', 'label': 'ساعت'}, {'value': '٪۹۸', 'label': 'رضایت'}]}}]]}]),
-    'testimonials': dict(name='نظرات مشتریان', icon='💬', desc='نمایش ۳ نظر', rows=[{'id': 'st_tm', 'settings': {'gap': 22, 'py': 60, 'bg': '#ffffff', 'radius': 24}, 'cols': [[{'id': 'st_t1', 'type': 'testimonials', 'data': {'columns': '3', 'items': [{'name': 'علی محمدی', 'role': 'دانشجو', 'stars': '5', 'color': '#7c3aed', 'text': 'تجربه عالی بود.'}, {'name': 'فاطمه', 'role': 'دانشجو', 'stars': '5', 'color': '#059669', 'text': 'کیفیت عالی.'}, {'name': 'رضا', 'role': 'کاربر', 'stars': '4', 'color': '#db2777', 'text': 'پشتیبانی خوب.'}]}}]]}]),
-    'pricing': dict(name='قیمت‌گذاری', icon='💎', desc='جدول مقایسه پلن‌ها', rows=[{'id': 'st_pr', 'settings': {'gap': 24, 'py': 60}, 'cols': [[{'id': 'st_p1', 'type': 'pricing', 'data': {'columns': '3', 'items': [{'name': 'پایه', 'price': 'رایگان', 'period': 'برای همیشه', 'features': 'امکانات پایه', 'btn_text': 'شروع', 'btn_url': '/auth/register'}, {'name': 'حرفه‌ای', 'price': '۲۹۰,۰۰۰', 'period': 'ماهانه', 'features': 'همه امکانات', 'btn_text': 'انتخاب', 'btn_url': '/auth/register', 'featured': True}, {'name': 'سازمانی', 'price': 'تماس بگیرید', 'period': 'سالیانه', 'features': 'آموزش تیمی', 'btn_text': 'ارتباط', 'btn_url': '/contact'}]}}]]}]),
-    'cta': dict(name='دعوت به اقدام', icon='🚀', desc='بنر CTA گرادیانی', rows=[{'id': 'st_cta', 'settings': {'gap': 0, 'py': 30}, 'cols': [[{'id': 'st_c2', 'type': 'cta', 'data': {'title': 'آماده شروع هستید؟ 🚀', 'text': 'همین حالا شروع کنید.', 'btn_text': 'ثبت‌نام رایگان', 'btn_url': '/auth/register'}}]]}]),
+    'stats': dict(name='بخش آمار', icon='📊', desc='آمار واقعی و پویا از دیتابیس', rows=[{'id': 'st_st', 'settings': {'gap': 0, 'py': 50}, 'cols': [[{'id': 'st_s1', 'type': 'stats', 'data': {'columns': '4', 'items': [{'value': '{courses}', 'label': 'دوره منتشرشده'}, {'value': '{students}', 'label': 'دانشجو'}, {'value': '{hours}', 'label': 'ساعت آموزش'}, {'value': '{lessons}', 'label': 'جلسه منتشرشده'}]}}]]}]),
+    'testimonials': dict(name='نظرات مشتریان', icon='💬', desc='نظرات واقعی را خودتان اضافه کنید', rows=[{'id': 'st_tm', 'settings': {'gap': 22, 'py': 60, 'bg': '#ffffff', 'radius': 24}, 'cols': [[{'id': 'st_t1', 'type': 'testimonials', 'data': {'columns': '3', 'items': []}}]]}]),
+    'pricing': dict(name='قیمت‌گذاری', icon='💎', desc='اطلاعات واقعی پلن‌های خود را وارد کنید', rows=[{'id': 'st_pr', 'settings': {'gap': 24, 'py': 60}, 'cols': [[{'id': 'st_p1', 'type': 'pricing', 'data': {'columns': '1', 'items': [{'name': 'دوره‌های آموزشی', 'price': 'قیمت هر دوره', 'period': '', 'features': 'قیمت نهایی و شرایط در صفحه هر دوره نمایش داده می‌شود', 'btn_text': 'مشاهده دوره‌ها', 'btn_url': '/courses'}]}}]]}]),
+    'cta': dict(name='دعوت به اقدام', icon='🚀', desc='بنر CTA گرادیانی', rows=[{'id': 'st_cta', 'settings': {'gap': 0, 'py': 30}, 'cols': [[{'id': 'st_c2', 'type': 'cta', 'data': {'title': 'آماده شروع هستید؟ 🚀', 'text': 'دوره‌های منتشرشده را بررسی کنید.', 'btn_text': 'مشاهده دوره‌ها', 'btn_url': '/courses'}}]]}]),
     'faq': dict(name='سوالات متداول', icon='❓', desc='آکاردئون سوالات', rows=[{'id': 'st_fq', 'settings': {'gap': 0, 'py': 60}, 'cols': [[{'id': 'st_f2', 'type': 'faq', 'data': {'title': 'پرسش‌های متداول', 'items': [{'q': 'سوال اول؟', 'a': 'پاسخ اول.'}, {'q': 'سوال دوم؟', 'a': 'پاسخ دوم.'}, {'q': 'سوال سوم؟', 'a': 'پاسخ سوم.'}]}}]]}]),
     'newsletter': dict(name='خبرنامه', icon='✉️', desc='فرم عضویت خبرنامه', rows=[{'id': 'st_nl', 'settings': {'gap': 0, 'py': 20}, 'cols': [[{'id': 'st_n1', 'type': 'newsletter', 'data': {}}]]}]),
     'trust': dict(name='نمادهای اعتماد', icon='🛡️', desc='نماد اعتماد + پرداخت', rows=[{'id': 'st_tr', 'settings': {'gap': 0, 'py': 40, 'bg': '#ffffff', 'radius': 20}, 'cols': [[{'id': 'st_t2', 'type': 'trust_badges', 'data': {'size': '76', 'items': [{'type': 'enamad'}, {'type': 'samandehi'}, {'type': 'etehadiye'}]}}]]}]),
@@ -655,22 +655,22 @@ PAGE_TEMPLATES = {
               + SECTION_TEMPLATES['cta']['rows'])),
     'webinar': dict(name='صفحه وبینار', icon='🎥', desc='لندینگ وبینار با تایمر و ثبت‌نام',
         rows=[{'id': 'w1', 'settings': {'gap': 0, 'py': 60}, 'cols': [[
-            {'id': 'w1a', 'type': 'heading', 'data': {'text': '🎥 وبینار رایگان: مسیر استخدام در برنامه‌نویسی', 'tag': 'h1', 'align': 'center', 'mb': '10'}},
-            {'id': 'w1b', 'type': 'text', 'data': {'content': 'در این وبینار ۹۰ دقیقه‌ای، نقشه راه کامل ورود به بازار کار را یاد می‌گیرید.', 'align': 'center'}},
-            {'id': 'w1c', 'type': 'countdown', 'data': {'title': '⏳ شروع وبینار تا:', 'text': 'ثبت‌نام رایگان — ظرفیت محدود'}},
-            {'id': 'w1d', 'type': 'button', 'data': {'text': '📝 ثبت‌نام رایگان در وبینار', 'url': '/consultation', 'style': 'accent', 'size': 'lg', 'align': 'center'}}
+            {'id': 'w1a', 'type': 'heading', 'data': {'text': '🎥 عنوان رویداد آنلاین', 'tag': 'h1', 'align': 'center', 'mb': '10'}},
+            {'id': 'w1b', 'type': 'text', 'data': {'content': 'تاریخ، ساعت، مدت و نام برگزارکننده واقعی را وارد کنید.', 'align': 'center'}},
+            {'id': 'w1c', 'type': 'countdown', 'data': {'title': '⏳ زمان باقی‌مانده تا رویداد:', 'text': 'شرایط شرکت در رویداد را وارد کنید.'}},
+            {'id': 'w1d', 'type': 'button', 'data': {'text': '📝 مشاهده جزئیات', 'url': '/consultation', 'style': 'accent', 'size': 'lg', 'align': 'center'}}
         ]]}]),
     'campaign': dict(name='صفحه کمپین فروش', icon='🎉', desc='لندینگ تخفیف زمان‌دار با تایمر',
         rows=[{'id': 'c1', 'settings': {'gap': 0, 'py': 60}, 'cols': [[
-            {'id': 'c1a', 'type': 'heading', 'data': {'text': '🎉 جشنواره بزرگ پاییز — تا ۵۰٪ تخفیف', 'tag': 'h1', 'align': 'center', 'mb': '10'}},
-            {'id': 'c1b', 'type': 'countdown', 'data': {'title': '⏳ پایان جشنواره:', 'text': 'فرصت را از دست نده!'}},
+            {'id': 'c1a', 'type': 'heading', 'data': {'text': 'عنوان کمپین فروش را وارد کنید', 'tag': 'h1', 'align': 'center', 'mb': '10'}},
+            {'id': 'c1b', 'type': 'countdown', 'data': {'title': 'زمان پایان کمپین:', 'text': 'تاریخ و شرایط واقعی کمپین را وارد کنید.'}},
             {'id': 'c1c', 'type': 'courses', 'data': {'title': 'دوره‌های تخفیف‌دار', 'limit': '4', 'columns': '4', 'sort': 'popular'}},
             {'id': 'c1d', 'type': 'button', 'data': {'text': '🚀 مشاهده همه تخفیف‌ها', 'url': '/courses?sort=cheap', 'style': 'accent', 'size': 'lg', 'align': 'center'}}
         ]]}]),
-    'consult_page': dict(name='صفحه مشاوره', icon='🎯', desc='لندینگ فرم دریافت مشاوره رایگان',
+    'consult_page': dict(name='صفحه مشاوره', icon='🎯', desc='لندینگ فرم درخواست مشاوره',
         rows=[{'id': 'q1', 'settings': {'gap': 0, 'py': 60}, 'cols': [[
-            {'id': 'q1a', 'type': 'heading', 'data': {'text': '🎯 مشاوره رایگان انتخاب مسیر', 'tag': 'h1', 'align': 'center', 'mb': '10'}},
-            {'id': 'q1b', 'type': 'text', 'data': {'content': 'کارشناسان ما با شما تماس می‌گیرند.', 'align': 'center'}},
+            {'id': 'q1a', 'type': 'heading', 'data': {'text': '🎯 درخواست مشاوره انتخاب مسیر', 'tag': 'h1', 'align': 'center', 'mb': '10'}},
+            {'id': 'q1b', 'type': 'text', 'data': {'content': 'روش، هزینه و زمان پاسخگویی واقعی مجموعه را در این بخش بنویسید.', 'align': 'center'}},
             {'id': 'q1c', 'type': 'html', 'data': {'code': '<div style="text-align:center"><a class="btn btn-accent btn-lg" href="/consultation">📞 درخواست مشاوره</a></div>'}}
         ]]}]),
     'faq_page': dict(name='صفحه سوالات متداول', icon='❓', desc='سکشن FAQ با آکاردئون',
@@ -725,20 +725,15 @@ def defaults(wtype):
                 d[f['key']] = False
             else:
                 d[f['key']] = ''
-    # اسلایدر: همیشه با ۳ اسلاید نمونه شروع شود تا خالی نماند
+    # اسلایدر با یک محتوای خنثی و قابل ویرایش شروع می‌شود؛ هیچ آمار، ضمانت یا
+    # ادعای ساختگی در صفحهٔ تازه قرار نمی‌گیرد.
     if wtype == 'slider':
         imgs = [i for i in IMG_OPTIONS if i.startswith('cover-') and i.endswith(('.webp', '.jpg', '.png'))]
-        imgs = (imgs or IMG_OPTIONS)[:3]
+        imgs = (imgs or IMG_OPTIONS)[:1]
         d['slides'] = [
-            dict(img=imgs[0] if imgs else '', title='دوره‌های حرفه‌ای را همین حالا شروع کنید',
-                 sub='با بیش از ۲۲۰ درس عملی و مدرسین مجرب، مهارت آینده خود را بسازید.',
+            dict(img=imgs[0] if imgs else '', title='دوره‌های آموزشی',
+                 sub='فهرست دوره‌های منتشرشده را ببینید و گزینه مناسب را انتخاب کنید.',
                  btn_text='مشاهده دوره‌ها', btn_url='/courses', align='right'),
-            dict(img=imgs[1] if len(imgs) > 1 else (imgs[0] if imgs else ''), title='یادگیری با ضمانت بازگشت وجه',
-                 sub='تا ۷ روز ضمانت بازگشت کامل وجه دارید؛ اگر راضی نبودید پولتان برمی‌گردد.',
-                 btn_text='ثبت‌نام رایگان', btn_url='/register', align='center'),
-            dict(img=imgs[2] if len(imgs) > 2 else (imgs[0] if imgs else ''), title='همراه با پشتیبانی مدرس',
-                 sub='در مسیر یادگیری تنها نیستید؛ هر سوالی دارید از مدرس بپرسید.',
-                 btn_text='دوره‌ها', btn_url='/courses', align='right'),
         ]
         d['height'] = '420'
         d['overlay'] = '60'
@@ -1019,16 +1014,19 @@ def builder_products(d):
 
 def render_shortcodes(text):
     """رندر شورت‌کدهای ساده: [courses limit=4] [categories] [posts] [button] [alert] [anchor]"""
-    from markupsafe import Markup
+    from html_sanitizer import sanitize_markup
     text = render_dynamic(text or '')
     def at(attrs, key, default=''):
         mm = re.search(key + r'="([^"]*)"', attrs)
         return mm.group(1) if mm else default
 
     def repl(m):
-        name, attrs, inner = m.group(1), m.group(2) or '', m.group(3) or ''
+        if m.group(1):
+            name, attrs, inner = m.group(1), m.group(2) or '', ''
+        else:
+            name, attrs, inner = m.group(3), m.group(4) or '', m.group(5) or ''
         if name == 'courses':
-            lim = int(at(attrs, 'limit', '4') or 4)
+            lim = max(1, min(24, int(at(attrs, 'limit', '4') or 4)))
             cat = at(attrs, 'category', '')
             q = Course.query.filter_by(status='published')
             if cat.isdigit():
@@ -1041,7 +1039,7 @@ def render_shortcodes(text):
             lis = ''.join('<li><a href="/courses?cat=%s">%s %s</a></li>' % (c.slug, c.icon, c.name) for c in cats)
             return '<ul class="pb-sc-list">' + lis + '</ul>'
         if name == 'posts':
-            lim = int(at(attrs, 'limit', '3') or 3)
+            lim = max(1, min(24, int(at(attrs, 'limit', '3') or 3)))
             ps = BlogPost.query.filter_by(published=True).order_by(BlogPost.created_at.desc()).limit(lim).all()
             lis = ''.join('<li><a href="/blog/%s">%s</a></li>' % (p.slug, p.title) for p in ps)
             return '<ul class="pb-sc-list">' + lis + '</ul>'
@@ -1052,7 +1050,7 @@ def render_shortcodes(text):
         if name == 'anchor':
             return '<div class="pb-anchor" id="%s"></div>' % at(attrs, 'id', 'anchor')
         return ''
-    return Markup(_SHORTCODE_RE.sub(repl, text))
+    return sanitize_markup(_SHORTCODE_RE.sub(repl, text))
 
 
 _SHORTCODE_RE = re.compile(
@@ -1431,7 +1429,7 @@ def api_restore(rev_id):
     if r:
         return jsonify(ok=False), 403
     from models import PageRevision
-    rev = PageRevision.query.get_or_404(rev_id)
+    rev = db.get_or_404(PageRevision, rev_id)
     page = rev.page
     # نسخه فعلی قبل از بازگردانی ذخیره شود
     db.session.add(PageRevision(page_id=page.id, content=page.content,

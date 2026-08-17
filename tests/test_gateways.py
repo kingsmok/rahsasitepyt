@@ -105,8 +105,71 @@ def test_unknown_gateway_returns_failure():
     assert ok is False
 
 
+def test_tarb_callback_alone_cannot_mark_paid():
+    """status موفق در URL بدون تایید سمت‌سرور نباید خرید را موفق کند."""
+    ok, _, _ = gateways.tarb_verify({}, _make_order(), 'FORGED-REF', 'success')
+    assert ok is False
+
+
+def test_parsian_start_and_verify(monkeypatch):
+    """پارسیان باید مبلغ تومان را به ریال تبدیل و پاسخ SOAP را پردازش کند."""
+    class XMLResp:
+        status_code = 200
+        def __init__(self, text):
+            self.text = text
+
+    calls = []
+    def fake_http(method, url, **kwargs):
+        body = (kwargs.get('data') or b'').decode('utf-8')
+        calls.append((url, body))
+        if 'SaleService' in url:
+            assert '<pec:Amount>1000000</pec:Amount>' in body
+            return XMLResp('<Envelope><Body><Result><Status>0</Status><Token>PEC-1</Token></Result></Body></Envelope>')
+        assert 'ConfirmService' in url
+        assert '<pec:Amount>1000000</pec:Amount>' in body
+        return XMLResp('<Envelope><Body><Result><Status>0</Status><RRN>778899</RRN></Result></Body></Envelope>')
+
+    monkeypatch.setattr(gateways, 'http_request', fake_http)
+    order = _make_order()
+    order.id = 12
+    settings = {'parsian_login_account': 'PIN', 'currency': 'تومان'}
+    url = gateways.parsian_start(settings, order, _USER, 'https://example.ir/callback')
+    assert 'Token=PEC-1' in url
+    ok, _, ref = gateways.parsian_verify(settings, order, 'PEC-1', '0')
+    assert ok is True and ref == '778899'
+    assert len(calls) == 2
+
+
+def test_toman_amount_is_converted_to_rial():
+    order = _make_order()
+    assert gateways._amount_rial({'currency': 'تومان'}, order) == 1_000_000
+    assert gateways._amount_rial({'currency': 'ریال'}, order) == 100_000
+
+
+def test_saman_sep_rest_flow(monkeypatch):
+    """سامان SEP از API توکن و VerifyTransaction واقعی استفاده کند."""
+    calls = []
+    def fake_http(method, url, **kwargs):
+        calls.append((url, kwargs.get('json') or {}))
+        if url.endswith('/onlinepg/onlinepg'):
+            assert kwargs['json']['Amount'] == 1_000_000
+            return _FakeResp({'token': 'SEP-1', 'status': 1})
+        return _FakeResp({'ResultCode': 0, 'Success': True,
+                          'TransactionDetail': {'AffectiveAmount': 1_000_000, 'RRN': 'SEP-RRN'}})
+
+    monkeypatch.setattr(gateways, 'http_request', fake_http)
+    order = _make_order()
+    order.id = 14
+    settings = {'sepah_terminal': 'TERM', 'currency': 'تومان'}
+    redirect = gateways.sepah_start(settings, order, _USER, 'https://example.ir/callback')
+    assert isinstance(redirect, gateways.PaymentRedirect)
+    assert redirect.fields['Token'] == 'SEP-1'
+    ok, _, ref = gateways.sepah_verify(settings, order, 'REF-1', 'OK')
+    assert ok is True and ref == 'SEP-RRN'
+
+
 @pytest.mark.parametrize('gw_id', [
-    'zarinpal', 'idpay', 'zibal', 'melli', 'sepah',
+    'zarinpal', 'idpay', 'zibal', 'melli', 'parsian', 'sepah',
     'saderat', 'snapppay', 'digipay', 'tarb',
 ])
 def test_verify_no_typeerror_on_empty_args(gw_id, monkeypatch):

@@ -44,8 +44,9 @@ class _DesignPage:
 @site_bp.route('/')
 def index():
     from designs import HOME_DESIGNS
-    # طرح انتخابی صفحه اصلی (از تنظیمات یا پارامتر پیش‌نمایش)
-    design = request.args.get('design') or g.settings.get('home_design', '1')
+    # پارامتر پیش‌نمایش فقط برای مدیر واردشده پذیرفته می‌شود.
+    preview_design = request.args.get('design') if (g.user and g.user.is_admin) else None
+    design = preview_design or g.settings.get('home_design', '1')
     hp = getattr(g, 'pages', {}).get('home')
     # fallback: اگر صفحه home در builder خالی باشد → طرح پیش‌فرض (جلوگیری از صفحه خالی)
     if hp and hp.is_published and not hp.rows():
@@ -129,10 +130,11 @@ def courses():
                 _rc, _ra = _rev_map.get(_c.id, (0, 0))
                 _c._agg_review_count = _rc
                 _c._agg_rating = _ra
-                _c._agg_students = (_c.seeded_students or 0) + _enr_map.get(_c.id, 0)
+                _c._agg_students = _enr_map.get(_c.id, 0)
         except Exception:
             _lexc('site.py')
-    categories = Category.query.order_by(Category.sort).all()
+    categories = Category.query.join(Course, Course.category_id == Category.id) \
+        .filter(Course.status == 'published').distinct().order_by(Category.sort).all()
     # متای سئوی پویا برای دسته‌بندی‌ها (لندینگ دسته)
     cat_obj = Category.query.filter_by(slug=cat).first() if cat else None
     if cat_obj:
@@ -144,7 +146,7 @@ def courses():
         if not meta or not meta.title:
             g.seo['title'] = f"دوره‌های {cat_obj.name} — {g.settings.get('site_name', 'آکادمی آنلاین')}"
         if not meta or not meta.description:
-            g.seo['description'] = f"بهترین دوره‌های {cat_obj.name} با تدریس مدرسان حرفه‌ای — {n_items} دوره پروژه‌محور با گواهینامه معتبر و دسترسی مادام‌العمر."
+            g.seo['description'] = f"فهرست {n_items} دوره منتشرشده در دسته {cat_obj.name}؛ سرفصل، مدرس، مدت و قیمت هر دوره را بررسی و مقایسه کنید."
         elif meta:
             g.seo['title'] = meta.title or g.seo['title']
             g.seo['description'] = meta.description or g.seo['description']
@@ -203,11 +205,17 @@ def course_detail(slug):
     _head = _t if _t.startswith('دوره') else f'دوره {_t}'
     meta_parts = [
         _head,
-        f"{course.lesson_count} جلسه ویدیویی و {course.duration_hours} ساعت آموزش پروژه‌محور",
+        f"{course.lesson_count} جلسه و {course.duration_hours} ساعت محتوای ثبت‌شده",
     ]
     if course.students_count:
-        meta_parts.append(f"با بیش از {course.students_count} دانشجو")
-    meta_parts.append("ضمانت بازگشت وجه و گواهینامه معتبر")
+        meta_parts.append(f"{course.students_count} دانشجوی ثبت‌نام‌شده")
+    meta_parts.append("گواهی پایان دوره با کد رهگیری")
+    try:
+        _refund_days = max(0, int(g.settings.get('refund_days') or 0))
+    except (TypeError, ValueError):
+        _refund_days = 0
+    if _refund_days:
+        meta_parts.append(f"{_refund_days} روز مهلت درخواست بازگشت وجه")
     if disc:
         meta_parts.append(f"همین حالا با {disc}٪ تخفیف ثبت‌نام کنید")
     else:
@@ -311,16 +319,27 @@ def custom_page(slug):
 # ---------------------------------------------------------------- صفحات قانونی
 @site_bp.route('/terms')
 def terms():
+    try:
+        refund_days = max(0, int(g.settings.get('refund_days') or 0))
+    except (TypeError, ValueError):
+        refund_days = 0
+    sections = [
+        ('۱. پذیرش قوانین', 'با ثبت‌نام و استفاده از خدمات سایت، قوانین منتشرشده در این صفحه را می‌پذیرید.'),
+        ('۲. حساب کاربری', 'مسئولیت حفظ رمز عبور و فعالیت‌های حساب بر عهده کاربر است. فقط اطلاعات لازم برای ارائه خدمات را وارد کنید.'),
+        ('۳. خرید و پرداخت', 'دسترسی خرید پس از تایید قطعی تراکنش فعال می‌شود. تراکنش ناموفق به‌عنوان خرید موفق ثبت نخواهد شد.'),
+        ('۴. حق استفاده از محتوا', 'محتوای آموزشی صرفاً برای استفاده شخصی خریدار است و انتشار یا فروش مجدد آن مجاز نیست.'),
+    ]
+    if refund_days:
+        sections.append(('۵. بازگشت وجه',
+                         f'مهلت ثبت درخواست بازگشت وجه {refund_days} روز پس از خرید است. شرایط هر درخواست توسط پشتیبانی و مطابق میزان استفاده از محتوا بررسی می‌شود.'))
+    else:
+        sections.append(('۵. بازگشت وجه',
+                         'در حال حاضر مهلت عمومی بازگشت وجه تعریف نشده است. پیش از پرداخت، توضیحات و پیش‌نیازهای دوره را بررسی کنید و در صورت سوال با پشتیبانی تماس بگیرید.'))
+    sections.append(('۶. گواهی پایان دوره',
+                     'گواهی‌های صادرشده دارای کد رهگیری منحصربه‌فرد و از صفحه استعلام سایت قابل بررسی هستند.'))
     return render_template('legal.html', page_title='قوانین و مقررات',
-        page_icon='📜', intro='لطفاً پیش از استفاده از خدمات آکادمی آنلاین، قوانین زیر را به دقت مطالعه کنید.',
-        sections=[
-            ('۱. پذیرش قوانین', 'با ثبت‌نام و استفاده از خدمات آکادمی آنلاین، تمامی قوانین و مقررات این سایت را می‌پذیرید. در صورت عدم موافقت با هر یک از بندها، از استفاده از خدمات خودداری کنید.'),
-            ('۲. حساب کاربری', 'مسئولیت حفظ محرمانه‌بودن رمز عبور و تمام فعالیت‌های انجام‌شده با حساب شما بر عهده شماست. اطلاعات هویتی (کد ملی، شماره تماس) باید دقیق و واقعی باشند.'),
-            ('۳. خرید و پرداخت', 'با تکمیل فرایند پرداخت، دوره به صورت خودکار به حساب شما اضافه می‌شود. در صورت بروز مشکل در پرداخت، حداکثر تا ۷۲ ساعت وجه به حساب شما بازگردانده می‌شود.'),
-            ('۴. حق استفاده از محتوا', 'محتواهای آموزشی صرفاً برای استفاده شخصی شماست. هرگونه کپی‌برداری، فروش مجدد یا انتشار عمومی دوره‌ها پیگرد قانونی دارد.'),
-            ('۵. بازگشت وجه', 'تا ۷ روز پس از خرید، در صورت عدم استفاده از بیش از ۲۰٪ محتوا، امکان درخواست بازگشت وجه وجود دارد.'),
-            ('۶. گواهینامه‌ها', 'گواهینامه‌های صادرشده دارای کد رهگیری منحصربه‌فرد هستند و صحت آن‌ها از طریق پشتیبانی قابل استعلام است.'),
-        ])
+        page_icon='📜', intro='لطفاً پیش از استفاده از خدمات، قوانین زیر را مطالعه کنید.',
+        sections=sections)
 
 
 @site_bp.route('/privacy')
@@ -328,12 +347,12 @@ def privacy():
     return render_template('legal.html', page_title='حریم خصوصی',
         page_icon='🔒', intro='حفظ حریم خصوصی شما برای ما اهمیت بالایی دارد. این خط‌مشی نحوه جمع‌آوری و استفاده از اطلاعات شما را شرح می‌دهد.',
         sections=[
-            ('۱. اطلاعات جمع‌آوری‌شده', 'نام، شماره تماس، کد ملی و ایمیل شما صرفاً برای احراز هویت، ارائه خدمات آموزشی و صدور گواهینامه جمع‌آوری می‌شود.'),
-            ('۲. استفاده از اطلاعات', 'اطلاعات شما برای مدیریت حساب، پردازش خریدها، ارسال اطلاعیه‌ها و بهبود کیفیت خدمات استفاده می‌شود.'),
-            ('۳. واترمارک ویدیو', 'برای حفاظت از محتوای آموزشی، نام و کد ملی شما به صورت ماسک‌شده روی ویدیوهای دوره نمایش داده می‌شود.'),
-            ('۴. اشتراک‌گذاری', 'اطلاعات شما هرگز بدون رضایت شما در اختیار اشخاص ثالث قرار نمی‌گیرد، مگر در موارد قانونی.'),
-            ('۵. امنیت داده‌ها', 'اطلاعات شما با رمزنگاری و پروتکل‌های امنیتی استاندارد ذخیره می‌شود.'),
-            ('۶. حذف اطلاعات', 'در هر زمان می‌توانید از طریق تیکت پشتیبانی درخواست حذف کامل اطلاعات خود را ثبت کنید.'),
+            ('۱. اطلاعات جمع‌آوری‌شده', 'نام، ایمیل و اطلاعات لازم برای حساب و سفارش ذخیره می‌شود. شماره تماس و کد ملی فقط در قابلیت‌هایی که به آن نیاز دارند و در صورت ورود کاربر دریافت می‌شوند.'),
+            ('۲. استفاده از اطلاعات', 'اطلاعات برای مدیریت حساب، ارائه محتوای خریداری‌شده، پردازش سفارش، پشتیبانی و اطلاع‌رسانی‌های انتخاب‌شده استفاده می‌شود.'),
+            ('۳. واترمارک ویدیو', 'اگر واترمارک توسط مدیر فعال باشد، بخشی از اطلاعات حساب به‌صورت ماسک‌شده روی محتوای ویدیویی نمایش داده می‌شود.'),
+            ('۴. ارائه‌دهندگان خدمت', 'برای پرداخت یا ارسال پیام، اطلاعات ضروری درخواست ممکن است به درگاه پرداخت یا سرویس پیامک انتخاب‌شده منتقل شود. ارائه اطلاعات در موارد الزام قانونی نیز ممکن است انجام شود.'),
+            ('۵. امنیت داده‌ها', 'رمزهای عبور به‌صورت هش‌شده نگهداری می‌شوند و کنترل دسترسی و سیاست‌های امنیتی برای کاهش دسترسی غیرمجاز اعمال می‌شود.'),
+            ('۶. درخواست حذف یا اصلاح', 'می‌توانید از طریق تیکت پشتیبانی درخواست اصلاح یا حذف اطلاعات را ثبت کنید. انجام درخواست با توجه به الزامات قانونی و سوابق مالی بررسی می‌شود.'),
         ])
 
 
@@ -373,10 +392,10 @@ def sitemap():
         xml += '</url>'
     # محصولات فروشگاه
     from models import Product as _Prod
-    for pr in _Prod.query.filter(_Prod.stock > 0).all():
+    for pr in _Prod.query.filter(_Prod.stock > 0, _Prod.is_active == True).all():
         xml += f'<url><loc>{_xe(base)}/product/{_xe(pr.slug)}</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>'
     # اساتید
-    for t in User.query.filter(User.role == 'teacher').all():
+    for t in User.query.filter(User.role == 'teacher', User.is_active == True).all():
         xml += f'<url><loc>{_xe(base)}/teacher/{t.id}</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>'
     # صفحات صفحه‌ساز
     for pg in Page.query.filter_by(ptype='page', is_published=True).all():
@@ -405,7 +424,7 @@ def robots():
         f"Disallow: /install\n"
         f"Disallow: /wallet\n"
         f"Disallow: /uploads\n"
-        f"Disallow: /maintenance\nDisallow: /static/uploads\n"
+        f"Disallow: /maintenance\nDisallow: /health\nDisallow: /static/uploads\n"
         f"\n"
         f"Sitemap: {base}/sitemap.xml\n"
     )
@@ -418,14 +437,15 @@ def teachers():
     from sqlalchemy import func as _f
     from models import Review, Course, Enrollment
     # ⚠️ قبلاً همه ثبت‌نام‌های هر دوره بارگذاری می‌شد (هزاران ردیف) — حالا فقط شمارش
-    teachers = User.query.filter(User.role == 'teacher').all()
+    teachers = User.query.filter(User.role == 'teacher', User.is_active == True).all()
     # امتیاز هر استاد با یک کوئری تجمیعی (JOIN Course + Review)
     tids = [t.id for t in teachers]
     ratings = {}
     if tids:
         rows = db.session.query(Course.teacher_id, _f.avg(Review.rating), _f.count(Review.id)) \
             .join(Review, Review.course_id == Course.id) \
-            .filter(Course.teacher_id.in_(tids), Review.is_approved == True) \
+            .filter(Course.teacher_id.in_(tids), Course.status == 'published',
+                    Review.is_approved == True) \
             .group_by(Course.teacher_id).all()
         for tid, avg, cnt in rows:
             ratings[tid] = round(avg, 1) if avg else None
@@ -434,7 +454,7 @@ def teachers():
     if tids:
         srows = db.session.query(Course.teacher_id, _f.count(Enrollment.id)) \
             .join(Enrollment, Enrollment.course_id == Course.id) \
-            .filter(Course.teacher_id.in_(tids)) \
+            .filter(Course.teacher_id.in_(tids), Course.status == 'published') \
             .group_by(Course.teacher_id).all()
         students = {tid: n for tid, n in srows}
     # تعداد دورهٔ منتشر هر استاد — یک کوئری به‌جای بارگذاری رابطه
@@ -450,7 +470,7 @@ def teachers():
 
 @site_bp.route('/teacher/<int:uid>')
 def teacher_detail(uid):
-    teacher = User.query.filter_by(id=uid, role='teacher').first_or_404()
+    teacher = User.query.filter_by(id=uid, role='teacher', is_active=True).first_or_404()
     courses = (Course.query.options(joinedload(Course.category))
                .filter_by(teacher_id=uid, status='published').all())
     # متای پویا (سئو) — اولویت با SeoMeta اختصاصی است، در غیر این صورت پویا
@@ -540,7 +560,7 @@ def blog_post(slug):
             break
     if not related_course:
         related_course = Course.query.filter_by(status='published') \
-            .order_by(Course.seeded_students.desc()).first()
+            .order_by(Course.views.desc(), Course.created_at.desc()).first()
     return render_template('blog_post.html', post=post, recent=recent,
                            related_course=related_course)
 
@@ -548,16 +568,21 @@ def blog_post(slug):
 # ---------------------------------------------------------------- صفحات ثابت
 @site_bp.route('/about')
 def about():
-    from models import User as _U, Lesson as _L, Review as _RV
-    teachers = _U.query.filter(_U.role.in_(['teacher', 'admin'])).count()
+    from models import User as _U, Section as _S, Lesson as _L, Review as _RV
+    teachers = _U.query.filter(_U.role.in_(['teacher', 'admin']), _U.is_active == True).count()
     total_courses = Course.query.filter_by(status='published').count()
-    total_students = _U.query.filter_by(role='student').count()
-    total_lessons = _L.query.count()
-    total_hours = int(sum((c.duration_hours or 0) for c in Course.query.all()))
-    total_reviews = _RV.query.filter_by(is_approved=True).count()
-    _avg_rating = db.session.query(db.func.avg(_RV.rating)).filter(_RV.is_approved == True).scalar() or 0
+    total_students = _U.query.filter_by(role='student', is_active=True).count()
+    total_lessons = db.session.query(_L.id).join(_S, _S.id == _L.section_id) \
+        .join(Course, Course.id == _S.course_id).filter(Course.status == 'published').count()
+    total_hours = int(db.session.query(db.func.coalesce(db.func.sum(Course.duration_hours), 0))
+                      .filter(Course.status == 'published').scalar() or 0)
+    total_reviews = db.session.query(_RV.id).join(Course, Course.id == _RV.course_id) \
+        .filter(_RV.is_approved == True, Course.status == 'published').count()
+    _avg_rating = db.session.query(db.func.avg(_RV.rating)).join(Course, Course.id == _RV.course_id) \
+        .filter(_RV.is_approved == True, Course.status == 'published').scalar() or 0
     total_satisfaction = round((_avg_rating or 0) / 5 * 100)
-    design = request.args.get('design') or g.settings.get('about_design', '1')
+    preview_design = request.args.get('design') if (g.user and g.user.is_admin) else None
+    design = preview_design or g.settings.get('about_design', '1')
     if design not in [str(i) for i in range(1, 6)]:
         design = '1'
     return render_template(f'about/design{design}.html', teachers=teachers,
@@ -630,7 +655,7 @@ def learning_paths():
 
 @site_bp.route('/consultation', methods=['GET', 'POST'])
 def consultation():
-    """فرم دریافت مشاوره رایگان — تولید لید"""
+    """فرم درخواست مشاوره — ثبت و پیگیری لید."""
     if request.method == 'POST':
         from captcha import verify_captcha, verify_honeypot
         if not verify_honeypot() or not verify_captcha():
@@ -652,10 +677,10 @@ def consultation():
                                           subject=f'📞 درخواست مشاوره — {goal or "عمومی"}',
                                           message=f'تلفن: {phone}\nهدف: {goal or "—"}{extra}'))
             db.session.commit()
-            flash('درخواست مشاوره شما ثبت شد! کارشناسان ما به‌زودی با شما تماس می‌گیرند. 📞', 'success')
+            flash('درخواست شما ثبت شد. نتیجه بررسی از راه اطلاعات تماس ثبت‌شده اطلاع داده می‌شود. ✅', 'success')
             return redirect(url_for('site.consultation'))
-    g.seo['title'] = "دریافت مشاوره رایگان — انتخاب بهترین مسیر یادگیری | آکادمی آنلاین"
-    g.seo['description'] = "مشاوره رایگان برای انتخاب دوره مناسب: کارشناسان ما بر اساس هدف و سطح شما بهترین مسیر یادگیری را پیشنهاد می‌دهند."
+    g.seo['title'] = "درخواست مشاوره انتخاب مسیر یادگیری | آکادمی آنلاین"
+    g.seo['description'] = "فرم درخواست مشاوره برای بررسی دوره‌ها و انتخاب مسیر یادگیری؛ اطلاعات تماس و هدف خود را ثبت کنید."
     return render_template('consultation.html')
 
 
@@ -677,11 +702,17 @@ def verify_certificate():
         if not code.startswith('CRT-'):
             code = 'CRT-' + code
         # جستجو در گواهی‌های صادرشده — هم کد جدید (MD5) و هم کد قدیمی (SHA-1)
-        from models import certificate_code, certificate_code_legacy_sha1
+        from models import (certificate_code, certificate_code_legacy_md5,
+                            certificate_code_legacy_sha1)
         for e in Enrollment.query.filter(Enrollment.completed_at.isnot(None)).all():
             c = e.course
             cert_code = certificate_code(c.slug, e.user.email, e.id)
-            if cert_code == code or certificate_code_legacy_sha1(c.slug, e.user.email, e.id) == code:
+            accepted = {
+                cert_code,
+                certificate_code_legacy_md5(c.slug, e.user.email, e.id),
+                certificate_code_legacy_sha1(c.slug, e.user.email, e.id),
+            }
+            if code in accepted:
                 result = {'code': cert_code, 'user': e.user.name, 'course': c.title,
                           'date': e.completed_at, 'valid': True}
                 break
@@ -746,7 +777,8 @@ def contact():
             db.session.commit()
             flash('پیام شما با موفقیت ارسال شد. به زودی پاسخ می‌دهیم.', 'success')
             return redirect(url_for('site.contact'))
-    design = request.args.get('design') or g.settings.get('contact_design', '1')
+    preview_design = request.args.get('design') if (g.user and g.user.is_admin) else None
+    design = preview_design or g.settings.get('contact_design', '1')
     if design not in [str(i) for i in range(1, 6)]:
         design = '1'
     return render_template(f'contact/design{design}.html')

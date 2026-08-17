@@ -2,6 +2,7 @@
 """سبد خرید، تسویه حساب و درگاه‌های پرداخت"""
 import os
 import random
+import re
 from datetime import datetime
 try:
     from datetime import UTC
@@ -15,7 +16,8 @@ from models import (utcnow, db, User, Order, OrderItem, Coupon, Enrollment,
 
 shop_bp = Blueprint('shop', __name__)
 
-from gateways import GATEWAYS as _GW, gateway_ready, start_payment, gateway_fa
+from gateways import (GATEWAYS as _GW, PaymentRedirect, gateway_ready,
+                      start_payment, gateway_fa)
 from validators import log_exc as _lexc
 from jdates import fa
 
@@ -25,21 +27,13 @@ GATEWAYS = _GW
 def _sandbox_allowed():
     """آیا شبیه‌ساز پرداخت مجاز است؟
 
-    شرط ۱: حالت آزمایشی در تنظیمات روشن باشد (sandbox_mode=1)
-    شرط ۲: اپ در حالت production نباشد، مگر اینکه مدیر صریحاً
-            ALLOW_SANDBOX_IN_PRODUCTION=1 را ست کرده باشد.
-
-    دلیل شرط ۲: صفحه شبیه‌ساز روی یک سایت واقعیِ در دسترس عموم،
-    توسط Google Safe Browsing به‌عنوان صفحه فیشینگ بانکی شناسایی
-    می‌شود و کل دامنه با پیام «Dangerous site» در کروم مسدود می‌گردد.
+    شبیه‌ساز در محصول نهایی خاموش است. فقط تست‌های خودکار یا توسعه‌ای که با
+    ``ENABLE_DEMO_FEATURES=1`` به‌صورت صریح اجرا شده باشد می‌تواند علاوه بر
+    ``sandbox_mode=1`` به آن دسترسی پیدا کند؛ production همیشه مسدود است.
     """
-    if str(g.settings.get('sandbox_mode', '0')) != '1':
-        return False
-    _prod = (os.environ.get('FLASK_ENV') == 'production' or
-             os.environ.get('APP_ENV') == 'production')
-    if _prod and os.environ.get('ALLOW_SANDBOX_IN_PRODUCTION', '0') != '1':
-        return False
-    return True
+    from runtime import demo_features_enabled
+    return (demo_features_enabled() and
+            str(g.settings.get('sandbox_mode', '0')) == '1')
 
 
 def _cart_courses():
@@ -58,7 +52,8 @@ def _cart_total(courses):
 
 
 def _cart_total_all(items):
-    return sum(o.final_price for k, o in items)
+    from blueprints.products import cart_quantity
+    return sum(o.final_price * cart_quantity(k, o) for k, o in items)
 
 
 @shop_bp.route('/cart')
@@ -66,7 +61,10 @@ def cart():
     courses = _cart_courses()
     items = _cart_items()
     total = _cart_total_all(items)
-    return render_template('cart.html', courses=courses, items=items, total=total)
+    from blueprints.products import cart_quantity
+    quantities = {(kind, obj.id): cart_quantity(kind, obj) for kind, obj in items}
+    return render_template('cart.html', courses=courses, items=items, total=total,
+                           quantities=quantities)
 
 
 @shop_bp.route('/checkout', methods=['GET', 'POST'])
@@ -80,19 +78,29 @@ def checkout():
         flash('سبد خرید شما خالی است.', 'info')
         return redirect(url_for('shop.cart'))
 
-    # بررسی موجودی محصولات — جلوگیری از خرید محصول ناموجود
+    # بررسی موجودی محصولات — جلوگیری از خرید محصول ناموجود یا تعداد بیشتر از موجودی
+    from blueprints.products import cart_quantity
     for kind, obj in items:
-        if kind == 'product' and getattr(obj, 'stock', 1) <= 0:
+        requested_quantity = cart_quantity(kind, obj)
+        if kind == 'product' and getattr(obj, 'stock', 0) < requested_quantity:
             flash(f'«{obj.title}» موجود نیست — از سبد حذف شد.', 'error')
             cart = session.get('cart', [])
             try:
-                cart.remove(obj.id)
+                cart.remove(f'p:{obj.id}')
             except ValueError:
                 pass
+            quantities = session.get('cart_qty', {})
+            quantities.pop(f'p:{obj.id}', None)
             session['cart'] = cart
+            session['cart_qty'] = quantities
             return redirect(url_for('shop.cart'))
 
     subtotal = _cart_total_all(items) if items else _cart_total(courses)
+    has_physical = any(kind == 'product' for kind, _ in items)
+    try:
+        shipping_cost = max(0, int(g.settings.get('shipping_flat_rate') or 0)) if has_physical else 0
+    except (TypeError, ValueError):
+        shipping_cost = 0
     coupon = None
     discount = 0
     coupon_code = request.form.get('coupon', '').strip()
@@ -124,38 +132,94 @@ def checkout():
     installment_count = request.form.get('installment_count', 0, type=int)
     if installment_count not in (0, 2, 3, 4):
         installment_count = 0
-
-    # تخفیف وفاداری: ۵٪ برای دانشجویانی که قبلاً دوره خریده‌اند (جدا از کوپن)
+    try:
+        from bnpl import bnpl_enabled, _providers as _bnpl_providers
+        bnpl_available = bnpl_enabled() and bool(_bnpl_providers())
+    except Exception:
+        bnpl_available = False
+    # تخفیف وفاداری فقط با درصدی که مدیر صریحاً تنظیم کرده است.
     loyalty_discount = 0
+    try:
+        loyalty_percent = max(0, min(50, int(g.settings.get('loyalty_discount_percent') or 0)))
+    except (TypeError, ValueError):
+        loyalty_percent = 0
     has_past_purchase = Enrollment.query.filter_by(user_id=g.user.id).count() > 0
-    if has_past_purchase and final > 0:
-        loyalty_discount = round(final * 5 / 100)
+    if has_past_purchase and final > 0 and loyalty_percent:
+        loyalty_discount = round(final * loyalty_percent / 100)
         final = max(0, final - loyalty_discount)
+    final += shipping_cost
+    # POST دست‌ساز هم نباید اقساط غیرفعال یا مبلغ زیر حداقل را دور بزند.
+    from runtime import demo_features_enabled
+    if not bnpl_available or (final < 300000 and not demo_features_enabled()):
+        installment_count = 0
 
     if request.method == 'POST' and request.form.get('action') == 'remove_coupon':
         session.pop('coupon_code', None)
         return redirect(url_for('shop.checkout'))
 
     if request.method == 'POST' and request.form.get('action') == 'create_order':
+        shipping = {}
+        if has_physical:
+            shipping = {
+                'name': request.form.get('shipping_name', '').strip(),
+                'phone': request.form.get('shipping_phone', '').strip(),
+                'province': request.form.get('shipping_province', '').strip(),
+                'city': request.form.get('shipping_city', '').strip(),
+                'address': request.form.get('shipping_address', '').strip(),
+                'postal_code': request.form.get('shipping_postal_code', '').strip(),
+            }
+            if (len(shipping['name']) < 3 or
+                    not re.fullmatch(r'09\d{9}', shipping['phone']) or
+                    not shipping['province'] or not shipping['city'] or
+                    len(shipping['address']) < 8):
+                flash('برای محصولات فیزیکی، نام، موبایل، استان، شهر و آدرس کامل را وارد کنید.', 'error')
+                return render_template('checkout.html', courses=courses, items=items,
+                                       subtotal=subtotal, discount=discount, final=final,
+                                       coupon=coupon, gateways=GATEWAYS,
+                                       loyalty_discount=loyalty_discount,
+                                       loyalty_percent=loyalty_percent,
+                                       has_past_purchase=has_past_purchase,
+                                       installment_count=installment_count,
+                                       bnpl_available=bnpl_available,
+                                       has_physical=has_physical,
+                                       shipping_cost=shipping_cost), 400
+            if shipping['postal_code'] and not re.fullmatch(r'\d{10}', shipping['postal_code']):
+                flash('کد پستی باید ۱۰ رقم باشد.', 'error')
+                return redirect(url_for('shop.checkout'))
         code = f"AC-{datetime.now():%y%m%d}-{random.randint(1000, 9999)}"
         while Order.query.filter_by(code=code).first():
             code = f"AC-{datetime.now():%y%m%d}-{random.randint(1000, 9999)}"
-        order = Order(code=code, user_id=g.user.id, total=subtotal,
+        order = Order(code=code, user_id=g.user.id, total=subtotal + shipping_cost,
                       discount=discount + loyalty_discount,
                       final_total=final, coupon=coupon, status='pending',
-                      installment_count=installment_count)
+                      installment_count=installment_count,
+                      shipping_name=shipping.get('name', ''),
+                      shipping_phone=shipping.get('phone', ''),
+                      shipping_province=shipping.get('province', ''),
+                      shipping_city=shipping.get('city', ''),
+                      shipping_address=shipping.get('address', ''),
+                      shipping_postal_code=shipping.get('postal_code', ''),
+                      shipping_cost=shipping_cost,
+                      fulfillment_status='processing' if has_physical else 'not_required')
         from blueprints.products import _cart_items as _ci
         for kind, obj in _ci():
+            quantity = cart_quantity(kind, obj)
             if kind == 'course':
-                order.items.append(OrderItem(course_id=obj.id, price=obj.final_price))
+                order.items.append(OrderItem(course_id=obj.id, price=obj.final_price, quantity=1))
             else:
-                order.items.append(OrderItem(product_id=obj.id, price=obj.final_price))
+                order.items.append(OrderItem(product_id=obj.id, price=obj.final_price,
+                                             quantity=quantity))
                 # کاهش موجودی فقط بعد از پرداخت موفق انجام میشود (در _mark_paid)
         db.session.add(order)
         db.session.flush()
         db.session.commit()
         session.pop('cart', None)
+        session.pop('cart_qty', None)
         session.pop('coupon_code', None)
+        if final == 0 and installment_count == 0:
+            _mark_paid(order, 'FREE', 'free_order')
+            flash('سفارش رایگان ثبت شد و دسترسی شما فعال است. 🎉', 'success')
+            return redirect(url_for('shop.pay_result', code=code, status='success'))
         if installment_count > 1:
             # سفارش اقساطی → پنل اقساطی (انتخاب اسنپ‌پی/ترب/دیجی‌پی + تعداد قسط)
             # خودِ قسط‌ها در bnpl_start ساخته می‌شوند (منبع واحد در bnpl.py)
@@ -168,8 +232,10 @@ def checkout():
     items = _ci2()
     return render_template('checkout.html', courses=courses, items=items, subtotal=subtotal,
                            discount=discount, final=final, coupon=coupon, gateways=GATEWAYS,
-                           loyalty_discount=loyalty_discount, has_past_purchase=has_past_purchase,
-                           installment_count=installment_count)
+                           loyalty_discount=loyalty_discount, loyalty_percent=loyalty_percent,
+                           has_past_purchase=has_past_purchase, installment_count=installment_count,
+                           bnpl_available=bnpl_available, has_physical=has_physical,
+                           shipping_cost=shipping_cost)
 
 
 @shop_bp.route('/checkout/wallet', methods=['POST'])
@@ -224,12 +290,15 @@ def pay_installment(code, num):
                 db.session.add(Enrollment(user_id=order.user_id, course_id=item.course_id, order_id=order.id))
             if item.product_id:
                 from models import Product as _PP
-                _pr = db.session.get(_PP, item.product_id)
-                if _pr:
-                    _pr.stock = max(0, (_pr.stock or 0) - 1)
+                quantity = max(1, int(item.quantity or 1))
+                updated = _PP.query.filter(_PP.id == item.product_id,
+                                           _PP.stock >= quantity).update(
+                    {_PP.stock: _PP.stock - quantity}, synchronize_session=False)
+                if updated == 0:
+                    order.fulfillment_status = 'stock_issue'
         from models import Notification
         Notification.notify(order.user_id, 'تکمیل پرداخت اقساطی 🎉',
-                            f'همه قسط‌های سفارش {order.code} پرداخت شد — دوره فعال است!', '✅',
+                            f'همه قسط‌های سفارش {order.code} پرداخت شد؛ وضعیت سفارش را در حساب ببینید.', '✅',
                             url_for('student.my_courses'))
     db.session.commit()
     flash(f'قسط {fa(num)} پرداخت شد. ✅', 'success')
@@ -244,18 +313,29 @@ def pay_start(code):
     if order.status == 'paid':
         flash('این سفارش قبلاً پرداخت شده و دوره فعال است. 🎉', 'info')
         return redirect(url_for('student.invoice', code=code))
-    if order.status == 'canceled':
-        # اجازه پرداخت مجدد سفارش لغوشده
+    if order.status in ('canceled', 'failed'):
+        # پرداخت مجدد سفارش لغوشده یا ناموفق باید دوباره pending شود تا callback
+        # موفق بتواند آن را به‌صورت اتمیک paid کند.
         order.status = 'pending'
+        order.ref_id = None
         db.session.commit()
 
     if request.method == 'POST':
-        gateway = request.form.get('gateway', 'sandbox')
-        # امنیت: درگاه آزمایشی فقط وقتی sandbox_mode=1 باشد در دسترس است
-        # (جلوگیری از «خرید رایگان» در سایت واقعی)
+        gateway = request.form.get('gateway', '').strip()
         _sandbox_on = _sandbox_allowed()
+        valid_gateways = {item['id'] for item in GATEWAYS
+                          if item['id'] != 'sandbox' or _sandbox_on}
+        if not gateway or gateway not in valid_gateways:
+            flash('لطفاً یکی از روش‌های پرداخت فعال را انتخاب کنید.', 'error')
+            return redirect(url_for('shop.pay_start', code=code))
+        # امنیت: درگاه آزمایشی در نسخهٔ نهایی در دسترس نیست.
         if gateway == 'sandbox' and not _sandbox_on:
-            flash('درگاه آزمایشی غیرفعال است — یک درگاه پرداخت واقعی انتخاب کنید.', 'error')
+            flash('پرداخت آزمایشی غیرفعال است؛ یک روش پرداخت واقعی انتخاب کنید.', 'error')
+            return redirect(url_for('shop.pay_start', code=code))
+        # کارت‌به‌کارت فقط با شماره کارت واقعی ثبت‌شده قابل استفاده است؛
+        # ارسال دستی POST نباید این کنترل رابط را دور بزند.
+        if gateway == 'card2card' and not gateway_ready(gateway, g.settings):
+            flash('روش کارت‌به‌کارت هنوز توسط مدیر تکمیل نشده است.', 'error')
             return redirect(url_for('shop.pay_start', code=code))
         order.gateway = gateway
         db.session.commit()
@@ -277,32 +357,63 @@ def pay_start(code):
             url = start_payment(gateway, g.settings, order, g.user,
                                 url_for('shop.pay_verify', gw=gateway, code=order.code,
                                         _external=True))
+            if isinstance(url, PaymentRedirect) and url.fields:
+                return render_template('pay/forward.html', order=order,
+                                       action_url=url.action_url,
+                                       fields=url.fields,
+                                       gateway_name=gateway_fa(gateway))
             return redirect(url)
         except Exception as e:
             flash(f'خطا در اتصال به درگاه {gateway_fa(gateway)}: {e}', 'error')
             return redirect(url_for('shop.pay_start', code=code))
 
-    # درگاه آزمایشی فقط در حالت sandbox_mode=1 به کاربر نمایش داده می‌شود
+    # فقط روش‌های واقعاً پیکربندی‌شده نمایش داده می‌شوند؛ کاربر دیگر پس از
+    # انتخاب یک درگاه ناقص با خطای مبهم مواجه نمی‌شود.
     _sandbox_on = _sandbox_allowed()
-    _gws = [g for g in GATEWAYS if g['id'] != 'sandbox' or _sandbox_on]
+    is_installment = bool(order.installment_count and order.installment_count > 1)
+    _gws = []
+    for item in GATEWAYS:
+        if item['id'] == 'sandbox':
+            if _sandbox_on:
+                _gws.append(item)
+            continue
+        if item['id'] == 'card2card':
+            if (g.settings.get('c2c_card') or '').strip() and not is_installment:
+                _gws.append(item)
+            continue
+        if not gateway_ready(item['id'], g.settings):
+            # فقط تست خودکار/توسعهٔ صریح می‌تواند درگاه انتخاب‌شدهٔ ناقص را
+            # برای بررسی رابط نمایش دهد؛ در production این شرط همیشه False است.
+            from runtime import demo_features_enabled
+            if not (demo_features_enabled() and item['id'] == (order.gateway or '')):
+                continue
+        if is_installment and item.get('kind') != 'installment':
+            continue
+        if not is_installment and item.get('kind') == 'installment':
+            continue
+        _gws.append(item)
     # پیش‌انتخاب درگاه: از پارامتر ?gateway= (مثلاً بازگشت از پنل اقساطی) یا درگاه ثبت‌شده روی سفارش
     preselected = (request.args.get('gateway') or order.gateway or '').strip()
-    if preselected and preselected not in [g['id'] for g in _gws]:
+    if preselected and preselected not in [item['id'] for item in _gws]:
         preselected = ''
-    is_installment = bool(order.installment_count and order.installment_count > 1)
     return render_template('pay/gateway.html', order=order, gateways=_gws,
                            sandbox_mode=_sandbox_on, preselected=preselected,
                            is_installment=is_installment)
 
 
-@shop_bp.route('/pay/verify/<gw>')
+@shop_bp.route('/pay/verify/<gw>', methods=['GET', 'POST'])
 def pay_verify(gw):
     """بازگشت از درگاه — تایید تراکنش برای همه درگاه‌های واقعی"""
     from gateways import verify_payment as _verify
-    code = request.args.get('code') or request.args.get('order_id') or ''
+    values = request.values
+    code = values.get('code') or values.get('order_id') or values.get('ResNum') or ''
     order = Order.query.filter_by(code=code).first_or_404()
+    if order.gateway and order.gateway != gw:
+        abort(400)
+    if order.status == 'paid':
+        return redirect(url_for('shop.pay_result', code=code, status='success'))
     try:
-        ok, msg, ref = _verify(gw, g.settings, order, request.args)
+        ok, msg, ref = _verify(gw, g.settings, order, values)
         if ok:
             _mark_paid(order, ref or f'{gw.upper()}-' + str(random.randint(100000, 999999)), f'{gw}_verify')
             return redirect(url_for('shop.pay_result', code=code, status='success'))
@@ -341,8 +452,11 @@ def card2card(code):
         ref_number = request.form.get('ref_number', '').strip()
         amount = request.form.get('amount', '').strip()
         note = request.form.get('note', '').strip()
+        paid_amount = int(amount) if amount.isdigit() else 0
         if not payer_name or not ref_number:
             flash('نام واریزکننده و شماره پیگیری الزامی است.', 'error')
+        elif paid_amount != int(order.final_total or 0):
+            flash('مبلغ واریزی باید دقیقاً برابر مبلغ نهایی سفارش باشد.', 'error')
         else:
             order.status = 'pending_verify'
             order.gateway = 'card2card'
@@ -359,20 +473,20 @@ def card2card(code):
             if existing:
                 existing.payer_name = payer_name
                 existing.ref_number = ref_number
-                existing.amount = int(amount) if amount.isdigit() else 0
+                existing.amount = paid_amount
                 existing.note = note
                 existing.file = fname or existing.file
                 existing.status = 'pending'
             else:
                 db.session.add(PaymentProof(order_id=order.id, payer_name=payer_name,
                                             ref_number=ref_number,
-                                            amount=int(amount) if amount.isdigit() else 0,
+                                            amount=paid_amount,
                                             file=fname, note=note))
             db.session.add(PaymentLog(order_id=order.id, gateway='card2card',
                                       amount=order.final_total, status='pending_verify',
                                       detail=f'فیش ثبت شد — {payer_name} ({ref_number})'))
             db.session.commit()
-            flash('فیش واریزی شما ثبت شد! پس از تایید توسط پشتیبانی، دوره فعال می‌شود. ⏳', 'success')
+            flash('فیش واریزی شما ثبت شد! پس از تایید توسط پشتیبانی، سفارش پردازش می‌شود. ⏳', 'success')
             return redirect(url_for('student.orders'))
 
     card_no = (g.settings.get('c2c_card') or '').strip()
@@ -455,10 +569,12 @@ def zarinpal_verify():
 
 
 def _mark_paid(order, ref, detail):
-    # محافظ race اتمیک: فقط سفارش pending را paid کن — اگر قبلاً پرداخت شده
+    # محافظ race اتمیک: فقط سفارش pending/pending_verify را paid کن — اگر قبلاً پرداخت شده
     # (callback تکراری درگاه یا verify دوباره) هیچ تغییری رخ نمی‌دهد
-    _upd = Order.query.filter_by(id=order.id, status='pending') \
-        .update({'status': 'paid', 'paid_at': utcnow(), 'ref_id': ref})
+    _upd = Order.query.filter(Order.id == order.id,
+                              Order.status.in_(['pending', 'pending_verify'])) \
+        .update({'status': 'paid', 'paid_at': utcnow(), 'ref_id': ref},
+                synchronize_session=False)
     if _upd == 0:
         return False
     db.session.refresh(order)
@@ -476,17 +592,43 @@ def _mark_paid(order, ref, detail):
             # کاهش قطعی موجودی + اعلان
             try:
                 from models import Product as _P
-                prod = db.session.get(_P, item.product_id)
-                if prod:
-                    prod.stock = max(0, (prod.stock or 0) - 1)
+                quantity = max(1, int(item.quantity or 1))
+                updated = _P.query.filter(_P.id == item.product_id,
+                                          _P.stock >= quantity).update(
+                    {_P.stock: _P.stock - quantity}, synchronize_session=False)
+                if updated == 0:
+                    # پرداخت انجام شده اما موجودی هم‌زمان توسط سفارش دیگری مصرف شده است.
+                    # وضعیت ویژه مانع می‌شود کسری موجودی بی‌صدا پنهان بماند.
+                    order.fulfillment_status = 'stock_issue'
             except Exception as _e:
                 _lexc(f'shop.mark_paid.stock: {_e}')
-    # اعلان داخلی پرداخت موفق
+    if order.fulfillment_status == 'stock_issue':
+        try:
+            from models import Notification
+            admin_ids = [row[0] for row in db.session.query(User.id)
+                         .filter(User.role.in_(['admin', 'super_admin']), User.is_active == True).all()]
+            for admin_id in admin_ids:
+                Notification.notify(admin_id, 'کسری موجودی سفارش ⚠️',
+                                    f'سفارش {order.code} پرداخت شده اما موجودی یکی از محصولات کافی نیست.',
+                                    '⚠️', url_for('admin.order_detail', oid=order.id))
+        except Exception:
+            _lexc('shop.mark_paid.stock_notification')
+    # اعلان داخلی پرداخت موفق با متن متناسب با نوع اقلام
     try:
         from models import Notification
+        has_course = any(item.course_id for item in order.items)
+        has_product = any(item.product_id for item in order.items)
+        if has_course and has_product:
+            notice_body = f'سفارش {order.code} پرداخت شد؛ دوره فعال و محصول برای پردازش ارسال ثبت شد.'
+            notice_url = url_for('student.orders')
+        elif has_course:
+            notice_body = f'سفارش {order.code} پرداخت شد و دوره در حساب شما فعال است.'
+            notice_url = url_for('student.my_courses')
+        else:
+            notice_body = f'سفارش {order.code} پرداخت شد و محصول برای پردازش ارسال ثبت شد.'
+            notice_url = url_for('student.orders')
         Notification.notify(order.user_id, 'پرداخت شما موفق بود 🎉',
-                            f'سفارش {order.code} پرداخت شد — دوره فعال است.',
-                            '✅', url_for('student.my_courses'))
+                            notice_body, '✅', notice_url)
         from email_service import send_payment_notice
         buyer = db.session.get(User, order.user_id)
         if buyer and buyer.email:
@@ -506,22 +648,26 @@ def _mark_paid(order, ref, detail):
         buyer = db.session.get(User, order.user_id)
         from sms import send_sms
         if buyer and buyer.phone and getattr(buyer, 'notify_sms', True) is not False:
-            send_sms(buyer.phone, f'✅ پرداخت سفارش {order.code} به مبلغ {order.final_total:,} تومان انجام شد. دوره فعال شد! — {g.settings.get("site_name", "آکادمی")}', g.settings)
+            send_sms(buyer.phone, f'پرداخت سفارش {order.code} به مبلغ {order.final_total:,} تومان تایید شد. وضعیت سفارش را در حساب خود ببینید. — {g.settings.get("site_name", "آکادمی")}', g.settings)
         from messengers import send_to_all
         send_to_all(f'🎉 پرداخت جدید: سفارش {order.code} به مبلغ {order.final_total:,} تومان توسط {buyer.name if buyer else ""}',
                     g.settings, url_for('admin.orders', _external=True))
     except Exception:
         _lexc('blueprints/shop.py')
-    # پاداش ارجاع: ۱۰٪ اولین خرید به کیف پول معرف
+    # پاداش معرفی فقط با درصد صریح مدیر و فقط روی اولین خرید.
     try:
         buyer = db.session.get(User, order.user_id)
         from models import Order as _O
+        try:
+            referral_percent = max(0, min(50, int(g.settings.get('referral_bonus_percent') or 0)))
+        except (TypeError, ValueError):
+            referral_percent = 0
         first_paid = _O.query.filter(_O.user_id == order.user_id,
                                      _O.status == 'paid', _O.id != order.id).count() == 0
-        if buyer and buyer.referred_by and first_paid:
+        if buyer and buyer.referred_by and first_paid and referral_percent:
             referrer = db.session.get(User, buyer.referred_by)
             if referrer:
-                bonus = round(order.final_total * 10 / 100)
+                bonus = round(order.final_total * referral_percent / 100)
                 from gamification import wallet_bonus
                 wallet_bonus(referrer, bonus, f'پاداش معرفی {buyer.name}')
     except Exception:

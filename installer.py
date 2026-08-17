@@ -2,8 +2,8 @@
 """
 نصب‌کننده خودکار آکادمی — شبیه نصب‌کننده وردپرس
 - اتصال به دیتابیس (SQLite یا MySQL) و ساخت جدول‌ها
-- ساخت حساب مدیر + دانشجوی نمونه
-- سید داده‌های اولیه (دسته‌ها، تنظیمات، صفحه اصلی، دوره نمونه، کوپن)
+- ساخت امن حساب مدیر (بدون حساب آزمایشی)
+- ایجاد ساختار اولیه (دسته‌ها، تنظیمات و صفحه اصلی؛ بدون دادهٔ ساختگی)
 - نوشتن .env و علامت نصب (.installed)
 """
 import json
@@ -280,14 +280,15 @@ def write_env_file(db_url, secret_key):
         pass
     lines['FLASK_ENV'] = 'production'
     lines['APP_ENV'] = 'production'
+    lines['ENABLE_DEMO_FEATURES'] = '0'
     if db_url:
         lines['DATABASE_URL'] = db_url
     else:
         lines.pop('DATABASE_URL', None)  # خالی = SQLite پیش‌فرض
     with open(env_path, 'w', encoding='utf-8') as f:
         f.write('# ⚙️ تنظیمات محیطی — ساخته‌شده توسط نصب‌کننده آکادمی\n')
-        for k in ('SECRET_KEY', 'FLASK_ENV', 'APP_ENV', 'DATABASE_URL',
-                  'LOG_DIR', 'REDIS_URL', 'CLARITY_ID', 'CRISP_WEBSITE_ID',
+        for k in ('SECRET_KEY', 'FLASK_ENV', 'APP_ENV', 'ENABLE_DEMO_FEATURES',
+                  'DATABASE_URL', 'LOG_DIR', 'REDIS_URL', 'CLARITY_ID', 'CRISP_WEBSITE_ID',
                   'GROQ_API_KEY', 'BING_API_KEY', 'BING_KEY_LOCATION'):
             if k in lines and lines[k]:
                 f.write(f'{k}={lines[k]}\n')
@@ -306,7 +307,7 @@ HOME_PAGE_JSON = {
             "slides": [
                 {"align": "right", "btn_text": "🚀 مشاهده همه دوره‌ها", "btn_url": "/courses",
                  "img": "hero.webp",
-                 "sub": "دوره‌های پروژه‌محور با برترین مدرسان — همین امروز شروع کن!",
+                 "sub": "دوره‌های منتشرشده را ببینید و مسیر مناسب خود را انتخاب کنید.",
                  "title": "آینده‌ات را با مهارت‌های دیجیتال قدرتمندتر بساز"},
                 {"align": "center", "btn_text": "شروع یادگیری", "btn_url": "/courses",
                  "img": "cover-flask.webp",
@@ -323,39 +324,52 @@ HOME_PAGE_JSON = {
             ]}}]]},
         {"cols": [[{"id": "inst-h3", "type": "courses", "data": {
             "columns": "3", "limit": "6", "sort": "latest",
-            "title": "دوره‌های محبوب",
-            "subtitle": "محبوب‌ترین دوره‌های آموزشی آکادمی"}}]]}
+            "title": "دوره‌های منتشرشده",
+            "subtitle": "تازه‌ترین دوره‌های موجود"}}]]}
     ]
 }
 
 DEFAULT_SETTINGS = {
     'site_name': 'آکادمی آنلاین',
-    'site_desc': 'مرجع آموزش آنلاین فارسی — دوره‌های پروژه‌محور با مدرسان برتر',
-    'email': 'info@academy.ir',
-    'phone': '021-91001234',
-    'address': 'تهران، خیابان ولیعصر',
-    'support_hours': 'شنبه تا پنجشنبه — ۹ تا ۲۱',
+    'site_desc': '',
+    'email': '',
+    'phone': '',
+    'address': '',
+    'support_hours': '',
     'home_design': 'builder',
+    'currency': 'تومان',
     'sandbox_mode': '0',
-    'sms_provider': '',
+    'sms_provider': 'disabled',
+    'admin_2fa_enabled': '0',
+    'exam_enabled': '0',
+    'spin_enabled': '0',
     'allow_register': '1',
     'allow_phone_login': '1',
     'maintenance': '0',
-    'bnpl_enabled': '1',
-    'cashback_percent': '5',
+    'bnpl_enabled': '0',
+    'cashback_percent': '0',
+    'loyalty_discount_percent': '0',
+    'referral_bonus_percent': '0',
+    'refund_days': '0',
+    'shipping_flat_rate': '0',
+    'shipping_note': 'هزینه و زمان ارسال پس از بررسی سفارش اعلام می‌شود.',
     'certificate_text': 'این گواهینامه به‌پاس تکمیل موفق دوره صادر شده است.',
     'invoice_prefix': 'AC',
 }
 
 CATEGORIES = [
-    ('برنامه‌نویسی', 'برنامه-نویسی', '💻', '#2563eb'),
-    ('وب', 'وب', '🌐', '#059669'),
-    ('هوش مصنوعی', 'هوش-مصنوعی', '🤖', '#7c3aed'),
-    ('طراحی', 'طراحی', '🎨', '#db2777'),
-    ('کسب‌وکار', 'کسب-وکار', '📈', '#ea580c'),
-    ('آفیس', 'آفیس', '📊', '#16a34a'),
-    ('زبان', 'زبان', '🗣️', '#0ea5e9'),
-    ('امنیت', 'امنیت', '🛡️', '#dc2626'),
+    ('کامپیوتر و فناوری', 'کامپیوتر-فناوری', '🖥️', '#0f766e'),
+    ('برنامه‌نویسی و وب', 'برنامه-نویسی-وب', '💻', '#2563eb'),
+    ('هوش مصنوعی و داده', 'هوش-مصنوعی-داده', '🤖', '#7c3aed'),
+    ('هنر و طراحی', 'هنر-طراحی', '🎨', '#db2777'),
+    ('معماری و شهرسازی', 'معماری-شهرسازی', '🏛️', '#b45309'),
+    ('حسابداری و مالی', 'حسابداری-مالی', '🧮', '#15803d'),
+    ('روانشناسی و توسعه فردی', 'روانشناسی-توسعه-فردی', '🧠', '#be185d'),
+    ('کسب‌وکار و مدیریت', 'کسب-وکار-مدیریت', '📈', '#ea580c'),
+    ('مهارت‌های اداری', 'مهارت-های-اداری', '📊', '#16a34a'),
+    ('فنی و مهندسی', 'فنی-مهندسی', '⚙️', '#475569'),
+    ('امنیت و شبکه', 'امنیت-شبکه', '🛡️', '#dc2626'),
+    ('سلامت و سبک زندگی', 'سلامت-سبک-زندگی', '🌱', '#0891b2'),
 ]
 
 
@@ -1126,8 +1140,7 @@ def run_install(db_url, admin, site, create_demo_student=False, progress_cb=None
             except Exception:
                 pass
     try:
-        from models import db, User, Setting, Category, Course, Section, Lesson, Coupon
-        from models import Page
+        from models import db, User, Setting, Category, Page
         from sqlalchemy import insert as _ins, select as _sel
         import time as _t
 
@@ -1210,7 +1223,8 @@ def run_install(db_url, admin, site, create_demo_student=False, progress_cb=None
             if rows:
                 conn.execute(_ins(Category), rows)
 
-            # کاربران (مدیر + دمو)
+            # فقط حساب مدیر واقعی؛ ورودی قدیمی create_demo_student عمداً نادیده
+            # گرفته می‌شود تا هیچ حساب عمومی با رمز قابل حدس ساخته نشود.
             existing = {r[0] for r in conn.execute(_sel(User.email))}
             if admin['email'].lower() not in existing:
                 u = User(name=admin['name'], email=admin['email'].lower(),
@@ -1218,13 +1232,6 @@ def run_install(db_url, admin, site, create_demo_student=False, progress_cb=None
                 u.set_password(admin['password'])
                 conn.execute(_ins(User).values(
                     name=u.name, email=u.email, role='super_admin',
-                    is_active=True, password_hash=u.password_hash))
-            if create_demo_student and 'demo@academy.ir' not in existing:
-                u = User(name='دانشجوی نمونه', email='demo@academy.ir',
-                         phone='09120000001', role='student', is_active=True)
-                u.set_password('demo123')
-                conn.execute(_ins(User).values(
-                    name=u.name, email=u.email, phone=u.phone, role='student',
                     is_active=True, password_hash=u.password_hash))
 
             # صفحه اصلی
@@ -1240,61 +1247,14 @@ def run_install(db_url, admin, site, create_demo_student=False, progress_cb=None
                     content=json.dumps(HOME_PAGE_JSON, ensure_ascii=False),
                     is_published=True))
 
-            # دوره نمونه + سکشن‌ها + درس‌ها (batch)
-            if is_mysql:
-                try:
-                    conn.execute(db.text("DELETE FROM courses WHERE slug LIKE '%?%'"))
-                except Exception:
-                    pass
-            if not conn.execute(_sel(Course.id).where(
-                    Course.slug == 'course-intro')).first():
-                cat_id = conn.execute(_sel(Category.id).where(
-                    Category.slug == 'برنامه-نویسی')).scalar()
-                if not cat_id:
-                    cat_id = conn.execute(_sel(Category.id).limit(1)).scalar()
-                t_id = conn.execute(_sel(User.id).where(
-                    User.role == 'super_admin').limit(1)).scalar()
-                res = conn.execute(_ins(Course).values(
-                    title='آشنایی با پلتفرم آموزشی آکادمی',
-                    slug='course-intro',
-                    subtitle='یک دوره رایگان برای آشنایی با امکانات پلتفرم',
-                    description='این دوره نمونه به‌صورت خودکار هنگام نصب ساخته شده است. '
-                                'می‌توانید آن را از پنل مدیریت ویرایش یا حذف کنید.',
-                    image='cover-python.webp', category_id=cat_id,
-                    teacher_id=t_id, price=0, discount_price=0, level='مقدماتی',
-                    language='fa', status='published', featured=True,
-                    what_you_learn='آشنایی با پلتفرم\nنحوه یادگیری\nدریافت گواهی',
-                    requirements='هیچ پیش‌نیازی لازم نیست', duration_hours=1,
-                    tags='رایگان,آشنایی,مقدماتی', views=0))
-                course_id = res.lastrowid
-                r1 = conn.execute(_ins(Section).values(
-                    course_id=course_id, title='شروع کار', sort=1))
-                r2 = conn.execute(_ins(Section).values(
-                    course_id=course_id, title='امکانات پیشرفته', sort=2))
-                conn.execute(_ins(Lesson), [
-                    {'section_id': r1.lastrowid, 'title': 'خوش آمدید', 'video_type': 'none',
-                     'content': 'به آکادمی خوش آمدید! این جلسه شما را با پلتفرم آشنا می‌کند.',
-                     'sort': 1, 'is_free': True, 'duration': '00:03:00'},
-                    {'section_id': r1.lastrowid, 'title': 'چگونه یاد بگیریم؟', 'video_type': 'none',
-                     'content': 'با برنامه مطالعاتی شخصی و پیگیری پیشرفت، مسیر یادگیری خود را مدیریت کنید.',
-                     'sort': 2, 'is_free': True, 'duration': '00:04:00'},
-                    {'section_id': r2.lastrowid, 'title': 'گواهینامه پایان دوره', 'video_type': 'none',
-                     'content': 'پس از تکمیل همه جلسات، گواهینامه معتبر با کد رهگیری دریافت می‌کنید.',
-                     'sort': 1, 'is_free': True, 'duration': '00:03:00'},
-                ])
-
-            # کوپن
-            if not conn.execute(_sel(Coupon.id).where(
-                    Coupon.code == 'WELCOME20')).first():
-                conn.execute(_ins(Coupon).values(
-                    code='WELCOME20', type='percent', value=20,
-                    min_amount=0, max_uses=0, used_count=0, is_active=True))
+            # داده‌های محتوایی (دوره، درس، نظر، سفارش و کوپن) عمداً در نصب
+            # ساخته نمی‌شوند؛ مدیر آن‌ها را با اطلاعات واقعی مجموعه وارد می‌کند.
 
             try:
                 conn.execute(db.text('SET FOREIGN_KEY_CHECKS=1'))
             except Exception:
                 pass
-        _prog(3, f'داده‌ها کپی شدند ({_t.time()-t1:.1f}ث)')
+        _prog(3, f'ساختار اولیه آماده شد ({_t.time()-t1:.1f}ث)')
 
         eng.dispose()
 

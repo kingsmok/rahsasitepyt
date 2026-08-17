@@ -24,7 +24,7 @@
         <td>
           <div class="flex gap-1">
             <img src="/static/img/{{ c.image }}" alt="" style="width:54px;height:36px;border-radius:8px;object-fit:cover">
-            <div><strong style="font-size:13px">{{ c.title }}</strong><br><small class="text-3">{{ c.level }} — {{ fa(c.lesson_count) }} جلسه</small></div>
+            <div><strong style="font-size:13px">{{ c.title }}</strong><br><small class="text-3">{{ c.level }} — {{ {'online':'آنلاین','offline':'حضوری','hybrid':'ترکیبی'}.get(c.delivery_type or 'online', 'آنلاین') }} — {{ fa(c.lesson_count) }} جلسه</small></div>
           </div>
         </td>
         <td>{{ c.category.name if c.category else '—' }}</td>

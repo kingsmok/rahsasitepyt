@@ -35,14 +35,14 @@ class TeacherLite(UserLite):
 class CourseLite:
     """کارت دوره — همه چیزهایی که course_card و ویجت‌ها نیاز دارند."""
     __slots__ = ('id', 'title', 'slug', 'image', 'featured', 'price',
-                 'discount_price', 'duration_hours', 'rating', 'review_count',
-                 'students_count', 'category', 'teacher')
+                 'discount_price', 'duration_hours', 'delivery_type',
+                 'rating', 'review_count', 'students_count', 'category', 'teacher')
 
     def __init__(self, c=None, rating=0, review_count=0, students_count=0,
                  category=None, teacher=None, **fields):
         if c is None:
             for k in ('id', 'title', 'slug', 'image', 'featured', 'price',
-                      'discount_price', 'duration_hours'):
+                      'discount_price', 'duration_hours', 'delivery_type'):
                 setattr(self, k, fields.get(k))
             self.rating = rating
             self.review_count = review_count
@@ -58,6 +58,7 @@ class CourseLite:
         self.price = c.price or 0
         self.discount_price = c.discount_price or 0
         self.duration_hours = c.duration_hours
+        self.delivery_type = getattr(c, 'delivery_type', 'online') or 'online'
         # آمار تجمیعی — از مقادیر از‌پیش‌محاسبه‌شده یا محاسبهٔ سبک
         self.rating = rating
         self.review_count = review_count

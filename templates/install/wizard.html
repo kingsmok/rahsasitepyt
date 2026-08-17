@@ -153,7 +153,7 @@ h3{font-size:16px;font-weight:800;margin-bottom:4px}
         <div class="fg"><label>رمز عبور (حداقل ۸ کاراکتر)</label><input id="admin_pass" type="password" dir="ltr"></div>
         <div class="fg"><label>تکرار رمز عبور</label><input id="admin_pass2" type="password" dir="ltr"></div>
       </div>
-      <label class="check" style="margin-bottom:14px"><input type="checkbox" id="demo_student"> ساخت حساب دانشجویی نمونه (demo@academy.ir / demo123)</label>
+      <div class="hint">🔒 فقط حساب مدیر ساخته می‌شود؛ هیچ کاربر یا رمز نمونه‌ای ایجاد نخواهد شد.</div>
       <div class="btn-row">
         <button class="btn btn-g" onclick="prev(1)">→ بازگشت</button>
         <button class="btn btn-p" onclick="next(2)">ادامه ←</button>
@@ -164,14 +164,14 @@ h3{font-size:16px;font-weight:800;margin-bottom:4px}
     <div class="pane" id="pane-3">
       <h3>🌐 اطلاعات سایت</h3>
       <p class="sub">این موارد بعداً از «پنل ادمین ← تنظیمات سوپر» قابل تغییر هستند.</p>
-      <div class="fg"><label>نام سایت</label><input id="site_name" value="آکادمی آنلاین"></div>
-      <div class="fg"><label>توضیح کوتاه (شعار سایت)</label><input id="site_desc" value="مرجع آموزش آنلاین فارسی — دوره‌های پروژه‌محور با مدرسان برتر"></div>
+      <div class="fg"><label>نام سایت</label><input id="site_name" value="آکادمی آنلاین" autocomplete="organization"></div>
+      <div class="fg"><label>توضیح کوتاه (شعار سایت)</label><input id="site_desc" placeholder="در یک جمله خدمات مجموعه را معرفی کنید"></div>
       <div class="fg-row">
-        <div class="fg"><label>تلفن پشتیبانی</label><input id="site_phone" value="021-91001234"></div>
-        <div class="fg"><label>ایمیل تماس</label><input id="site_email" dir="ltr" value="info@academy.ir"></div>
+        <div class="fg"><label>تلفن پشتیبانی (اختیاری)</label><input id="site_phone" inputmode="tel" autocomplete="tel" placeholder="شماره واقعی مجموعه"></div>
+        <div class="fg"><label>ایمیل تماس (اختیاری)</label><input id="site_email" type="email" dir="ltr" autocomplete="email" placeholder="info@example.com"></div>
       </div>
-      <div class="fg"><label>آدرس سایت (اختیاری — برای لینک‌های ایمیل)</label><input id="site_url" dir="ltr" placeholder="https://example.com"></div>
-      <div class="hint">✨ پس از نصب به‌صورت خودکار ساخته می‌شوند: ۸ دسته‌بندی، صفحه اصلی حرفه‌ای، یک دوره نمونه رایگان، کوپن تخفیف WELCOME20 و تنظیمات اولیه سایت.</div>
+      <div class="fg"><label>آدرس سایت (اختیاری — برای لینک‌های ایمیل)</label><input id="site_url" type="url" dir="ltr" placeholder="https://example.com"></div>
+      <div class="hint">✨ ساختار اولیه، دسته‌بندی‌ها و صفحه اصلی آماده می‌شوند؛ هیچ دوره، کاربر، سفارش، نظر یا کوپن نمونه‌ای ساخته نمی‌شود.</div>
       <div class="btn-row">
         <button class="btn btn-g" onclick="prev(2)">→ بازگشت</button>
         <button class="btn btn-p" id="btn-install" onclick="runInstall()">⚡ شروع نصب و ساخت داده‌ها</button>
@@ -186,7 +186,7 @@ h3{font-size:16px;font-weight:800;margin-bottom:4px}
         <div>🔌 اتصال به دیتابیس <span id="lg-1"></span></div>
         <div>🗄 ساخت جدول‌ها <span id="lg-2"></span></div>
         <div>👑 ساخت حساب مدیر <span id="lg-3"></span></div>
-        <div>📚 ساخت داده‌های اولیه (دسته‌ها، دوره نمونه، صفحه اصلی) <span id="lg-4"></span></div>
+        <div>📚 ساخت ساختار اولیه و صفحه اصلی <span id="lg-4"></span></div>
         <div>📝 ذخیره تنظیمات و فایل .env <span id="lg-5"></span></div>
       </div>
       <div class="btn-row" id="install-actions" style="display:none;margin-top:14px">
@@ -466,7 +466,6 @@ function installFormData(){
   data.append('admin_email', $('admin_email').value.trim());
   data.append('admin_pass', $('admin_pass').value);
   data.append('admin_pass2', $('admin_pass2').value);
-  data.append('demo_student', $('demo_student').checked ? '1' : '0');
   data.append('site_name', $('site_name').value.trim());
   data.append('site_desc', $('site_desc').value.trim());
   data.append('site_phone', $('site_phone').value.trim());

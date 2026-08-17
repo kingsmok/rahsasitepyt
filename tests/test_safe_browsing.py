@@ -86,6 +86,15 @@ def test_sanitizer_keeps_content_after_dropped_tag():
     assert 'keep' in out and 'iframe' not in out
 
 
+def test_shortcode_renderer_sanitizes_untrusted_html(app):
+    from blueprints.builder import render_shortcodes
+    with app.test_request_context('/'):
+        out = str(render_shortcodes('<script>alert(1)</script>[alert]متن امن[/alert]'))
+    assert '<script' not in out
+    assert 'alert(1)' not in out
+    assert 'متن امن' in out
+
+
 def test_sanitizer_keeps_safe_markup():
     """پاکسازی نباید محتوای سالم را خراب کند"""
     from html_sanitizer import sanitize_html

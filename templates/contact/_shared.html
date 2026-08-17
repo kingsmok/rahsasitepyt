@@ -1,0 +1,28 @@
+{% macro contact_methods(compact=false) -%}
+<div class="contact-methods {{ 'contact-methods--compact' if compact }}">
+  {% if site.phone %}<a class="card contact-method" href="tel:{{ site.phone }}"><span aria-hidden="true">📞</span><strong>تلفن</strong><small dir="ltr">{{ fa(site.phone) }}</small></a>{% endif %}
+  {% if site.email %}<a class="card contact-method" href="mailto:{{ site.email }}"><span aria-hidden="true">✉️</span><strong>ایمیل</strong><small dir="ltr">{{ site.email }}</small></a>{% endif %}
+  {% if site.address %}<a class="card contact-method" href="https://maps.google.com/?q={{ site.address|urlencode }}" target="_blank" rel="noopener"><span aria-hidden="true">📍</span><strong>نشانی</strong><small>{{ site.address }}</small></a>{% endif %}
+  {% if site.support_hours %}<div class="card contact-method"><span aria-hidden="true">🕘</span><strong>ساعات پاسخگویی</strong><small>{{ site.support_hours }}</small></div>{% endif %}
+  {% if not site.phone and not site.email and not site.address %}<div class="card contact-method contact-method--empty"><span aria-hidden="true">✉️</span><strong>فرم تماس</strong><small>پیام خود را از فرم این صفحه ارسال کنید.</small></div>{% endif %}
+</div>
+{%- endmacro %}
+
+{% macro contact_form() -%}
+<form method="post" class="contact-form">
+  <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+  <div class="grid" style="grid-template-columns:1fr 1fr;gap:14px">
+    <div class="form-group"><label for="contact-name">نام و نام خانوادگی <span class="req">*</span></label><input id="contact-name" class="form-control" name="name" value="{{ request.form.get('name','') }}" autocomplete="name" required></div>
+    <div class="form-group"><label for="contact-email">ایمیل</label><input id="contact-email" class="form-control" type="email" name="email" value="{{ request.form.get('email','') }}" autocomplete="email" dir="ltr"></div>
+  </div>
+  <div class="form-group"><label for="contact-subject">موضوع</label>
+    <select id="contact-subject" class="form-control" name="subject">
+      {% for option in ['سوال درباره دوره‌ها','همکاری با مجموعه','پیشنهاد و انتقاد','مشکل در پرداخت','سایر'] %}<option {{ 'selected' if request.form.get('subject') == option }}>{{ option }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="form-group"><label for="contact-message">متن پیام <span class="req">*</span></label><textarea id="contact-message" class="form-control" name="message" style="min-height:145px" required>{{ request.form.get('message','') }}</textarea></div>
+  {{ captcha_box() }}
+  <button class="btn btn-primary btn-lg btn-block" type="submit">ارسال پیام</button>
+  <p class="form-hint text-center">پیام ثبت‌شده از بخش مدیریت پیگیری می‌شود. برای درخواست‌های حساب کاربری، تیکت پشتیبانی گزینه مناسب‌تری است.</p>
+</form>
+{%- endmacro %}

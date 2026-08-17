@@ -27,9 +27,12 @@
             <iframe src="https://www.aparat.com/video/video/embed/videohash/{{ ap_hash }}/vt/frame"
                     title="{{ current.title }}" allowfullscreen></iframe>
           </div>
+          {% elif current.video_type == 'none' or not video_src %}
+          <div class="empty-state" style="color:#fff"><div class="es-icon">📄</div><p style="color:#fff">این جلسه ویدیوی قابل پخش ندارد.</p></div>
           {% else %}
-          <video id="pp-video" src="{{ current.video_src or '/static/video/sample.mp4' }}"
+          <video id="pp-video" src="{{ video_src or '' }}"
                  poster="/static/img/{{ course.image }}" preload="metadata" playsinline
+                 controlslist="nodownload noremoteplayback" disablepictureinpicture oncontextmenu="return false"
                  {% if current.captions %}crossorigin="anonymous"{% endif %}>
             {% if current.captions %}<track kind="captions" src="/uploads/lessons/{{ current.captions }}" srclang="fa" label="فارسی">{% endif %}
           </video>
@@ -40,7 +43,7 @@
             <button class="pp-btn" id="pp-mute" type="button" title="صدا">🔊</button>
             <input class="pp-vol" id="pp-vol" type="range" min="0" max="100" value="100" title="میزان صدا">
             <span class="pp-spacer"></span>
-            {% if current.video_url_hd %}<button class="pp-btn" id="pp-quality" type="button" title="کیفیت" data-hd="{{ current.video_url_hd }}">HD</button>{% endif %}
+            {% if video_hd_src %}<button class="pp-btn" id="pp-quality" type="button" title="کیفیت" data-hd="{{ video_hd_src }}">HD</button>{% endif %}
             <button class="pp-btn" id="pp-speed" type="button" title="سرعت پخش">۱×</button>
             <button class="pp-btn" id="pp-fs" type="button" title="تمام‌صفحه">⛶</button>
           </div>
@@ -91,7 +94,7 @@
         </div>
 
         <!-- فایل‌های پروژه / دیتای جلسه -->
-        {% if current.file_url %}
+        {% if current.file_url and course.allow_download %}
         <div class="card mt-2" style="padding:20px">
           <h4 class="mb-2" style="font-size:14.5px">📎 فایل‌های این جلسه</h4>
           <div class="file-row">
@@ -134,7 +137,7 @@
              href="{{ url_for('student.learn', course_id=course.id, lesson=l.id) }}">
             <span class="l-num">{{ '✓' if l.id in done else fa(loop.index) }}</span>
             <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ l.title }}</span>
-            {% if l.file_url %}<span title="دارای فایل پیوست" style="font-size:11px">📎</span>{% endif %}
+            {% if l.file_url and course.allow_download %}<span title="دارای فایل پیوست قابل دانلود" style="font-size:11px">📎</span>{% endif %}
             <span style="font-size:11px;color:var(--text-3)">{{ fa(l.duration) }}</span>
           </a>
           {% endif %}

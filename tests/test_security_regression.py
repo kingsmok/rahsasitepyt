@@ -121,10 +121,13 @@ def test_2fa_brute_force_locked(app, client):
         db.session.add(adm)
         db.session.commit()
         adm_id = adm.id
-    # ورود به عنوان ادمین (سشن) + ساخت وضعیت 2FA
+    # ورود به عنوان ادمین (سشن) + ساخت وضعیت 2FA هش‌شده
+    from blueprints.auth import _code_digest
+    with app.app_context():
+        digest = _code_digest('123456', 'admin-2fa')
     with client.session_transaction() as sess:
         sess['uid'] = adm_id
-        sess['admin_2fa'] = '123456'
+        sess['admin_2fa_hash'] = digest
         sess['admin_2fa_ts'] = __import__('time').time()
     r = client.get('/auth/admin-2fa')
     m = re.search(r'name="_csrf_token" value="([^"]+)"', r.text)
@@ -149,9 +152,12 @@ def test_2fa_expired_code(app, client):
         db.session.add(adm)
         db.session.commit()
         adm_id = adm.id
+    from blueprints.auth import _code_digest
+    with app.app_context():
+        digest = _code_digest('123456', 'admin-2fa')
     with client.session_transaction() as sess:
         sess['uid'] = adm_id
-        sess['admin_2fa'] = '123456'
+        sess['admin_2fa_hash'] = digest
         sess['admin_2fa_ts'] = time.time() - 400  # ۶ دقیقه قبل
     r = client.get('/auth/admin-2fa')
     m = re.search(r'name="_csrf_token" value="([^"]+)"', r.text)
@@ -164,11 +170,14 @@ def test_2fa_expired_code(app, client):
 # ---------------------------------------------------------------
 # ۵) OTP محدودیت تلاش
 # ---------------------------------------------------------------
-def test_otp_brute_force_locked(client):
+def test_otp_brute_force_locked(client, app):
     """۵ تلاش غلط OTP → سشن باطل و ریدایرکت به لاگین"""
+    from blueprints.auth import _code_digest
+    with app.app_context():
+        digest = _code_digest('12345', 'phone-otp')
     with client.session_transaction() as sess:
         sess['otp_phone'] = '09120000888'
-        sess['otp_code'] = '12345'
+        sess['otp_code_hash'] = digest
         sess['otp_ts'] = __import__('time').time()
     r = client.get('/auth/phone-verify')
     for _ in range(6):

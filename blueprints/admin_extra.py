@@ -82,7 +82,7 @@ def success_stories():
 @admin_required
 def success_story_delete(sid):
     from models import SuccessStory as _Story
-    s = _Story.query.get_or_404(sid)
+    s = db.get_or_404(_Story, sid)
     db.session.delete(s)
     db.session.commit()
     flash('حذف شد.', 'success')
@@ -95,7 +95,7 @@ def success_story_delete(sid):
 @admin_required
 def success_story_toggle(sid):
     from models import SuccessStory as _Story
-    s = _Story.query.get_or_404(sid)
+    s = db.get_or_404(_Story, sid)
     s.is_active = not s.is_active
     db.session.commit()
     return redirect(url_for('admin.success_stories'))
@@ -226,7 +226,7 @@ def media_library():
 def media_delete(mid):
     """حذف فایل از کتابخانه (و از دیسک)"""
     from models import Media as _Media
-    m = _Media.query.get_or_404(mid)
+    m = db.get_or_404(_Media, mid)
     import os as _os
     try:
         p = _os.path.join(_os.path.dirname(_os.path.dirname(__file__)), 'static', m.path)

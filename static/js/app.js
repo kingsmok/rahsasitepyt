@@ -1,9 +1,9 @@
-(function(){'use strict';function toast(msg,type){var box=document.querySelector('.toasts');if(!box){box=document.createElement('div');box.className='toasts';document.body.appendChild(box);}
-var icons={success:'✅',error:'⚠️',info:'💡'};var t=document.createElement('div');t.className='toast '+(type||'info');t.innerHTML='<span class="t-ic">'+(icons[type]||icons.info)+'</span><span>'+msg+'</span>'+'<button class="close" onclick="this.parentElement.remove()">✕</button>';box.appendChild(t);setTimeout(function(){t.style.opacity='0';t.style.transition='opacity .4s';setTimeout(function(){t.remove();},450);},4200);}
+(function(){'use strict';function toast(msg,type){var box=document.querySelector('.toasts');if(!box){box=document.createElement('div');box.className='toasts';box.setAttribute('role','region');box.setAttribute('aria-label','اعلان‌ها');document.body.appendChild(box);}
+var icons={success:'✅',error:'⚠️',info:'💡'};var t=document.createElement('div');t.className='toast '+(type||'info');t.setAttribute('role',type==='error'?'alert':'status');t.setAttribute('aria-live',type==='error'?'assertive':'polite');var ic=document.createElement('span');ic.className='t-ic';ic.setAttribute('aria-hidden','true');ic.textContent=icons[type]||icons.info;var text=document.createElement('span');text.textContent=String(msg||'');var close=document.createElement('button');close.type='button';close.className='close';close.setAttribute('aria-label','بستن اعلان');close.textContent='✕';close.addEventListener('click',function(){t.remove();});t.appendChild(ic);t.appendChild(text);t.appendChild(close);box.appendChild(t);setTimeout(function(){t.style.opacity='0';t.style.transition='opacity .4s';setTimeout(function(){t.remove();},450);},5200);}
 window.toast=toast;document.querySelectorAll('.flash-data').forEach(function(el){setTimeout(function(){toast(el.dataset.msg,el.dataset.type);},350);});var header=document.querySelector('.site-header');if(header){window.addEventListener('scroll',function(){header.classList.toggle('scrolled',window.scrollY>10);});}
 var hamburger=document.querySelector('.hamburger')||document.getElementById('mobile-menu-fab');var mm=document.querySelector('.mobile-menu');if(hamburger&&mm){hamburger.addEventListener('click',function(){mm.classList.add('open');});mm.querySelectorAll('[data-close-mm]').forEach(function(b){b.addEventListener('click',function(){mm.classList.remove('open');});});}
-function updateCartBadge(count){document.querySelectorAll('.cart-count').forEach(function(el){el.textContent=count;el.style.display=count>0?'flex':'none';});}
-document.querySelectorAll('[data-add-cart]').forEach(function(btn){btn.addEventListener('click',function(e){e.preventDefault();var id=btn.dataset.addCart;var original=btn.innerHTML;btn.innerHTML='<span class="spinner"></span>';btn.classList.add('disabled');fetch('/api/cart/add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({course_id:parseInt(id,10)})}).then(function(r){return r.json();}).then(function(d){btn.innerHTML=original;btn.classList.remove('disabled');if(d.ok){updateCartBadge(d.count);toast(d.msg,'success');btn.innerHTML='✓ اضافه شد';setTimeout(function(){btn.innerHTML=original;},1600);maybeShowUpsell(id);}else if(d.login){window.location='/auth/login';}}).catch(function(){btn.innerHTML=original;btn.classList.remove('disabled');toast('خطا در ارتباط با سرور','error');});});});document.querySelectorAll('[data-remove-cart]').forEach(function(btn){btn.addEventListener('click',function(){var id=btn.dataset.removeCart;fetch('/api/cart/remove',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({course_id:parseInt(id,10)})}).then(function(r){return r.json();}).then(function(d){if(d.ok){updateCartBadge(d.count);location.reload();}});});});function updateFavBadges(n){document.querySelectorAll('.fav-count').forEach(function(el){el.textContent=n;el.style.display=n>0?'flex':'none';});}
+function updateCartBadge(count){document.querySelectorAll('.cart-count').forEach(function(el){el.textContent=count;el.style.display=count>0?'flex':'none';});}window.updateCartBadge=updateCartBadge;
+document.querySelectorAll('[data-add-cart]').forEach(function(btn){btn.addEventListener('click',function(e){e.preventDefault();var id=btn.dataset.addCart;var original=btn.innerHTML;btn.innerHTML='<span class="spinner"></span>';btn.classList.add('disabled');fetch('/api/cart/add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({course_id:parseInt(id,10)})}).then(function(r){return r.json();}).then(function(d){btn.innerHTML=original;btn.classList.remove('disabled');if(d.ok){updateCartBadge(d.count);toast(d.msg,'success');btn.innerHTML='✓ اضافه شد';setTimeout(function(){btn.innerHTML=original;},1600);}else if(d.login){window.location='/auth/login';}}).catch(function(){btn.innerHTML=original;btn.classList.remove('disabled');toast('خطا در ارتباط با سرور','error');});});});document.querySelectorAll('[data-remove-cart]').forEach(function(btn){btn.addEventListener('click',function(){var id=btn.dataset.removeCart;fetch('/api/cart/remove',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({course_id:parseInt(id,10)})}).then(function(r){return r.json();}).then(function(d){if(d.ok){updateCartBadge(d.count);location.reload();}});});});function updateFavBadges(n){document.querySelectorAll('.fav-count').forEach(function(el){el.textContent=n;el.style.display=n>0?'flex':'none';});}
 document.querySelectorAll('[data-fav]').forEach(function(btn){btn.addEventListener('click',function(){var id=btn.dataset.fav;fetch('/api/favorite/toggle',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({course_id:parseInt(id,10)})}).then(function(r){return r.json();}).then(function(d){if(d.login){window.location='/auth/login';return;}
 if(d.ok){if(d.fav){btn.classList.add('active');toast(d.msg,'success');}
 else{btn.classList.remove('active');toast(d.msg,'info');}
@@ -38,7 +38,7 @@ document.addEventListener('keydown', function(e){
 document.addEventListener('submit', function(e){
   var form = e.target;
   if(form.tagName !== 'FORM') return;
-  var btn = form.querySelector('button[type="submit"]');
+  var btn = e.submitter || form.querySelector('button[type="submit"]');
   if(!btn || btn.disabled) return;
   btn.dataset.orig = btn.innerHTML;
   btn.disabled = true;
@@ -53,15 +53,6 @@ document.addEventListener('submit', function(e){
     }
   }, 8000);
 });
-function copyCoupon(){
-  var c=document.getElementById('exit-coupon');
-  if(!c)return;
-  navigator.clipboard.writeText(c.textContent.trim()).then(function(){
-    toast('کد تخفیف کپی شد ✅','success');
-  }).catch(function(){
-    toast('کپی ناموفق بود','error');
-  });
-}
 function faNum(s){return String(s).replace(/[0-9]/g,function(d){return'۰۱۲۳۴۵۶۷۸۹'[d];});}
 if('IntersectionObserver'in window){var cObs=new IntersectionObserver(function(entries){entries.forEach(function(en){if(!en.isIntersecting)return;var el=en.target;cObs.unobserve(el);var target=parseFloat(el.dataset.counter||0);var prefix=el.dataset.prefix||'';var suffix=el.dataset.suffix||'';var t0=null;function step(ts){if(!t0)t0=ts;var p=Math.min(1,(ts-t0)/1500);var val=Math.floor(target*(1-Math.pow(1-p,3)));el.textContent=prefix+faNum(val.toLocaleString('en-US'))+suffix;if(p<1)requestAnimationFrame(step);else el.textContent=prefix+faNum(target.toLocaleString('en-US'))+suffix;}
 requestAnimationFrame(step);});},{threshold:0.3});document.querySelectorAll('[data-counter]').forEach(function(el){cObs.observe(el);});}
@@ -72,50 +63,4 @@ if(!words.length)words=['یادگیری'];var wordEl=wrap.querySelector('.pb-aw-
 show();});document.querySelectorAll('.pb-form').forEach(function(form){form.addEventListener('submit',function(e){e.preventDefault();if(document.body.classList.contains('pb-editor-body')||document.body.classList.contains('pb-edit-frame'))return;var fields=[];form.querySelectorAll('.pb-form-row').forEach(function(row){var label=(row.querySelector('label')||{}).textContent||'';var input=row.querySelector('input, textarea, select');fields.push({label:label.replace('*','').trim(),value:input?input.value:''});});var btn=form.querySelector('button[type=submit]');var msg=form.querySelector('.pb-form-msg');if(btn){btn.disabled=true;btn.textContent='…در حال ارسال';}
 fetch('/api/form',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fields:fields,to:form.dataset.to||'contact'})}).then(function(r){return r.json();}).then(function(d){if(btn){btn.disabled=false;btn.textContent=form.querySelector('button[type=submit]').dataset.orig||'ارسال';}
 if(msg){msg.className='pb-form-msg '+(d.ok?'ok':'err');msg.textContent=d.ok?(form.dataset.success||d.msg):d.msg;}
-if(d.ok)form.reset();}).catch(function(){if(btn)btn.disabled=false;if(msg){msg.className='pb-form-msg err';msg.textContent='خطا در ارتباط با سرور';}});});var btn=form.querySelector('button[type=submit]');if(btn)btn.dataset.orig=btn.textContent;});document.querySelectorAll('a[href^="#"]').forEach(function(a){a.addEventListener('click',function(e){var id=a.getAttribute('href');if(id.length<2)return;var target=document.getElementById(id.slice(1));if(target){e.preventDefault();target.scrollIntoView({behavior:'smooth',block:'start'});}});});})();/* Skeleton loader: هنگام ناوبری داخلی، محتوای اصلی را با اسکلتون جایگزین کن */
-(function(){
-  var main = document.querySelector('main, .section');
-  if(!main) return;
-  function showSkeleton(){
-    var w = document.createElement('div');
-    w.className = 'sk-wrap sk-loading';
-    w.id = 'sk-skeleton';
-    for(var i=0;i<4;i++){
-      w.innerHTML += '<div class="sk-card"><div class="sk sk-thumb"></div><div class="sk sk-line"></div><div class="sk sk-line mid"></div><div class="sk sk-line short"></div><div class="sk sk-btn"></div></div>';
-    }
-    /* فقط برای صفحات لیستی (دورهها/بلاگ/اساتید) */
-    if(!/\/(courses|blog|teachers)(\?|$)/.test(location.pathname)) return;
-    main.classList.add('sk-loading');
-    var old = main.firstElementChild;
-    main.insertBefore(w, main.firstChild);
-    window.addEventListener('load', function(){ removeSkeleton(); });
-    setTimeout(removeSkeleton, 3000); /* fallback */
-    function removeSkeleton(){
-      var sk = document.getElementById('sk-skeleton');
-      if(sk) sk.remove();
-      main.classList.remove('sk-loading');
-    }
-  }
-  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', showSkeleton);
-  else showSkeleton();
-})();
-if('serviceWorker'in navigator&&location.protocol.startsWith('http')){window.addEventListener('load',function(){navigator.serviceWorker.register('/static/sw.js').catch(function(){});});}
-(function(){var shown=sessionStorage.getItem('exit_offer_shown');var modal=document.getElementById('exit-offer');if(!modal||shown)return;var fired=false;var interacted=false;function maybeShow(e){if(fired||!interacted)return;if(e.clientY<=8||(e.relatedTarget&&e.relatedTarget.tagName==='IFRAME')){fired=true;sessionStorage.setItem('exit_offer_shown','1');modal.classList.add('open');}}
-document.addEventListener('mousemove',function(){interacted=true;},{passive:true});document.addEventListener('mouseout',maybeShow);document.addEventListener('mouseleave',maybeShow);modal.querySelector('.eo-close').addEventListener('click',function(){modal.classList.remove('open');});modal.addEventListener('click',function(e){if(e.target===modal)modal.classList.remove('open');});})();
-
-function maybeShowUpsell(courseId){fetch('/api/cart/upsell?course_id='+courseId,{headers:{'Accept':'application/json'}}).then(function(r){return r.json();}).then(function(d){if(d.ok){showUpsellModal(d.course);}}).catch(function(){});}
-function showUpsellModal(c){var old=document.getElementById('upsell-modal');if(old){old.remove();}
-var disc=c.has_discount?'<span style="display:inline-block;background:#dc2626;color:#fff;font-size:11px;font-weight:800;border-radius:99px;padding:3px 10px">'+c.discount_percent+'٪ تخفیف</span>':'';
-var price=c.has_discount?'<span style="text-decoration:line-through;color:#9ca3af;font-size:13px;margin-left:8px">'+c.price.toLocaleString('fa-IR')+'</span><span style="color:#dc2626;font-size:19px;font-weight:900">'+c.final_price.toLocaleString('fa-IR')+'</span>':'<span style="color:var(--primary);font-size:19px;font-weight:900">'+(c.final_price?c.final_price.toLocaleString('fa-IR'):'رایگان')+'</span>';
-var m=document.createElement('div');m.id='upsell-modal';m.setAttribute('role','dialog');m.setAttribute('aria-modal','true');m.setAttribute('aria-label','پیشنهاد ویژه');
-m.style.cssText='position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(10,15,30,.6);backdrop-filter:blur(4px);animation:fadeIn .25s ease';
-m.innerHTML='<div style="background:var(--card,#fff);border-radius:20px;max-width:430px;width:100%;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.35);animation:popIn .3s ease;direction:rtl">'
-+'<div style="position:relative"><img src="/static/img/'+c.image+'" alt="" style="width:100%;height:170px;object-fit:cover;display:block" onerror="this.style.display=\'none\'"><span style="position:absolute;top:12px;right:12px;background:linear-gradient(90deg,#f59e0b,#dc2626);color:#fff;font-size:12px;font-weight:900;padding:5px 14px;border-radius:99px">🔥 پیشنهاد لحظه‌ای</span><button onclick="closeUpsellModal()" aria-label="بستن" style="position:absolute;top:10px;left:10px;width:32px;height:32px;border-radius:99px;border:none;background:rgba(0,0,0,.45);color:#fff;font-size:15px;cursor:pointer;line-height:1">✕</button></div>'
-+'<div style="padding:20px 22px 22px"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px">'+disc+'<span style="font-size:11px;color:#6b7280">'+c.category+'</span></div>'
-+'<h3 style="font-size:16px;font-weight:900;margin:0 0 4px;line-height:1.7">'+c.title+'</h3>'
-+'<div style="margin:12px 0 18px">'+price+'</div>'
-+'<div style="display:flex;gap:10px"><a href="/course/'+c.slug+'" class="btn btn-primary" style="flex:1;text-align:center">👀 مشاهده دوره</a><button onclick="closeUpsellModal()" class="btn" style="flex:1;background:var(--bg-2,#f1f5f9)">بعداً</button></div></div></div>';
-m.addEventListener('click',function(e){if(e.target===m){closeUpsellModal();}});
-document.body.appendChild(m);}
-function closeUpsellModal(){var m=document.getElementById('upsell-modal');if(m){m.remove();}}
-document.addEventListener('keydown',function(e){if(e.key==='Escape'){closeUpsellModal();}});
+if(d.ok)form.reset();}).catch(function(){if(btn)btn.disabled=false;if(msg){msg.className='pb-form-msg err';msg.textContent='خطا در ارتباط با سرور';}});});var btn=form.querySelector('button[type=submit]');if(btn)btn.dataset.orig=btn.textContent;});document.querySelectorAll('a[href^="#"]').forEach(function(a){a.addEventListener('click',function(e){var id=a.getAttribute('href');if(id.length<2)return;var target=document.getElementById(id.slice(1));if(target){e.preventDefault();target.scrollIntoView({behavior:'smooth',block:'start'});}});});})();if('serviceWorker'in navigator&&location.protocol.startsWith('http')){window.addEventListener('load',function(){navigator.serviceWorker.register('/static/sw.js').catch(function(){});});}

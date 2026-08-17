@@ -13,15 +13,15 @@
         <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
         <div class="form-group">
           <label for="fg_code">کد تایید (۵ رقمی)</label>
-          <input id="fg_code" class="form-control" type="text" name="code" dir="ltr" maxlength="5" required autofocus placeholder="12345">
+          <input id="fg_code" class="form-control" type="text" name="code" dir="ltr" inputmode="numeric" pattern="[0-9]{5}" maxlength="5" autocomplete="one-time-code" required autofocus placeholder="•••••">
         </div>
         <div class="form-group">
           <label for="fg_pass">رمز جدید</label>
-          <input id="fg_pass" class="form-control" type="password" name="password" placeholder="حداقل ۶ کاراکتر" required>
+          <input id="fg_pass" class="form-control" type="password" name="password" placeholder="حداقل ۸ کاراکتر" minlength="8" autocomplete="new-password" required>
         </div>
         <div class="form-group">
           <label for="fg_confirm">تکرار رمز جدید</label>
-          <input id="fg_confirm" class="form-control" type="password" name="confirm" required>
+          <input id="fg_confirm" class="form-control" type="password" name="confirm" minlength="8" autocomplete="new-password" required>
         </div>
         <button class="btn btn-primary btn-lg btn-block" type="submit">✅ تغییر رمز عبور</button>
       </form>

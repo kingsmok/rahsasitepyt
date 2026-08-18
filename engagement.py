@@ -192,12 +192,10 @@ def api_shipping_estimate():
 
 @engage_bp.route('/address')
 def address_page():
-    """صفحه انتخاب آدرس — با نقشه Map.ir (embed) و برآورد هزینه"""
+    """انتخاب آدرس با نقشه واقعی Google Maps و سیاست ارسال ثبت‌شده مدیر."""
     if not g.user:
         return redirect(url_for('auth.login', next='/address'))
-    map_key = _cfg('mapir_api_key', '')
-    return render_template('engage/address.html', provinces=PROVINCES,
-                           map_key=map_key, fa=fa)
+    return render_template('engage/address.html', provinces=PROVINCES, fa=fa)
 
 
 # ============================================================

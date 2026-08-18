@@ -11,12 +11,18 @@
       <div class="form-group"><label>ایمیل *</label><input class="form-control" name="email" type="email" dir="ltr" required></div>
     </div>
     <div class="grid" style="grid-template-columns:1fr 1fr;gap:12px">
-      <div class="form-group"><label>رمز عبور *</label><input class="form-control" name="password" type="password" required></div>
+      <div class="form-group"><label>رمز عبور *</label><input class="form-control" name="password" type="password" minlength="8" required></div>
       <div class="form-group"><label>نقش</label>
         <select class="form-control" name="role">
-          <option value="student">دانشجو</option><option value="teacher">استاد</option>
+          <option value="student">دانشجو</option>
+          {% if cur_user.role in ('admin', 'super_admin') %}
+          <option value="teacher">استاد</option>
           <option value="secretary">منشی</option><option value="support">پشتیبان</option>
-          <option value="operator">اپراتور</option><option value="admin">ادمین</option>
+          <option value="operator">اپراتور</option>
+          {% endif %}
+          {% if cur_user.role == 'super_admin' %}
+          <option value="admin">ادمین</option><option value="super_admin">سوپر ادمین</option>
+          {% endif %}
         </select>
       </div>
     </div>

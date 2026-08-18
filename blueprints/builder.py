@@ -5,6 +5,7 @@ import re
 import uuid
 import glob
 import os
+import threading
 from flask import (Blueprint, render_template, request, redirect, url_for,
                    flash, g, jsonify, abort)
 from models import db, Page, Course, Category, BlogPost, User
@@ -131,12 +132,11 @@ WIDGETS = {
         dict(key='item_id', label='آیتم (کد دوره/محصول)', type='number'),
         dict(key='show_compare', label='نمایش مقایسه با سایر پلتفرم‌ها', type='checkbox'),
     ]),
-    'amazing_offer': dict(name='پیشنهاد شگفت‌انگیز', icon='⚡', cat='woo', desc='باکس فروش ویژه با تایمر معکوس نئون', fields=[
+    'amazing_offer': dict(name='پیشنهاد ویژه', icon='⚡', cat='woo', desc='باکس فروش برای تخفیف واقعی ثبت‌شده', fields=[
         dict(key='title', label='عنوان', type='text'),
         dict(key='sub', label='زیرعنوان', type='text'),
         dict(key='item_type', label='نوع', type='select', options=[('course', 'دوره'), ('product', 'محصول')]),
         dict(key='item_id', label='آیتم (کد)', type='number'),
-        dict(key='hours', label='ساعت باقی‌مانده', type='number'),
         dict(key='btn_text', label='متن دکمه', type='text'),
         dict(key='btn_url', label='لینک دکمه', type='text'),
     ]),
@@ -675,13 +675,10 @@ PAGE_TEMPLATES = {
         ]]}]),
     'faq_page': dict(name='صفحه سوالات متداول', icon='❓', desc='سکشن FAQ با آکاردئون',
         rows=(SECTION_TEMPLATES['faq']['rows'] + SECTION_TEMPLATES['cta']['rows'])),
-    'teacher_landing': dict(name='صفحه معرفی مدرس', icon='👨‍🏫', desc='لندینگ مدرس با دوره‌ها و نظرات',
+    'teacher_landing': dict(name='صفحه معرفی مدرس', icon='👨‍🏫', desc='لندینگ معرفی مدرس‌ها',
         rows=[{'id': 't1', 'settings': {'gap': 0, 'py': 60}, 'cols': [[
             {'id': 't1a', 'type': 'heading', 'data': {'text': '👨‍🏫 با اساتید ما آشنا شوید', 'tag': 'h1', 'align': 'center', 'mb': '10'}},
-            {'id': 't1b', 'type': 'teachers', 'data': {'title': 'اساتید برتر', 'limit': '4', 'columns': '4'}},
-            {'id': 't1c', 'type': 'testimonials', 'data': {'columns': '3', 'items': [
-                {'name': 'رضا موسوی', 'role': 'دانشجوی ML', 'stars': '5', 'color': '#0891b2', 'text': 'کیفیت تدریس فوق‌العاده بود.'}
-            ]}}
+            {'id': 't1b', 'type': 'teachers', 'data': {'title': 'اساتید', 'limit': '4', 'columns': '4'}}
         ]]}]),
 }
 
@@ -728,10 +725,8 @@ def defaults(wtype):
     # اسلایدر با یک محتوای خنثی و قابل ویرایش شروع می‌شود؛ هیچ آمار، ضمانت یا
     # ادعای ساختگی در صفحهٔ تازه قرار نمی‌گیرد.
     if wtype == 'slider':
-        imgs = [i for i in IMG_OPTIONS if i.startswith('cover-') and i.endswith(('.webp', '.jpg', '.png'))]
-        imgs = (imgs or IMG_OPTIONS)[:1]
         d['slides'] = [
-            dict(img=imgs[0] if imgs else '', title='دوره‌های آموزشی',
+            dict(img='', title='دوره‌های آموزشی',
                  sub='فهرست دوره‌های منتشرشده را ببینید و گزینه مناسب را انتخاب کنید.',
                  btn_text='مشاهده دوره‌ها', btn_url='/courses', align='right'),
         ]
@@ -743,6 +738,74 @@ def defaults(wtype):
         d['arrows'] = True
         d['swipe'] = True
     return d
+
+
+_BUILDER_URL_KEYS = {'url', 'link', 'btn_url'}
+_BUILDER_NUMERIC_STYLE_KEYS = {'radius', 'pt', 'pb', 'mt', 'mb'}
+
+
+def _safe_builder_url(value):
+    from html_sanitizer import safe_url
+    return safe_url(value)
+
+
+def _safe_builder_image(value):
+    """مرجع تصویر محلی؛ scheme/path traversal و CSS-breaking رد می‌شود."""
+    value = str(value or '').strip()[:500]
+    if (not value or '..' in value or '\\' in value or '://' in value or
+            any(char in value for char in ('\x00', '\r', '\n', '"', "'", '<', '>'))):
+        return ''
+    return value if re.match(r'^/?[A-Za-z0-9_./-]+$', value) else ''
+
+
+def _safe_css_value(value):
+    """مقدار ساده CSS بدون امکان بستن declaration یا بارگذاری URL بیرونی."""
+    value = str(value or '').strip()[:120]
+    lowered = value.lower()
+    if (not value or any(char in value for char in (';', '{', '}', '<', '>', '"', "'")) or
+            any(token in lowered for token in ('url(', 'expression', '@import',
+                                                'javascript:', 'behavior:'))):
+        return ''
+    return value
+
+
+def _safe_css_identifier(value, multiple=False):
+    value = str(value or '').strip()[:160]
+    pattern = r'^[A-Za-z_][A-Za-z0-9_-]*(?:\s+[A-Za-z_][A-Za-z0-9_-]*)*$' \
+        if multiple else r'^[A-Za-z_][A-Za-z0-9_-]*$'
+    return value if re.match(pattern, value) else ''
+
+
+def _builder_bool(value):
+    return value is True or str(value).lower() in ('1', 'true', 'yes', 'on')
+
+
+def _sanitize_builder_field(field, value):
+    key = field.get('key', '')
+    ftype = field.get('type', 'text')
+    if ftype == 'checkbox':
+        return _builder_bool(value)
+    if ftype == 'number':
+        try:
+            return max(-1000000, min(1000000, int(value or 0)))
+        except (TypeError, ValueError):
+            return 0
+    if isinstance(value, (int, float)):
+        value = str(value)
+    elif not isinstance(value, str):
+        value = ''
+    if key in _BUILDER_URL_KEYS:
+        return _safe_builder_url(value)
+    if ftype == 'image':
+        return _safe_builder_image(value)
+    if ftype == 'color':
+        return _safe_css_value(value)
+    if ftype == 'select' and field.get('options'):
+        allowed = {str(option[0] if isinstance(option, (list, tuple)) else option)
+                   for option in field['options']}
+        return value if value in allowed else ''
+    limit = 50000 if ftype in ('textarea', 'richtext') else 3000
+    return value[:limit]
 
 
 def _sanitize_widget(w):
@@ -761,36 +824,18 @@ def _sanitize_widget(w):
             if not isinstance(merged.get(f['key']), list):
                 merged[f['key']] = []
             cleaned_items = []
-            for it in merged[f['key']]:
+            for it in merged[f['key']][:100]:
                 if not isinstance(it, dict):
                     continue
                 itd = {}
                 for sf in f.get('item_fields', []):
-                    itd[sf['key']] = it.get(sf['key'],
-                        ([] if sf['type'] == 'repeater' else (False if sf['type'] == 'checkbox' else '')))
+                    raw = it.get(sf['key'], False if sf['type'] == 'checkbox' else '')
+                    itd[sf['key']] = _sanitize_builder_field(sf, raw)
                 cleaned_items.append(itd)
             merged[f['key']] = cleaned_items
-        elif f['type'] == 'number':
-            # مقادیر عددی: خالی → 0
-            try:
-                merged[f['key']] = int(merged.get(f['key']) or 0)
-            except (TypeError, ValueError):
-                merged[f['key']] = 0
-        elif f['type'] == 'checkbox':
-            # بولین اجباری
-            merged[f['key']] = bool(merged.get(f['key']))
         else:
-            # همه فیلدهای متنی/انتخابی/رنگ/تصویر: رشته اجباری — هر نوع دیگری (لیست/دیکته/عدد) به رشته امن تبدیل شود
-            v = merged.get(f['key'])
-            if v is None or v is False:
-                merged[f['key']] = ''
-            elif isinstance(v, str):
-                merged[f['key']] = v
-            elif isinstance(v, (int, float)):
-                merged[f['key']] = str(v)
-            else:
-                # لیست/دیکته/چیزهای عجیب → رشته امن (ضد هرگونه .get روی داده ناسازگار)
-                merged[f['key']] = ''
+            merged[f['key']] = _sanitize_builder_field(
+                f, merged.get(f['key'], False if f['type'] == 'checkbox' else ''))
     # مهاجرت داده قدیمی: ویجت‌هایی که فیلد «style» رشته‌ای داشتند (دکمه/جداکننده/CTA/سبد)
     _style_migrate = {'button': 'btn_style', 'add_to_cart': 'btn_style',
                       'divider': 'line_style', 'cta': 'cta_style'}
@@ -800,34 +845,88 @@ def _sanitize_widget(w):
             merged[newk] = merged['style']
         if isinstance(merged.get('style'), str):
             merged.pop('style', None)
-    # آبجکت «style» تب استایل: همیشه دیکشنری امن (اگر رشته/لیست باشد → خالی)
-    if 'style' in merged and not isinstance(merged.get('style'), dict):
+    # کلاس/id و آبجکت تب استایل فقط از مقادیر محدود CSS ساخته می‌شوند.
+    merged['css_class'] = _safe_css_identifier(merged.get('css_class'), multiple=True)
+    merged['css_id'] = _safe_css_identifier(merged.get('css_id'))
+    if isinstance(merged.get('style'), dict):
+        raw_style = merged['style']
+        merged['style'] = {
+            'align': raw_style.get('align') if raw_style.get('align') in
+                     ('right', 'center', 'left', 'justify') else '',
+            'color': _safe_css_value(raw_style.get('color')),
+            'bg': _safe_css_value(raw_style.get('bg')),
+            'width': _safe_css_value(raw_style.get('width')),
+        }
+        for style_key in _BUILDER_NUMERIC_STYLE_KEYS:
+            try:
+                merged['style'][style_key] = max(
+                    -500, min(2000, int(raw_style.get(style_key) or 0)))
+            except (TypeError, ValueError):
+                merged['style'][style_key] = 0
+    else:
         merged['style'] = {}
     if wt == 'inner_section':
         inner_cols = []
-        for col in (wd.get('cols') or []):
+        for col in (wd.get('cols') or [])[:12]:
             if not isinstance(col, list):
                 inner_cols.append([])
                 continue
-            inner_cols.append([x for x in (_sanitize_widget(x) for x in col) if x])
+            inner_cols.append([x for x in
+                               (_sanitize_widget(x) for x in col[:200]) if x])
         merged['cols'] = inner_cols
-    return {'id': w.get('id') or _new_id('w'), 'type': wt, 'data': merged}
+    widget_id = _safe_css_identifier(w.get('id')) or _new_id('w')
+    return {'id': widget_id, 'type': wt, 'data': merged}
+
+
+def _sanitize_row_settings(value):
+    raw = value if isinstance(value, dict) else {}
+    settings = {
+        'bg': _safe_css_value(raw.get('bg')),
+        'bg_image': _safe_builder_image(raw.get('bg_image')),
+        'widths': _safe_css_value(raw.get('widths')),
+        'css_class': _safe_css_identifier(raw.get('css_class'), multiple=True),
+        'css_id': _safe_css_identifier(raw.get('css_id')),
+        'hide_mobile': _builder_bool(raw.get('hide_mobile')),
+        'hide_desktop': _builder_bool(raw.get('hide_desktop')),
+        'locked': _builder_bool(raw.get('locked')),
+    }
+    for key in ('gap', 'radius', 'py', 'pt', 'pb', 'mt', 'mb'):
+        try:
+            settings[key] = max(-500, min(2000, int(raw.get(key) or 0)))
+        except (TypeError, ValueError):
+            settings[key] = 0
+    return settings
+
+
+def _sanitize_page_settings(value):
+    raw = value if isinstance(value, dict) else {}
+    return {
+        'page_bg': _safe_css_value(raw.get('page_bg')),
+        'seo_title': str(raw.get('seo_title') or '').strip()[:200],
+        'seo_desc': str(raw.get('seo_desc') or '').strip()[:500],
+        'hide_header': _builder_bool(raw.get('hide_header')),
+        'hide_footer': _builder_bool(raw.get('hide_footer')),
+        'template_name': str(raw.get('template_name') or '').strip()[:100],
+    }
 
 
 def _sanitize_rows(rows):
-    """پاکسازی داده‌های صفحه‌ساز"""
+    """پاکسازی داده‌های صفحه‌ساز با سقف اندازه برای جلوگیری از render DoS."""
     out = []
-    for r in rows or []:
+    if not isinstance(rows, list):
+        return out
+    for r in rows[:200]:
         if not isinstance(r, dict):
             continue
         cols = []
-        for c in (r.get('cols') or []):
+        raw_cols = r.get('cols') if isinstance(r.get('cols'), list) else []
+        for c in raw_cols[:12]:
             if not isinstance(c, list):
                 continue
-            cols.append([x for x in (_sanitize_widget(x) for x in c) if x])
-        rs = r.get('settings')
-        rs = rs if isinstance(rs, dict) else {}
-        out.append({'id': r.get('id') or _new_id('r'), 'settings': rs, 'cols': cols})
+            cols.append([x for x in (_sanitize_widget(x) for x in c[:200]) if x])
+        row_id = _safe_css_identifier(r.get('id')) or _new_id('r')
+        out.append({'id': row_id, 'settings': _sanitize_row_settings(r.get('settings')),
+                    'cols': cols})
     return out
 
 
@@ -911,7 +1010,7 @@ def builder_price_history(d):
         for r in rows:
             points.append(dict(price=r.final_price or r.price, date_fa=jdate(r.recorded_at)))
     current = item.final_price if item and hasattr(item, 'final_price') else 0
-    # مقایسه با پلتفرم‌های دیگر — نمونه: از تنظیمات site (competitive_prices JSON) یا پیش‌فرض
+    # مقایسه فقط از داده واقعی ثبت‌شده مدیر در competitive_prices خوانده می‌شود.
     compare = []
     try:
         from models import Setting as _S
@@ -924,10 +1023,7 @@ def builder_price_history(d):
     except Exception as _e:
         from validators import log_exc as _lexc2
         _lexc2(f'builder.price_compare: {_e}')
-    if not compare and item:
-        base = current or 0
-        compare = [dict(name='در سایت‌های مشابه (مرجع)', price=max(1, int(base * 1.05))),
-                   dict(name='قیمت پیشنهادی دیگران', price=int(base * 1.12))]
+    # قیمت رقبا هرگز تخمینی ساخته نمی‌شود؛ فقط داده‌ای که مدیر واقعاً ثبت کرده.
     return dict(item=item, url=url, points=points, current=current, compare=compare)
 
 
@@ -1157,6 +1253,56 @@ def builder_cat_options():
 # ------------------------------------------------------------------
 # مسیرهای صفحه‌ساز
 # ------------------------------------------------------------------
+_LIBRARY_LOCK = threading.Lock()
+
+
+def _library_path(kind):
+    root = os.path.join(os.path.dirname(os.path.dirname(__file__)),
+                        'instance', 'libraries')
+    os.makedirs(root, exist_ok=True)
+    return os.path.join(root, kind + '_library.json')
+
+
+def _load_library(kind):
+    path = _library_path(kind)
+    try:
+        with open(path, encoding='utf-8') as handle:
+            value = json.load(handle)
+        return value if isinstance(value, list) else []
+    except (OSError, ValueError, TypeError):
+        return []
+
+
+def _append_library(kind, item):
+    """افزودن اتمیک قالب به instance؛ امن در برابر چند thread/worker."""
+    encoded = json.dumps(item, ensure_ascii=False)
+    if len(encoded.encode('utf-8')) > 500 * 1024:
+        return False, 'حجم قالب بیشتر از ۵۰۰ کیلوبایت است.'
+    path = _library_path(kind)
+    lock_path = path + '.lock'
+    with _LIBRARY_LOCK:
+        lock_handle = open(lock_path, 'a+')
+        try:
+            try:
+                import fcntl
+                fcntl.flock(lock_handle, fcntl.LOCK_EX)
+            except Exception:
+                pass
+            library = _load_library(kind)
+            library.append(item)
+            library = library[-100:]  # جلوگیری از رشد نامحدود فایل
+            temp_path = path + '.tmp-' + uuid.uuid4().hex[:8]
+            with open(temp_path, 'w', encoding='utf-8') as handle:
+                json.dump(library, handle, ensure_ascii=False)
+            os.replace(temp_path, path)
+        finally:
+            try:
+                lock_handle.close()
+            except Exception:
+                pass
+    return True, 'در کتابخانه ذخیره شد.'
+
+
 def _persian_designs_meta():
     """متادیتای ۲۰ طرح برای صفحه‌ساز (پالت + نام + دسته)"""
     from persian_themes import PERSIAN_THEMES
@@ -1167,9 +1313,11 @@ def _persian_designs_meta():
 
 
 def _admin_required():
-    if not g.user or not g.user.is_admin:
-        flash('دسترسی غیرمجاز — این بخش مخصوص مدیر است.', 'error')
-        return redirect(url_for('site.index'))
+    if not g.user:
+        return redirect(url_for('auth.login', next=request.path))
+    from permissions import has_permission
+    if not has_permission(g.user, 'manage_builder'):
+        abort(403)
     return None
 
 
@@ -1179,13 +1327,8 @@ def index():
     if r:
         return r
     pages = Page.query.order_by(Page.updated_at.desc()).all()
-    try:
-        sl_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'section_library.json')
-        section_lib = json.loads(open(sl_path, encoding='utf-8').read()) if os.path.exists(sl_path) else []
-        pl_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'page_library.json')
-        page_lib = json.loads(open(pl_path, encoding='utf-8').read()) if os.path.exists(pl_path) else []
-    except Exception:
-        section_lib, page_lib = [], []
+    section_lib = _load_library('section')
+    page_lib = _load_library('page')
     types = {'home': 'خانه', 'header': 'هدر سایت', 'footer': 'فوتر سایت',
              'footer_mobile': 'فوتر موبایل', 'mobile_menu': 'منوی موبایل',
              'page': 'صفحه معمولی', '404': 'صفحه خطای ۴۰۴'}
@@ -1352,11 +1495,13 @@ def api_render():
         try:
             parts.append(render_template('builder/fragment_row.html', row=row, edit=edit))
         except Exception as e:
+            from markupsafe import escape
             from validators import log_exc
             log_exc('builder.render_row: ' + str(e)[:150])
+            safe_error = str(escape(str(e)))
             parts.append('<div class="pb-row pb-row-error" title="' +
-                         str(e).replace('"', '&quot;')[:200] + '">⚠️ خطا در رندر این ردیف: ' +
-                         str(e).replace('"', '&quot;')[:120] +
+                         safe_error[:200] + '">⚠️ خطا در رندر این ردیف: ' +
+                         safe_error[:120] +
                          '<br><small style="opacity:.75">صفحه را با Ctrl+Shift+R رفرش کنید — اگر ادامه داشت، ردیف را حذف و دوباره بسازید.</small></div>')
     html = ''.join(parts)
     return jsonify(ok=True, html=html, count=len(rows))
@@ -1385,13 +1530,15 @@ def api_save():
     if len(json.dumps(data, ensure_ascii=False)) > 500_000:
         return jsonify(ok=False, msg='حجم صفحه بیش از حد مجاز است (۵۰۰KB)'), 413
     page = Page.query.filter_by(slug=data.get('slug', '')).first_or_404()
-    new_content = json.dumps({'settings': data.get('settings', {}), 'rows': data.get('rows', [])},
+    safe_settings = _sanitize_page_settings(data.get('settings'))
+    safe_rows = _sanitize_rows(data.get('rows'))
+    new_content = json.dumps({'settings': safe_settings, 'rows': safe_rows},
                              ensure_ascii=False)
     # نسخه‌بندی: اگر محتوا تغییر کرده، نسخه قبلی ذخیره شود (تاریخچه)
     if page.content != new_content:
         from models import PageRevision
         db.session.add(PageRevision(page_id=page.id, content=page.content,
-                                    note=data.get('note') or 'ویرایش خودکار',
+                                    note=str(data.get('note') or 'ویرایش خودکار')[:200],
                                     author_id=g.user.id if g.user else None))
         # حداکثر ۲۰ نسخه نگهداری شود
         old_revs = PageRevision.query.filter_by(page_id=page.id) \
@@ -1400,7 +1547,7 @@ def api_save():
             db.session.delete(o)
     page.content = new_content
     if 'published' in data:
-        page.is_published = bool(data['published'])
+        page.is_published = _builder_bool(data['published'])
     db.session.commit()
     return jsonify(ok=True, msg='ذخیره شد ✅')
 
@@ -1447,16 +1594,16 @@ def api_section_template():
     r = _admin_required()
     if r:
         return jsonify(ok=False), 403
-    data = request.get_json(force=True)
-    name = (data.get('name') or '').strip()
+    data = request.get_json(silent=True) or {}
+    name = (data.get('name') or '').strip()[:80]
     row = data.get('row')
-    if not name or not row:
-        return jsonify(ok=False, msg='نام و سکشن الزامی است')
-    lib = json.loads(open(os.path.join(os.path.dirname(__file__), '..', 'section_library.json'), encoding='utf-8').read()) if os.path.exists(os.path.join(os.path.dirname(__file__), '..', 'section_library.json')) else []
-    lib.append({'name': name, 'row': row})
-    with open(os.path.join(os.path.dirname(__file__), '..', 'section_library.json'), 'w', encoding='utf-8') as f:
-        json.dump(lib, f, ensure_ascii=False)
-    return jsonify(ok=True, msg='ذخیره شد')
+    if not name or not isinstance(row, dict) or not row:
+        return jsonify(ok=False, msg='نام و سکشن معتبر الزامی است'), 400
+    clean_rows = _sanitize_rows([row])
+    if not clean_rows:
+        return jsonify(ok=False, msg='سکشن قابل ذخیره‌سازی نیست'), 400
+    ok, message = _append_library('section', {'name': name, 'row': clean_rows[0]})
+    return jsonify(ok=ok, msg=message), 200 if ok else 413
 
 
 @builder_bp.route('/builder/api/page-template', methods=['POST'])
@@ -1465,13 +1612,19 @@ def api_page_template():
     r = _admin_required()
     if r:
         return jsonify(ok=False), 403
-    data = request.get_json(force=True)
-    name = (data.get('name') or '').strip() or 'قالب بدون نام'
-    lib = json.loads(open(os.path.join(os.path.dirname(__file__), '..', 'page_library.json'), encoding='utf-8').read()) if os.path.exists(os.path.join(os.path.dirname(__file__), '..', 'page_library.json')) else []
-    lib.append({'name': name, 'rows': data.get('rows', []), 'settings': data.get('settings', {})})
-    with open(os.path.join(os.path.dirname(__file__), '..', 'page_library.json'), 'w', encoding='utf-8') as f:
-        json.dump(lib, f, ensure_ascii=False)
-    return jsonify(ok=True, msg='ذخیره شد')
+    data = request.get_json(silent=True) or {}
+    name = (data.get('name') or '').strip()[:80]
+    rows = data.get('rows')
+    settings = data.get('settings') or {}
+    if not name or not isinstance(rows, list) or not rows or not isinstance(settings, dict):
+        return jsonify(ok=False, msg='نام و محتوای معتبر صفحه الزامی است'), 400
+    clean_rows = _sanitize_rows(rows)
+    if not clean_rows:
+        return jsonify(ok=False, msg='صفحه قابل ذخیره‌سازی نیست'), 400
+    ok, message = _append_library(
+        'page', {'name': name, 'rows': clean_rows,
+                 'settings': _sanitize_page_settings(settings)})
+    return jsonify(ok=ok, msg=message), 200 if ok else 413
 
 
 @builder_bp.route('/builder/api/upload', methods=['POST'])

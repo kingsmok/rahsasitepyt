@@ -61,7 +61,8 @@
             <a href="{{ url_for('student.favorites') }}">{{ icon('heart', 16) }} علاقه‌مندی‌ها</a>
             <a href="{{ url_for('student.orders') }}">{{ icon('receipt', 16) }} سفارش‌ها</a>
             <a href="{{ url_for('student.tickets') }}">{{ icon('ticket', 16) }} تیکت‌ها</a>
-            {% if cur_user.is_admin %}<a href="{{ url_for('admin.overview') }}">{{ icon('settings', 16) }} پنل مدیریت</a>{% endif %}
+            {% if cur_user.role == 'teacher' %}<a href="{{ url_for('teacher.dashboard') }}">{{ icon('school', 16) }} پنل مدرس</a>{% endif %}
+            {% if can_manage_panel %}<a href="{{ url_for('admin.overview') }}">{{ icon('settings', 16) }} پنل مدیریت</a>{% endif %}
             <a class="dk-user-exit" href="{{ url_for('auth.logout') }}">{{ icon('logout', 16) }} خروج</a>
           </div>
         </div>
@@ -103,7 +104,8 @@
               <a href="{{ url_for('student.favorites') }}">{{ icon('heart', 16) }} علاقه‌مندی‌ها</a>
               <a href="{{ url_for('student.orders') }}">{{ icon('receipt', 16) }} سفارش‌ها</a>
               <a href="{{ url_for('student.tickets') }}">{{ icon('ticket', 16) }} تیکت‌ها</a>
-              {% if cur_user.is_admin %}<a href="{{ url_for('admin.overview') }}">{{ icon('settings', 16) }} پنل مدیریت</a>{% endif %}
+              {% if cur_user.role == 'teacher' %}<a href="{{ url_for('teacher.dashboard') }}">{{ icon('school', 16) }} پنل مدرس</a>{% endif %}
+              {% if can_manage_panel %}<a href="{{ url_for('admin.overview') }}">{{ icon('settings', 16) }} پنل مدیریت</a>{% endif %}
               <a class="dk-user-exit" href="{{ url_for('auth.logout') }}">{{ icon('logout', 16) }} خروج</a>
             </div>
             {% else %}

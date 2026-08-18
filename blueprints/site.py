@@ -165,6 +165,9 @@ def course_detail(slug):
     db.session.commit()
     enrolled = bool(g.user and any(e.course_id == course.id for e in g.user.enrollments))
     co_teachers = [ct for ct in course.co_teachers] if hasattr(course, 'co_teachers') else []
+    # آزمون و ارسال تمرین تجربهٔ دانشجو است؛ مدیر/مدرس از پنل تخصصی خود
+    # مدیریت می‌کنند و در صفحه فروش با لینک منتهی به 403 مواجه نمی‌شوند.
+    can_access_coursework = enrolled
     is_fav = bool(g.user and Favorite.query.filter_by(user_id=g.user.id, course_id=course.id).first())
     related = Course.query.filter(Course.category_id == course.category_id,
                                   Course.id != course.id, Course.status == 'published').limit(3).all()
@@ -221,14 +224,15 @@ def course_detail(slug):
     else:
         meta_parts.append("همین حالا ثبت‌نام کنید")
     g.seo['description'] = ('؛ '.join(meta_parts))[:158]
-    g.seo['og_image'] = course.image
+    g.seo['og_image'] = course.image_url
     # ─────────────── اسکیمای Course کامل (با E-E-A-T) ───────────────
     schema = {
         "@context": "https://schema.org",
         "@type": "Course",
         "name": course.title,
         "description": (course.subtitle or course.description or '')[:300],
-        "image": request.host_url.rstrip('/') + '/static/img/' + (course.image or 'hero.webp'),
+        "image": (course.image_url if course.image_url.startswith('https://') else
+                  request.host_url.rstrip('/') + course.image_url),
         "inLanguage": "fa",
         "category": course.category.name if course.category else 'آموزش',
         "provider": {"@type": "Organization", "name": site_name,
@@ -271,6 +275,7 @@ def course_detail(slug):
             done_ids = set(en.progress_list())
     return render_template('course_detail.html', course=course, related=related,
                            reviews=reviews, enrolled=enrolled, is_fav=is_fav,
+                           can_access_coursework=can_access_coursework,
                            done_ids=done_ids, blog_posts=blog_posts)
 
 
@@ -360,7 +365,11 @@ def privacy():
 @site_bp.route('/maintenance')
 def maintenance():
     from flask import render_template
-    return render_template('maintenance.html'), 503 if g.settings.get('maintenance') == '1' else 200
+    unavailable = (g.settings.get('maintenance') == '1' or
+                   g.settings.get('site_active', '1') != '1')
+    return render_template('maintenance.html',
+                           prelaunch=g.settings.get('site_active', '1') != '1'), \
+        503 if unavailable else 200
 
 
 
@@ -379,10 +388,10 @@ def sitemap():
     for u in ['/courses', '/teachers', '/blog', '/about', '/faq', '/contact', '/terms', '/privacy', '/become-teacher', '/learning-paths', '/consultation']:
         xml += f'<url><loc>{base}{u}</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>'
     # دوره‌ها با تصویر و اولویت بالا
-    from marketplace import _feed_image as _fimg
     for c in Course.query.filter_by(status='published').all():
         xml += f'<url><loc>{_xe(base)}/course/{_xe(c.slug)}</loc><changefreq>monthly</changefreq><priority>0.9</priority>'
-        xml += f'<image:image><image:loc>{_xe(base)}/static/img/{_xe(_fimg(c.image))}</image:loc><image:title>{_xe(c.title)}</image:title></image:image>'
+        image_url = c.image_url if c.image_url.startswith('https://') else base + c.image_url
+        xml += f'<image:image><image:loc>{_xe(image_url)}</image:loc><image:title>{_xe(c.title)}</image:title></image:image>'
         xml += '</url>'
     # مقالات
     for p in BlogPost.query.filter_by(published=True).all():
@@ -422,6 +431,7 @@ def robots():
         f"Disallow: /auth\n"
         f"Disallow: /api\n"
         f"Disallow: /install\n"
+        f"Disallow: /license\n"
         f"Disallow: /wallet\n"
         f"Disallow: /uploads\n"
         f"Disallow: /maintenance\nDisallow: /health\nDisallow: /static/uploads\n"

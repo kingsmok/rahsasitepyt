@@ -25,7 +25,7 @@
           <small class="text-3">🎓 دوره — {{ obj.level }} — {{ fa(obj.duration_hours) }} ساعت</small>
         </div>
         {% else %}
-        <img class="c-thumb" src="{{ obj.image if obj.image.startswith('http') else '/static/img/' + obj.image }}" alt="{{ obj.title }}" style="width:84px;height:56px;border-radius:10px;object-fit:cover">
+        <img class="c-thumb" src="{{ obj.image_url }}" alt="{{ obj.title }}" style="width:84px;height:56px;border-radius:10px;object-fit:cover">
         <div style="flex:1">
           <h4 style="font-size:14.5px"><a href="{{ url_for('products.product_detail', slug=obj.slug) }}">{{ obj.title }}</a></h4>
           <small class="text-3">🛍 محصول — {{ obj.category or '' }}{% if obj.sku %} · {{ obj.sku }}{% endif %}</small>

@@ -31,7 +31,7 @@
           <div class="empty-state" style="color:#fff"><div class="es-icon">📄</div><p style="color:#fff">این جلسه ویدیوی قابل پخش ندارد.</p></div>
           {% else %}
           <video id="pp-video" src="{{ video_src or '' }}"
-                 poster="/static/img/{{ course.image }}" preload="metadata" playsinline
+                 poster="{{ course.image_url }}" preload="metadata" playsinline
                  controlslist="nodownload noremoteplayback" disablepictureinpicture oncontextmenu="return false"
                  {% if current.captions %}crossorigin="anonymous"{% endif %}>
             {% if current.captions %}<track kind="captions" src="/uploads/lessons/{{ current.captions }}" srclang="fa" label="فارسی">{% endif %}

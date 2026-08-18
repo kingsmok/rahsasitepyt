@@ -82,9 +82,17 @@ def _clean_url(value):
         return None
     # حذف کاراکترهای کنترلی/فاصله‌های مخفی که برای دور زدن فیلتر استفاده می‌شوند
     v = re.sub(r'[\x00-\x20\x7f]+', '', v)
+    # //evil.example پروتکل‌نسبی و /\evil در مرورگرهای مختلف مسیر بیرونی است.
+    if v.startswith('//') or v.startswith('/\\'):
+        return None
     if not _SAFE_URL_RE.match(v):
         return None
     return v
+
+
+def safe_url(value):
+    """URL قابل رندر در href/src یا رشته خالی برای ورودی ناامن."""
+    return _clean_url(value) or ''
 
 
 def _clean_style(value):

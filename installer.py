@@ -281,6 +281,13 @@ def write_env_file(db_url, secret_key):
     lines['FLASK_ENV'] = 'production'
     lines['APP_ENV'] = 'production'
     lines['ENABLE_DEMO_FEATURES'] = '0'
+    # کلید مالک سرور برای تعمیر اضطراری وقتی جدول کاربران قابل خواندن نیست.
+    # مقدار موجود هرگز چرخانده نمی‌شود تا در بحران قابل استفاده بماند.
+    repair_token = (lines.get('INSTALL_REPAIR_TOKEN') or '').strip()
+    if len(repair_token) < 32:
+        repair_token = secrets.token_urlsafe(32)
+    lines['INSTALL_REPAIR_TOKEN'] = repair_token
+    os.environ['INSTALL_REPAIR_TOKEN'] = repair_token
     if db_url:
         lines['DATABASE_URL'] = db_url
     else:
@@ -288,7 +295,10 @@ def write_env_file(db_url, secret_key):
     with open(env_path, 'w', encoding='utf-8') as f:
         f.write('# ⚙️ تنظیمات محیطی — ساخته‌شده توسط نصب‌کننده آکادمی\n')
         for k in ('SECRET_KEY', 'FLASK_ENV', 'APP_ENV', 'ENABLE_DEMO_FEATURES',
-                  'DATABASE_URL', 'LOG_DIR', 'REDIS_URL', 'CLARITY_ID', 'CRISP_WEBSITE_ID',
+                  'INSTALL_REPAIR_TOKEN', 'LICENSE_ENFORCEMENT',
+                  'LICENSE_PUBLIC_KEY_FILE', 'LICENSE_PUBLIC_KEY', 'LICENSE_FILE',
+                  'DATABASE_URL', 'LOG_DIR', 'REDIS_URL',
+                  'CLARITY_ID', 'CRISP_WEBSITE_ID',
                   'GROQ_API_KEY', 'BING_API_KEY', 'BING_KEY_LOCATION'):
             if k in lines and lines[k]:
                 f.write(f'{k}={lines[k]}\n')
@@ -301,19 +311,17 @@ def write_env_file(db_url, secret_key):
 # ============================================================
 HOME_PAGE_JSON = {
     "rows": [
-        {"cols": [[{"id": "inst-h1", "type": "slider", "data": {
-            "arrows": True, "autoplay": True, "dots": True, "height": "420",
-            "interval": "5", "overlay": "60", "radius": "0",
-            "slides": [
-                {"align": "right", "btn_text": "🚀 مشاهده همه دوره‌ها", "btn_url": "/courses",
-                 "img": "hero.webp",
-                 "sub": "دوره‌های منتشرشده را ببینید و مسیر مناسب خود را انتخاب کنید.",
-                 "title": "آینده‌ات را با مهارت‌های دیجیتال قدرتمندتر بساز"},
-                {"align": "center", "btn_text": "شروع یادگیری", "btn_url": "/courses",
-                 "img": "cover-flask.webp",
-                 "sub": "آموزش عملی ویدیویی به همراه تمرین و آزمون.",
-                 "title": "آموزش پروژه‌محور؛ از صفر تا یک محصول واقعی"}
-            ]}}]]},
+        {"settings": {"py": 72, "bg": "var(--hero-bg)"}, "cols": [[
+            {"id": "inst-h1", "type": "heading", "data": {
+                "text": "به {site_name} خوش آمدید", "tag": "h1", "align": "center",
+                "color": "#ffffff", "mb": "12"}},
+            {"id": "inst-h1-text", "type": "text", "data": {
+                "content": "دوره‌های منتشرشده را بررسی کنید و مسیر مناسب خود را انتخاب کنید.",
+                "align": "center", "color": "#ffffff", "size": "16"}},
+            {"id": "inst-h1-btn", "type": "button", "data": {
+                "text": "مشاهده دوره‌ها", "url": "/courses", "btn_style": "accent",
+                "size": "lg", "align": "center"}}
+        ]]},
         {"cols": [[{"id": "inst-h2", "type": "stats", "data": {
             "columns": "4",
             "items": [
@@ -336,15 +344,24 @@ DEFAULT_SETTINGS = {
     'phone': '',
     'address': '',
     'support_hours': '',
+    'site_design': '1',
     'home_design': 'builder',
+    'about_design': '1',
+    'contact_design': '1',
     'currency': 'تومان',
     'sandbox_mode': '0',
     'sms_provider': 'disabled',
     'admin_2fa_enabled': '0',
     'exam_enabled': '0',
     'spin_enabled': '0',
+    # نصب تازه تا زمانی که مدیر چک‌لیست «راه‌اندازی نهایی» را تایید نکند
+    # برای عموم منتشر نمی‌شود. مدیر همچنان سایت را کامل و پیش‌نمایش می‌کند.
+    'site_active': '0',
     'allow_register': '1',
     'allow_phone_login': '1',
+    # پنل ۴۳ تم برای دمو/محصول قابل فعال‌سازی است، اما روی سایت مشتری
+    # به‌صورت پیش‌فرض نمایش داده نمی‌شود تا ظاهر برند ثابت بماند.
+    'allow_theme_switcher': '0',
     'maintenance': '0',
     'bnpl_enabled': '0',
     'cashback_percent': '0',

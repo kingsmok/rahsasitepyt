@@ -2,63 +2,74 @@
 {% block atitle %}کاربران{% endblock %}
 {% block acontent %}
 <div class="dash-head">
-  <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-    <form method="post" action="{{ url_for('admin.users_send_sms') }}" class="flex gap-1" style="background:var(--bg-2);padding:10px 14px;border-radius:14px">
-      <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
-      <select class="form-control" name="role" style="max-width:130px;padding:8px">
-        <option value="">همه</option><option value="student">دانشجویان</option>
-        <option value="teacher">مدرس‌ها</option><option value="support">پشتیبان‌ها</option>
-      </select>
-      <input class="form-control" name="text" placeholder="متن پیامک گروهی..." style="min-width:220px" required>
-      <button class="btn btn-primary btn-sm">📱 ارسال گروهی پیامک</button>
+  <div><h1>👥 کاربران</h1><p>{{ fa(users|length) }} کاربر ثبت‌شده</p></div>
+  <div class="flex gap-1 wrap">
+    {% if has_perm(cur_user, 'register_students') or has_perm(cur_user, 'edit_users') %}<a class="btn btn-primary btn-sm" href="{{ url_for('admin.user_add') }}">➕ افزودن کاربر</a>{% endif %}
+    <form class="search-box">
+      <input type="text" name="q" placeholder="جستجوی نام یا ایمیل..." value="{{ q }}">
+      <button aria-label="جستجو">🔍</button>
     </form>
   </div>
-  <div><h1>👥 مدیریت کاربران</h1><p>{{ fa(users|length) }} کاربر</p></div>
-  <form class="search-box">
-    <input type="text" name="q" placeholder="جستجوی نام یا ایمیل..." value="{{ q }}">
-    <button>🔍</button>
-  </form>
 </div>
+
+{% if has_perm(cur_user, 'manage_sms') or has_perm(cur_user, 'send_sms') %}
+<form method="post" action="{{ url_for('admin.users_send_sms') }}" class="flex gap-1 wrap" style="background:var(--bg-2);padding:12px 14px;border-radius:14px;margin-bottom:14px">
+  <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+  <select class="form-control" name="role" style="max-width:150px;padding:8px">
+    <option value="">همه کاربران فعال</option><option value="student">دانشجویان</option>
+    <option value="teacher">مدرس‌ها</option><option value="support">پشتیبان‌ها</option>
+  </select>
+  <input class="form-control" name="text" placeholder="متن پیامک گروهی..." style="min-width:220px;flex:1" required>
+  <button class="btn btn-primary btn-sm">📱 ارسال گروهی</button>
+</form>
+{% endif %}
+
 <div class="table-wrap">
   <table class="table">
     <thead><tr><th>کاربر</th><th>ایمیل</th><th>نقش</th><th>عضویت</th><th>وضعیت</th><th>عملیات</th></tr></thead>
     <tbody>
       {% for u in users %}
+      {% set protected_user = u.role in ('admin', 'super_admin') and cur_user.role != 'super_admin' %}
       <tr>
         <td><div class="flex gap-1"><span class="avatar" style="background:{{ u.avatar_color }}">{{ u.initials() }}</span><strong>{{ u.name }}</strong></div></td>
-        <td dir="ltr">{{ u.email }}</td>
+        <td dir="ltr">{{ u.email or '—' }}</td>
         <td>
+          {% if cur_user.role in ('admin', 'super_admin') and has_perm(cur_user, 'edit_users') and u.id != cur_user.id and not protected_user %}
           <form method="post" action="{{ url_for('admin.user_role', uid=u.id) }}">
-<input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
-            <select class="form-control" name="role" onchange="this.form.submit()" style="padding:5px 8px;width:auto">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+            <select class="form-control" name="role" onchange="this.form.submit()" style="padding:5px 8px;width:auto" aria-label="تغییر نقش {{ u.name }}">
               <option value="student" {{ 'selected' if u.role == 'student' }}>دانشجو</option>
-            <option value="teacher" {{ 'selected' if u.role == 'teacher' }}>استاد</option>
-            <option value="secretary" {{ 'selected' if u.role == 'secretary' }}>منشی</option>
-            <option value="support" {{ 'selected' if u.role == 'support' }}>پشتیبان</option>
-            <option value="operator" {{ 'selected' if u.role == 'operator' }}>اپراتور</option>
-            <option value="admin" {{ 'selected' if u.role == 'admin' }}>ادمین</option>
-            <option value="super_admin" {{ 'selected' if u.role == 'super_admin' }}>سوپر ادمین</option>
               <option value="teacher" {{ 'selected' if u.role == 'teacher' }}>مدرس</option>
-              <option value="admin" {{ 'selected' if u.role == 'admin' }}>مدیر</option>
+              <option value="secretary" {{ 'selected' if u.role == 'secretary' }}>منشی</option>
+              <option value="support" {{ 'selected' if u.role == 'support' }}>پشتیبان</option>
+              <option value="operator" {{ 'selected' if u.role == 'operator' }}>اپراتور</option>
+              {% if cur_user.role == 'super_admin' %}
+              <option value="admin" {{ 'selected' if u.role == 'admin' }}>ادمین</option>
+              <option value="super_admin" {{ 'selected' if u.role == 'super_admin' }}>سوپر ادمین</option>
+              {% endif %}
             </select>
           </form>
+          {% else %}<span class="badge">{{ role_name(u) }}</span>{% endif %}
         </td>
         <td>{{ u.created_at|jdate }}</td>
         <td>{% if u.is_active %}<span class="badge badge-success">فعال</span>{% else %}<span class="badge badge-danger">غیرفعال</span>{% endif %}</td>
-        <td>
-          {% if u.id != cur_user.id %}
+        <td><div class="flex gap-1 wrap">
+          <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.user_profile', uid=u.id) }}">مشاهده</a>
+          {% if has_perm(cur_user, 'edit_users') and u.id != cur_user.id and not protected_user %}
           <form method="post" action="{{ url_for('admin.user_toggle', uid=u.id) }}">
-<input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
             <button class="btn btn-ghost btn-sm" type="submit">{{ '🔒 غیرفعال' if u.is_active else '🔓 فعال' }}</button>
           </form>
-            <form method="post" action="{{ url_for('admin.user_login_as', uid=u.id) }}" style="display:inline">
-              <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
-              <button class="btn btn-ghost btn-sm" title="ورود به حساب کاربر">🔑</button>
-            </form>
-          {% else %}<small class="text-3">شما</small>{% endif %}
-        </td>
+          {% if cur_user.role in ('admin', 'super_admin') %}
+          <form method="post" action="{{ url_for('admin.user_login_as', uid=u.id) }}">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+            <button class="btn btn-ghost btn-sm" title="مشاهده حساب کاربر">🔑</button>
+          </form>
+          {% endif %}
+          {% elif u.id == cur_user.id %}<small class="text-3">حساب فعلی</small>{% endif %}
+        </div></td>
       </tr>
-      {% endfor %}
+      {% else %}<tr><td colspan="6" class="empty-state">کاربری پیدا نشد.</td></tr>{% endfor %}
     </tbody>
   </table>
 </div>

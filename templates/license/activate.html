@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <title>فعال‌سازی لایسنس — Academy LMS</title>
+  <link rel="stylesheet" href="/static/css/base.css?v={{ asset_v() }}">
+  <style>
+    body{min-height:100vh;display:grid;place-items:center;background:radial-gradient(circle at 80% 0,#1e3a5f 0,#0d1f36 42%,#07111f 100%);padding:24px}
+    .license-shell{width:min(920px,100%);display:grid;grid-template-columns:.86fr 1.14fr;background:#fff;border-radius:24px;overflow:hidden;box-shadow:0 30px 90px rgba(0,0,0,.35)}
+    .license-brand{padding:38px;background:linear-gradient(145deg,#0d1f36,#153b65);color:#fff;display:flex;flex-direction:column;justify-content:space-between;min-height:560px}
+    .license-logo{width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,#f2640c,#ff9138);display:grid;place-items:center;font-size:27px;box-shadow:0 12px 30px rgba(242,100,12,.35)}
+    .license-brand h1{font-size:25px;margin:20px 0 8px}.license-brand p{color:#cbd5e1;font-size:13px;line-height:2}
+    .license-points{display:grid;gap:11px;margin-top:28px}.license-points span{display:flex;gap:9px;align-items:center;color:#d9e5f2;font-size:12.5px}.license-points i{font-style:normal;color:#fb923c}
+    .license-main{padding:38px 42px}.license-state{display:flex;align-items:center;gap:13px;padding:14px 16px;border-radius:14px;margin:18px 0 22px;background:#fff7ed;color:#9a3412;border:1px solid #fed7aa}.license-state.valid{background:#f0fdf4;color:#166534;border-color:#bbf7d0}.license-state.neutral{background:#f8fafc;color:#475569;border-color:#e2e8f0}
+    .state-dot{width:11px;height:11px;border-radius:50%;background:currentColor;box-shadow:0 0 0 5px color-mix(in srgb,currentColor 15%,transparent)}
+    .domain-box{display:flex;justify-content:space-between;gap:10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:10px 14px;margin-bottom:18px;font-size:12px}.domain-box code{direction:ltr;color:#0f3b68;font-weight:800}
+    .license-main label{display:block;font-size:12.5px;font-weight:800;margin-bottom:7px}.license-key{width:100%;min-height:130px;direction:ltr;text-align:left;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:11px;line-height:1.7;resize:vertical;border:1.5px solid #cbd5e1;border-radius:12px;padding:13px;word-break:break-all}.license-key:focus{outline:none;border-color:#f2640c;box-shadow:0 0 0 4px #fff1e8}
+    .license-info{width:100%;border-collapse:collapse;margin:18px 0}.license-info td{padding:9px 6px;border-bottom:1px solid #eef2f7;font-size:12.5px}.license-info td:first-child{color:#64748b}.license-info td:last-child{text-align:left;font-weight:800;direction:ltr}
+    .license-message{padding:11px 14px;border-radius:10px;font-size:12.5px;margin-bottom:14px}.license-message.error{background:#fef2f2;color:#b91c1c}.license-message.success{background:#f0fdf4;color:#166534}
+    .license-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:15px}.license-help{font-size:11.5px;color:#64748b;line-height:1.9;margin-top:16px}
+    @media(max-width:760px){.license-shell{grid-template-columns:1fr}.license-brand{min-height:auto;padding:26px}.license-brand .license-points{display:none}.license-main{padding:28px 22px}}
+  </style>
+</head>
+<body>
+  <main class="license-shell">
+    <aside class="license-brand">
+      <div>
+        <div class="license-logo">🎓</div>
+        <h1>Academy LMS</h1>
+        <p>فعال‌سازی امن نسخه تجاری با امضای دیجیتال و اتصال به دامنه مشتری.</p>
+        <div class="license-points">
+          <span><i>✓</i> امضای غیرقابل جعل Ed25519</span>
+          <span><i>✓</i> اتصال لایسنس به دامنه</span>
+          <span><i>✓</i> پشتیبانی از تاریخ انقضا و پلن فروش</span>
+          <span><i>✓</i> اعتبارسنجی آفلاین بدون ارسال اطلاعات مشتری</span>
+        </div>
+      </div>
+      <small style="color:#7890a8">کلید خصوصی فقط نزد فروشنده نگهداری می‌شود.</small>
+    </aside>
+
+    <section class="license-main">
+      {% set licensed = license_state.configured and license_state.valid %}
+      {% set community_mode = not license_state.configured and not license_state.enforced %}
+      <span class="badge badge-primary">فعال‌سازی محصول</span>
+      <h2 style="font-size:21px;margin-top:9px">وضعیت لایسنس این نصب</h2>
+      <div class="license-state {{ 'valid' if licensed else ('neutral' if community_mode else '') }}">
+        <span class="state-dot"></span>
+        <div><strong style="display:block;font-size:13px">{{ 'لایسنس فعال است' if licensed else ('حالت Community / بدون قفل فروش' if community_mode else 'نیاز به فعال‌سازی') }}</strong><small>{{ license_state.message }}</small></div>
+      </div>
+
+      <div class="domain-box"><span>دامنه شناسایی‌شده</span><code>{{ current_domain or 'نامشخص' }}</code></div>
+      {% if message %}<div class="license-message {{ message_type }}">{{ message }}</div>{% endif %}
+
+      {% if licensed %}
+      <table class="license-info">
+        <tr><td>شناسه لایسنس</td><td>{{ license_state.license_id if cur_user and cur_user.is_admin else license_state.as_public_dict().license_id }}</td></tr>
+        <tr><td>مشتری</td><td style="direction:rtl">{{ (license_state.customer or '—') if cur_user and cur_user.is_admin else 'ثبت‌شده' }}</td></tr>
+        <tr><td>پلن</td><td>{{ license_state.plan or 'standard' }}</td></tr>
+        <tr><td>پایان اعتبار</td><td>{{ license_state.expires_at or 'بدون انقضا' }}</td></tr>
+      </table>
+      <div class="license-actions">
+        <a class="btn btn-primary" href="{{ url_for('admin.go_live') if cur_user and cur_user.is_admin else url_for('site.index') }}">ادامه به نرم‌افزار ←</a>
+        {% if cur_user and cur_user.role == 'super_admin' %}
+        <form method="post" onsubmit="return confirm('لایسنس از این نصب حذف شود؟')">
+          <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+          <input type="hidden" name="action" value="deactivate">
+          <button class="btn btn-ghost" type="submit">حذف لایسنس</button>
+        </form>
+        {% endif %}
+      </div>
+      {% elif community_mode %}
+      <div class="license-message success">این بسته public key فروشنده ندارد و مانند نصب‌های قدیمی بدون قفل لایسنس اجرا می‌شود.</div>
+      <div class="license-actions"><a class="btn btn-primary" href="{{ url_for('site.index') }}">بازگشت به نرم‌افزار ←</a></div>
+      <p class="license-help">برای ساخت بسته قابل‌فروش، فروشنده باید با ابزار <code>scripts/license_tool.py</code> جفت کلید بسازد، فقط فایل عمومی را داخل بسته قرار دهد و کلید خصوصی را آفلاین نگه دارد.</p>
+      {% else %}
+      <form method="post">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="action" value="activate">
+        <label for="license-key">کلید لایسنس دریافتی از فروشنده</label>
+        <textarea id="license-key" class="license-key" name="license_key" required autocomplete="off" spellcheck="false" placeholder="AC1.eyJ...signature"></textarea>
+        <label style="display:flex;align-items:center;gap:8px;margin-top:12px;font-weight:600"><input type="checkbox" name="continue" value="1" checked> پس از فعال‌سازی به راه‌اندازی نهایی برو</label>
+        <div class="license-actions"><button class="btn btn-primary btn-lg" type="submit">تأیید و فعال‌سازی</button></div>
+      </form>
+      <p class="license-help">اگر پیام «دامنه نامعتبر» می‌بینید، دامنه نمایش‌داده‌شده در بالا را برای فروشنده ارسال کنید. هیچ رمز، اطلاعات مالی یا داده کاربری در فرایند اعتبارسنجی ارسال نمی‌شود.</p>
+      {% endif %}
+    </section>
+  </main>
+</body>
+</html>

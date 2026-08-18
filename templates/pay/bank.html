@@ -39,12 +39,12 @@
 
         <div class="card" style="background:var(--bg-2);border:none;padding:18px 20px;margin-bottom:22px;font-size:13.5px">
           <div style="display:flex;justify-content:space-between;margin-bottom:8px">
-            <span class="text-2">{% if wallet_mode %}کد شارژ{% else %}کد سفارش{% endif %}</span>
-            <b dir="ltr">{% if wallet_mode %}{{ wallet_code }}{% else %}{{ order.code }}{% endif %}</b>
+            <span class="text-2">کد سفارش تست</span>
+            <b dir="ltr">{{ order.code }}</b>
           </div>
           <div style="display:flex;justify-content:space-between">
             <span class="text-2">مبلغ</span>
-            <b class="price">{{ fa('{:,.0f}'.format(wallet_amount if wallet_mode else order.final_total)) }} تومان</b>
+            <b class="price">{{ fa('{:,.0f}'.format(order.final_total)) }} تومان</b>
           </div>
         </div>
 
@@ -53,7 +53,7 @@
           و هیچ تراکنش بانکی واقعی انجام نمی‌گیرد.
         </p>
 
-        <form method="post" action="{{ url_for('features.wallet_confirm') if wallet_mode else url_for('shop.bank', code=order.code) }}">
+        <form method="post" action="{{ url_for('shop.bank', code=order.code) }}">
           <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
           <button class="btn btn-primary btn-lg btn-block" name="decision" value="ok" type="submit">✓ ثبت نتیجه موفق در تست</button>
           <button class="btn btn-ghost btn-block mt-2" name="decision" value="cancel" type="submit">✕ انصراف از پرداخت</button>

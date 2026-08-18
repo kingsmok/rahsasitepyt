@@ -5,12 +5,14 @@
 حتی هنگام خطای 500 (با errorhandler) یا ریدایرکت. این یعنی مرورگر هرگز
 خطای «JSON.parse» نمی‌گیرد.
 """
+import hmac
 import os
 import sys
+import time
 import traceback as _tb
 
 from flask import (Blueprint, render_template, request, redirect, url_for,
-                   jsonify, current_app)
+                   jsonify, current_app, g, session)
 from werkzeug.exceptions import HTTPException
 
 from installer import (is_installed, build_db_url, validate_mysql,
@@ -39,9 +41,21 @@ def _install_json_error(e):
                        ' — لاگ سرور را ببینید.'), 500
 
 
+def _post_install_url():
+    try:
+        from licensing import get_license_manager
+        state = get_license_manager().status(request.host)
+        if state.enforced and not state.valid:
+            return url_for('license.activate')
+    except Exception:
+        pass
+    return '/'
+
+
 def _already_installed_json():
     """پاسخ JSON وقتی نصب قبلاً انجام شده — ضد دوبار کلیک و درخواست تکراری"""
-    return jsonify(ok=True, done=True, msg='نصب قبلاً انجام شده است.', redirect='/')
+    return jsonify(ok=True, done=True, msg='نصب قبلاً انجام شده است.',
+                   redirect=_post_install_url())
 
 
 def _login_installed_admin(email=''):
@@ -96,6 +110,8 @@ def test_db():
     """تست اتصال دیتابیس — همیشه JSON؛ حتی بعد از نصب هم کار می‌کند."""
     try:
         d = request.get_json(silent=True) or request.form or {}
+        if is_installed() and not _repair_authorized(d):
+            return jsonify(ok=False, msg='دسترسی نصب‌کننده بسته است.'), 403
         url, err = _url_from_request(d)
         if err:
             return jsonify(ok=False, msg=err)
@@ -108,7 +124,9 @@ def test_db():
 
 @install_bp.route('/install/detect')
 def detect_db():
-    """تشخیص SQLite آپلودشده و پیشنهاد نام دیتابیس سی‌پنل."""
+    """تشخیص دیتابیس محلی؛ جزئیات نصب فعال فقط برای سوپرادمین."""
+    if is_installed() and not _repair_authorized(request.args):
+        return jsonify(ok=True, installed=True)
     info = detect_local_data()
     return jsonify(ok=True, **info)
 
@@ -118,6 +136,8 @@ def inspect_db():
     """خواندن خلاصهٔ دیتابیس ساخته‌شده — بدون نوشتن."""
     try:
         d = request.get_json(silent=True) or request.form or {}
+        if is_installed() and not _repair_authorized(d):
+            return jsonify(ok=False, msg='دسترسی نصب‌کننده بسته است.'), 403
         url, err = _url_from_request(d)
         if err:
             return jsonify(ok=False, msg=err)
@@ -137,9 +157,11 @@ def inspect_db():
 
 @install_bp.route('/install/attach', methods=['POST'])
 def attach_db():
-    """وصل کردن دیتابیس موجود / فایل آپلودشده؛ داده پاک نمی‌شود."""
+    """وصل کردن دیتابیس موجود / فایل آپلودشده؛ فقط برای مالک نصب."""
     try:
         d = request.get_json(silent=True) or request.form or {}
+        if is_installed() and not _repair_authorized(d):
+            return jsonify(ok=False, msg='اتصال دیتابیس مجاز نیست.'), 403
         url, err = _url_from_request(d)
         if err:
             return jsonify(ok=False, msg=err)
@@ -155,7 +177,8 @@ def attach_db():
                 session['uid'] = adm.id
         except Exception:
             pass
-        return jsonify(ok=True, done=True, msg=msg, redirect='/')
+        session.pop('install_repair_authorized_at', None)
+        return jsonify(ok=True, done=True, msg=msg, redirect=_post_install_url())
     except Exception as e:
         current_app.logger.error('install attach error: %s\n%s', e, _tb.format_exc())
         return jsonify(ok=False, msg='خطا در اتصال دیتابیس: ' + str(e)[:250]), 500
@@ -222,7 +245,7 @@ def run():
             install_step=prog.get('step'),
             install_steps=prog.get('steps'),
             chunks=prog.get('chunks'),
-            redirect='/' if result is True else None,
+            redirect=_post_install_url() if result is True else None,
         )
     except Exception as e:
         current_app.logger.error('install run error: %s\n%s', e, _tb.format_exc())
@@ -240,10 +263,13 @@ def _pkg_version(mod, attr='__version__'):
 
 @install_bp.route('/install/status')
 def status():
-    """وضعیت نصب (پیشرفت پس‌زمینه) + سلامت سرور — همیشه JSON و سریع"""
+    """وضعیت نصب؛ جزئیات نسخه/دیتابیس نصب فعال عمومی نمی‌شود."""
+    installed = is_installed()
+    if installed and not _repair_authorized(request.args):
+        return jsonify(installed=True, install_status='locked')
     prog = install_progress()
     info = {
-        'installed': is_installed(),
+        'installed': installed,
         'repair': request.args.get('repair') == '1',
         'python': sys.version.split()[0],
         'flask': _pkg_version('flask'),
@@ -287,19 +313,59 @@ def status():
     return jsonify(info)
 
 
+def _repair_authorized(data):
+    """اثبات مالکیت برای تعمیر نصب؛ بدون رمز یا حساب پیش‌فرض."""
+    user = getattr(g, 'user', None)
+    if user and user.role == 'super_admin':
+        return True
+    # پس از تایید نخست، درخواست‌های تکه‌ای همان سشن تا ۱۵ دقیقه معتبرند.
+    authorized_at = session.get('install_repair_authorized_at', 0)
+    if authorized_at and time.time() - authorized_at < 900:
+        return True
+    email = (data.get('admin_email') or '').strip().lower()
+    password = data.get('admin_pass') or ''
+    try:
+        from models import User
+        admin = User.query.filter_by(email=email, role='super_admin', is_active=True).first()
+        if admin and admin.check_password(password):
+            session['install_repair_authorized_at'] = time.time()
+            return True
+    except Exception:
+        # اگر جدول کاربران خراب/حذف شده باشد فقط کلید اضطراری فایل .env معتبر است.
+        pass
+    supplied = (data.get('repair_token') or
+                request.headers.get('X-Install-Repair-Token') or '')
+    expected = os.environ.get('INSTALL_REPAIR_TOKEN', '')
+    if expected and supplied and hmac.compare_digest(str(supplied), str(expected)):
+        session['install_repair_authorized_at'] = time.time()
+        return True
+    return False
+
+
 @install_bp.route('/install/repair', methods=['POST'])
 def repair():
-    """تعمیر نصب ناقص — جدول‌ها و داده‌های اولیه را دوباره می‌سازد (بدون حذف داده موجود)"""
+    """تعمیر idempotent نصب؛ فقط پس از اثبات مالکیت سرور/سوپرادمین."""
     try:
         if not is_installed():
             return jsonify(ok=False, msg='نصب انجام نشده — از فرم نصب استفاده کنید.'), 400
         d = request.form or {}
-        db_url = env_db_url()
+        if not _repair_authorized(d):
+            return jsonify(ok=False,
+                           msg='تعمیر مجاز نیست؛ رمز سوپرادمین یا کلید بازیابی .env لازم است.'), 403
         admin = {
-            'name': d.get('admin_name', '').strip() or 'مدیر',
-            'email': (d.get('admin_email', '').strip().lower() or 'admin@academy.ir'),
-            'password': d.get('admin_pass', '') or 'Admin12345!',
+            'name': d.get('admin_name', '').strip(),
+            'email': d.get('admin_email', '').strip().lower(),
+            'password': d.get('admin_pass', ''),
         }
+        # در تعمیر اضطراری با token و جدول کاربران خراب، همین اطلاعات حساب جدید
+        # را می‌سازد؛ هیچ ایمیل/رمز قابل حدسی در کد وجود ندارد.
+        if not admin['name'] or len(admin['name']) < 3:
+            return jsonify(ok=False, msg='نام مدیر حداقل ۳ حرف باشد.'), 400
+        if '@' not in admin['email']:
+            return jsonify(ok=False, msg='ایمیل مدیر معتبر لازم است.'), 400
+        if len(admin['password']) < 8:
+            return jsonify(ok=False, msg='رمز مدیر حداقل ۸ کاراکتر باشد.'), 400
+        db_url = env_db_url()
         site = {}
         create_demo = False
         # تعمیر نیز تکه‌ای و idempotent است؛ مرورگر تا پایان درخواست بعدی می‌فرستد.
@@ -310,6 +376,7 @@ def repair():
                            install_status='error'), 400
         if result is True:
             _login_installed_admin(admin['email'])
+            session.pop('install_repair_authorized_at', None)
         return jsonify(
             ok=True,
             started=True,
@@ -319,7 +386,7 @@ def repair():
             install_step=prog.get('step'),
             install_steps=prog.get('steps'),
             chunks=prog.get('chunks'),
-            redirect='/' if result is True else None,
+            redirect=_post_install_url() if result is True else None,
         )
     except Exception as e:
         current_app.logger.error('install repair error: %s\n%s', e, _tb.format_exc())

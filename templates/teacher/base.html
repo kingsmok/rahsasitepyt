@@ -15,7 +15,8 @@
         </div>
         <nav class="teacher-nav" aria-label="بخش‌های پنل مدرس">
           <a class="dash-link {{ 'active' if request.endpoint == 'teacher.dashboard' }}" href="{{ url_for('teacher.dashboard') }}">📊 داشبورد</a>
-          <a class="dash-link {{ 'active' if request.endpoint == 'teacher.my_courses' }}" href="{{ url_for('teacher.my_courses') }}">📚 دوره‌های من</a>
+          <a class="dash-link {{ 'active' if request.endpoint in ['teacher.my_courses', 'teacher.course_students', 'teacher.attendance_sessions', 'teacher.attendance_mark'] }}" href="{{ url_for('teacher.my_courses') }}">📚 دوره‌های من</a>
+          <a class="dash-link {{ 'active' if request.endpoint == 'teacher.students' }}" href="{{ url_for('teacher.students') }}">👥 دانشجویان من</a>
           <a class="dash-link {{ 'active' if request.endpoint == 'teacher.assignments' }}" href="{{ url_for('teacher.assignments') }}">📌 تکالیف</a>
           <a class="dash-link {{ 'active' if request.endpoint == 'teacher.questions' }}" href="{{ url_for('teacher.questions') }}">💬 پرسش‌ها</a>
           <a class="dash-link {{ 'active' if request.endpoint == 'teacher.revenue' }}" href="{{ url_for('teacher.revenue') }}">💰 درآمد من</a>

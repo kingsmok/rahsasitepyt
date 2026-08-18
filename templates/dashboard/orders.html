@@ -29,7 +29,7 @@
           <a class="btn btn-primary btn-sm" href="{{ url_for('shop.pay_start', code=o.code) }}">ادامه پرداخت</a>
           {% endif %}
         {% endif %}
-        <a class="btn btn-ghost btn-sm" href="{{ url_for('student.invoice', code=o.code) }}">فاکتور</a>
+        {% if o.fulfillment_status != 'wallet_topup' %}<a class="btn btn-ghost btn-sm" href="{{ url_for('student.invoice', code=o.code) }}">فاکتور</a>{% endif %}
       </div>
     </div>
     {% if o.installment_count and o.installment_count > 1 %}
@@ -45,6 +45,8 @@
           <b style="display:block;font-size:13.5px;color:var(--primary)">{{ fa('{:,.0f}'.format(inst.amount)) }}</b>
           {% if inst.status == 'paid' %}
           <span class="badge badge-success" style="font-size:10px">✓ پرداخت‌شده</span>
+          {% elif inst.status == 'provider_managed' %}
+          <span class="badge badge-primary" style="font-size:10px">پیگیری در سرویس اقساطی</span>
           {% else %}
           <span class="badge badge-accent" style="font-size:10px">{{ inst.due_date|jdate }}</span>
           {% if o.status == 'pending' %}
@@ -61,15 +63,18 @@
       </div>
     </div>
     {% endif %}
+    {% if o.fulfillment_status == 'wallet_topup' %}
+    <div class="cart-row" style="padding:12px 4px"><div class="c-info"><h4 style="font-size:13.5px">💰 شارژ آنلاین کیف پول</h4><small class="text-3">پس از تایید درگاه به موجودی افزوده می‌شود</small></div></div>
+    {% endif %}
     {% for item in o.items %}
     {% set obj = item.course or item.product %}
     <div class="cart-row" style="padding:10px 4px">
-      {% if obj and obj.image %}<img class="c-thumb" src="{{ obj.image if obj.image.startswith('http') else '/static/img/' + obj.image }}" alt="" style="width:84px;height:52px">{% endif %}
+      {% if obj and obj.image %}<img class="c-thumb" src="{{ obj.image_url if item.product else '/static/img/' + obj.image }}" alt="" style="width:84px;height:52px">{% endif %}
       <div class="c-info"><h4 style="font-size:13.5px">{{ obj.title if obj else 'آیتم حذف‌شده' }}</h4><small class="text-3">{{ 'دوره' if item.course else 'محصول فیزیکی' }} — {{ fa(item.quantity or 1) }} عدد</small></div>
       <span class="price" style="font-size:13.5px">{{ fa('{:,.0f}'.format(item.price * (item.quantity or 1))) }} <small class="text-3" style="font-size:11px">تومان</small></span>
     </div>
     {% endfor %}
-    {% if o.fulfillment_status != 'not_required' %}<div class="badge badge-primary" style="margin-top:8px">📦 {{ {'processing':'در حال پردازش ارسال','shipped':'ارسال‌شده','delivered':'تحویل‌شده','stock_issue':'در حال بررسی موجودی توسط پشتیبانی'}.get(o.fulfillment_status, o.fulfillment_status) }}</div>{% endif %}
+    {% if o.fulfillment_status not in ('not_required', 'wallet_topup') %}<div class="badge badge-primary" style="margin-top:8px">📦 {{ {'processing':'در حال پردازش ارسال','shipped':'ارسال‌شده','delivered':'تحویل‌شده','stock_issue':'در حال بررسی موجودی توسط پشتیبانی'}.get(o.fulfillment_status, o.fulfillment_status) }}</div>{% endif %}
     <div class="flex between" style="padding-top:10px">
       <span class="text-3" style="font-size:12.5px">درگاه: {{ gateway_names.get(o.gateway, o.gateway or '—') }}</span>
       <div class="flex gap-1">

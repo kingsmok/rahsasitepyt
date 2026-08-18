@@ -16,7 +16,7 @@
 <div class="dash-head">
   <div>
     <h1>👁 پیش‌نمایش واریانت — {{ variant.title }}</h1>
-    <p>تم: {{ variant.theme_name }} ({{ variant.category }}) · ۸ بخش UI/UX · کلاس‌های dv-* بدون نشت استایل</p>
+    <p>کتابخانه بصری داخلی: {{ variant.theme_name }} ({{ variant.category }}) · لینک‌های داخل ماکاپ تعاملی نیستند؛ مسیرهای واقعی را با «مشاهده طرح زنده» بررسی کنید.</p>
   </div>
   <div class="dp-actions">
     <a class="btn btn-ghost" href="{{ url_for('admin.designs') }}">← بازگشت</a>
@@ -53,10 +53,11 @@
 <script>
   var ALL = {{ variant.components|tojson }};
   function copyHtml(key){
-    navigator.clipboard.writeText(ALL[key] || '').then(function(){
+    var copier = window.copyText || function(value){ return navigator.clipboard.writeText(value); };
+    copier(ALL[key] || '').then(function(){
       var b=document.querySelector('[onclick="copyHtml(\''+key+'\')"]');
       if(b){var t=b.textContent;b.textContent='✓ کپی شد';setTimeout(function(){b.textContent=t;},1400);}
-    });
+    }).catch(function(){ if(window.toast){ toast('کپی خودکار ممکن نشد','error'); } });
   }
   function toggleJson(key){
     var pre=document.getElementById('json-'+key);

@@ -23,7 +23,7 @@ from models import (utcnow, db, User, Category, Course, Section, Lesson, Order, 
                     Page, RedirectRule)
 
 import re as _re
-from validators import human_size
+from validators import human_size, safe_int
 from validators import log_exc as _lexc
 from validators import safe_referrer
 from jdates import jdate_num, jtime
@@ -60,16 +60,25 @@ _SECRET_SETTING_KEYS = {
     'idpay_api_key', 'parsian_login_account', 'melli_password', 'sadad_key',
     'snapp_client_secret', 'digipay_api_key', 'tarb_api_key',
     'sms_kavenegar_key', 'sms_melli_password', 'sms_faraz_token',
-    'smtp_pass', 'dk_access_token', 'basalam_webhook_secret', 'mapir_api_key',
+    'smtp_pass', 'dk_access_token', 'basalam_webhook_secret',
 }
 
 
 def admin_required(view):
+    """گارد مرکزی پنل؛ مدیران و کارکنان فقط endpoint مجاز خود را می‌بینند."""
     @functools.wraps(view)
     def wrapped(*args, **kwargs):
-        if not g.user or not g.user.is_admin:
-            flash('دسترسی غیرمجاز — این بخش مخصوص مدیر سایت است.', 'error')
-            return redirect(url_for('site.index'))
+        if not g.user:
+            flash('برای ورود به پنل ابتدا وارد حساب خود شوید.', 'error')
+            return redirect(url_for('auth.login', next=request.path))
+        from permissions import can_access_endpoint
+        if not can_access_endpoint(g.user, request.endpoint):
+            # کاربر دانشجو/مدرس به صفحه عمومی برگردد؛ کارکنانی که صرفاً مجوز
+            # این بخش را ندارند پاسخ صریح 403 می‌گیرند.
+            if g.user.role not in ('admin', 'super_admin', 'secretary', 'support', 'operator'):
+                flash('دسترسی غیرمجاز — این بخش در نقش شما فعال نیست.', 'error')
+                return redirect(url_for('site.index'))
+            abort(403)
         return view(*args, **kwargs)
     return wrapped
 
@@ -82,6 +91,34 @@ def _sections_lessons(course):
 @admin_bp.route('/')
 @admin_required
 def overview():
+    # نقش‌های عملیاتی نباید داشبورد مالی کامل مدیر را ببینند. کارت‌ها بر اساس
+    # همان Permissionهایی ساخته می‌شوند که مسیرها را کنترل می‌کنند.
+    if g.user.role in ('secretary', 'support', 'operator'):
+        from permissions import has_permission, menu_for
+        cards = []
+        if has_permission(g.user, 'view_users'):
+            cards.append(('👥', 'کاربران فعال', User.query.filter_by(is_active=True).count(),
+                          'admin.users'))
+        if has_permission(g.user, 'view_orders'):
+            cards.append(('🧾', 'سفارش‌های در انتظار', Order.query.filter_by(status='pending').count(),
+                          'admin.orders'))
+        if has_permission(g.user, 'approve_payments'):
+            cards.append(('💳', 'فیش‌های در انتظار', PaymentProof.query.filter_by(status='pending').count(),
+                          'admin.proofs'))
+        if has_permission(g.user, 'reply_tickets'):
+            cards.append(('🎫', 'تیکت‌های باز', Ticket.query.filter(
+                Ticket.status.in_(['open', 'answered'])).count(), 'admin.tickets'))
+        if has_permission(g.user, 'view_consultations'):
+            cards.append(('🎯', 'مشاوره‌های خوانده‌نشده', ContactMessage.query.filter(
+                ContactMessage.subject.like('%مشاوره%'),
+                ContactMessage.is_read == False).count(), 'admin.consultations'))
+        if has_permission(g.user, 'view_daily_classes'):
+            cards.append(('🎥', 'کلاس‌های پیش رو', LiveSession.query.filter(
+                LiveSession.starts_at >= utcnow()).count(), 'admin.live_sessions'))
+        links = [(endpoint, label) for endpoint, label in menu_for(g.user)
+                 if endpoint not in ('sep', 'admin.overview')]
+        return render_template('admin/staff_overview.html', cards=cards, links=links)
+
     from datetime import timedelta
     total_revenue = db.session.query(func.coalesce(func.sum(Order.final_total), 0)) \
         .filter(Order.status == 'paid').scalar()
@@ -148,7 +185,11 @@ def overview():
 @admin_bp.route('/go-live', methods=['GET', 'POST'])
 @admin_required
 def go_live():
-    """مرکز یک‌صفحه‌ای تکمیل برند، سرویس‌ها، سیاست فروش و محتوای واقعی."""
+    """مرکز راه‌اندازی و انتشار کنترل‌شده سایت.
+
+    نصب تازه عمداً غیرفعال است. انتشار فقط زمانی انجام می‌شود که هویت عمومی،
+    محتوای واقعی و ـ در صورت وجود کالای پولی ـ یک درگاه واقعی آماده باشند.
+    """
     keys = [
         'site_name', 'site_desc', 'phone', 'email', 'address', 'support_hours',
         'about_text', 'base_url', 'currency', 'refund_days',
@@ -163,7 +204,60 @@ def go_live():
         'sms_faraz_token', 'sms_faraz_sender',
         'smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'smtp_from', 'smtp_tls',
     ]
+
+    def _readiness(values):
+        from gateways import GATEWAYS, gateway_ready
+        from sms import provider_ready
+        from models import Product
+        published = Course.query.filter_by(status='published').all()
+        active_products = Product.query.filter_by(is_active=True).all()
+        public_ready = bool(values.get('site_name') and values.get('site_desc') and
+                            (values.get('phone') or values.get('email')))
+        payment_ready = any(gateway_ready(item['id'], values)
+                            for item in GATEWAYS if item.get('kind') != 'test')
+        paid_content = any((item.final_price or 0) > 0
+                           for item in published + active_products)
+        content_ready = bool(published or active_products)
+        from licensing import get_license_manager
+        license_state = get_license_manager().status(request.host)
+        checks = {
+            'public': public_ready,
+            # اگر کل محتوای منتشرشده رایگان است، درگاه شرط انتشار نیست.
+            'payment': payment_ready or not paid_content,
+            'sms': provider_ready(values),
+            'smtp': bool(values.get('smtp_host') and values.get('smtp_from')),
+            'content': content_ready,
+            # بسته community قفل ندارد؛ بسته تجاری باید لایسنس معتبر داشته باشد.
+            'license': license_state.valid or not license_state.enforced,
+        }
+        launch_ready = (checks['public'] and checks['content'] and
+                        checks['payment'] and checks['license'])
+        return (checks, launch_ready, len(published), len(active_products),
+                paid_content, license_state)
+
     if request.method == 'POST':
+        action = request.form.get('action', 'save')
+        if action in ('activate', 'deactivate'):
+            values = {row.key: row.value for row in Setting.query.all()}
+            checks, launch_ready, _cc, _pc, _paid, _license = _readiness(values)
+            if action == 'activate' and not launch_ready:
+                flash('انتشار انجام نشد؛ موارد الزامی علامت‌خورده را کامل کنید.', 'error')
+                return redirect(url_for('admin.go_live'))
+            row = db.session.get(Setting, 'site_active')
+            value = '1' if action == 'activate' else '0'
+            if row:
+                row.value = value
+            else:
+                db.session.add(Setting(key='site_active', value=value))
+            db.session.commit()
+            clear = getattr(current_app, 'clear_cache', None)
+            if callable(clear):
+                clear()
+            flash('سایت برای عموم فعال شد. ✅' if value == '1' else
+                  'سایت از دسترس عموم خارج شد؛ مدیر همچنان پیش‌نمایش کامل دارد.',
+                  'success' if value == '1' else 'info')
+            return redirect(url_for('admin.go_live'))
+
         for key in keys:
             if key not in request.form:
                 continue
@@ -193,26 +287,15 @@ def go_live():
         return redirect(url_for('admin.go_live'))
 
     values = {row.key: row.value for row in Setting.query.all()}
-    from gateways import GATEWAYS, gateway_ready
-    from sms import provider_ready
-    public_ready = bool(values.get('site_name') and values.get('site_desc') and
-                        (values.get('phone') or values.get('email')))
-    payment_ready = any(gateway_ready(item['id'], values)
-                        for item in GATEWAYS if item.get('kind') != 'test')
-    sms_ready = provider_ready(values)
-    smtp_ready = bool(values.get('smtp_host') and values.get('smtp_from'))
-    courses_count = Course.query.filter_by(status='published').count()
-    from models import Product
-    products_count = Product.query.filter_by(is_active=True).count()
-    content_ready = bool(courses_count or products_count)
-    checks = {
-        'public': public_ready, 'payment': payment_ready,
-        'sms': sms_ready, 'smtp': smtp_ready, 'content': content_ready,
-    }
+    (checks, launch_ready, courses_count, products_count,
+     paid_content, current_license) = _readiness(values)
     score = round(sum(1 for ready in checks.values() if ready) * 100 / len(checks))
     return render_template('admin/go_live.html', vals=values, checks=checks,
                            score=score, courses_count=courses_count,
-                           products_count=products_count)
+                           products_count=products_count,
+                           launch_ready=launch_ready, paid_content=paid_content,
+                           current_license=current_license,
+                           site_active=values.get('site_active', '1') == '1')
 
 
 # ---------------------------------------------------------------- دوره‌ها
@@ -262,7 +345,7 @@ def _course_form(course):
         course.discount_price = int(f.get('discount_price') or 0)
         course.level = f.get('level', 'مقدماتی')
         course.duration_hours = int(f.get('duration_hours') or 0)
-        course.image = f.get('image', 'cover-python.webp')
+        course.image = f.get('image') or 'course-placeholder.webp'
         course.status = f.get('status', 'draft')
         course.featured = bool(f.get('featured'))
         course.what_you_learn = f.get('what_you_learn', '').strip()
@@ -338,13 +421,13 @@ def course_lessons(cid):
                 db.session.commit()
                 flash('سکشن اضافه شد.', 'success')
         elif action == 'del_section':
-            sec = db.session.get(Section, int(request.form.get('sid') or 0))
+            sec = db.session.get(Section, safe_int(request.form.get('sid')))
             if sec and sec.course_id == course.id:
                 db.session.delete(sec)
                 db.session.commit()
                 flash('سکشن حذف شد.', 'info')
         elif action == 'add_lesson':
-            sec = db.session.get(Section, int(request.form.get('section_id') or 0))
+            sec = db.session.get(Section, safe_int(request.form.get('section_id')))
             title = request.form.get('title', '').strip()
             if sec and sec.course_id == course.id and title:
                 fl = _save_lesson_file(request.files.get('file'))
@@ -372,7 +455,7 @@ def course_lessons(cid):
                 db.session.commit()
                 flash('جلسه اضافه شد.', 'success')
         elif action == 'edit_lesson':
-            les = db.session.get(Lesson, int(request.form.get('lid') or 0))
+            les = db.session.get(Lesson, safe_int(request.form.get('lid')))
             if les:
                 les.title = request.form.get('title', '').strip() or les.title
                 les.video_type = request.form.get('video_type', les.video_type)
@@ -387,7 +470,7 @@ def course_lessons(cid):
                 db.session.commit()
                 flash('جلسه ویرایش شد.', 'success')
         elif action == 'del_lesson':
-            les = db.session.get(Lesson, int(request.form.get('lid') or 0))
+            les = db.session.get(Lesson, safe_int(request.form.get('lid')))
             if les and les.section.course_id == course.id:
                 db.session.delete(les)
                 db.session.commit()
@@ -408,11 +491,11 @@ def categories():
                 db.session.add(Category(name=name, slug=slugify(name), icon=request.form.get('icon', '📚'),
                                         color=request.form.get('color', '#2563eb'),
                                         description=request.form.get('description', ''),
-                                        sort=int(request.form.get('sort') or 0)))
+                                        sort=safe_int(request.form.get('sort'))))
                 db.session.commit()
                 flash('دسته‌بندی اضافه شد.', 'success')
         elif action == 'delete':
-            c = db.session.get(Category, int(request.form.get('cid') or 0))
+            c = db.session.get(Category, safe_int(request.form.get('cid')))
             if c:
                 db.session.delete(c)
                 db.session.commit()
@@ -437,16 +520,26 @@ def users():
 @admin_bp.route('/users/<int:uid>/role', methods=['POST'])
 @admin_required
 def user_role(uid):
+    if g.user.role not in ('admin', 'super_admin'):
+        abort(403)
+    from models import ROLES
     user = db.get_or_404(User, uid)
-    if user.id != g.user.id:
-        new_role = request.form.get('role', 'student')
-        # ادمین/سوپرادمین نمیتوانند توسط ادمین عادی تغییر نقش بدهند
-        if user.role in ('super_admin',) and g.user.role != 'super_admin':
-            flash('تغییر نقش سوپر ادمین مجاز نیست.', 'error')
-            return redirect(url_for('admin.users'))
-        user.role = new_role
-        db.session.commit()
-        flash('نقش کاربر به‌روزرسانی شد.', 'success')
+    if user.id == g.user.id:
+        flash('برای جلوگیری از قفل‌شدن پنل، نمی‌توانید نقش حساب فعلی خود را تغییر دهید.', 'error')
+        return redirect(url_for('admin.users'))
+    new_role = request.form.get('role', 'student').strip()
+    if new_role not in ROLES:
+        abort(400)
+    # فقط سوپرادمین می‌تواند نقش‌های مدیریتی را اعطا/تغییر دهد. کارکنان عملیاتی
+    # حتی با دسترسی سفارشی edit_users نمی‌توانند سطح دسترسی خود را بالا ببرند.
+    privileged = {'admin', 'super_admin'}
+    if (user.role in privileged or new_role in privileged) and \
+            g.user.role != 'super_admin':
+        abort(403)
+    user.role = new_role
+    user.new_session_token()  # نقش جدید فوراً روی همه سشن‌های قبلی اعمال شود
+    db.session.commit()
+    flash('نقش کاربر به‌روزرسانی شد.', 'success')
     return redirect(url_for('admin.users'))
 
 
@@ -454,10 +547,15 @@ def user_role(uid):
 @admin_required
 def user_toggle(uid):
     user = db.get_or_404(User, uid)
-    if user.id != g.user.id:
-        user.is_active = not user.is_active
-        db.session.commit()
-        flash('وضعیت کاربر تغییر کرد.', 'success')
+    if user.id == g.user.id:
+        flash('نمی‌توانید حسابی را که اکنون با آن وارد شده‌اید غیرفعال کنید.', 'error')
+        return redirect(url_for('admin.users'))
+    if user.role in ('admin', 'super_admin') and g.user.role != 'super_admin':
+        abort(403)
+    user.is_active = not user.is_active
+    user.new_session_token()
+    db.session.commit()
+    flash('وضعیت کاربر تغییر کرد.', 'success')
     return redirect(url_for('admin.users'))
 
 
@@ -562,15 +660,15 @@ def coupons():
                 exp = request.form.get('expires_at', '').strip()
                 db.session.add(Coupon(
                     code=code, type=request.form.get('type', 'percent'),
-                    value=int(request.form.get('value') or 0),
-                    max_uses=int(request.form.get('max_uses') or 0),
-                    min_amount=int(request.form.get('min_amount') or 0),
+                    value=safe_int(request.form.get('value')),
+                    max_uses=safe_int(request.form.get('max_uses')),
+                    min_amount=safe_int(request.form.get('min_amount')),
                     expires_at=(lambda _e: datetime.strptime(_e, '%Y-%m-%d') if _e else None)(
                         __import__('app', fromlist=['jalali_to_gregorian']).jalali_to_gregorian(exp) if exp else None)))
                 db.session.commit()
                 flash('کوپن ساخته شد.', 'success')
         elif action == 'delete':
-            c = db.session.get(Coupon, int(request.form.get('cid') or 0))
+            c = db.session.get(Coupon, safe_int(request.form.get('cid')))
             if c:
                 db.session.delete(c)
                 db.session.commit()
@@ -587,7 +685,7 @@ def blog():
     if request.method == 'POST':
         action = request.form.get('action')
         if action == 'delete':
-            p = db.session.get(BlogPost, int(request.form.get('pid') or 0))
+            p = db.session.get(BlogPost, safe_int(request.form.get('pid')))
             if p:
                 db.session.delete(p)
                 db.session.commit()
@@ -642,7 +740,7 @@ def _blog_form(post):
 def reviews():
     if request.method == 'POST':
         action = request.form.get('action')
-        rid = int(request.form.get('rid') or 0)
+        rid = safe_int(request.form.get('rid'))
         rv = db.session.get(Review, rid)
         if rv:
             if action == 'approve':
@@ -761,7 +859,7 @@ def newsletters():
 def tickets():
     if request.method == 'POST':
         action = request.form.get('action')
-        t = db.session.get(Ticket, int(request.form.get('tid') or 0))
+        t = db.session.get(Ticket, safe_int(request.form.get('tid')))
         if t:
             if action == 'reply':
                 reply_text = request.form.get('reply', '').strip()
@@ -1089,7 +1187,7 @@ def bundle_new():
                        description=request.form.get('description', '').strip(),
                        price=request.form.get('price', 0, type=int),
                        discount_price=request.form.get('discount_price', 0, type=int),
-                       image=request.form.get('image', 'cover-python.webp'))
+                       image=request.form.get('image') or 'course-placeholder.webp')
             db.session.add(b)
             db.session.flush()
             for cid in request.form.getlist('course_ids'):
@@ -1117,7 +1215,7 @@ def bundle_edit(bid):
             b.description = request.form.get('description', '').strip()
             b.price = request.form.get('price', 0, type=int)
             b.discount_price = request.form.get('discount_price', 0, type=int)
-            b.image = request.form.get('image', b.image or 'cover-python.webp')
+            b.image = request.form.get('image') or b.image or 'course-placeholder.webp'
             b.is_active = bool(request.form.get('is_active'))
             for old in list(b.courses):
                 b.courses.remove(old)
@@ -1298,8 +1396,8 @@ def optimizer():
     import os
     items = []
     fmt = request.form.get('fmt', 'webp') if request.method == 'POST' else 'webp'
-    quality = int(request.form.get('quality', 80)) if request.method == 'POST' else 80
-    maxw = int(request.form.get('maxw', 0)) if request.method == 'POST' else 0
+    quality = safe_int(request.form.get('quality'), 80, 20, 95) if request.method == 'POST' else 80
+    maxw = safe_int(request.form.get('maxw'), 0, 0, 8000) if request.method == 'POST' else 0
     out_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                            'static', 'uploads', 'opt')
     os.makedirs(out_dir, exist_ok=True)
@@ -1690,11 +1788,14 @@ def canned_reply_delete(rid):
 @admin_bp.route('/users/<int:uid>/login-as', methods=['POST'])
 @admin_required
 def user_login_as(uid):
-    """ورود به حساب کاربر توسط ادمین — با ثبت لاگ"""
+    """ورود به حساب کاربر توسط مدیر ارشد — با ثبت لاگ."""
+    if g.user.role not in ('admin', 'super_admin'):
+        abort(403)
     target = db.get_or_404(User, uid)
-    if target.role in ('super_admin',) and g.user.role != 'super_admin':
-        flash('ورود به حساب سوپر ادمین مجاز نیست.', 'error')
-        return redirect(url_for('admin.users'))
+    if target.id == g.user.id or not target.is_active:
+        abort(400)
+    if target.role in ('admin', 'super_admin') and g.user.role != 'super_admin':
+        abort(403)
     if not target.session_token:
         target.new_session_token()
     db.session.add(ActivityLog(user_id=g.user.id, action='login_as',
@@ -1814,22 +1915,43 @@ def menu_delete(mid):
 @admin_bp.route('/users/<int:uid>/profile')
 @admin_required
 def user_profile(uid):
+    from permissions import has_permission, can_access_endpoint
     u = db.get_or_404(User, uid)
-    enrollments = Enrollment.query.filter_by(user_id=uid).all()
-    orders = Order.query.filter_by(user_id=uid).order_by(Order.created_at.desc()).all()
-    tickets = Ticket.query.filter_by(user_id=uid).order_by(Ticket.created_at.desc()).all()
-    acts = ActivityLog.query.filter_by(user_id=uid).order_by(ActivityLog.created_at.desc()).limit(20).all()
+    is_manager = g.user.role in ('admin', 'super_admin')
+    can_view_courses = is_manager or has_permission(g.user, 'view_user_courses')
+    can_view_orders = is_manager or has_permission(g.user, 'view_orders')
+    can_view_tickets = is_manager or has_permission(g.user, 'reply_tickets')
+    can_view_activity = is_manager or has_permission(g.user, 'view_reports')
+    enrollments = Enrollment.query.filter_by(user_id=uid).all() if can_view_courses else []
+    orders = (Order.query.filter_by(user_id=uid).order_by(Order.created_at.desc()).all()
+              if can_view_orders else [])
+    tickets = (Ticket.query.filter_by(user_id=uid).order_by(Ticket.created_at.desc()).all()
+               if can_view_tickets else [])
+    acts = (ActivityLog.query.filter_by(user_id=uid)
+            .order_by(ActivityLog.created_at.desc()).limit(20).all()
+            if can_view_activity else [])
+    protected_user = u.role in ('admin', 'super_admin') and g.user.role != 'super_admin'
+    capabilities = {
+        'wallet': is_manager,
+        'reset_password': (not protected_user and has_permission(g.user, 'edit_users')),
+        'notify': can_access_endpoint(g.user, 'admin.user_notify'),
+        'courses': can_view_courses, 'orders': can_view_orders,
+        'tickets': can_view_tickets, 'activity': can_view_activity,
+    }
     return render_template('admin/user_profile.html', u=u, enrollments=enrollments,
-                           orders=orders, tickets=tickets, acts=acts)
+                           orders=orders, tickets=tickets, acts=acts,
+                           capabilities=capabilities)
 
 
 @admin_bp.route('/users/<int:uid>/reset-password', methods=['POST'])
 @admin_required
 def user_reset_password(uid):
     u = db.get_or_404(User, uid)
+    if u.role in ('admin', 'super_admin') and g.user.role != 'super_admin':
+        abort(403)
     new_pass = request.form.get('password', '').strip()
-    if len(new_pass) < 6:
-        flash('رمز باید حداقل ۶ کاراکتر باشد.', 'error')
+    if len(new_pass) < 8:
+        flash('رمز باید حداقل ۸ کاراکتر باشد.', 'error')
     else:
         u.set_password(new_pass)
         u.new_session_token()  # خروج از همه دستگاه‌ها
@@ -1848,9 +1970,16 @@ def user_add():
         phone = request.form.get('phone', '').strip()
         email = request.form.get('email', '').strip().lower()
         password = request.form.get('password', '').strip()
-        role = request.form.get('role', 'student')
-        if len(name) < 3 or len(password) < 6 or '@' not in email:
-            flash('نام، ایمیل معتبر و رمز (۶+ کاراکتر) الزامی است.', 'error')
+        role = request.form.get('role', 'student').strip()
+        from models import ROLES
+        if role not in ROLES:
+            abort(400)
+        if g.user.role not in ('admin', 'super_admin') and role != 'student':
+            abort(403)
+        if role in ('admin', 'super_admin') and g.user.role != 'super_admin':
+            abort(403)
+        if len(name) < 3 or len(password) < 8 or '@' not in email:
+            flash('نام، ایمیل معتبر و رمز (حداقل ۸ کاراکتر) الزامی است.', 'error')
         elif User.query.filter_by(email=email).first():
             flash('این ایمیل قبلاً ثبت شده.', 'error')
         elif phone and User.query.filter_by(phone=phone).first():
@@ -1874,7 +2003,9 @@ def user_add():
 @admin_bp.route('/users/<int:uid>/wallet', methods=['POST'])
 @admin_required
 def user_wallet(uid):
-    """مدیریت کیف پول کاربر — افزایش/کاهش موجودی"""
+    """مدیریت کیف پول کاربر — فقط مدیران اصلی."""
+    if g.user.role not in ('admin', 'super_admin'):
+        abort(403)
     from gamification import wallet_charge, wallet_spend
     u = db.get_or_404(User, uid)
     action = request.form.get('action', '')
@@ -2545,13 +2676,13 @@ def super_settings():
                 'smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'smtp_from', 'smtp_tls',
                 # مارکت‌پلیس و سرویس‌ها
                 'dk_api_base', 'dk_access_token', 'basalam_webhook_secret', 'emalls_seller_id',
-                'mapir_api_key', 'competitive_prices', 'shipping_flat_rate', 'shipping_note',
+                'competitive_prices', 'shipping_flat_rate', 'shipping_note',
                 # صفحه‌ساز و طراحی
                 'kit_container', 'kit_radius', 'site_design', 'home_design',
                 'about_design', 'contact_design',
                 # امنیت و نگهداری
-                'maintenance', 'allow_register', 'allow_phone_login', 'admin_2fa_enabled',
-                'exam_enabled', 'spin_enabled',
+                'maintenance', 'allow_register', 'allow_phone_login', 'allow_theme_switcher',
+                'admin_2fa_enabled', 'exam_enabled', 'spin_enabled',
             ]
             for k in keys:
                 # هر تب فقط فیلدهای خودش را ارسال می‌کند؛ تنظیمات تب‌های دیگر
@@ -2624,7 +2755,7 @@ def super_settings():
         if action == 'redirect_add':
             source = request.form.get('source', '').strip()
             target = request.form.get('target', '').strip()
-            code = int(request.form.get('code', 301) or 301)
+            code = safe_int(request.form.get('code'), 301)
             if not source.startswith('/'):
                 source = '/' + source
             if not target.startswith('/'):
@@ -2641,7 +2772,7 @@ def super_settings():
                 flash(f'ریدایرکت {source} → {target} اضافه شد ✅', 'success')
             return redirect(url_for('admin.super_settings', tab='seo'))
         if action == 'redirect_edit':
-            rid = int(request.form.get('rid') or 0)
+            rid = safe_int(request.form.get('rid'))
             rr = db.session.get(RedirectRule, rid)
             if rr:
                 source = request.form.get('source', '').strip()
@@ -2655,19 +2786,19 @@ def super_settings():
                 else:
                     rr.source = source[:300]
                     rr.target = target[:300]
-                    rr.code = int(request.form.get('code', 301) or 301)
+                    rr.code = safe_int(request.form.get('code'), 301)
                     db.session.commit()
                     flash('ریدایرکت ویرایش شد ✅', 'success')
             return redirect(url_for('admin.super_settings', tab='seo'))
         if action == 'redirect_delete':
-            rr = db.session.get(RedirectRule, int(request.form.get('rid') or 0))
+            rr = db.session.get(RedirectRule, safe_int(request.form.get('rid')))
             if rr:
                 db.session.delete(rr)
                 db.session.commit()
                 flash('ریدایرکت حذف شد.', 'info')
             return redirect(url_for('admin.super_settings', tab='seo'))
         if action == 'redirect_toggle':
-            rr = db.session.get(RedirectRule, int(request.form.get('rid') or 0))
+            rr = db.session.get(RedirectRule, safe_int(request.form.get('rid')))
             if rr:
                 rr.is_active = not rr.is_active
                 db.session.commit()
@@ -2729,6 +2860,32 @@ def themes():
 # ================================================================
 # فروشگاه — مدیریت محصولات فیزیکی
 # ================================================================
+def _product_int(value, maximum=2_000_000_000):
+    try:
+        return max(0, min(maximum, int(value or 0)))
+    except (TypeError, ValueError):
+        return 0
+
+
+def _save_product_image(file_storage):
+    """ذخیره امن تصویر محصول و برگرداندن مسیر نسبی static/img."""
+    if not file_storage or not file_storage.filename:
+        return None
+    from validators import (ALLOWED_IMAGE_EXT, file_content_is_safe,
+                            safe_filename as _safe_filename)
+    safe = _safe_filename(file_storage.filename, ALLOWED_IMAGE_EXT)
+    ext = os.path.splitext(safe or '')[1].lower()
+    if not safe or not file_content_is_safe(file_storage.stream, ext):
+        flash('تصویر محصول معتبر نیست؛ فقط JPG، PNG، WebP، GIF یا AVIF امن مجاز است.', 'error')
+        return None
+    directory = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                             'static', 'img', 'uploads', 'products')
+    os.makedirs(directory, exist_ok=True)
+    filename = f'product-{uuid.uuid4().hex[:12]}{ext}'
+    file_storage.save(os.path.join(directory, filename))
+    return 'uploads/products/' + filename
+
+
 @admin_bp.route('/products', methods=['GET', 'POST'])
 @admin_required
 def products_admin():
@@ -2744,19 +2901,25 @@ def products_admin():
             while _P.query.filter_by(slug=slug).first():
                 slug += '-2'
             from validators import clamp_field
+            image_file = request.files.get('image_file')
+            uploaded_image = _save_product_image(image_file)
+            if image_file and image_file.filename and not uploaded_image:
+                return redirect(url_for('admin.products_admin'))
+            image = (uploaded_image or request.form.get('image', '').strip() or
+                     'cover-product-mug.webp')
             _p = _P(
                 title=title, slug=slug,
                 description=clamp_field(request.form.get('description'), 'default'),
-                price=int(request.form.get('price') or 0),
-                discount_price=int(request.form.get('discount_price') or 0),
-                image=request.form.get('image', '').strip(),
+                price=_product_int(request.form.get('price')),
+                discount_price=_product_int(request.form.get('discount_price')),
+                image=image,
                 category=clamp_field(request.form.get('category'), 'default'),
                 sku=clamp_field(request.form.get('sku'), 'default'),
                 dimensions=clamp_field(request.form.get('dimensions'), 'default'),
                 weight=clamp_field(request.form.get('weight'), 'default'),
                 material=clamp_field(request.form.get('material'), 'default'),
                 features=request.form.get('features', '').strip(),
-                stock=int(request.form.get('stock') or 0),
+                stock=_product_int(request.form.get('stock'), maximum=10_000_000),
                 featured=bool(request.form.get('featured')),
                 is_active=True,
             )
@@ -2775,18 +2938,22 @@ def product_admin_edit(pid):
     p = db.get_or_404(_P, pid)
     if request.method == 'POST':
         from validators import clamp_field
+        image_file = request.files.get('image_file')
+        uploaded_image = _save_product_image(image_file)
+        if image_file and image_file.filename and not uploaded_image:
+            return redirect(url_for('admin.product_admin_edit', pid=p.id))
         p.title = clamp_field(request.form.get('title'), 'title') or p.title
         p.description = clamp_field(request.form.get('description'), 'default')
-        p.price = int(request.form.get('price') or 0)
-        p.discount_price = int(request.form.get('discount_price') or 0)
-        p.image = request.form.get('image', '').strip()
+        p.price = _product_int(request.form.get('price'))
+        p.discount_price = _product_int(request.form.get('discount_price'))
+        p.image = uploaded_image or request.form.get('image', '').strip() or p.image
         p.category = clamp_field(request.form.get('category'), 'default')
         p.sku = clamp_field(request.form.get('sku'), 'default')
         p.dimensions = clamp_field(request.form.get('dimensions'), 'default')
         p.weight = clamp_field(request.form.get('weight'), 'default')
         p.material = clamp_field(request.form.get('material'), 'default')
         p.features = request.form.get('features', '').strip()
-        p.stock = int(request.form.get('stock') or 0)
+        p.stock = _product_int(request.form.get('stock'), maximum=10_000_000)
         p.featured = bool(request.form.get('featured'))
         p.is_active = bool(request.form.get('is_active'))
         db.session.commit()

@@ -1,71 +1,87 @@
 {% extends 'admin/base.html' %}
 {% block atitle %}پروفایل کاربر{% endblock %}
 {% block acontent %}
-<div class="dash-head"><div><h1>👤 {{ u.name }}</h1><p dir="ltr">{{ u.email }} — {{ u.phone or '' }} — نقش: {{ u.role }}</p></div><a class="btn btn-ghost" href="{{ url_for('admin.users') }}">← کاربران</a></div>
+<div class="dash-head">
+  <div><h1>👤 {{ u.name }}</h1><p dir="ltr">{{ u.email or '—' }} — {{ u.phone or '—' }} — {{ role_name(u) }}</p></div>
+  <a class="btn btn-ghost" href="{{ url_for('admin.users') }}">← کاربران</a>
+</div>
 
-<div class="grid" style="grid-template-columns:1fr 1fr;gap:18px;align-items:start">
-  <div>
-    <div class="card" style="padding:20px;margin-bottom:16px">
-      <h2 style="font-size:14px;margin-bottom:12px">💰 کیف پول کاربر</h2>
-      <div style="font-size:22px;font-weight:900;margin-bottom:10px">{{ fa('{:,.0f}'.format(u.wallet_balance or 0)) }} <small style="font-size:13px;color:var(--text-2)">تومان</small></div>
-      <form method="post" action="{{ url_for('admin.user_wallet', uid=u.id) }}" class="flex gap-1" style="margin-bottom:14px">
-        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
-        <input class="form-control" name="amount" type="number" placeholder="مبلغ" style="max-width:130px" required>
-        <input class="form-control" name="note" placeholder="توضیح" style="flex:1">
-        <button class="btn btn-success btn-sm" name="action" value="charge" type="submit">+ شارژ</button>
-        <button class="btn btn-danger btn-sm" name="action" value="deduct" type="submit">− کسر</button>
-      </form>
-      <h2 style="font-size:14px;margin-bottom:12px">🔑 مدیریت حساب</h2>
-      <form method="post" action="{{ url_for('admin.user_reset_password', uid=u.id) }}" class="flex gap-1">
-        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
-        <input class="form-control" name="password" placeholder="رمز جدید (۶+ کاراکتر)" required style="flex:1">
-        <button class="btn btn-primary btn-sm">ریست رمز</button>
-      </form>
-      <form method="post" action="{{ url_for('admin.user_notify', uid=u.id) }}" style="margin-top:12px">
-        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
-        <div class="flex gap-1" style="margin-bottom:8px">
-          <input class="form-control" name="title" placeholder="عنوان اعلان" required style="flex:1">
-          <input class="form-control" name="body" placeholder="متن اعلان..." style="flex:1.5">
-          <button class="btn btn-primary btn-sm">📨 ارسال اعلان</button>
-        </div>
-      </form>
+{% if capabilities.wallet or capabilities.reset_password or capabilities.notify %}
+<div class="card" style="padding:20px;margin-bottom:16px">
+  <h2 style="font-size:14px;margin-bottom:12px">مدیریت حساب</h2>
+  {% if capabilities.wallet %}
+  <div style="font-size:20px;font-weight:900;margin-bottom:10px">کیف پول: {{ fa('{:,.0f}'.format(u.wallet_balance or 0)) }} <small>تومان</small></div>
+  <form method="post" action="{{ url_for('admin.user_wallet', uid=u.id) }}" class="flex gap-1 wrap" style="margin-bottom:14px">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+    <input class="form-control" name="amount" type="number" min="1" placeholder="مبلغ" style="max-width:150px" required>
+    <input class="form-control" name="note" placeholder="توضیح" style="flex:1;min-width:180px">
+    <button class="btn btn-success btn-sm" name="action" value="charge" type="submit">+ شارژ</button>
+    <button class="btn btn-danger btn-sm" name="action" value="deduct" type="submit">− کسر</button>
+  </form>
+  {% endif %}
+  {% if capabilities.reset_password %}
+  <form method="post" action="{{ url_for('admin.user_reset_password', uid=u.id) }}" class="flex gap-1 wrap" style="margin-bottom:12px">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+    <input class="form-control" name="password" type="password" minlength="8" placeholder="رمز جدید (حداقل ۸ کاراکتر)" required style="flex:1;min-width:220px">
+    <button class="btn btn-primary btn-sm">ریست رمز و خروج همه سشن‌ها</button>
+  </form>
+  {% endif %}
+  {% if capabilities.notify %}
+  <form method="post" action="{{ url_for('admin.user_notify', uid=u.id) }}" class="flex gap-1 wrap">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+    <input class="form-control" name="title" placeholder="عنوان اعلان" required style="min-width:180px">
+    <input class="form-control" name="body" placeholder="متن اعلان..." style="flex:1;min-width:220px">
+    <button class="btn btn-primary btn-sm">📨 ارسال اعلان</button>
+  </form>
+  {% endif %}
+</div>
+{% endif %}
+
+<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:18px;align-items:start">
+  {% if capabilities.courses %}
+  <section class="card" style="padding:20px">
+    <h2 style="font-size:14px;margin-bottom:12px">📚 دوره‌های کاربر ({{ fa(enrollments|length) }})</h2>
+    {% for e in enrollments %}
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px">
+      <span>{{ e.course.title if e.course else '—' }}</span>
+      <span class="badge {{ 'badge-success' if e.percent >= 100 else 'badge-primary' }}">{{ fa(e.percent) }}٪</span>
     </div>
-    <div class="card" style="padding:20px">
-      <h2 style="font-size:14px;margin-bottom:12px">📚 دوره‌های کاربر ({{ fa(enrollments|length) }})</h2>
-      {% for e in enrollments %}
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px">
-        <span>{{ e.course.title if e.course else '—' }}</span>
-        <span class="badge {{ 'badge-success' if e.percent >= 100 else 'badge-primary' }}">{{ fa(e.percent) }}٪</span>
-      </div>
-      {% else %}<p class="text-3" style="font-size:13px">دوره‌ای ندارد.</p>{% endfor %}
+    {% else %}<p class="text-3">دوره‌ای ندارد.</p>{% endfor %}
+  </section>
+  {% endif %}
+
+  {% if capabilities.orders %}
+  <section class="card" style="padding:20px">
+    <h2 style="font-size:14px;margin-bottom:12px">🧾 سفارش‌ها ({{ fa(orders|length) }})</h2>
+    {% for o in orders %}
+    <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:12.5px">
+      <span dir="ltr">{{ o.code }}</span>
+      <span>{{ fa('{:,.0f}'.format(o.final_total)) }} — <b>{{ o.status_fa }}</b></span>
     </div>
-    <div class="card" style="padding:20px;margin-top:16px">
-      <h2 style="font-size:14px;margin-bottom:12px">🎫 تیکت‌ها ({{ fa(tickets|length) }})</h2>
-      {% for t in tickets %}
-      <div style="padding:7px 0;border-bottom:1px solid var(--border);font-size:13px">
-        <strong>{{ t.subject }}</strong> <span class="badge badge-gray">{{ t.status }}</span>
-      </div>
-      {% else %}<p class="text-3" style="font-size:13px">تیکتی ندارد.</p>{% endfor %}
+    {% else %}<p class="text-3">سفارشی ندارد.</p>{% endfor %}
+  </section>
+  {% endif %}
+
+  {% if capabilities.tickets %}
+  <section class="card" style="padding:20px">
+    <h2 style="font-size:14px;margin-bottom:12px">🎫 تیکت‌ها ({{ fa(tickets|length) }})</h2>
+    {% for t in tickets %}
+    <div style="padding:7px 0;border-bottom:1px solid var(--border);font-size:13px">
+      <strong>{{ t.subject }}</strong> <span class="badge badge-gray">{{ t.status }}</span>
     </div>
-  </div>
-  <div>
-    <div class="card" style="padding:20px">
-      <h2 style="font-size:14px;margin-bottom:12px">🧾 سفارش‌ها ({{ fa(orders|length) }})</h2>
-      {% for o in orders %}
-      <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:12.5px">
-        <span dir="ltr">{{ o.code }}</span>
-        <span>{{ fa('{:,.0f}'.format(o.final_total)) }} — <b class="text-{{ 'success' if o.status == 'paid' else 'danger' }}">{{ o.status_fa }}</b></span>
-      </div>
-      {% else %}<p class="text-3" style="font-size:13px">سفارشی ندارد.</p>{% endfor %}
+    {% else %}<p class="text-3">تیکتی ندارد.</p>{% endfor %}
+  </section>
+  {% endif %}
+
+  {% if capabilities.activity %}
+  <section class="card" style="padding:20px">
+    <h2 style="font-size:14px;margin-bottom:12px">📋 فعالیت‌های اخیر</h2>
+    {% for a in acts %}
+    <div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:12.5px">
+      <b>{{ a.action }}</b> — {{ a.detail or '' }} <small class="text-3">{{ a.created_at|jdatetime }}</small>
     </div>
-    <div class="card" style="padding:20px;margin-top:16px">
-      <h2 style="font-size:14px;margin-bottom:12px">📋 فعالیت‌های اخیر</h2>
-      {% for a in acts %}
-      <div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:12.5px">
-        <b>{{ a.action }}</b> — {{ a.detail or '' }} <small class="text-3">{{ a.created_at|jdatetime }}</small>
-      </div>
-      {% else %}<p class="text-3" style="font-size:13px">فعالیتی ثبت نشده.</p>{% endfor %}
-    </div>
-  </div>
+    {% else %}<p class="text-3">فعالیتی ثبت نشده.</p>{% endfor %}
+  </section>
+  {% endif %}
 </div>
 {% endblock %}

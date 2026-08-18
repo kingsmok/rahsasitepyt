@@ -39,12 +39,14 @@ def _real_stats():
             reviews=_R.query.filter_by(is_approved=True).count(),
         )
         avg = db.query(db.func.avg(_R.rating)).filter(_R.is_approved == True).scalar() or 0
-        d['satisfaction'] = round(float(avg) / 5 * 100) if avg else 90
+        d['satisfaction'] = round(float(avg) / 5 * 100) if avg else 0
         _STATS_CACHE['d'] = d
         _STATS_CACHE['t'] = now
         return d
     except Exception:
-        return dict(students=49, teachers=6, courses=12, lessons=221, hours=359, reviews=48, satisfaction=90)
+        # پیش‌نمایش تجاری نباید در نبود دیتابیس، آمار ساختگی نشان دهد.
+        return dict(students=0, teachers=0, courses=0, lessons=0,
+                    hours=0, reviews=0, satisfaction=0)
 
 
 def _bright(h):
@@ -93,7 +95,7 @@ def desktop_header(t, idx):
         return f'''<header class="dv-widget" style="background:var(--card);border-bottom:1px solid var(--border)">
   <div class="dv-container dv-py-2 dv-flex dv-items-center dv-justify-between" style="border-bottom:1px solid var(--border)">
     <div class="dv-flex dv-gap-3" style="color:var(--text-2);font-size:12px">
-      <span>📞 ۰۲۱-۱۲۳۴۵۶۷۸</span><span>✉️ info@academy.ir</span>
+      <span>📞 شماره تماس مجموعه</span><span>✉️ ایمیل مجموعه</span>
     </div>
     <div class="dv-flex dv-gap-3" style="color:var(--text-2);font-size:12px">
       <a href="#" style="color:var(--primary)">ورود</a><span>|</span><a href="#">ثبت‌نام</a>
@@ -254,7 +256,7 @@ def desktop_footer(t, idx):
     <div><b style="color:var(--footer-head)">دوره‌ها</b><a href="#">پایتون</a><a href="#">طراحی</a><a href="#">بازاریابی</a><a href="#">همه دوره‌ها</a></div>
     <div><b style="color:var(--footer-head)">آکادمی</b><a href="#">داستان ما</a><a href="#">اساتید</a><a href="#">افتخارات</a><a href="#">همکاری</a></div>
     <div><b style="color:var(--footer-head)">تماس</b>
-      <p class="dv-text-sm" style="color:var(--footer-text-2)">تهران، خیابان آزادی<br>۰۲۱-۱۲۳۴۵۶۷۸<br>info@academy.ir</p></div>
+      <p class="dv-text-sm" style="color:var(--footer-text-2)">آدرس ثبت‌شده مجموعه<br>شماره تماس مجموعه<br>ایمیل مجموعه</p></div>
   </div>
   <div class="dv-footer-bottom"><span>© ۱۴۰۵ — {t['name']}</span></div>
 </footer>'''
@@ -567,9 +569,9 @@ def contact_section(t, idx):
       <textarea rows="4" placeholder="متن پیام شما..."></textarea>
       <button class="dv-btn dv-btn-primary dv-w-full">📨 ارسال پیام</button>
     </form>'''
-    cards = ('<div class="dv-cinfo"><span>🏢</span><div><b>آدرس</b><small>تهران، خیابان آزادی، پلاک ۱۲۳</small></div></div>'
-             '<div class="dv-cinfo"><span>📞</span><div><b>تلفن</b><small>۰۲۱-۱۲۳۴۵۶۷۸</small></div></div>'
-             '<div class="dv-cinfo"><span>✉️</span><div><b>ایمیل</b><small>info@academy.ir</small></div></div>'
+    cards = ('<div class="dv-cinfo"><span>🏢</span><div><b>آدرس</b><small>آدرس ثبت‌شده مجموعه</small></div></div>'
+             '<div class="dv-cinfo"><span>📞</span><div><b>تلفن</b><small>شماره تماس مجموعه</small></div></div>'
+             '<div class="dv-cinfo"><span>✉️</span><div><b>ایمیل</b><small>ایمیل مجموعه</small></div></div>'
              '<div class="dv-cinfo"><span>🕰</span><div><b>ساعات پاسخگویی</b><small>شنبه تا پنجشنبه ۹ تا ۱۸</small></div></div>')
     if v == 0:      # فرم + اطلاعات + نقشه
         return f'''<div class="dv-widget dv-flex dv-gap-4" style="flex-wrap:wrap">
@@ -583,9 +585,9 @@ def contact_section(t, idx):
         return f'''<div class="dv-widget" style="background:linear-gradient(135deg,{c['primary']},{_rgba(c['primary'], .75)});border-radius:22px;padding:30px;color:#fff;display:flex;gap:24px;flex-wrap:wrap">
   <div style="flex:1;min-width:230px">
     <h2 class="dv-text-xl dv-font-black" style="color:#fff">🎯 مشاوره رایگان انتخاب مسیر</h2>
-    <p style="opacity:.9;font-size:13px;margin:8px 0 16px">کارشناسان ما در کمتر از ۲۴ ساعت با شما تماس می‌گیرند.</p>
+    <p style="opacity:.9;font-size:13px;margin:8px 0 16px">پس از ثبت درخواست، زمان پاسخ‌گویی اعلام‌شده مجموعه را مشاهده خواهید کرد.</p>
     <div style="display:flex;flex-direction:column;gap:8px;font-size:13px">
-      <span>📞 ۰۲۱-۱۲۳۴۵۶۷۸</span><span>✉️ info@academy.ir</span><span>💬 تلگرام: @academy_ir</span>
+      <span>📞 شماره تماس مجموعه</span><span>✉️ ایمیل مجموعه</span><span>💬 تلگرام: شناسه پیام‌رسان مجموعه</span>
     </div>
   </div>
   <div style="flex:1;min-width:240px">

@@ -43,6 +43,30 @@ def test_login_next_external_redirects_to_dashboard(client):
     assert 'evil.com' not in loc
 
 
+def test_brand_css_settings_cannot_inject_style_or_external_url(app, client):
+    from models import Setting, db
+    malicious = {
+        'brand_color': '#112233;background:url(https://evil.example/x)',
+        'brand_color2': 'red;}body{display:none',
+        'kit_container': '1200;background:url(https://evil.example/y)',
+        'kit_radius': '8;position:fixed',
+    }
+    with app.app_context():
+        for key, value in malicious.items():
+            row = db.session.get(Setting, key)
+            if row:
+                row.value = value
+            else:
+                db.session.add(Setting(key=key, value=value))
+        db.session.commit()
+        if hasattr(app, 'clear_cache'):
+            app.clear_cache()
+    response = client.get('/')
+    assert response.status_code == 200
+    assert 'evil.example' not in response.text
+    assert 'body{display:none' not in response.text
+
+
 # ---------------------------------------------------------------
 # ۲) اعتبارسنجی ورودی API
 # ---------------------------------------------------------------
@@ -111,6 +135,27 @@ def test_installment_payment_requires_gateway_outside_sandbox(app, client):
 # ---------------------------------------------------------------
 # ۴) 2FA محدودیت تلاش
 # ---------------------------------------------------------------
+def test_pending_2fa_cannot_open_admin_directly(app, client):
+    """وجود uid پیش از تایید کد نباید دسترسی مستقیم به /admin بدهد."""
+    from models import db, User
+    from blueprints.auth import _code_digest
+    with app.app_context():
+        admin = User(name='مدیر در انتظار', email='pending2fa@test.ir',
+                     phone='09120000661', role='admin', is_active=True)
+        admin.set_password('admin123')
+        db.session.add(admin)
+        db.session.commit()
+        admin_id = admin.id
+        digest = _code_digest('123456', 'admin-2fa')
+    with client.session_transaction() as sess:
+        sess['uid'] = admin_id
+        sess['admin_2fa_hash'] = digest
+        sess['admin_2fa_ts'] = __import__('time').time()
+    response = client.get('/admin/', follow_redirects=False)
+    assert response.status_code == 302
+    assert '/auth/admin-2fa' in response.headers.get('Location', '')
+
+
 def test_2fa_brute_force_locked(app, client):
     """۶ تلاش غلط 2FA → سشن باطل و ریدایرکت به لاگین"""
     from models import db, User
@@ -139,6 +184,9 @@ def test_2fa_brute_force_locked(app, client):
     # تلاش ۶م → لاگین (سشن 2FA باطل شده)
     assert r.status_code == 302
     assert '/auth/login' in r.headers.get('Location', '')
+    with client.session_transaction() as sess:
+        assert 'uid' not in sess
+        assert 'admin_2fa_hash' not in sess
 
 
 def test_2fa_expired_code(app, client):
@@ -165,6 +213,9 @@ def test_2fa_expired_code(app, client):
                     follow_redirects=False)
     assert r.status_code == 302
     assert '/auth/login' in r.headers.get('Location', '')
+    with client.session_transaction() as sess:
+        assert 'uid' not in sess
+        assert 'admin_2fa_hash' not in sess
 
 
 # ---------------------------------------------------------------

@@ -12,7 +12,7 @@ except ImportError:  # پایتون < 3.11 (هاست‌های اشتراکی)
 from flask import (Blueprint, render_template, request, redirect, url_for,
                    flash, g, session, abort)
 from models import (utcnow, db, User, Order, OrderItem, Coupon, Enrollment,
-                    PaymentLog, PaymentProof)
+                    PaymentLog, PaymentProof, WalletTransaction)
 
 shop_bp = Blueprint('shop', __name__)
 
@@ -27,12 +27,12 @@ GATEWAYS = _GW
 def _sandbox_allowed():
     """آیا شبیه‌ساز پرداخت مجاز است؟
 
-    شبیه‌ساز در محصول نهایی خاموش است. فقط تست‌های خودکار یا توسعه‌ای که با
-    ``ENABLE_DEMO_FEATURES=1`` به‌صورت صریح اجرا شده باشد می‌تواند علاوه بر
-    ``sandbox_mode=1`` به آن دسترسی پیدا کند؛ production همیشه مسدود است.
+    شبیه‌ساز فقط داخل Flask TESTING/pytest مجاز است. حتی دموی فروش با
+    ``ENABLE_DEMO_FEATURES=1`` باید از درگاه واقعی پیکربندی‌شده استفاده کند؛
+    production نیز همیشه مسدود است.
     """
-    from runtime import demo_features_enabled
-    return (demo_features_enabled() and
+    from runtime import automated_test_mode
+    return (automated_test_mode() and
             str(g.settings.get('sandbox_mode', '0')) == '1')
 
 
@@ -149,8 +149,8 @@ def checkout():
         final = max(0, final - loyalty_discount)
     final += shipping_cost
     # POST دست‌ساز هم نباید اقساط غیرفعال یا مبلغ زیر حداقل را دور بزند.
-    from runtime import demo_features_enabled
-    if not bnpl_available or (final < 300000 and not demo_features_enabled()):
+    from runtime import automated_test_mode
+    if not bnpl_available or (final < 300000 and not automated_test_mode()):
         installment_count = 0
 
     if request.method == 'POST' and request.form.get('action') == 'remove_coupon':
@@ -248,6 +248,9 @@ def checkout_wallet():
     if not order:
         flash('سفارش یافت نشد.', 'error')
         return redirect(url_for('student.orders'))
+    if order.fulfillment_status == 'wallet_topup':
+        flash('شارژ کیف پول باید از درگاه پرداخت واقعی انجام شود.', 'error')
+        return redirect(url_for('features.wallet'))
     balance = g.user.wallet_balance or 0
     if balance < order.final_total:
         flash('موجودی کیف پول کافی نیست.', 'error')
@@ -270,10 +273,11 @@ def pay_installment(code, num):
     if inst.status == 'paid':
         flash('این قسط قبلاً پرداخت شده.', 'info')
         return redirect(url_for('student.orders'))
-    # امنیت: در حالت غیرآزمایشی، پرداخت فقط از طریق درگاه اقساطی انجام می‌شود (نه POST ساده)
+    # در سرویس‌های BNPL واقعی، اقساط در پنل همان ارائه‌دهنده وصول می‌شوند؛
+    # ارسال دوباره کل مبلغ سفارش به درگاه، برداشت اضافه و نادرست ایجاد می‌کرد.
     if not _sandbox_allowed():
-        flash('پرداخت از طریق سرویس اقساطی انجام می‌شود — در حال انتقال...', 'info')
-        return redirect(url_for('shop.pay_start', code=code, gateway=order.gateway or ''))
+        flash('پرداخت و پیگیری اقساط این سفارش در پنل سرویس اقساطی انجام می‌شود.', 'info')
+        return redirect(url_for('student.orders'))
     inst.status = 'paid'
     inst.paid_at = utcnow()
     inst.ref_id = 'INST-' + str(random.randint(100000000, 999999999))
@@ -311,7 +315,10 @@ def pay_start(code):
         return redirect(url_for('auth.login'))
     order = Order.query.filter_by(code=code, user_id=g.user.id).first_or_404()
     if order.status == 'paid':
-        flash('این سفارش قبلاً پرداخت شده و دوره فعال است. 🎉', 'info')
+        if order.fulfillment_status == 'wallet_topup':
+            flash('این پرداخت قبلاً تایید و کیف پول شارژ شده است.', 'info')
+            return redirect(url_for('features.wallet'))
+        flash('این سفارش قبلاً پرداخت شده است. 🎉', 'info')
         return redirect(url_for('student.invoice', code=code))
     if order.status in ('canceled', 'failed'):
         # پرداخت مجدد سفارش لغوشده یا ناموفق باید دوباره pending شود تا callback
@@ -382,10 +389,10 @@ def pay_start(code):
                 _gws.append(item)
             continue
         if not gateway_ready(item['id'], g.settings):
-            # فقط تست خودکار/توسعهٔ صریح می‌تواند درگاه انتخاب‌شدهٔ ناقص را
-            # برای بررسی رابط نمایش دهد؛ در production این شرط همیشه False است.
-            from runtime import demo_features_enabled
-            if not (demo_features_enabled() and item['id'] == (order.gateway or '')):
+            # فقط تست خودکار می‌تواند درگاه ناقص را برای پوشش رابط نمایش دهد؛
+            # دموی فروش و production هر دو فقط درگاه کامل واقعی را می‌بینند.
+            from runtime import automated_test_mode
+            if not (automated_test_mode() and item['id'] == (order.gateway or '')):
                 continue
         if is_installment and item.get('kind') != 'installment':
             continue
@@ -584,6 +591,39 @@ def _mark_paid(order, ref, detail):
         order.coupon.used_count += 1
     db.session.add(PaymentLog(order_id=order.id, gateway=order.gateway, amount=order.final_total,
                               status='paid', ref_id=ref, detail=detail))
+    if order.fulfillment_status == 'wallet_topup':
+        # افزایش موجودی داخل همان transaction تایید پرداخت و به‌شکل SQL اتمیک؛
+        # callback تکراری به‌دلیل گارد status بالا دوباره شارژ نمی‌کند.
+        User.query.filter(User.id == order.user_id).update(
+            {User.wallet_balance: db.func.coalesce(User.wallet_balance, 0) + order.final_total},
+            synchronize_session=False)
+        db.session.add(WalletTransaction(
+            user_id=order.user_id, amount=order.final_total, type='charge',
+            detail=f'شارژ آنلاین کیف پول — پرداخت {order.code}'))
+        try:
+            from models import Notification
+            Notification.notify(
+                order.user_id, 'کیف پول شارژ شد ✅',
+                f'{order.final_total:,} تومان پس از تایید پرداخت به کیف پول شما اضافه شد.',
+                '💰', url_for('features.wallet'))
+        except Exception:
+            _lexc('shop.mark_paid.wallet_notification')
+        try:
+            from models import ActivityLog
+            db.session.add(ActivityLog(
+                user_id=order.user_id, action='wallet_topup',
+                detail=f'شارژ آنلاین {order.final_total:,} تومان ({order.gateway})',
+                ip=request.headers.get('X-Forwarded-For', request.remote_addr or '')[:60]))
+        except Exception:
+            _lexc('shop.mark_paid.wallet_activity')
+        db.session.commit()
+        return True
+    if order.installment_count and order.installment_count > 1:
+        from gateways import GATEWAY_MAP
+        if (GATEWAY_MAP.get(order.gateway) or {}).get('kind') == 'installment':
+            from models import Installment
+            Installment.query.filter_by(order_id=order.id).update(
+                {'status': 'provider_managed'}, synchronize_session=False)
     for item in order.items:
         if item.course_id and not Enrollment.query.filter_by(user_id=order.user_id,
                                                              course_id=item.course_id).first():

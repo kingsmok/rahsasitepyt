@@ -7,6 +7,9 @@ defusedxml>=0.7.1
 # Pillow — نسخه امن (۹.۵ و پایین‌تر چند CVE دارند). Pillow 11+ از پایتون 3.9 پشتیبانی می‌کند
 Pillow>=11.0.0
 reportlab>=4.0
+# شکل‌دهی و جهت صحیح متن فارسی در PDF فاکتور/گواهی
+arabic-reshaper>=3.0.0
+python-bidi>=0.6.0
 # cryptography — نسخه امن (41.0.7 و پایین‌تر CVE دارند). 42+ از پایتون 3.7 پشتیبانی می‌کند
 cryptography>=42.0.0
 flask-admin>=1.6

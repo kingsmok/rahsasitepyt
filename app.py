@@ -277,9 +277,27 @@ def create_app():
     # ── پاکسازی HTML دلخواه (ضد XSS/فیشینگ) ──
     # هرجا در قالب‌ها HTML خام رندر می‌شود باید از این فیلتر عبور کند، نه |safe.
     # جزئیات دلیل امنیتی در html_sanitizer.py توضیح داده شده است.
-    from html_sanitizer import sanitize_markup as _sanitize_markup, escape_nl2br as _escape_nl2br
+    from html_sanitizer import (escape_nl2br as _escape_nl2br,
+                                safe_url as _safe_url,
+                                sanitize_markup as _sanitize_markup)
     app.jinja_env.filters['clean_html'] = _sanitize_markup
+    app.jinja_env.filters['safe_url'] = _safe_url
     app.jinja_env.filters['nl2br'] = _escape_nl2br
+
+    def _safe_css_color(value):
+        """رنگ برند فقط hex؛ از بستن style و CSS injection جلوگیری می‌کند."""
+        import re as _css_re
+        value = str(value or '').strip()
+        return value if _css_re.match(r'^#[0-9a-fA-F]{6}$', value) else ''
+
+    def _safe_css_int(value, minimum=0, maximum=2000):
+        try:
+            return max(int(minimum), min(int(maximum), int(value)))
+        except (TypeError, ValueError):
+            return ''
+
+    app.jinja_env.filters['css_color'] = _safe_css_color
+    app.jinja_env.filters['css_int'] = _safe_css_int
 
     def _safe_tracking_id(v):
         """شناسه سرویس تحلیلی (GA/Clarity/...) — فقط حروف، عدد، خط‌تیره.
@@ -467,6 +485,10 @@ def create_app():
         app.register_blueprint(install_bp)
     except Exception:
         _lexc('app.py')
+    # ── فعال‌سازی نسخه تجاری (امضای Ed25519 + اتصال دامنه) ──
+    # این جزء امنیتی core است؛ خطای import نباید با اجرای ناقص و بی‌صدا پنهان شود.
+    from blueprints.license import license_bp
+    app.register_blueprint(license_bp)
 
     # گارد نصب: اگر نصب انجام نشده، همه مسیرها → /install
     @app.before_request
@@ -492,6 +514,32 @@ def create_app():
         if not ok:
             return redirect(url_for('install.wizard') + '?repair=1')
         return None
+
+    @app.before_request
+    def _commercial_license_guard():
+        """در بسته دارای public key، همه درخواست‌ها به لایسنس معتبر نیاز دارند."""
+        from licensing import get_license_manager
+        manager = get_license_manager()
+        state = manager.status(request.host)
+        g.license_state = state
+        if not manager.enforced or state.valid:
+            return None
+        path = request.path or '/'
+        allowed = (
+            path.startswith(('/static/', '/install', '/license')) or
+            path in ('/health', '/favicon.ico') or
+            # callback تراکنش شروع‌شده نباید با انقضای ناگهانی لایسنس گم شود.
+            path.startswith('/pay/verify/') or path == '/pay/zarinpal-verify'
+        )
+        if allowed:
+            return None
+        if path.startswith('/api/') or request.accept_mimetypes.best == 'application/json':
+            from flask import jsonify as _jsonify
+            return _jsonify(ok=False, code='license_required',
+                            msg=state.message, license=state.as_public_dict()), 402
+        next_path = request.full_path.rstrip('?')
+        return redirect(url_for('license.activate', next=next_path))
+
     # Flask-Admin (پنل مدیریت کامل مدل‌ها)
     try:
         from admin_panel import init_admin
@@ -749,7 +797,7 @@ def create_app():
         if (_np.startswith('/pay') or _np.startswith('/checkout') or
                 _np.startswith('/cart') or _np.startswith('/dashboard') or
                 _np.startswith('/auth') or _np.startswith('/install') or
-                _np.startswith('/wallet') or _np.startswith('/admin')):
+                _np.startswith('/wallet') or _np.startswith('/admin') or _np.startswith('/license')):
             resp.headers['X-Robots-Tag'] = 'noindex, nofollow, noarchive'
         # تصاویر آپلودی ادمین/صفحه‌ساز (/static/img/uploads/...) — inline می‌مانند
         # (لوگو و تصاویر صفحه باید نمایش داده شوند) ولی با sandbox، پس حتی اگر
@@ -792,8 +840,8 @@ def create_app():
             "https://www.googletagmanager.com https://www.google-analytics.com "
             "https://www.clarity.ms https://client.crisp.chat; "
             "style-src 'self' 'unsafe-inline' https://client.crisp.chat; "
-            "img-src 'self' data: blob: https://www.google-analytics.com "
-            "https://www.googletagmanager.com https://image.crisp.chat https://client.crisp.chat; "
+            # تصاویر محصول/دوره ممکن است از CDN امنی که مدیر ثبت کرده بیایند.
+            "img-src 'self' data: blob: https:; "
             "font-src 'self' data: https://client.crisp.chat; "
             "connect-src 'self' https://www.google-analytics.com https://www.googletagmanager.com "
             "https://*.clarity.ms https://client.crisp.chat wss://client.relay.crisp.chat; "
@@ -893,9 +941,12 @@ def create_app():
             except Exception:
                 pass  # در صورت خطای Redis → fallback به حافظه
         with _rl_lock:
-            rec = _rl_hits.get(ip)
+            # همانند کلید Redis، شمارنده هر endpoint جداست؛ در غیر این صورت
+            # درخواست عادی API می‌توانست سهمیه login/license همان IP را بسوزاند.
+            memory_key = (ip, request.path[:60])
+            rec = _rl_hits.get(memory_key)
             if not rec or now - rec[0] > window:
-                _rl_hits[ip] = [now, 1]
+                _rl_hits[memory_key] = [now, 1]
                 return True
             rec[1] += 1
             if rec[1] > limit:
@@ -924,6 +975,14 @@ def create_app():
         elif p == '/newsletter' and request.method == 'POST':
             if not _rate_limit(5, 60):
                 return 'درخواست بیش از حد — کمی صبر کنید.', 429
+        elif p == '/license' and request.method == 'POST':
+            if not _rate_limit(10, 300):
+                return 'تلاش فعال‌سازی بیش از حد — ۵ دقیقه صبر کنید.', 429
+        elif p == '/install/repair' and request.method == 'POST':
+            # نصب تکه‌ای چند درخواست لازم دارد؛ سقف برای کار عادی کافی و برای
+            # brute-force رمز/کلید بازیابی محدود است.
+            if not _rate_limit(40, 900):
+                return 'درخواست تعمیر بیش از حد — ۱۵ دقیقه صبر کنید.', 429
         return None
 
     # ---------- CSRF محافظت (توکن دستی در سشن) ----------
@@ -1115,7 +1174,7 @@ def create_app():
                 import os as _os
                 bk_dir = _os.path.join(app.instance_path, 'backups')
                 _os.makedirs(bk_dir, exist_ok=True)
-                import glob as _glob, shutil as _shutil
+                import glob as _glob
                 _lock_f = None
                 try:
                     import fcntl
@@ -1126,15 +1185,34 @@ def create_app():
                 except Exception:
                     pass
                 try:
+                    # مسیر واقعی SQLite را از engine بگیر؛ DATABASE_URL ممکن است
+                    # به فایلی خارج از instance اشاره کند. برای MySQL بکاپ فایل
+                    # بی‌معناست و پنل بکاپ دامپ جداگانه می‌سازد.
+                    if db.engine.dialect.name != 'sqlite':
+                        return True
+                    source_db = db.engine.url.database
+                    if not source_db or source_db == ':memory:':
+                        return True
+                    source_db = _os.path.abspath(source_db)
+                    if not _os.path.isfile(source_db):
+                        app.logger.warning('automatic backup skipped; SQLite file missing: %s', source_db)
+                        return True
                     bks = sorted(_glob.glob(_os.path.join(bk_dir, 'academy-*.db')), key=_os.path.getmtime)
-                    need = True
-                    if bks:
-                        need = (time.time() - _os.path.getmtime(bks[-1])) > 86400
+                    need = not bks or (time.time() - _os.path.getmtime(bks[-1])) > 86400
                     if need:
+                        # sqlite3.backup با WAL سازگار و از copy2 ایمن‌تر است.
+                        import sqlite3 as _sqlite3
                         from datetime import datetime as _dt
-                        _shutil.copy2(_os.path.join(app.instance_path, 'academy.db'),
-                                      _os.path.join(bk_dir, f'academy-{_dt.now():%Y%m%d-%H%M}.db'))
-                        for old_bk in bks[:-7]:
+                        target_db = _os.path.join(
+                            bk_dir, f'academy-{_dt.now():%Y%m%d-%H%M}.db')
+                        src_conn = _sqlite3.connect(source_db, timeout=15)
+                        dst_conn = _sqlite3.connect(target_db)
+                        try:
+                            src_conn.backup(dst_conn)
+                        finally:
+                            dst_conn.close()
+                            src_conn.close()
+                        for old_bk in bks[-7::-1]:
                             try:
                                 _os.remove(old_bk)
                             except Exception:
@@ -1197,6 +1275,27 @@ def create_app():
                 g.user = None
                 from flask import flash as _flash
                 _flash('سشن شما در دستگاه دیگری بسته شد. دوباره وارد شوید.', 'info')
+
+        # تا قبل از ورود صحیح کد دوم، uid موجود در سشن نباید امکان دورزدن 2FA
+        # با تایپ مستقیم /admin را بدهد.
+        if g.user and session.get('admin_2fa_hash'):
+            allowed_2fa = (request.path.startswith('/static/') or
+                           request.endpoint in ('auth.admin_2fa', 'auth.logout'))
+            if not allowed_2fa:
+                return redirect(url_for('auth.admin_2fa'))
+
+        # نصب تازه برای عموم غیرفعال است؛ نبودن کلید برای نصب‌های قدیمی به معنی
+        # فعال بودن است تا یک به‌روزرسانی، سایت در حال کار را ناگهان نبندد.
+        if g.settings.get('site_active', '1') != '1' and not (g.user and g.user.is_admin):
+            allowed_inactive = (
+                request.path.startswith(('/static/', '/install')) or
+                request.endpoint in ('health', 'site.maintenance', 'auth.login',
+                                     'auth.admin_2fa', 'auth.logout') or
+                (request.endpoint or '').startswith('admin.')
+            )
+            if not allowed_inactive:
+                return redirect(url_for('site.maintenance'))
+
         daily_reminders()
         # ---------- حفاظت از فایل‌های خصوصی (uploads) ----------
         # مسیرهای جدید /uploads/... و قدیمی /static/uploads/... هر دو چک می‌شوند
@@ -1293,16 +1392,21 @@ def create_app():
         # پیش‌نمایش طرح از URL فقط برای مدیر واردشده مجاز است؛ کاربران عمومی
         # همیشه نسخهٔ اصلی سایت را می‌بینند.
         _pv = request.args.get('site_design', '') if (g.user and g.user.is_admin) else ''
-        sd = _pv if _pv in SITE_DESIGNS else g.settings.get('site_design', '1')
-        if sd == '1' or sd not in SITE_DESIGNS:
+        _saved_design = g.settings.get('site_design', '')
+        sd = _pv if _pv in SITE_DESIGNS else (_saved_design or '1')
+        # اگر مدیر طرحی را ذخیره یا صریحاً preview کرده، تم همان طرح باید اعمال
+        # شود (طرح ۱ هم واقعاً theme-22 است). نبود تنظیم در نصب‌های قدیمی یعنی
+        # حالت آزاد و امکان انتخاب تم شخصی/کوکی؛ این سازگاری API تم را حفظ می‌کند.
+        _force_design_theme = bool(_pv in SITE_DESIGNS or _saved_design in SITE_DESIGNS)
+        if _force_design_theme:
+            theme = SITE_DESIGNS[sd]['theme']
+        else:
             if g.user:
                 theme = g.user.theme
             if not theme:
                 theme = request.cookies.get('lms_theme')
             if not theme or theme not in VALID_THEMES:
                 theme = g.settings.get('default_theme', 'theme-01')
-        else:
-            theme = SITE_DESIGNS[sd]['theme']
         if theme not in VALID_THEMES:
             theme = 'theme-01'
         g.theme = theme
@@ -1376,7 +1480,8 @@ def create_app():
             if (_p.startswith('/pay') or _p.startswith('/checkout') or
                     _p.startswith('/cart') or _p.startswith('/dashboard') or
                     _p.startswith('/auth') or _p.startswith('/install') or
-                    _p.startswith('/wallet') or _p.startswith('/uploads')):
+                    _p.startswith('/wallet') or _p.startswith('/uploads') or
+                    _p.startswith('/license')):
                 g.seo['noindex'] = True
         except Exception:
             _lexc('app.py')
@@ -1396,13 +1501,17 @@ def create_app():
             if request.method != 'GET':
                 return None
             p = request.path
-            for _x in ('/admin', '/builder', '/install', '/api', '/static', '/uploads',
-                       '/auth', '/dashboard', '/teacher-panel', '/student', '/community',
-                       '/exam', '/wallet', '/pay', '/cart', '/checkout', '/newsletter',
-                       '/feedback', '/form/'):
+            for _x in ('/admin', '/builder', '/install', '/license', '/api', '/static',
+                       '/uploads', '/auth', '/dashboard', '/teacher-panel', '/student',
+                       '/community', '/exam', '/wallet', '/pay', '/cart', '/checkout',
+                       '/newsletter', '/feedback', '/form/'):
                 if p.startswith(_x):
                     return None
-            if not any(p == x or p.startswith(x) for x in _HTML_PUBLIC):
+            # عضو '/' فقط خود صفحه خانه است؛ startswith('/') تمام مسیرها را
+            # cache می‌کرد و می‌توانست صفحه حساس/پویا مثل فعال‌سازی را stale کند.
+            is_public = p == '/' or any(
+                x != '/' and (p == x or p.startswith(x)) for x in _HTML_PUBLIC)
+            if not is_public:
                 return None
             if session.get('uid') or session.get('_flashes'):
                 return None
@@ -1599,7 +1708,7 @@ def create_app():
                 return False
 
         from gamification import user_badges
-        from permissions import has_permission, ROLES
+        from permissions import has_permission, can_access_endpoint, ROLES
         from gateways import gateway_fa as _gateway_name
         try:
             from sms import provider_ready as _sms_provider_ready
@@ -1617,7 +1726,9 @@ def create_app():
         return dict(site=getattr(g, 'settings', {}), cur_user=_u, site_categories=cats,
                     unread_notifications=unread_count,
                     current_role=(ROLES.get(_u.role, {}).get('fa') if _u else ''),
+                    role_name=lambda user: ROLES.get(getattr(user, 'role', ''), {}).get('fa', 'کاربر'),
                     has_perm=has_permission,
+                    can_manage_panel=can_access_endpoint(_u, 'admin.overview') if _u else False,
                     my_badges=user_badges(_u) if _u else [],
                     cart_ids=getattr(g, 'cart', []), cart_count=getattr(g, 'cart_count', 0),
                     theme=getattr(g, 'theme', 'theme-01'),
@@ -1637,6 +1748,7 @@ def create_app():
                     sms_ready=_sms_ready,
                     # در قالب‌ها نیز بخش‌های آزمایشی فقط در محیط تست صریح قابل مشاهده‌اند.
                     demo_features_enabled=_demo_features_enabled(),
+                    license_state=getattr(g, 'license_state', None),
                     clarity_script=_clarity, crisp_script=_crisp,
                     bc_admin_menu=lambda: __import__('permissions', fromlist=['menu_for']).menu_for(_u),
                     seo=getattr(g, 'seo', dict(title='', description='', keywords='',
@@ -1647,9 +1759,14 @@ def create_app():
     @app.route('/health')
     def health():
         from flask import jsonify
+        license_status = getattr(g, 'license_state', None)
+        if license_status and license_status.enforced and not license_status.valid:
+            return jsonify(ok=False, status='license_required',
+                           license=license_status.code), 503
         try:
             db.session.execute(db.text('SELECT 1'))
-            return jsonify(ok=True, status='healthy'), 200
+            return jsonify(ok=True, status='healthy',
+                           license=license_status.code if license_status else 'unknown'), 200
         except Exception:
             db.session.rollback()
             return jsonify(ok=False, status='unavailable'), 503

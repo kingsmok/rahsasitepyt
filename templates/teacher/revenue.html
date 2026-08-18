@@ -4,7 +4,8 @@
 <div class="card stat-ic stat-ic-3" style="padding:22px;text-align:center;margin-bottom:18px">
   <div style="font-size:14px;color:var(--text-2)">مجموع درآمد شما</div>
   <div style="font-size:30px;font-weight:900">{{ fa('{:,.0f}'.format(share)) }} تومان</div>
-  <small class="text-3">از فروش کل {{ fa('{:,.0f}'.format(total)) }} تومان</small>
+  <small class="text-3">از فروش قطعی {{ fa('{:,.0f}'.format(total)) }} تومان</small>
+  <div style="margin-top:10px;font-size:12px">پرداخت‌شده: {{ fa('{:,.0f}'.format(paid_out)) }} — مانده قابل درخواست: <b>{{ fa('{:,.0f}'.format(available)) }}</b> تومان</div>
 </div>
 <div class="card" style="padding:22px">
   <div class="table-wrap"><table class="table">
@@ -21,13 +22,17 @@
     </tbody>
   </table></div>
   <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
-    {% if pending %}
+    {% if cur_user.role != 'teacher' %}
+    <p class="text-3">حالت مشاهده مدیریتی است؛ درخواست تسویه فقط از حساب مدرس ثبت می‌شود.</p>
+    {% elif pending %}
     <div class="badge badge-accent">⏳ درخواست تسویه شما ({{ fa('{:,.0f}'.format(pending.amount)) }} تومان) در انتظار بررسی است.</div>
+    {% elif available < 50000 %}
+    <p class="text-3">مانده قابل تسویه هنوز به حداقل ۵۰٬۰۰۰ تومان نرسیده است.</p>
     {% else %}
     <h3 style="font-size:14px;margin-bottom:10px">💰 درخواست تسویه</h3>
     <form method="post" action="{{ url_for('teacher.payout_request') }}" class="flex gap-1">
       <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
-      <input class="form-control" name="amount" type="number" placeholder="مبلغ (حداقل ۵۰,۰۰۰)" style="max-width:180px" required>
+      <input class="form-control" name="amount" type="number" min="50000" max="{{ available }}" placeholder="مبلغ (حداقل ۵۰,۰۰۰)" style="max-width:180px" required>
       <input class="form-control" name="account" placeholder="شماره شبا یا کارت (IR...)" dir="ltr" style="flex:1" required>
       <button class="btn btn-primary btn-sm">📤 ثبت درخواست</button>
     </form>

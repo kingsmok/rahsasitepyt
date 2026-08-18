@@ -94,6 +94,58 @@ def test_real_zarinpal_full_flow(client, app, real_gateway_settings, monkeypatch
         assert enr is not None
 
 
+def test_wallet_topup_uses_real_gateway_and_callback_once(
+        client, app, real_gateway_settings, monkeypatch):
+    """شارژ کیف پول از سفارش واقعی عبور می‌کند و callback تکراری دوباره شارژ نمی‌کند."""
+    from conftest import login
+    from models import Order, User, WalletTransaction
+
+    login(client, 'demo@test.ir', 'demo123')
+    page = client.get('/dashboard/wallet')
+    token = re.search(r'name="_csrf_token" value="([^\"]+)"', page.text).group(1)
+    response = client.post('/dashboard/wallet', data={
+        '_csrf_token': token, 'amount': '250000',
+    }, follow_redirects=False)
+    assert response.status_code == 302
+    assert '/pay/WAL-' in response.headers['Location']
+    code = response.headers['Location'].split('/pay/')[-1]
+
+    def fake_http(method, url, **kwargs):
+        if 'payment/request' in url:
+            return _FakeResp({'data': {'authority': 'AUTH-WALLET-1'}, 'errors': None})
+        if 'payment/verify' in url:
+            return _FakeResp({'data': {'code': 100, 'ref_id': 'REF-WALLET-1'},
+                              'errors': None})
+        raise AssertionError('unexpected url: ' + url)
+
+    monkeypatch.setattr(gateways, 'http_request', fake_http)
+    token = _csrf(client, f'/pay/{code}')
+    started = client.post(f'/pay/{code}', data={
+        '_csrf_token': token, 'gateway': 'zarinpal',
+    }, follow_redirects=False)
+    assert 'zarinpal.com/pg/StartPay/AUTH-WALLET-1' in started.headers['Location']
+
+    callback = f'/pay/verify/zarinpal?Authority=AUTH-WALLET-1&Status=OK&code={code}'
+    verified = client.get(callback, follow_redirects=False)
+    assert verified.status_code == 302 and 'success' in verified.headers['Location']
+    with app.app_context():
+        order = Order.query.filter_by(code=code).one()
+        user = User.query.filter_by(email='demo@test.ir').one()
+        assert order.status == 'paid'
+        assert order.fulfillment_status == 'wallet_topup'
+        assert user.wallet_balance == 250000
+        assert WalletTransaction.query.filter_by(
+            user_id=user.id, type='charge').count() == 1
+
+    repeated = client.get(callback, follow_redirects=False)
+    assert repeated.status_code == 302
+    with app.app_context():
+        user = User.query.filter_by(email='demo@test.ir').one()
+        assert user.wallet_balance == 250000
+        assert WalletTransaction.query.filter_by(
+            user_id=user.id, type='charge').count() == 1
+
+
 def test_real_gateway_not_offered_when_sandbox_off(client, app, real_gateway_settings):
     """با sandbox خاموش، درگاه آزمایشی نباید در لیست نمایش داده شود و انتخابش رد شود."""
     login = __import__('conftest', fromlist=['login']).login

@@ -11,8 +11,8 @@
       <h1 style="font-size:20px;margin-bottom:16px">🔔 اعلان‌های شما</h1>
       {% if items %}
       <div style="display:flex;flex-direction:column;gap:10px">
-        {% for n in items %}
-        <a href="{{ n.link or '#' }}" class="card" style="padding:16px 18px;display:flex;gap:12px;align-items:flex-start;{{ '' if n.is_read else 'background:var(--primary-soft);border-color:var(--primary)' }}">
+        {% for n in items %}{% set notification_url = n.link|safe_url %}
+        {% if notification_url %}<a href="{{ notification_url }}" class="card" style="padding:16px 18px;display:flex;gap:12px;align-items:flex-start;{{ '' if n.is_read else 'background:var(--primary-soft);border-color:var(--primary)' }}">{% else %}<div class="card" style="padding:16px 18px;display:flex;gap:12px;align-items:flex-start;{{ '' if n.is_read else 'background:var(--primary-soft);border-color:var(--primary)' }}">{% endif %}
           <span style="font-size:22px">{{ n.icon or '🔔' }}</span>
           <div style="flex:1;min-width:0">
             <strong style="font-size:13.5px">{{ n.title }}</strong>
@@ -20,7 +20,7 @@
             <small class="text-3" style="font-size:11px">{{ n.created_at|jdatetime }}</small>
           </div>
           {% if not n.is_read %}<span class="badge badge-primary">جدید</span>{% endif %}
-        </a>
+        {% if notification_url %}</a>{% else %}</div>{% endif %}
         {% endfor %}
       </div>
       {% else %}

@@ -9,6 +9,7 @@ _msg_lim = {}  # user_id -> [timestamps] — ضد اسپم پیام خصوصی
 
 from models import (utcnow, db, User, Course, ForumTopic, ForumPost, LiveSession,
                     Enrollment, ActivityLog, PrivateMessage, ForumPoll, ForumPollVote)
+from validators import safe_int
 
 community_bp = Blueprint('community', __name__, url_prefix='/community')
 
@@ -193,10 +194,14 @@ def message_conversation(uid):
 def message_send_api():
     if not g.user:
         return jsonify(ok=False), 401
-    uid = request.form.get('uid', type=int) or (request.json or {}).get('uid')
-    body = (request.form.get('body') or (request.json or {}).get('body') or '').strip()
+    payload = request.get_json(silent=True) or {}
+    uid = safe_int(request.form.get('uid') or payload.get('uid'))
+    body = (request.form.get('body') or payload.get('body') or '').strip()
     if not uid or not body:
-        return jsonify(ok=False, msg='مشخص نشده'), 400
+        return jsonify(ok=False, msg='گیرنده و متن پیام الزامی است.'), 400
+    recipient = db.session.get(User, uid)
+    if not recipient or not recipient.is_active or recipient.id == g.user.id:
+        return jsonify(ok=False, msg='گیرنده معتبر نیست.'), 400
     # ضد اسپم: حداکثر ۳۰ پیام در دقیقه
     now = _time.time()
     with _msg_lock:

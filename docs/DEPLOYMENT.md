@@ -8,7 +8,7 @@
 
 ### الف) پیش از انتشار
 - [x] `SECRET_KEY` امن (تولید خودکار در deploy.sh)
-- [x] همه کلیدهای API در `.env` (نه در کد): درگاه‌ها، SMS، Clarity، Crisp، Groq، Bing، Map.ir
+- [x] همه کلیدهای API در `.env` (نه در کد): درگاه‌ها، SMS، Clarity، Crisp، Groq و Bing؛ پیش‌نمایش نشانی Google Maps به کلید نیاز ندارد
 - [x] `FLASK_ENV=production` و `APP_ENV=production` در `.env`
 - [x] `SESSION_COOKIE_SECURE=1` (کوکی فقط HTTPS)
 - [x] CSRF روی همه فرم‌ها (۳۹+ فرم) + APIهای JSON
@@ -137,7 +137,7 @@ sudo nginx -t && sudo systemctl reload nginx
 | Groq AI (Llama-3) | ✅ API + صفحه ادمین | `GROQ_API_KEY` |
 | Bing IndexNow | ✅ خودکار هنگام انتشار مقاله/دوره | `BING_API_KEY` + فایل کلید |
 | فید ترب/ایمالز/دیجی‌کالا | ✅ JSON/XML + no-store | — |
-| Map.ir / پیک اسنپ-تپسی | ✅ صفحه آدرس + برآورد | `mapir_api_key` |
+| Google Maps / ارسال | ✅ پیش‌نمایش واقعی نشانی + هزینه ثابت/هماهنگی | بدون کلید؛ تنظیم هزینه در پنل |
 
 ---
 

@@ -129,7 +129,7 @@
            style="border-radius:10px;cursor:pointer;aspect-ratio:16/10;object-fit:cover;outline:{{ '3px solid var(--primary)' if course and course.image == img else 'none' }}">
       {% endfor %}
     </div>
-    <input type="hidden" id="image-input" name="image" value="{{ course.image if course else 'cover-python.webp' }}">
+    <input type="hidden" id="image-input" name="image" value="{{ course.image if course else 'course-placeholder.webp' }}">
   </div>
 
   <label class="form-check mb-2"><input type="checkbox" name="featured" {{ 'checked' if course and course.featured }}> دوره ویژه (نمایش در صفحه اصلی)</label>

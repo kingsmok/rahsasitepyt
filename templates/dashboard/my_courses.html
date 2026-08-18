@@ -14,7 +14,7 @@
   {% for e in enrollments %}
   <div class="card card-hover" style="overflow:hidden">
     <div style="position:relative">
-      <img src="/static/img/{{ e.course.image }}" alt="" style="width:100%;aspect-ratio:16/8;object-fit:cover">
+      <img src="{{ e.course.image_url }}" alt="" style="width:100%;aspect-ratio:16/8;object-fit:cover">
       {% if e.is_completed %}<span class="badge badge-success" style="position:absolute;top:12px;right:12px">✓ تکمیل‌شده</span>{% endif %}
     </div>
     <div style="padding:18px">

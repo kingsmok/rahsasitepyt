@@ -36,14 +36,6 @@ def _xml_escape(s):
             .replace('>', '&gt;').replace('"', '&quot;').replace("'", '&apos;'))
 
 
-def _feed_image(name):
-    """تصویر فید — ترب/ایمالز SVG قبول نمی‌کنند → fallback به hero.webp"""
-    name = (name or '').strip()
-    if name.lower().endswith('.svg'):
-        return 'hero.webp'
-    return name or 'hero.webp'
-
-
 def _feed_items():
     """آیتم‌های فید: دوره‌های منتشر + محصولات دارای موجودی"""
     items = []
@@ -52,8 +44,9 @@ def _feed_items():
             id=f'course-{c.id}', type='course', title=c.title,
             price=c.price or 0, final_price=c.final_price or 0,
             discount_pct=c.discount_percent or 0,
-            stock=999, url=url_for('site.course_detail', slug=c.slug, _external=True),
-            image=request.host_url.rstrip('/') + '/static/img/' + _feed_image(c.image),
+            stock=1, url=url_for('site.course_detail', slug=c.slug, _external=True),
+            image=(c.image_url if c.image_url.startswith('https://') else
+                   request.host_url.rstrip('/') + c.image_url),
             category=c.category.name if c.category else 'آموزش',
             in_stock=True,
         ))
@@ -62,13 +55,16 @@ def _feed_items():
         _dp = 0
         if hasattr(p, 'discount_price') and p.discount_price and p.discount_price < (p.price or 0):
             _dp = round((p.price - p.discount_price) * 100 / p.price)
+        product_image = p.image_url
+        if not product_image.startswith('https://'):
+            product_image = request.host_url.rstrip('/') + product_image
         items.append(dict(
             id=f'product-{p.id}', type='product', title=p.title,
             price=p.price or 0, final_price=_fp or 0,
             discount_pct=_dp,
             stock=p.stock or 0,
             url=url_for('products.product_detail', slug=p.slug, _external=True),
-            image=request.host_url.rstrip('/') + '/static/img/' + _feed_image(p.image),
+            image=product_image,
             category='محصولات آموزشی',
             in_stock=(p.stock or 0) > 0,
         ))
@@ -212,12 +208,14 @@ def basalam_webhook():
         _log('basalam', 'webhook', 'error', 'payload بیش از حد مجاز (64KB)')
         return jsonify(ok=False, msg='payload بیش از حد مجاز'), 413
     secret = _cfg('basalam_webhook_secret', '')
-    if secret:
-        sig = request.headers.get('X-Basalam-Signature', '')
-        expect = hmac.new(secret.encode(), raw.encode(), hashlib.sha256).hexdigest()
-        if not hmac.compare_digest(sig, expect):
-            _log('basalam', 'webhook', 'error', 'امضای نامعتبر')
-            return jsonify(ok=False, msg='امضای نامعتبر'), 403
+    if not secret:
+        _log('basalam', 'webhook', 'error', 'webhook secret پیکربندی نشده است')
+        return jsonify(ok=False, msg='وب‌هوک باسلام هنوز امن پیکربندی نشده است.'), 503
+    sig = request.headers.get('X-Basalam-Signature', '')
+    expect = hmac.new(secret.encode(), raw.encode(), hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(sig, expect):
+        _log('basalam', 'webhook', 'error', 'امضای نامعتبر')
+        return jsonify(ok=False, msg='امضای نامعتبر'), 403
     try:
         data = request.get_json(force=True) or {}
     except Exception:

@@ -60,7 +60,80 @@ def test_request_install_resumes_without_background_thread(tmp_path, monkeypatch
         assert conn.execute(text(
             "SELECT COUNT(*) FROM settings WHERE key='site_name'"
         )).scalar() == 1
+        assert conn.execute(text(
+            "SELECT value FROM settings WHERE key='site_active'"
+        )).scalar() == '0'
+        assert conn.execute(text(
+            "SELECT value FROM settings WHERE key='allow_theme_switcher'"
+        )).scalar() == '0'
     engine.dispose()
+
+
+def test_real_http_installer_completes_clean_without_demo_data(tmp_path, monkeypatch):
+    """چرخه واقعی /install/run روی SQLite خالی، نه فقط تابع داخلی installer."""
+    db_path = tmp_path / 'instance' / 'academy.db'
+    db_path.parent.mkdir(parents=True)
+    state_path = tmp_path / 'instance' / '.install_progress.json'
+    marker_path = tmp_path / 'instance' / '.installed'
+    monkeypatch.setenv('DATABASE_URL', 'sqlite:///' + str(db_path))
+    monkeypatch.setenv('SECRET_KEY', 'http-installer-test-secret')
+    monkeypatch.delenv('LICENSE_PUBLIC_KEY', raising=False)
+    monkeypatch.delenv('LICENSE_ENFORCEMENT', raising=False)
+    monkeypatch.setattr(installer, 'INSTANCE_DIR', str(db_path.parent))
+    monkeypatch.setattr(installer, 'MARKER', str(marker_path))
+    monkeypatch.setattr(installer, '_INSTALL_STATE_FILE', str(state_path))
+    monkeypatch.setattr(installer, '_install_state', {
+        'status': 'idle', 'step': 0, 'steps': 5, 'msg': '', 'ok': False,
+    })
+    monkeypatch.setattr(
+        installer, 'write_env_file',
+        lambda *_args, **_kwargs: str(tmp_path / '.env'))
+
+    from app import create_app
+    from models import Course, Setting, User, db
+    web_app = create_app()
+    web_app.config.update(TESTING=True, INSTALL_GUARD=False)
+    client = web_app.test_client()
+    assert client.get('/install').status_code == 200
+
+    form = {
+        'db_type': 'sqlite', 'admin_name': 'مدیر واقعی',
+        'admin_email': 'owner@example.com',
+        'admin_pass': 'StrongOwner123!', 'admin_pass2': 'StrongOwner123!',
+        'site_name': 'آکادمی مشتری', 'site_desc': 'نصب تمیز',
+        'site_phone': '', 'site_email': 'info@example.com',
+        'site_url': 'https://academy.example.com',
+    }
+    result = None
+    for _attempt in range(30):
+        response = client.post('/install/run', data=form)
+        assert response.status_code == 200, response.get_data(as_text=True)
+        result = response.get_json()
+        assert result['ok'] is True
+        if result.get('done'):
+            break
+    assert result and result['done'] is True
+    assert result['redirect'] == '/'
+    assert marker_path.is_file()
+
+    with web_app.app_context():
+        from models import Page
+        owner = User.query.filter_by(email='owner@example.com').one()
+        owner_id = owner.id
+        assert owner.role == 'super_admin'
+        assert User.query.count() == 1
+        assert Course.query.count() == 0
+        assert db.session.get(Setting, 'site_active').value == '0'
+        assert db.session.get(Setting, 'allow_theme_switcher').value == '0'
+        home_content = Page.query.filter_by(slug='home').one().content
+        assert 'hero.webp' not in home_content and 'cover-' not in home_content
+        assert '{site_name}' in home_content
+    with client.session_transaction() as session:
+        assert session.get('uid') == owner_id
+
+    repeated = client.post('/install/run', data=form).get_json()
+    assert repeated['done'] is True
+    assert repeated['msg'] == 'نصب قبلاً انجام شده است.'
 
 
 def test_inspect_and_attach_existing_sqlite(tmp_path, monkeypatch):
@@ -154,8 +227,31 @@ def test_install_wizard_page_renders(client, monkeypatch):
     assert html.count('</html>') == 1
 
 
-def test_install_detect_and_inspect_endpoints(client):
+def test_installed_site_locks_repair_and_attach_without_owner(client, monkeypatch):
+    """نصب فعال با رمز پیش‌فرض یا درخواست ناشناس قابل تصاحب/تعویض DB نیست."""
+    from blueprints import install as install_bp
+    monkeypatch.setattr(install_bp, 'is_installed', lambda: True)
+    repair = client.post('/install/repair', data={
+        'admin_name': 'مدیر', 'admin_email': 'admin@academy.ir',
+        'admin_pass': 'Admin12345!',
+    })
+    assert repair.status_code == 403
+    attach = client.post('/install/attach', data={'db_type': 'sqlite'})
+    assert attach.status_code == 403
+    inspect_response = client.post('/install/inspect-db', json={'db_type': 'sqlite'})
+    assert inspect_response.status_code == 403
+    status = client.get('/install/status')
+    assert status.status_code == 200
+    assert status.get_json() == {'installed': True, 'install_status': 'locked'}
+
+
+def test_install_detect_and_inspect_endpoints(client, monkeypatch):
     """مسیرهای تشخیص/بررسی نباید به‌خاطر import جاافتاده ۵۰۰ بدهند."""
+    # وضعیت نصب این سناریو باید از artifact اجرای قبلی مستقل باشد.
+    import installer as _inst
+    from blueprints import install as _bp_install
+    monkeypatch.setattr(_inst, 'is_installed', lambda: False)
+    monkeypatch.setattr(_bp_install, 'is_installed', lambda: False)
     r = client.get('/install/detect')
     assert r.status_code == 200
     data = r.get_json()

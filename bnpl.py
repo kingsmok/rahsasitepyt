@@ -16,6 +16,7 @@ from datetime import datetime, timedelta
 from models import (db, utcnow, Order, User, WalletTransaction, Setting,
                     Installment)
 from jdates import jdate, fa, jdatetime
+from validators import safe_int
 
 bnpl_bp = Blueprint('bnpl', __name__)
 
@@ -37,27 +38,27 @@ def max_installments():
 
 
 def cashback_percent():
-    """درصد Cashback پس از خرید موفق — پیش‌فرض ۲٪."""
+    """درصد Cashback فقط با تنظیم صریح مدیر؛ پیش‌فرض صفر."""
     try:
-        return int(_cfg('cashback_percent', '2'))
+        return max(0, min(50, int(_cfg('cashback_percent', '0'))))
     except Exception:
-        return 2
+        return 0
 
 
 def bnpl_enabled():
     """اقساط فقط پس از فعال‌سازی مدیر؛ تست داخلی از این قاعده مستثناست."""
-    from runtime import demo_features_enabled
-    return demo_features_enabled() or _cfg('bnpl_enabled', '0') == '1'
+    from runtime import automated_test_mode
+    return automated_test_mode() or _cfg('bnpl_enabled', '0') == '1'
 
 
 def _providers():
     """فقط سرویس‌های اقساطی واقعاً پیکربندی‌شده را برگردان."""
     from gateways import gateway_plan, gateway_ready, INSTALLMENT_PROVIDERS
-    from runtime import demo_features_enabled
+    from runtime import automated_test_mode
     settings = getattr(g, 'settings', {}) or {}
     out = []
     for pid in INSTALLMENT_PROVIDERS:
-        if not gateway_ready(pid, settings) and not demo_features_enabled():
+        if not gateway_ready(pid, settings) and not automated_test_mode():
             continue
         plan = gateway_plan(pid)
         if plan:
@@ -134,7 +135,7 @@ def bnpl_page(code):
         return redirect(url_for('shop.pay_start', code=code))
     # تعداد قسط: از query (پیش‌انتخاب) یا تعداد قسط فعلی سفارش یا حداکثر
     try:
-        n = int(request.args.get('n', order.installment_count or max_installments()))
+        n = safe_int(request.args.get('n'), order.installment_count or max_installments(), 2, 4)
     except Exception:
         n = max_installments()
     max_n = min(max_installments(), max(p['max_installments'] for p in providers))

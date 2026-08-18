@@ -20,11 +20,11 @@ from validators import log_exc as _lexc
 # ================================================================
 GATEWAYS = [
     dict(id='zarinpal', name='زرین‌پال', desc='درگاه امن زرین‌پال — پرداخت با تمام کارت‌های شتاب',
-         icon='🅉', fee='۲٬۵۰۰ تومان کارمزد', kind='real', config_keys=['zarinpal_merchant']),
+         icon='🅉', fee='طبق تعرفه درگاه', kind='real', config_keys=['zarinpal_merchant']),
     dict(id='idpay', name='آیدی پی', desc='درگاه پرداخت IDPay — مناسب کسب‌وکارهای آنلاین',
-         icon='🅸', fee='۲٬۵۰۰ تومان کارمزد', kind='real', config_keys=['idpay_api_key']),
+         icon='🅸', fee='طبق تعرفه درگاه', kind='real', config_keys=['idpay_api_key']),
     dict(id='zibal', name='زیبال', desc='درگاه زیبال — پرداخت سریع با شاپرک',
-         icon='🅵', fee='۲٬۵۰۰ تومان کارمزد', kind='real', config_keys=['zibal_merchant']),
+         icon='🅵', fee='طبق تعرفه درگاه', kind='real', config_keys=['zibal_merchant']),
     # شناسه‌های داخلی قدیمی برای سازگاری دیتابیس حفظ شده‌اند:
     # melli = به‌پرداخت ملت، sepah = سامان SEP، saderat = سداد بانک ملی
     dict(id='melli', name='به‌پرداخت ملت', desc='درگاه مستقیم بانک ملت (Behpardakht)',
@@ -64,8 +64,8 @@ def gateway_ready(gw_id, settings):
     if not g:
         return False
     if g['kind'] == 'test':
-        from runtime import demo_features_enabled
-        return demo_features_enabled()
+        from runtime import automated_test_mode
+        return automated_test_mode()
     if g['kind'] == 'manual':
         return bool((settings.get('c2c_card') or '').strip())
     for k in g.get('config_keys', []):
@@ -385,8 +385,8 @@ def sepah_start(settings, order, user, callback_url):
     except Exception as exc:
         # تست‌های داخلی قدیمی _soap_call را mock می‌کنند؛ این fallback هرگز در
         # production فعال نمی‌شود و مسیر واقعی فقط REST بالاست.
-        from runtime import demo_features_enabled
-        if not demo_features_enabled():
+        from runtime import automated_test_mode
+        if not automated_test_mode():
             raise RuntimeError('سامان SEP: دریافت توکن ناموفق — ' + str(exc)[:120])
         xml = _soap_call('https://sep.shaparak.ir/OnlinePG/OnlinePG',
                          'SendToken', 'TerminalID', str(order.id))
@@ -683,8 +683,8 @@ def test_gateway(gw_id, settings):
     if not g:
         return False, 'درگاه ناشناخته'
     if g['kind'] == 'test':
-        from runtime import demo_features_enabled
-        if demo_features_enabled():
+        from runtime import automated_test_mode
+        if automated_test_mode():
             return True, 'درگاه تست فقط در محیط داخلی فعال است.'
         return False, 'درگاه آزمایشی در نسخهٔ نهایی غیرفعال است.'
     if g['kind'] == 'manual':

@@ -61,6 +61,13 @@ def test_theme_panel_present(client, app):
     assert 'فیروزه‌ای اصفهان' in body  # تم ایرانی pd-01
 
 
+def test_theme_panel_can_be_hidden_for_commercial_brand(client, app):
+    _set(app, 'allow_theme_switcher', '0')
+    body = client.get('/').get_data(as_text=True)
+    assert 'id="theme-fab"' not in body
+    assert 'id="theme-panel"' not in body
+
+
 def test_theme_panel_shows_all_themes(client, app):
     """هر ۴۳ تم باید در پنل حضور داشته باشد."""
     from app import THEMES
@@ -86,6 +93,19 @@ def test_set_theme_api_rejects_invalid(client, app):
     assert r.status_code == 400
 
 
+def test_missing_course_image_uses_neutral_placeholder(client, app):
+    from models import Course
+    with app.app_context():
+        course = Course.query.filter_by(slug='test-course').first()
+        course.image = 'missing-course-cover.jpg'
+        db.session.commit()
+        assert course.image_url == '/static/img/course-placeholder.webp'
+    page = client.get('/course/test-course')
+    assert page.status_code == 200
+    assert '/static/img/course-placeholder.webp' in page.text
+    assert 'cover-python' not in page.text
+
+
 # ---------------------------------------------------------------
 # انتخاب طرح از پنل ادمین
 # ---------------------------------------------------------------
@@ -103,9 +123,9 @@ def _make_admin(app):
 def test_admin_selects_site_design(client, app):
     """انتخاب طرح از پنل ادمین باید site_design را ذخیره و در رندر اعمال کند."""
     import re
-    from conftest import login
+    from test_admin_panel import _login_admin_2fa
     _make_admin(app)
-    login(client, 'admind@test.ir', 'admin123')
+    _login_admin_2fa(client, app, 'admind@test.ir', 'admin123')
     tok = _csrf_admin(client)
     r = client.post('/admin/designs', data={'_csrf_token': tok,
                                             'field': 'site_design', 'value': 'pd-03'},

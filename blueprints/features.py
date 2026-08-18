@@ -15,10 +15,11 @@ from models import (utcnow, db, User, Course, Quiz, QuizQuestion, QuizAttempt,
                     Assignment, AssignmentSubmission, LessonQuestion,
                     Enrollment, Order, OrderItem, Bundle, BundleCourse,
                     StudyPlan, ActivityLog, ChatMessage, StudyDay)
-from gamification import (award_points, record_streak, user_badges, wallet_spend,
-                          wallet_charge, wallet_bonus, make_referral_code)
+from gamification import (award_points, record_streak, user_badges,
+                          make_referral_code)
 
 from jdates import jtime
+from validators import safe_int
 
 features_bp = Blueprint('features', __name__)
 
@@ -27,8 +28,8 @@ features_bp = Blueprint('features', __name__)
 def _disabled_feature_guard():
     """ویژگی‌های غیرفعال نباید با واردکردن مستقیم URL در دسترس باشند."""
     if request.path.startswith('/exam/practice'):
-        from runtime import demo_features_enabled
-        if not demo_features_enabled() and g.settings.get('exam_enabled') != '1':
+        from runtime import automated_test_mode
+        if not automated_test_mode() and g.settings.get('exam_enabled') != '1':
             abort(404)
     return None
 
@@ -429,51 +430,38 @@ def leaderboard():
 def wallet():
     if not g.user:
         return redirect(url_for('auth.login'))
+    from gateways import GATEWAYS, gateway_ready
+    topup_gateways = [item for item in GATEWAYS
+                      if item.get('kind') not in ('test', 'installment') and
+                      gateway_ready(item['id'], g.settings)]
     if request.method == 'POST':
+        if not topup_gateways:
+            flash('درگاه قابل استفاده برای شارژ آنلاین کیف پول پیکربندی نشده است.', 'error')
+            return redirect(url_for('features.wallet'))
         amount = request.form.get('amount', '').strip()
-        if not amount.isdigit() or int(amount) < 10000:
-            flash('حداقل مبلغ شارژ ۱۰,۰۰۰ تومان است.', 'error')
+        if not amount.isdigit() or not 10000 <= int(amount) <= 100000000:
+            flash('مبلغ شارژ باید بین ۱۰,۰۰۰ و ۱۰۰,۰۰۰,۰۰۰ تومان باشد.', 'error')
         else:
-            # شارژ با شبیه‌ساز پرداخت — فقط در حالت آزمایشی و خارج از production
-            from blueprints.shop import _sandbox_allowed
-            if not _sandbox_allowed():
-                flash('شارژ کیف پول موقتاً در دسترس نیست — درگاه پرداخت پیکربندی نشده است.', 'error')
+            # شارژ واقعی مانند سفارش عادی از یکی از درگاه‌های پیکربندی‌شده عبور
+            # می‌کند؛ callback اتمیک فقط یک‌بار موجودی را افزایش می‌دهد.
+            for _attempt in range(10):
+                code = f"WAL-{datetime.now():%y%m%d}-{random.randint(100000, 999999)}"
+                if not Order.query.filter_by(code=code).first():
+                    break
+            else:
+                flash('ساخت شناسه پرداخت ممکن نشد؛ دوباره تلاش کنید.', 'error')
                 return redirect(url_for('features.wallet'))
-            code = f"WAL-{datetime.now():%y%m%d}-{random.randint(1000, 9999)}"
-            session['wallet_amount'] = int(amount)
-            session['wallet_code'] = code
-            return render_template('pay/bank.html',
-                                   wallet_mode=True, wallet_code=code, wallet_amount=int(amount))
+            topup = Order(code=code, user_id=g.user.id, total=int(amount),
+                          final_total=int(amount), status='pending',
+                          fulfillment_status='wallet_topup')
+            db.session.add(topup)
+            db.session.commit()
+            return redirect(url_for('shop.pay_start', code=code))
     from models import WalletTransaction
     txns = WalletTransaction.query.filter_by(user_id=g.user.id) \
         .order_by(WalletTransaction.created_at.desc()).limit(30).all()
-    return render_template('features/wallet.html', txns=txns)
-
-
-@features_bp.route('/wallet/confirm', methods=['POST'])
-def wallet_confirm():
-    if not g.user:
-        return redirect(url_for('auth.login'))
-    decision = request.form.get('decision', 'ok')
-    amount = int(session.get('wallet_amount') or 0)
-    code = session.get('wallet_code') or ''
-    # امنیت: تایید شارژ شبیه‌سازی‌شده فقط در حالت آزمایشی مجاز است
-    from blueprints.shop import _sandbox_allowed
-    if decision == 'ok' and not _sandbox_allowed():
-        session.pop('wallet_amount', None)
-        session.pop('wallet_code', None)
-        flash('شارژ کیف پول در دسترس نیست.', 'error')
-        return redirect(url_for('features.wallet'))
-    if decision == 'ok' and amount > 0:
-        wallet_charge(g.user, amount, f'شارژ کیف پول ({code})')
-        award_points(g.user, 5, 'شارژ کیف پول')
-        db.session.commit()
-        flash(f'کیف پول شما به مبلغ {fa_n(f"{amount:,}")} تومان شارژ شد. ✅', 'success')
-    else:
-        flash('شارژ کیف پول لغو شد.', 'info')
-    session.pop('wallet_amount', None)
-    session.pop('wallet_code', None)
-    return redirect(url_for('features.wallet'))
+    return render_template('features/wallet.html', txns=txns,
+                           topup_available=bool(topup_gateways))
 
 
 # ================================================================
@@ -553,7 +541,7 @@ def exam_practice_start():
         return redirect(url_for('auth.login'))
     cat = request.form.get('category', '').strip()
     try:
-        count = min(40, max(5, int(request.form.get('count') or 10)))
+        count = safe_int(request.form.get('count'), 10, 5, 40)
     except (TypeError, ValueError):
         count = 10
     q = QuestionBank.query

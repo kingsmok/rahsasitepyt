@@ -3,26 +3,42 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>در حال به‌روزرسانی — {{ site.site_name or 'آکادمی آنلاین' }}</title>
+<meta name="robots" content="noindex,nofollow">
+<title>{{ 'در حال آماده‌سازی' if prelaunch else 'در حال به‌روزرسانی' }} — {{ site.site_name or 'آکادمی آنلاین' }}</title>
 <link rel="stylesheet" href="/static/css/base.css?v={{ asset_v() }}">
 <style>
-  body { background: var(--bg); display: flex; align-items: center; justify-content: center; min-height: 100vh; }
-  .mnt-box { text-align: center; max-width: 480px; padding: 40px; }
-  .mnt-box .ic { font-size: 64px; }
-  .mnt-box h1 { font-size: 24px; margin: 16px 0 8px; }
-  .mnt-box p { color: var(--text-2); margin-bottom: 20px; }
-  .mnt-progress { height: 8px; background: var(--bg-2); border-radius: 99px; overflow: hidden; max-width: 300px; margin: 0 auto; }
-  .mnt-progress .bar { width: 65%; height: 100%; background: var(--grad-brand); border-radius: 99px; animation: mnt 1.6s ease-in-out infinite alternate; }
-  @keyframes mnt { from { width: 35%; } to { width: 85%; } }
+  body { background: var(--bg); display:flex; align-items:center; justify-content:center; min-height:100vh; margin:0; }
+  .mnt-box { text-align:center; max-width:520px; padding:40px 24px; }
+  .mnt-box .ic { font-size:64px; }
+  .mnt-box h1 { font-size:24px; margin:16px 0 8px; }
+  .mnt-box p { color:var(--text-2); margin-bottom:20px; line-height:1.9; }
+  .mnt-progress { height:8px; background:var(--bg-2); border-radius:99px; overflow:hidden; max-width:300px; margin:0 auto; }
+  .mnt-progress .bar { width:65%; height:100%; background:var(--grad-brand); border-radius:99px; animation:mnt 1.6s ease-in-out infinite alternate; }
+  .mnt-contact { margin-top:24px; font-size:13px; color:var(--text-3); display:flex; justify-content:center; gap:12px; flex-wrap:wrap; }
+  .mnt-contact a { color:var(--primary); }
+  @keyframes mnt { from { width:35%; } to { width:85%; } }
+  @media (prefers-reduced-motion:reduce) { .mnt-progress .bar { animation:none; width:65%; } }
 </style>
 </head>
 <body>
-  <div class="mnt-box">
-    <div class="ic">🔧</div>
-    <h1>سایت در حال به‌روزرسانی است</h1>
-    <p>تیم فنی آکادمی در حال ارتقای امکانات سایت است. لطفاً چند دقیقه دیگر دوباره مراجعه کنید. 🙏</p>
-    <div class="mnt-progress"><div class="bar"></div></div>
-    <p style="margin-top:24px;font-size:13px;color:var(--text-3)">{{ site.phone or '' }} — پشتیبانی ۲۴ ساعته</p>
-  </div>
+  <main class="mnt-box">
+    <div class="ic" aria-hidden="true">{{ '🚀' if prelaunch else '🔧' }}</div>
+    <h1>{{ 'سایت در حال آماده‌سازی است' if prelaunch else 'سایت در حال به‌روزرسانی است' }}</h1>
+    <p>
+      {% if prelaunch %}
+      این سامانه نصب شده و مدیر در حال تکمیل محتوای واقعی و تنظیمات نهایی آن است. پس از انتشار رسمی در دسترس شما خواهد بود.
+      {% else %}
+      برای انجام به‌روزرسانی برنامه‌ریزی‌شده، دسترسی عمومی موقتاً متوقف شده است. لطفاً بعداً دوباره مراجعه کنید.
+      {% endif %}
+    </p>
+    <div class="mnt-progress" aria-label="در حال آماده‌سازی"><div class="bar"></div></div>
+    {% if site.phone or site.email or site.support_hours %}
+    <div class="mnt-contact">
+      {% if site.phone %}<a href="tel:{{ site.phone }}">{{ fa(site.phone) }}</a>{% endif %}
+      {% if site.email %}<a href="mailto:{{ site.email }}">{{ site.email }}</a>{% endif %}
+      {% if site.support_hours %}<span>{{ site.support_hours }}</span>{% endif %}
+    </div>
+    {% endif %}
+  </main>
 </body>
 </html>

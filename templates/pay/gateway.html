@@ -7,8 +7,8 @@
     <div class="card payment-card">
       <div class="text-center mb-3">
         <div style="font-size:46px" aria-hidden="true">💳</div>
-        <h1 style="font-size:22px;margin:10px 0 4px">انتخاب روش پرداخت</h1>
-        <p class="text-2" style="font-size:13px">سفارش <b class="text-primary" dir="ltr">{{ order.code }}</b> — مبلغ <b class="price">{{ fa('{:,.0f}'.format(order.final_total)) }}</b> تومان</p>
+        <h1 style="font-size:22px;margin:10px 0 4px">{{ 'شارژ کیف پول' if order.fulfillment_status == 'wallet_topup' else 'انتخاب روش پرداخت' }}</h1>
+        <p class="text-2" style="font-size:13px">{{ 'شناسه پرداخت' if order.fulfillment_status == 'wallet_topup' else 'سفارش' }} <b class="text-primary" dir="ltr">{{ order.code }}</b> — مبلغ <b class="price">{{ fa('{:,.0f}'.format(order.final_total)) }}</b> تومان</p>
       </div>
 
       {% if gateways %}
@@ -40,7 +40,7 @@
 
         <div class="payment-actions">
           <button class="btn btn-primary btn-lg" type="submit">ادامه پرداخت {{ fa('{:,.0f}'.format(order.final_total)) }} تومان</button>
-          <a class="btn btn-ghost btn-lg" href="{{ url_for('student.orders') }}">بازگشت به سفارش‌ها</a>
+          <a class="btn btn-ghost btn-lg" href="{{ url_for('features.wallet') if order.fulfillment_status == 'wallet_topup' else url_for('student.orders') }}">{{ 'بازگشت به کیف پول' if order.fulfillment_status == 'wallet_topup' else 'بازگشت به سفارش‌ها' }}</a>
         </div>
       </form>
       {% else %}
@@ -50,18 +50,18 @@
         <p>سفارش شما محفوظ است. برای هماهنگی پرداخت با پشتیبانی تماس بگیرید یا بعداً دوباره تلاش کنید.</p>
         <div class="payment-actions">
           {% if cur_user %}<a class="btn btn-primary" href="{{ url_for('student.ticket_new') }}">ثبت تیکت پشتیبانی</a>{% endif %}
-          <a class="btn btn-ghost" href="{{ url_for('student.orders') }}">مشاهده سفارش‌ها</a>
+          <a class="btn btn-ghost" href="{{ url_for('features.wallet') if order.fulfillment_status == 'wallet_topup' else url_for('student.orders') }}">{{ 'بازگشت به کیف پول' if order.fulfillment_status == 'wallet_topup' else 'مشاهده سفارش‌ها' }}</a>
         </div>
       </div>
       {% endif %}
 
-      {% if cur_user.wallet_balance and cur_user.wallet_balance >= order.final_total %}
+      {% if order.fulfillment_status != 'wallet_topup' and cur_user.wallet_balance and cur_user.wallet_balance >= order.final_total %}
       <form method="post" action="{{ url_for('shop.checkout_wallet') }}" class="wallet-payment-form">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
         <input type="hidden" name="code" value="{{ order.code }}">
         <button class="btn btn-outline btn-lg btn-block" type="submit">💰 پرداخت با کیف پول — موجودی {{ fa('{:,.0f}'.format(cur_user.wallet_balance)) }} تومان</button>
       </form>
-      {% elif cur_user.wallet_balance %}
+      {% elif order.fulfillment_status != 'wallet_topup' and cur_user.wallet_balance %}
       <p class="wallet-balance-note">موجودی کیف پول: {{ fa('{:,.0f}'.format(cur_user.wallet_balance or 0)) }} تومان — برای این سفارش کافی نیست.</p>
       {% endif %}
     </div>

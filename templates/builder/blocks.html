@@ -10,8 +10,8 @@
 
 {# مسیر صحیح تصویر: آپلودهای کتابخانه رسانه در /static/uploads/... و تصاویر عادی در /static/img/... #}
 {% macro img_url(src) %}
-{%- set s = (src or 'hero.webp')|string -%}
-{%- if s.startswith('/') %}{{ s }}{% elif '/' in s %}/static/{{ s }}{% else %}/static/img/{{ s }}{% endif -%}
+{%- set s = (src or '')|string -%}
+{%- if s.startswith('/') %}{{ s }}{% elif '/' in s %}/static/{{ s }}{% elif s %}/static/img/{{ s }}{% endif -%}
 {% endmacro %}
 
 {% macro anim_attr(d) %}{% if d.get('anim') %} data-anim="{{ d['anim'] }}"{% endif %}{% endmacro %}
@@ -95,7 +95,7 @@
 {% macro _block_inner(b, d, edit=false) %}
 {% set t = b.type %}
 {% if t == 'heading' %}
-  <{{ d.tag or 'h2' }} class="pb-heading" style="text-align:{{ d.align or 'right' }};color:{{ d.color or '' }};margin-bottom:{{ d.mb or 0 }}px" {{ ('contenteditable="true" data-inline="text" spellcheck="false"' if edit)|safe }}>{{ rd(d.text or 'عنوان جدید') }}</{{ d.tag or 'h2' }}>
+  {% if d.text or edit %}<{{ d.tag or 'h2' }} class="pb-heading" style="text-align:{{ d.align or 'right' }};color:{{ d.color or '' }};margin-bottom:{{ d.mb or 0 }}px" {{ ('contenteditable="true" data-inline="text" spellcheck="false"' if edit)|safe }}>{{ rd(d.text or 'عنوان را وارد کنید') }}</{{ d.tag or 'h2' }}>{% endif %}
 
 {% elif t == 'text' %}
   <div class="pb-text" style="text-align:{{ d.align or 'right' }};color:{{ d.color or '' }};font-size:{{ d.size or 15 }}px" {{ ('contenteditable="true" data-inline="content" spellcheck="false"' if edit)|safe }}>{{ nl2br(d.content) }}</div>
@@ -103,18 +103,18 @@
 {% elif t == 'button' %}
   <div style="text-align:{{ d.align or 'right' }}">
     {% set btn_s = d.btn_style or (d.style if d.style is string else '') or 'primary' %}
-    <a class="btn btn-{{ btn_s }} btn-{{ d.size or 'md' }} {{ 'btn-block' if d.full }} pb-btn-hover-{{ d.hover or 'lift' }}" href="{{ d.url or '#' }}">
+    {% if d.url %}<a class="btn btn-{{ btn_s }} btn-{{ d.size or 'md' }} {{ 'btn-block' if d.full }} pb-btn-hover-{{ d.hover or 'lift' }}" href="{{ d.url }}">
       {% if d.icon %}<span style="font-size:1.15em">{{ d.icon }}</span>{% endif %}<span {{ ('contenteditable="true" data-inline="text" spellcheck="false"' if edit)|safe }}>{{ rd(d.text or 'دکمه') }}</span>
-    </a>
+    </a>{% elif edit %}<span class="btn btn-{{ btn_s }}" aria-disabled="true">{{ rd(d.text or 'دکمه — نشانی را وارد کنید') }}</span>{% endif %}
   </div>
 
 {% elif t == 'image' %}
-  <div style="text-align:center">
+  {% if d.src %}<div style="text-align:center">
     {% if d.link %}<a href="{{ d.link }}">{% endif %}
     <img src="{{ img_url(d.src) }}" alt="{{ d.alt or '' }}"
          style="border-radius:{{ d.radius or 0 }}px;width:{{ '100%' if d.width == '100' else (d.width ~ '%' if d.width|length <= 3 else d.width ~ 'px') }};{{ 'box-shadow:var(--shadow-lg);' if d.shadow }}opacity:{{ d.opacity or 100 }}%;filter:{{ {'none': 'none', 'grayscale': 'grayscale(1)', 'sepia': 'sepia(1)', 'blur': 'blur(3px)', 'bright': 'brightness(1.25)', 'contrast': 'contrast(1.4)'}.get(d.filter or 'none', 'none') }}">
     {% if d.link %}</a>{% endif %}
-  </div>
+  </div>{% elif edit %}<div style="min-height:160px;display:grid;place-items:center;background:var(--bg-2);border-radius:12px">تصویر را از کتابخانه رسانه انتخاب کنید.</div>{% endif %}
 
 {% elif t == 'video' %}
   <div class="pb-video" style="border-radius:{{ d.radius or 0 }}px;overflow:hidden">
@@ -124,10 +124,12 @@
       <iframe src="https://player.vimeo.com/video/{{ d.url.split('/')[-1].split('?')[0] }}" frameborder="0" allowfullscreen style="width:100%;aspect-ratio:16/9"></iframe>
     {% elif d.url and 'aparat' in d.url %}
       <iframe src="https://www.aparat.com/video/video/embed/videohash/{{ d.url.split('/v/')[-1].split('?')[0] }}/vt/frame" frameborder="0" allowfullscreen style="width:100%;aspect-ratio:16/9"></iframe>
-    {% else %}
-      <video controls preload="none" poster="{{ img_url(d.poster) }}" {% if d.autoplay %}autoplay muted loop{% endif %} style="width:100%;aspect-ratio:16/9;background:#000">
-        <source src="{{ d.url or '/static/video/sample.mp4' }}">
+    {% elif d.url %}
+      <video controls preload="none" {% if d.poster %}poster="{{ img_url(d.poster) }}"{% endif %} {% if d.autoplay %}autoplay muted loop{% endif %} style="width:100%;aspect-ratio:16/9;background:#000">
+        <source src="{{ d.url }}">
       </video>
+    {% elif edit %}
+      <div class="pb-video-empty" style="aspect-ratio:16/9;display:grid;place-items:center;background:#111827;color:#cbd5e1">برای نمایش ویدئو، نشانی معتبر وارد کنید.</div>
     {% endif %}
   </div>
 
@@ -158,12 +160,12 @@
        style="height:{{ d.height or 420 }}px;border-radius:{{ d.radius or 0 }}px">
     <div class="pb-slider-track">
       {% for s in d.slides if s is mapping %}
-      <div class="pb-slide" data-align="{{ s.align or 'right' }}" style="background-image:url('{{ img_url(s.img) }}')">
+      <div class="pb-slide" data-align="{{ s.align or 'right' }}" {% if s.img %}style="background-image:url('{{ img_url(s.img) }}')"{% endif %}>
         <div class="pb-slide-overlay" style="opacity:{{ (d.overlay or 60)|int / 100 }}"></div>
         <div class="pb-slide-content">
           {% if s.title %}{% if loop.first %}<h1>{{ s.title }}</h1>{% else %}<h2>{{ s.title }}</h2>{% endif %}{% endif %}
           {% if s.sub %}<p class="pb-slide-sub">{{ nl2br(s.sub) }}</p>{% endif %}
-          {% if s.btn_text %}<a class="btn btn-accent btn-lg pb-slide-btn" href="{{ s.btn_url or '#' }}">{{ s.btn_text }}</a>{% endif %}
+          {% if s.btn_text and s.btn_url %}<a class="btn btn-accent btn-lg pb-slide-btn" href="{{ s.btn_url }}">{{ s.btn_text }}</a>{% endif %}
         </div>
       </div>
       {% endfor %}
@@ -174,15 +176,15 @@
   </div>
 
 {% elif t == 'video_bg' %}
-  <div class="pb-video-bg" style="position:relative;border-radius:22px;overflow:hidden;min-height:340px;display:flex;align-items:center;justify-content:center;text-align:center">
-    <video autoplay muted loop playsinline style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">
-      <source src="{{ d.url or '/static/video/sample.mp4' }}">
-    </video>
+  <div class="pb-video-bg" style="position:relative;border-radius:22px;overflow:hidden;min-height:340px;display:flex;align-items:center;justify-content:center;text-align:center;background:#111827">
+    {% if d.url %}<video autoplay muted loop playsinline style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">
+      <source src="{{ d.url }}">
+    </video>{% endif %}
     <div style="position:absolute;inset:0;background:rgba(8,15,35,.62)"></div>
     <div style="position:relative;z-index:2;padding:40px;max-width:640px">
       {% if d.title %}<h1 style="color:#fff;font-size:clamp(22px,3vw,34px);font-weight:900;margin-bottom:10px">{{ d.title }}</h1>{% endif %}
       {% if d.sub %}<p style="color:rgba(255,255,255,.85);margin-bottom:20px">{{ nl2br(d.sub) }}</p>{% endif %}
-      {% if d.btn_text %}<a class="btn btn-white btn-lg" href="{{ d.btn_url or '#' }}">{{ d.btn_text }}</a>{% endif %}
+      {% if d.btn_text and d.btn_url %}<a class="btn btn-white btn-lg" href="{{ d.btn_url }}">{{ d.btn_text }}</a>{% endif %}
     </div>
   </div>
 
@@ -235,7 +237,7 @@
   {% set cc = bc_current_course() %}
   {% if cc %}
   <div class="current-course-box" style="background:var(--card);border:1px solid var(--border);border-radius:18px;overflow:hidden;box-shadow:var(--shadow-md)">
-    {% if d.get('image') %}<img src="/static/img/{{ cc.image }}" alt="{{ cc.title }}" style="width:100%;aspect-ratio:16/9;object-fit:cover">{% endif %}
+    {% if d.get('image') %}<img src="{{ cc.image_url }}" alt="{{ cc.title }}" style="width:100%;aspect-ratio:16/9;object-fit:cover">{% endif %}
     <div style="padding:20px">
       {% if d.get('title') %}<h2 style="font-size:18px;margin-bottom:8px">{{ cc.title }}</h2>{% endif %}
       <p class="text-2" style="font-size:13.5px;margin-bottom:12px">{{ (cc.subtitle or '')[:120] }}</p>
@@ -432,7 +434,7 @@
   </div>
 
 {% elif t == 'exam_cta' %}
-  {% if bc_site().get('exam_enabled') == '1' or demo_features_enabled %}
+  {% if bc_site().get('exam_enabled') == '1' %}
   <div class="card" style="padding:34px 26px;border-radius:20px;text-align:center;background:linear-gradient(135deg,var(--primary),var(--primary-2,#7c3aed));color:#fff">
     <div style="font-size:36px">🎯</div>
     {% if d.get('title') %}<h2 style="font-size:clamp(19px,2.4vw,26px);font-weight:900;margin:10px 0 8px">{{ d.title }}</h2>{% endif %}
@@ -463,7 +465,7 @@
       <ul class="learn-list" style="text-align:right;margin-bottom:20px">
         {% for f in (it.features or '').split('\n') %}{% if f.strip() %}<li>{{ f.strip() }}</li>{% endif %}{% endfor %}
       </ul>
-      <a class="btn btn-{{ 'primary' if it.featured else 'outline' }} btn-block" href="{{ it.btn_url or '#' }}">{{ it.btn_text or 'انتخاب' }}</a>
+      {% if it.btn_url %}<a class="btn btn-{{ 'primary' if it.featured else 'outline' }} btn-block" href="{{ it.btn_url }}">{{ it.btn_text or 'انتخاب' }}</a>{% endif %}
     </div>
     {% endfor %}
   </div>
@@ -473,7 +475,7 @@
   <div class="cta-band" style="{{ 'background:var(--footer-bg)' if cstyle == 'dark' }}">
     <h2>{{ d.title }}</h2>
     <p>{{ d.text }}</p>
-    <div class="actions"><a class="btn btn-white btn-lg" href="{{ d.btn_url or '#' }}">{{ d.btn_text or 'شروع کنید' }}</a></div>
+    {% if d.btn_url %}<div class="actions"><a class="btn btn-white btn-lg" href="{{ d.btn_url }}">{{ d.btn_text or 'شروع کنید' }}</a></div>{% endif %}
   </div>
 
 {% elif t == 'price_history' %}
@@ -501,7 +503,7 @@
     {% else %}
     <p class="text-3" style="font-size:13px">هنوز داده کافی برای نمودار ثبت نشده — قیمت‌ها هنگام خرید و ویرایش ثبت می‌شوند.</p>
     {% endif %}
-    {% if d.show_compare %}
+    {% if d.show_compare and ph.compare %}
     <div style="border-top:1px dashed var(--border);margin-top:16px;padding-top:14px">
       <h4 style="font-size:13px;font-weight:900;margin-bottom:10px">⚖️ مقایسه با سایر پلتفرم‌ها</h4>
       <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px">
@@ -519,26 +521,19 @@
 
 {% elif t == 'amazing_offer' %}
   {% set ao = builder_amazing_offer(d) %}
-  <div class="card" style="position:relative;overflow:hidden;border-radius:20px;background:linear-gradient(135deg,#0f172a,#1e293b);color:#fff;padding:34px 30px;text-align:center">
+  {% if ao.item %}<div class="card" style="position:relative;overflow:hidden;border-radius:20px;background:linear-gradient(135deg,#0f172a,#1e293b);color:#fff;padding:34px 30px;text-align:center">
     <div style="position:absolute;top:-60px;left:-60px;width:180px;height:180px;border-radius:50%;background:radial-gradient(circle,{{ 'rgba(250,204,21,.35)' if ao.discount >= 40 else 'rgba(244,63,94,.35)' }},transparent 70%);pointer-events:none"></div>
-    <span class="badge" style="background:linear-gradient(90deg,#f43f5e,#f97316);color:#fff;font-size:12px;padding:6px 18px;box-shadow:0 0 24px rgba(244,63,94,.6)">⚡ پیشنهاد شگفت‌انگیز</span>
-    <h3 style="font-size:22px;font-weight:900;margin:14px 0 6px;color:#fff">{{ d.title or 'شگفت‌انگیزترین تخفیف امروز' }}</h3>
-    <p style="color:rgba(255,255,255,.75);font-size:13px;margin-bottom:18px">{{ d.sub or 'فقط تا پایان وقت امروز!' }}</p>
-    {% if ao.item %}
-    <div style="font-size:15px;font-weight:800;margin-bottom:16px">{{ ao.item.title }}</div>
+    <span class="badge" style="background:linear-gradient(90deg,#f43f5e,#f97316);color:#fff;font-size:12px;padding:6px 18px;box-shadow:0 0 24px rgba(244,63,94,.6)">⚡ پیشنهاد ویژه</span>
+    <h3 style="font-size:22px;font-weight:900;margin:14px 0 6px;color:#fff">{{ d.title or 'پیشنهاد ویژه دوره' }}</h3>
+    {% if d.sub %}<p style="color:rgba(255,255,255,.75);font-size:13px;margin-bottom:18px">{{ d.sub }}</p>{% endif %}
+    <div style="font-size:15px;font-weight:800;margin:14px 0 16px">{{ ao.item.title }}</div>
     <div style="display:flex;gap:14px;justify-content:center;align-items:center;margin-bottom:20px">
       <span style="color:rgba(255,255,255,.5);text-decoration:line-through;font-size:14px">{{ fa('{:,.0f}'.format(ao.item.price or 0)) }}</span>
       <b style="font-size:26px;color:#fde047;text-shadow:0 0 18px rgba(250,204,21,.6)">{{ fa('{:,.0f}'.format(ao.item.final_price or 0)) }}</b>
       <span class="badge" style="background:#f43f5e;font-size:12px">٪{{ fa(ao.discount) }} تخفیف</span>
     </div>
-    {% endif %}
-    <div class="countdown" data-countdown="{{ (d.hours or 8) * 3600 }}" style="justify-content:center;gap:10px;margin-bottom:22px">
-      <div class="cd" style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:12px;padding:10px 16px;min-width:64px;box-shadow:0 0 16px rgba(250,204,21,.25)"><b class="cd-h" style="font-size:22px;color:#fde047">00</b><small style="color:rgba(255,255,255,.7)">ساعت</small></div>
-      <div class="cd" style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:12px;padding:10px 16px;min-width:64px"><b class="cd-m" style="font-size:22px;color:#fde047">00</b><small style="color:rgba(255,255,255,.7)">دقیقه</small></div>
-      <div class="cd" style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:12px;padding:10px 16px;min-width:64px"><b class="cd-s" style="font-size:22px;color:#fde047">00</b><small style="color:rgba(255,255,255,.7)">ثانیه</small></div>
-    </div>
-    <a class="btn btn-lg" href="{{ d.btn_url or (ao.url or '/courses') }}" style="background:linear-gradient(90deg,#f59e0b,#f43f5e);color:#fff;font-weight:900;box-shadow:0 8px 30px rgba(244,63,94,.5)">{{ d.btn_text or 'همین حالا بخر' }} 🚀</a>
-  </div>
+    <a class="btn btn-lg" href="{{ d.btn_url or ao.url }}" style="background:linear-gradient(90deg,#f59e0b,#f43f5e);color:#fff;font-weight:900;box-shadow:0 8px 30px rgba(244,63,94,.5)">{{ d.btn_text or 'مشاهده پیشنهاد' }} ←</a>
+  </div>{% elif edit %}<div class="card" style="padding:24px;text-align:center">برای نمایش پیشنهاد، یک دوره یا محصول تخفیف‌دار منتشر کنید.</div>{% endif %}
 
 {% elif t == 'review_pro' %}
   {% set rp = builder_review_pro(d) %}
@@ -607,16 +602,16 @@
   {% set cu = bc_cur_user() %}
   <div class="dk-topbar">
     <div class="dk-topbar-right">
-      {% for it in (d.right or []) if it is mapping %}
-      <a href="{{ it.url or '#' }}" class="{{ it.cls or '' }}">{{ it.text }}</a>
+      {% for it in (d.right or []) if it is mapping and it.url and it.text %}
+      <a href="{{ it.url }}" class="{{ it.cls or '' }}">{{ it.text }}</a>
       {% endfor %}
     </div>
     <div class="dk-topbar-left">
-      {% for it in (d.left or []) if it is mapping %}
+      {% for it in (d.left or []) if it is mapping and it.text %}
         {% if it.cls == 'dk-top-login' and cu %}
           <a href="{{ url_for('student.dashboard') }}" class="dk-top-login">👤 {{ cu.name.split()[0] }} — داشبورد</a>
-        {% else %}
-          <a href="{{ it.url or '#' }}" class="{{ it.cls or '' }}">{{ it.text }}</a>
+        {% elif it.url %}
+          <a href="{{ it.url }}" class="{{ it.cls or '' }}">{{ it.text }}</a>
         {% endif %}
       {% endfor %}
     </div>
@@ -702,10 +697,10 @@
   </div>
 
 {% elif t == 'icon_link' %}
-  <a class="dk-icon-link" href="{{ d.url or '#' }}" title="{{ d.label }}">
+  {% if d.url and d.label %}<a class="dk-icon-link" href="{{ d.url }}" title="{{ d.label }}">
     <span class="dk-icon">{{ d.icon or '🔗' }}{% if d.badge == 'cart' %}{% set _n = bc_cart_count() %}<i class="dk-badge cart-count" style="{{ 'display:none' if not _n }}">{{ fa(_n) }}</i>{% elif d.badge == 'fav' %}{% set _n = bc_fav_ids()|length %}<i class="dk-badge fav-count" style="{{ 'display:none' if not _n }}">{{ fa(_n) }}</i>{% elif d.badge == 'ticket' %}{% set _n = bc_tickets_count() %}<i class="dk-badge" style="{{ 'display:none' if not _n }}">{{ fa(_n) }}</i>{% endif %}</span>
     <small>{{ d.label }}</small>
-  </a>
+  </a>{% endif %}
 
 {% elif t == 'user_menu' %}
   {% if bc_cur_user() %}
@@ -732,8 +727,8 @@
 
 {% elif t == 'nav_menu' %}
   <ul class="dk-nav" style="justify-content:{{ 'center' if d.align == 'center' else 'flex-start' }}">
-    {% for it in (d.links or []) if it is mapping %}
-    <li><a href="{{ it.url or '#' }}">{{ it.text }}</a></li>
+    {% for it in (d.links or []) if it is mapping and it.url and it.text %}
+    <li><a href="{{ it.url }}">{{ it.text }}</a></li>
     {% endfor %}
   </ul>
 
@@ -766,7 +761,7 @@
   <div class="pb-f-links">
     <h2 style="font-size:15px">{{ d.title or 'لینک‌ها' }}</h2>
     <ul>
-      {% for it in (d.links or []) if it is mapping %}<li><a href="{{ it.url or '#' }}">{{ it.text }}</a></li>{% endfor %}
+      {% for it in (d.links or []) if it is mapping and it.url and it.text %}<li><a href="{{ it.url }}">{{ it.text }}</a></li>{% endfor %}
     </ul>
   </div>
 
@@ -783,21 +778,21 @@
 
 {% elif t == 'socials' %}
   <div class="pb-f-socials" style="justify-content:center">
-    {% for it in d.get('items') or [] if it is mapping %}<a href="{{ it.url or '#' }}" target="_blank" rel="noopener">{{ it.icon or '🔗' }}</a>{% endfor %}
+    {% for it in d.get('items') or [] if it is mapping and it.url %}<a href="{{ it.url }}" target="_blank" rel="noopener">{{ it.icon or '🔗' }}</a>{% endfor %}
   </div>
 
 {% elif t == 'mobile_item' %}
-  <a class="mb-item" href="{{ d.url or '#' }}">
+  {% if d.url and d.label %}<a class="mb-item" href="{{ d.url }}">
     <span class="mb-icon">{{ d.icon or '•' }}</span>
     <span class="mb-label">{{ d.label }}</span>
-  </a>
+  </a>{% endif %}
 
 {% elif t == 'mobile_link' %}
-  <a class="mm-link" href="{{ d.url or '#' }}" data-close-mm>
+  {% if d.url and d.label %}<a class="mm-link" href="{{ d.url }}" data-close-mm>
     <span class="mm-link-ic">{{ d.icon or '•' }}</span>
     <span class="mm-link-label">{{ d.label }}</span>
     {% if d.badge %}<span class="mm-link-badge">{{ d.badge }}</span>{% endif %}
-  </a>
+  </a>{% endif %}
 
 {% elif t == 'inner_section' %}
   {% set ncols = d.get('cols')|length %}
@@ -815,14 +810,15 @@
   <div class="pb-text-editor" style="text-align:{{ d.align or 'right' }};color:{{ d.color or '' }}">{{ rd(d.content or '')|clean_html }}</div>
 
 {% elif t == 'google_maps' %}
-  <div class="pb-map" style="border-radius:{{ d.radius or 0 }}px;overflow:hidden;box-shadow:var(--shadow-sm);position:relative">
-    <img src="/static/img/map-tehran.webp" alt="نقشه موقعیت — {{ d.query or 'تهران' }}"
-         style="width:100%;height:{{ d.height or 400 }}px;object-fit:cover;display:block" loading="lazy">
-    <a href="https://maps.google.com/?q={{ d.query or 'تهران' }}" target="_blank" rel="noopener"
+  {% if d.query %}<div class="pb-map" style="border-radius:{{ d.radius or 0 }}px;overflow:hidden;box-shadow:var(--shadow-sm);position:relative">
+    <iframe title="نقشه موقعیت {{ d.query }}" src="https://maps.google.com/maps?q={{ d.query|urlencode }}&amp;output=embed"
+            width="100%" height="{{ d.height or 400 }}" loading="lazy" referrerpolicy="no-referrer-when-downgrade"
+            style="border:0;display:block" allowfullscreen></iframe>
+    <a href="https://maps.google.com/?q={{ d.query|urlencode }}" target="_blank" rel="noopener"
        style="position:absolute;bottom:12px;right:12px;background:#fff;color:#14283c;font-size:12px;font-weight:800;padding:7px 14px;border-radius:99px;box-shadow:0 4px 12px rgba(0,0,0,.16);text-decoration:none">
       📍 مسیریابی
     </a>
-  </div>
+  </div>{% elif edit %}<div class="pb-map" style="min-height:220px;display:grid;place-items:center;background:var(--bg-2);border-radius:12px">نشانی واقعی محل را وارد کنید.</div>{% endif %}
 
 {% elif t == 'icon' %}
   <div style="text-align:{{ d.align or 'center' }}">
@@ -834,9 +830,9 @@
 {% elif t == 'image_box' %}
   <div class="card card-hover pb-image-box" style="overflow:hidden;text-align:{{ d.align or 'center' }}">
     {% if d.link %}<a href="{{ d.link }}">{% endif %}
-    <div class="pb-ib-img {{ 'pb-img-hover' if d.hover }}"><img src="/static/img/{{ d.image or 'hero.webp' }}" alt=""></div>
+    {% if d.image %}<div class="pb-ib-img {{ 'pb-img-hover' if d.hover }}"><img src="/static/img/{{ d.image }}" alt=""></div>{% endif %}
     <div class="pb-ib-body">
-      <h3 style="font-size:16.5px;margin-bottom:8px">{{ d.title or 'عنوان' }}</h3>
+      {% if d.title %}<h3 style="font-size:16.5px;margin-bottom:8px">{{ d.title }}</h3>{% endif %}
       <p class="text-2" style="font-size:13.5px">{{ nl2br(d.text) }}</p>
       {% if d.link %}<span class="pb-ib-link">بیشتر ←</span>{% endif %}
     </div>
@@ -846,7 +842,7 @@
 {% elif t == 'icon_box' %}
   <div class="card card-hover pb-icon-box" style="padding:28px 22px;text-align:{{ d.align or 'center' }};background:{{ d.bg or 'var(--card)' }}">
     <span class="pb-ibx-icon" style="font-size:38px;color:{{ d.icon_color or 'var(--primary)' }};display:inline-block;margin-bottom:12px">{{ d.icon or '✨' }}</span>
-    <h3 style="font-size:16px;margin-bottom:8px">{{ d.title or 'عنوان' }}</h3>
+    {% if d.title %}<h3 style="font-size:16px;margin-bottom:8px">{{ d.title }}</h3>{% endif %}
     <p class="text-2" style="font-size:13.5px">{{ nl2br(d.text) }}</p>
     {% if d.link %}<a class="pb-ibx-link" href="{{ d.link }}" style="display:inline-block;margin-top:12px;font-weight:800;color:var(--primary)">بیشتر ←</a>{% endif %}
   </div>
@@ -946,9 +942,9 @@
 {% elif t == 'social_icons' %}
   {% set nets = {'telegram': ('✈️', '#229ED9'), 'instagram': ('📸', '#E4405F'), 'whatsapp': ('💬', '#25D366'), 'youtube': ('▶️', '#FF0000'), 'linkedin': ('💼', '#0A66C2'), 'twitter': ('🐦', '#1DA1F2'), 'facebook': ('📘', '#1877F2')} %}
   <div class="pb-social-icons" style="justify-content:{{ 'center' if d.align == 'center' else 'flex-start' }}">
-    {% for it in d.get('items') or [] if it is mapping %}
+    {% for it in d.get('items') or [] if it is mapping and it.url %}
     {% set n = nets.get(it.network, ('🔗', 'var(--primary)')) %}
-    <a href="{{ it.url or '#' }}" target="_blank" rel="noopener" title="{{ it.network }}"
+    <a href="{{ it.url }}" target="_blank" rel="noopener" title="{{ it.network }}"
        style="width:{{ d.size or 44 }}px;height:{{ d.size or 44 }}px;background:{{ n[1] }}">{{ n[0] }}</a>
     {% endfor %}
   </div>
@@ -986,9 +982,9 @@
     </div>
     {% endif %}
     <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax({{ {'2':'420','3':'280','4':'220'}.get(d.columns or '3','280') }}px,1fr));gap:20px">
-      {% for it in d.get('items') or [] if it is mapping %}
+      {% for it in d.get('items') or [] if it is mapping and it.image and it.title %}
       <div class="pb-pf-item" data-cat="{{ it.category or '' }}">
-        <img src="/static/img/{{ it.image or 'cover-python.webp' }}" alt="{{ it.title }}">
+        <img src="/static/img/{{ it.image }}" alt="{{ it.title }}">
         <div class="pb-pf-overlay">
           <h4>{{ it.title }}</h4>
           {% if it.desc %}<p>{{ it.desc }}</p>{% endif %}
@@ -1001,9 +997,9 @@
 
 {% elif t == 'gallery' %}
   <div class="pb-gallery {{ 'pb-gallery-lb' if d.lightbox }}" style="grid-template-columns:repeat({{ d.columns or 3 }}, 1fr);gap:12px">
-    {% for it in d.get('items') or [] if it is mapping %}
+    {% for it in d.get('items') or [] if it is mapping and it.image %}
     <figure class="pb-gal-item" style="border-radius:{{ d.radius or 0 }}px">
-      <img src="/static/img/{{ it.image or 'hero.webp' }}" alt="{{ it.caption or '' }}" loading="lazy">
+      <img src="/static/img/{{ it.image }}" alt="{{ it.caption or '' }}" loading="lazy">
       {% if it.caption %}<figcaption>{{ it.caption }}</figcaption>{% endif %}
     </figure>
     {% endfor %}
@@ -1034,7 +1030,7 @@
       <div class="pb-flip-back" style="background:{{ d.back_bg or 'var(--footer-bg)' }}">
         <h3>{{ d.back_title }}</h3>
         <p>{{ nl2br(d.back_text) }}</p>
-        {% if d.btn_text %}<a class="btn btn-accent btn-sm" href="{{ d.btn_url or '#' }}">{{ d.btn_text }}</a>{% endif %}
+        {% if d.btn_text and d.btn_url %}<a class="btn btn-accent btn-sm" href="{{ d.btn_url }}">{{ d.btn_text }}</a>{% endif %}
       </div>
     </div>
   </div>
@@ -1081,7 +1077,7 @@
 
 {% elif t == 'post_title' %}
   {% set cp = bc_current_post() %}
-  <{{ d.tag or 'h2' }} style="text-align:{{ d.align or 'right' }}">{{ cp.title if cp else (d.fallback or 'عنوان پست') }}</{{ d.tag or 'h2' }}>
+  {% if cp or d.fallback %}<{{ d.tag or 'h2' }} style="text-align:{{ d.align or 'right' }}">{{ cp.title if cp else d.fallback }}</{{ d.tag or 'h2' }}>{% elif edit %}<div class="pb-empty-widget">عنوان پست در صفحه واقعی به‌صورت پویا نمایش داده می‌شود.</div>{% endif %}
 
 {% elif t == 'post_content' %}
   {% set cp = bc_current_post() %}
@@ -1089,7 +1085,8 @@
 
 {% elif t == 'featured_image' %}
   {% set cp = bc_current_post() %}
-  <img src="/static/img/{{ cp.image if cp else (d.fallback or 'hero.webp') }}" alt="" style="width:100%;border-radius:{{ d.radius or 0 }}px">
+  {% set featured_src = cp.image if cp and cp.image else d.fallback %}
+  {% if featured_src %}<img src="/static/img/{{ featured_src }}" alt="" style="width:100%;border-radius:{{ d.radius or 0 }}px">{% elif edit %}<div class="pb-empty-widget">تصویر شاخص پست در صفحه واقعی نمایش داده می‌شود.</div>{% endif %}
 
 {% elif t == 'post_info' %}
   {% set cp = bc_current_post() %}

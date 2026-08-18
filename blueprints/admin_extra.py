@@ -21,7 +21,7 @@ from models import (utcnow, db, User, Category, Course, Section, Lesson, Order, 
                     Installment, TicketReply, SuccessStory, Media, ExamAttempt,
                     CourseTeacher, QuestionBank, SeoMeta, Page, Notification)
 from blueprints.admin_bp import admin_bp, admin_required
-from validators import safe_filename, human_size, log_exc as _lexc
+from validators import safe_filename, safe_int, human_size, log_exc as _lexc
 from jdates import jdate_num, jtime, fa
 
 
@@ -30,6 +30,9 @@ from jdates import jdate_num, jtime, fa
 def consultations():
     """لیست درخواست‌های مشاوره (لیدهای فروش) — منوی منشی/ادمین"""
     if request.method == 'POST':
+        from permissions import has_permission
+        if not has_permission(g.user, 'track_leads') and not g.user.is_admin:
+            abort(403)
         mid = request.form.get('mid', type=int)
         msg = db.session.get(ContactMessage, mid) if mid else None
         if msg:
@@ -61,12 +64,12 @@ def success_stories():
             db.session.add(_Story(
                 name=name,
                 role=request.form.get('role', '').strip(),
-                course_id=int(request.form.get('course_id') or 0) or None,
+                course_id=safe_int(request.form.get('course_id')) or None,
                 story=request.form.get('story', '').strip(),
                 result=request.form.get('result', '').strip(),
                 color=request.form.get('color', '#7c3aed'),
                 is_active=bool(request.form.get('is_active')),
-                sort=int(request.form.get('sort') or 0),
+                sort=safe_int(request.form.get('sort')),
             ))
             db.session.commit()
             flash('داستان موفقیت اضافه شد. 🌟', 'success')
@@ -366,7 +369,7 @@ def report_teachers():
 @admin_bp.route('/reports/exams')
 @admin_required
 def report_exams():
-    """گزارش شبیه‌ساز آزمون"""
+    """گزارش واقعی تلاش‌ها و نتایج آزمون‌های تمرینی."""
     from sqlalchemy import func as _func
     from models import ExamAttempt
     attempts = ExamAttempt.query.all()

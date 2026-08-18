@@ -278,25 +278,25 @@ def seed_products():
         return
     products = [
         dict(title='ماگ سرامیکی لوگو آکادمی', slug='academy-mug', price=320000, discount_price=250000,
-             category='ماگ و لیوان', image='product-mug.jpg', sku='MUG-001',
+             category='ماگ و لیوان', image='product-academy-mug.jpg', sku='MUG-001',
              description='ماگ سرامیکی با کیفیت با لوگوی آکادمی — ظرفیت ۳۵۰ میل، مناسب چای و قهوه.',
              dimensions='۹×۹×۱۰ سانتی‌متر', weight='۳۲۰ گرم', material='سرامیک',
              features='مناسب ماشین ظرفشویی\nظرفیت ۳۵۰ میلی‌لیتر\nچاپ با کیفیت بالا\nجعبه‌بندی مناسب هدیه',
              stock=25, featured=True),
         dict(title='لیوان شیشه‌ای دوجداره', slug='glass-mug', price=180000, discount_price=0,
-             category='ماگ و لیوان', image='product-glass.jpg', sku='GLASS-001',
+             category='ماگ و لیوان', image='product-glass-mug.jpg', sku='GLASS-001',
              description='لیوان شیشه‌ای دوجداره — نوشیدنی را مدت بیشتری گرم/سرد نگه می‌دارد.',
              dimensions='۸×۸×۱۰ سانتی‌متر', weight='۲۲۰ گرم', material='شیشه بوروسیلیکات',
              features='دوجداره و ضد بخار\nمقاوم در برابر شوک حرارتی\nظرفیت ۳۰۰ میلی‌لیتر',
              stock=40, featured=True),
         dict(title='دفترچه یادداشت برنامه‌نویس', slug='dev-notebook', price=95000, discount_price=75000,
-             category='نوشت‌افزار', image='product-notebook.jpg', sku='NB-001',
+             category='نوشت‌افزار', image='product-dev-notebook.jpg', sku='NB-001',
              description='دفترچه یادداشت با کاغذ طرح دار و جلد مقاوم — همراه با ۱۰۰ صفحه نقطه‌ای.',
              dimensions='۱۵×۲۱ سانتی‌متر', weight='۲۸۰ گرم', material='کاغذ ۹۰ گرمی',
              features='۱۰۰ صفحه نقطه‌ای\nجلد سخت با طرح کد\nباند الاستیک',
              stock=60, featured=True),
         dict(title='تی‌شرت برنامه‌نویس', slug='coder-tshirt', price=220000, discount_price=0,
-             category='پوشاک', image='product-tshirt.jpg', sku='TS-001',
+             category='پوشاک', image='product-coder-tshirt.jpg', sku='TS-001',
              description='تی‌شرت نخی با طرح مخصوص برنامه‌نویسان — کیفیت بالا و دوخت تمیز.',
              dimensions='سایز M / L / XL', weight='۲۰۰ گرم', material='نخ ۱۰۰٪',
              features='نخ صد در صد\nچاپ برجسته\nقابل شست‌وشو',
@@ -332,6 +332,7 @@ def seed():
         'maintenance': '0',
         'allow_register': '1',
         'allow_phone_login': '1',
+        'allow_theme_switcher': '1',
         'site_design': '1',
         'home_design': '1',
         'about_design': '1',
@@ -369,12 +370,12 @@ def seed():
     db.session.add(demo)
 
     teachers_data = [
-        ('دکتر سارا محمدی', 'sara@academy.ir', 'برنامه‌نویس ارشد پایتون با ۱۲ سال سابقه؛ مدرس دانشگاه و توسعه‌دهنده سابق دیجی‌کالا', '#7c3aed'),
-        ('مهندس امیر رضایی', 'amir@academy.ir', 'توسعه‌دهنده فول‌استک وب؛ متخصص Django و React با بیش از ۱۰۰ پروژه عملی', '#059669'),
-        ('مهدی کریمی', 'mehdi@academy.ir', 'متخصص هوش مصنوعی و داده؛ پژوهشگر ML با ۸ سال تجربه در شرکت‌های دانش‌بنیان', '#0891b2'),
-        ('نگار حسینی', 'negar@academy.ir', 'طراح محصول و UI/UX؛ ۹ سال تجربه طراحی محصولات دیجیتال در استارتاپ‌ها', '#db2777'),
-        ('حسین عابدی', 'hossein@academy.ir', 'مدرس آفیس و اتوماسیون اداری؛ بیش از ۴۰ هزار دانش‌آموز در سراسر کشور', '#ea580c'),
-        ('زهرا نادری', 'zahra@academy.ir', 'کارشناس دیجیتال مارکتینگ؛ مدیر مارکتینگ چند برند معتبر ایرانی', '#c026d3'),
+        ('سارا محمدی', 'sara@academy.ir', 'مدرس پایتون و توسعه وب در دیتابیس نمایشی توسعه', '#7c3aed'),
+        ('امیر رضایی', 'amir@academy.ir', 'مدرس Django و React در دیتابیس نمایشی توسعه', '#059669'),
+        ('مهدی کریمی', 'mehdi@academy.ir', 'مدرس هوش مصنوعی و علم داده در دیتابیس نمایشی توسعه', '#0891b2'),
+        ('نگار حسینی', 'negar@academy.ir', 'مدرس طراحی محصول و UI/UX در دیتابیس نمایشی توسعه', '#db2777'),
+        ('حسین عابدی', 'hossein@academy.ir', 'مدرس آفیس و اتوماسیون اداری در دیتابیس نمایشی توسعه', '#ea580c'),
+        ('زهرا نادری', 'zahra@academy.ir', 'مدرس دیجیتال مارکتینگ در دیتابیس نمایشی توسعه', '#c026d3'),
     ]
     teachers = []
     for idx, (name, email, bio, color) in enumerate(teachers_data):

@@ -17,7 +17,7 @@
     <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px">
       {% for c in courses %}
       <a class="card card-hover" href="{{ url_for('site.course_detail', slug=c.slug) }}" style="overflow:hidden">
-        <img src="/static/img/{{ c.image }}" alt="" style="width:100%;aspect-ratio:16/9;object-fit:cover">
+        <img src="{{ c.image_url }}" alt="" style="width:100%;aspect-ratio:16/9;object-fit:cover">
         <div style="padding:14px">
           <strong style="font-size:13px;display:block">{{ c.title[:40] }}</strong>
           <small class="text-3">{{ fa(c.duration_hours) }} ساعت — {{ fa(c.students_count) }} دانشجو</small>

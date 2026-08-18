@@ -1,11 +1,18 @@
+# افزونه‌های باینری روی هاست اشتراکی نباید از سورس کامپایل شوند.
+# نسخه‌های زیر برای CPython 3.9 تا 3.14 و Linux manylinux2014 wheel آماده دارند.
+--only-binary=greenlet,Pillow
+
 flask>=3.0
 flask-sqlalchemy==3.1.1
 SQLAlchemy==2.0.30
-greenlet==3.0.3
+# 3.0.3 روی Python 3.13+ wheel ندارد و کامپایل آن در cPanel شکست می‌خورد.
+greenlet==3.2.5
 requests>=2.31
 defusedxml>=0.7.1
-# Pillow — نسخه امن (۹.۵ و پایین‌تر چند CVE دارند). Pillow 11+ از پایتون 3.9 پشتیبانی می‌کند
-Pillow>=11.0.0
+# Pillow 12.3 دیگر wheel سازگار با glibc 2.17 هاست‌های قدیمی ندارد.
+# 11.3 آخرین نسخهٔ سازگار با Python 3.9 و 12.2 آخرین نسخه با manylinux2014 wheel است.
+Pillow==11.3.0; python_version < "3.10"
+Pillow==12.2.0; python_version >= "3.10"
 reportlab>=4.0
 # شکل‌دهی و جهت صحیح متن فارسی در PDF فاکتور/گواهی
 arabic-reshaper>=3.0.0

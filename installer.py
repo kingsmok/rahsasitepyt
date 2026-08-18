@@ -1168,7 +1168,7 @@ def run_install(db_url, admin, site, create_demo_student=False, progress_cb=None
                 import pymysql  # noqa: F401
             except ImportError:
                 return False, ('ماژول PyMySQL نصب نیست! در ترمینال هاست اجرا کنید: '
-                               './venv/bin/pip install PyMySQL  (یا: pip install -r requirements.txt)')
+                               'bash scripts/install_dependencies.sh ./venv/bin/python')
             ensure_mysql_db(db_url)
 
         # ── ۱) اتصال سریع + ساخت جدول‌های باقی‌مانده ──

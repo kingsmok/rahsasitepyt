@@ -23,9 +23,9 @@ fi
 cd "$APP_DIR"
 
 # ۳) محیط پایتون
+# اسکریپت نصب برای PyPI کند timeout/retry مناسب دارد و wheel را ترجیح می‌دهد.
 python3 -m venv venv
-./venv/bin/pip install --upgrade pip
-./venv/bin/pip install -r requirements.txt
+bash scripts/install_dependencies.sh ./venv/bin/python
 
 # ۴) مجوزها (www-data برای instance و logs)
 chown -R www-data:www-data "$APP_DIR/instance" "$APP_DIR/logs" "$APP_DIR/static/uploads" 2>/dev/null || true

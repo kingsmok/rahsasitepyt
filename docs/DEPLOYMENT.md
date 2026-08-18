@@ -86,7 +86,7 @@ sudo apt update && sudo apt install -y python3-venv nginx certbot python3-certbo
 # محیط پایتون
 cd /var/www/academy
 python3 -m venv venv
-./venv/bin/pip install -r requirements.txt
+bash scripts/install_dependencies.sh ./venv/bin/python
 
 # .env
 cp .env.example .env
@@ -164,7 +164,7 @@ sudo nginx -t && sudo systemctl reload nginx
 2. **محیط مجازی** بسازید:
    ```bash
    python3 -m venv venv
-   ./venv/bin/pip install -r requirements.txt
+   bash scripts/install_dependencies.sh ./venv/bin/python
    ```
 3. **`.env`** بسازید و `SECRET_KEY` امن بگذارید:
    ```bash

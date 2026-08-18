@@ -10,7 +10,7 @@
 
   قدم ۲) محیط مجازی (یک بار):
     python3 -m venv venv
-    ./venv/bin/pip install -r requirements.txt
+    bash scripts/install_dependencies.sh ./venv/bin/python
 
   قدم ۳) فایل .htaccess (از deploy/passenger.htaccess):
     PassengerAppRoot /home/کاربر/پوشه‌پروژه
@@ -104,7 +104,7 @@
 
 ۲) **محیط مجازی**: حتماً venv ساخته و پکیجها نصب شده باشند:
      python3 -m venv venv
-     ./venv/bin/pip install -r requirements.txt
+     bash scripts/install_dependencies.sh ./venv/bin/python
 
 ۳) **پرمیشن پوشهها** (مهم — علت رایج 500):
      chmod -R 775 instance logs
@@ -176,7 +176,7 @@
   📦 نسخههای پکیج (requirements.txt — پینشده)
 ═══════════════════════════════════════════════════════════════
   flask>=3.0 · flask-sqlalchemy==3.1.1 · SQLAlchemy==2.0.30
-  greenlet==3.0.3 · requests>=2.31 · Pillow>=11.0.0
+  greenlet==3.2.5 · requests>=2.31 · Pillow==11.3.0/12.2.0 (برحسب Python)
   reportlab>=4.0 · arabic-reshaper>=3.0 · python-bidi>=0.6
   cryptography>=42.0.0 · flask-admin>=1.6 · gunicorn>=22.0
   python-dotenv>=1.0 · pytest>=8.0 · redis>=5.0 · PyMySQL>=1.1
@@ -198,7 +198,7 @@
 
   ۱) آپلود و استخراج بسته جدید
   ۲) python3 -m venv venv
-  ۳) ./venv/bin/pip install -r requirements.txt
+  ۳) bash scripts/install_dependencies.sh ./venv/bin/python
   ۴) chmod -R 775 instance logs
   ۵) .htaccess (مثل قبل) + touch passenger_wsgi.py
   ۶) دامنه/install را باز کنید:

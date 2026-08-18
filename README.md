@@ -179,10 +179,13 @@ python scripts/verify_commercial_package.py \
 
 ```bash
 cd academy
-pip install -r requirements.txt
-python app.py         # اجرای سرور روی http://localhost:5000
+python3 -m venv venv
+bash scripts/install_dependencies.sh ./venv/bin/python
+./venv/bin/python app.py   # اجرای سرور روی http://localhost:5000
 # سپس نصب امن را از /install کامل کنید؛ هیچ داده یا حساب نمونه ساخته نمی‌شود.
 ```
+
+اسکریپت نصب برای اتصال کند PyPI از timeout/retry بلندتر و wheel باینری استفاده می‌کند. روی cPanel ابتدا محیط Python نمایش‌داده‌شده در پنل را فعال کنید و سپس `bash scripts/install_dependencies.sh` را اجرا کنید.
 
 ## 🔑 حساب مدیر و ورود
 

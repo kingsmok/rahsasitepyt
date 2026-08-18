@@ -686,8 +686,17 @@ def _install_changed_dependencies(old_commit, old_requirements=None):
     if flag in ('0', 'false', 'no', 'off'):
         return 'نصب وابستگی‌ها طبق تنظیم UPDATE_INSTALL_DEPENDENCIES غیرفعال است.'
     pip_timeout = int(os.environ.get('PIP_INSTALL_TIMEOUT', '900'))
+    pip_env = {
+        **_git_env(),
+        'PIP_DISABLE_PIP_VERSION_CHECK': '1',
+        # pip در حالت پیش‌فرض پس از ۱۵ ثانیه قطع می‌شود؛ برای PyPI کندِ هاست
+        # اشتراکی زمان و retry بیشتری بده و wheel را به source ترجیح بده.
+        'PIP_DEFAULT_TIMEOUT': os.environ.get('PIP_DEFAULT_TIMEOUT', '120'),
+        'PIP_RETRIES': os.environ.get('PIP_RETRIES', '10'),
+        'PIP_PREFER_BINARY': '1',
+    }
     code, out = _run([sys.executable, '-m', 'pip', 'install', '-r', 'requirements.txt'],
-                     timeout=pip_timeout, env={**_git_env(), 'PIP_DISABLE_PIP_VERSION_CHECK': '1'})
+                     timeout=pip_timeout, env=pip_env)
     if code != 0:
         raise UpdateError('نصب وابستگی‌های جدید شکست خورد: ' + _redact_text(out[-500:]))
     return 'وابستگی‌های جدید نصب شدند.'

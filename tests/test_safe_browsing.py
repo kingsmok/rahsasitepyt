@@ -164,6 +164,23 @@ def test_csp_has_no_unsafe_eval(client):
     assert "form-action 'self'" in csp
 
 
+def test_http_csp_does_not_force_https_on_development_server(client):
+    """CSP نباید منابع HTTP محلی را به پورت HTTPS ناموجود بفرستد."""
+    r = client.get('/install', base_url='http://192.168.1.61:5000')
+    assert 'upgrade-insecure-requests' not in r.headers.get(
+        'Content-Security-Policy', '')
+    assert 'Strict-Transport-Security' not in r.headers
+
+
+def test_https_csp_upgrades_insecure_resources(client):
+    """در production امن، حفاظت mixed-content و HSTS حفظ می‌شوند."""
+    r = client.get('/install', base_url='https://academy.example')
+    assert 'upgrade-insecure-requests' in r.headers.get(
+        'Content-Security-Policy', '')
+    assert 'max-age=31536000' in r.headers.get(
+        'Strict-Transport-Security', '')
+
+
 def test_uploads_are_sandboxed(client):
     """پاسخ فایل‌های آپلودی باید nosniff + CSP سندباکس داشته باشد"""
     r = client.get('/static/uploads/media/nonexistent.png')

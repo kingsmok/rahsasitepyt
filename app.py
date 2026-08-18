@@ -788,7 +788,8 @@ def create_app():
         # نمایش داده می‌شود؛ صفحهٔ شکسته با منابع بلاک‌شده یکی از سیگنال‌های منفی
         # کیفیت/امنیت است و عیب‌یابی «Dangerous site» را هم سخت می‌کند.
         resp.headers.setdefault('Cross-Origin-Resource-Policy', 'same-site')
-        # HSTS — فقط روی HTTPS فعال می‌شود
+        # HSTS — فقط روی HTTPS فعال می‌شود. افزودن آن روی HTTP محلی هم بی‌اثر
+        # است و هم می‌تواند عیب‌یابی تفاوت HTTP/HTTPS را گمراه‌کننده کند.
         if request.is_secure:
             resp.headers.setdefault('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
         # صفحات پرداخت/حساب هرگز ایندکس نشوند — ایندکس شبیه‌ساز پرداخت
@@ -857,10 +858,13 @@ def create_app():
             "frame-ancestors 'self'; "
             "object-src 'none'; "
             "manifest-src 'self'; "
-            "media-src 'self' data: blob:; "
-            # ارتقای خودکار منابع http به https (جلوگیری از mixed-content)
-            "upgrade-insecure-requests"
+            "media-src 'self' data: blob:;"
         )
+        # این directive فقط برای پاسخ HTTPS معتبر است. روی سرور توسعهٔ HTTP،
+        # مرورگر در غیر این صورت منابع same-origin را به HTTPS ارتقا می‌دهد و
+        # TLS ClientHello را به پورت HTTP سادهٔ Werkzeug می‌فرستد (خطای 400).
+        if request.is_secure:
+            csp += " upgrade-insecure-requests"
         # ⚠️ مسیرهای آپلود CSP سخت‌گیرانه‌تر (sandbox) خودشان را بالاتر ست کرده‌اند
         # — نباید با CSP عمومی بازنویسی شود.
         _is_upload_path = (request.path.startswith('/static/uploads/') or

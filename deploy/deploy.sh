@@ -23,9 +23,13 @@ fi
 cd "$APP_DIR"
 
 # ۳) محیط پایتون
+# pip/setuptools/wheel جدید لازم است تا wheel آماده درست شناسایی شود
+# (نسخهٔ قدیمی pip گاهی wheel را نمی‌بیند و می‌رود سراغ کامپایل از سورس).
 python3 -m venv venv
-./venv/bin/pip install --upgrade pip
-./venv/bin/pip install -r requirements.txt
+./venv/bin/pip install --upgrade pip setuptools wheel
+# مهلت/تلاش مجدد بیشتر برای شبکه‌های کند به pypi
+PIP_TIMEOUT="${PIP_TIMEOUT:-60}" PIP_RETRIES="${PIP_RETRIES:-5}" \
+    ./venv/bin/pip install -r requirements.txt
 
 # ۴) مجوزها (www-data برای instance و logs)
 chown -R www-data:www-data "$APP_DIR/instance" "$APP_DIR/logs" "$APP_DIR/static/uploads" 2>/dev/null || true

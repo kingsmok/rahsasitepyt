@@ -104,7 +104,24 @@
 
 ۲) **محیط مجازی**: حتماً venv ساخته و پکیجها نصب شده باشند:
      python3 -m venv venv
+     ./venv/bin/pip install --upgrade pip setuptools wheel
      ./venv/bin/pip install -r requirements.txt
+
+   ❌ اگر «Failed building wheel for greenlet / Pillow» گرفتید:
+      یعنی pip نسخهٔ آمادهٔ (wheel) پیدا نکرده و رفته سراغ کامپایل از سورس؛
+      روی هاست اشتراکی gcc و python3-dev نیست و کامپایل میشکند.
+      • اول pip را بهروز کنید (خط بالا) — pip قدیمی wheel را نمیبیند.
+      • نسخه پایتون اپلیکیشن را روی 3.11 بگذارید (پایدارترین).
+      • یا نصب را «فقط wheel» کنید تا بهجای کامپایل، شفاف خطا بدهد:
+          ./venv/bin/pip install --only-binary :all: -r requirements.txt
+      (فایل requirements.txt پروژه از قبل --prefer-binary/--only-binary دارد
+       و پین قدیمی greenlet==3.0.3 که فقط تا پایتون 3.12 wheel داشت برداشته شد.)
+
+   ⏳ اگر «Read timed out» یا «Connection to pypi.org timed out» گرفتید:
+      مشکل از دسترسی هاست به pypi.org است، نه از پروژه:
+          ./venv/bin/pip install --timeout 60 --retries 5 -r requirements.txt
+      و اگر هاست به pypi دسترسی ندارد، میرور داخلی بگذارید:
+          export PIP_INDEX_URL=https://mirror-pypi.runflare.com/simple/
 
 ۳) **پرمیشن پوشهها** (مهم — علت رایج 500):
      chmod -R 775 instance logs

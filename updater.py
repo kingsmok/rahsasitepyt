@@ -686,8 +686,23 @@ def _install_changed_dependencies(old_commit, old_requirements=None):
     if flag in ('0', 'false', 'no', 'off'):
         return 'نصب وابستگی‌ها طبق تنظیم UPDATE_INSTALL_DEPENDENCIES غیرفعال است.'
     pip_timeout = int(os.environ.get('PIP_INSTALL_TIMEOUT', '900'))
+    # روی هاست اشتراکی نه کامپایلر هست نه رم کافی؛ اگر pip سراغ ساخت wheel از
+    # سورس برود (greenlet/Pillow/cryptography) آپدیت وسط کار می‌شکند. پس فقط
+    # wheel آماده. شبکهٔ هاست هم تا pypi کند است، پس timeout و retry بالاتر.
+    pip_env = {
+        **_git_env(),
+        'PIP_DISABLE_PIP_VERSION_CHECK': '1',
+        # مهلت هر اتصال به pypi (پیش‌فرض ۱۵ ثانیه برای هاست ایران کم است)
+        'PIP_TIMEOUT': os.environ.get('PIP_NET_TIMEOUT', '60'),
+        'PIP_RETRIES': os.environ.get('PIP_NET_RETRIES', '5'),
+        'PIP_PREFER_BINARY': '1',
+    }
+    # امکان استفاده از میرور داخلی برای هاست‌هایی که به pypi.org دسترسی ندارند
+    index_url = os.environ.get('PIP_INDEX_URL', '').strip()
+    if index_url:
+        pip_env['PIP_INDEX_URL'] = index_url
     code, out = _run([sys.executable, '-m', 'pip', 'install', '-r', 'requirements.txt'],
-                     timeout=pip_timeout, env={**_git_env(), 'PIP_DISABLE_PIP_VERSION_CHECK': '1'})
+                     timeout=pip_timeout, env=pip_env)
     if code != 0:
         raise UpdateError('نصب وابستگی‌های جدید شکست خورد: ' + _redact_text(out[-500:]))
     return 'وابستگی‌های جدید نصب شدند.'

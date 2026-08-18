@@ -48,8 +48,71 @@
   - آن دستور را کپی کنید، ابزار **Terminal** را در سی‌پنل باز کرده، دستور را پیست و Enter کنید.
   - سپس دستور زیر را اجرا کنید:
     ```bash
+    pip install --upgrade pip setuptools wheel
     pip install -r requirements.txt
     ```
+
+#### ❌ خطای «Failed building wheel for greenlet / Pillow» هنگام نصب پکیج‌ها
+
+اگر هنگام `pip install` این پیام را دیدید:
+
+```
+× Building wheel for greenlet (pyproject.toml) did not run successfully.
+ERROR: Failed building wheel for greenlet
+ERROR: Failed building wheel for Pillow
+```
+
+یعنی pip نتوانسته نسخهٔ آمادهٔ (wheel) این پکیج‌ها را پیدا کند و رفته سراغ
+**کامپایل از سورس** — و چون روی هاست اشتراکی معمولاً کامپایلر (`gcc`)، هدرهای
+`python3-dev` و رم کافی وجود ندارد، کامپایل شکست می‌خورد.
+
+**این مشکل در فایل `requirements.txt` پروژه حل شده است** (گزینه‌های
+`--prefer-binary` و `--only-binary`, و برداشتن پین `greenlet==3.0.3` که فقط تا
+پایتون ۳.۱۲ wheel داشت). پس اول مطمئن شوید آخرین نسخهٔ پروژه را دارید. اگر باز
+هم خطا دیدید:
+
+۱. **pip را به‌روز کنید** (pip قدیمی گاهی wheel آماده را نمی‌بیند):
+   ```bash
+   pip install --upgrade pip setuptools wheel
+   ```
+
+۲. **نسخهٔ پایتون اپلیکیشن را چک کنید.** پایتون خیلی جدید (مثلاً ۳.۱۴) یا خیلی
+   قدیمی ممکن است هنوز wheel نداشته باشد. در **Setup Python App** نسخه را روی
+   **۳.۱۱** بگذارید (پایدارترین گزینه) و دوباره نصب کنید.
+
+۳. **نصب را به حالت «فقط wheel» مجبور کنید** تا اگر wheel نبود، به‌جای کامپایل
+   با خطای شفاف متوقف شود:
+   ```bash
+   pip install --only-binary :all: -r requirements.txt
+   ```
+
+#### ⏳ خطای Read timed out / Connection to pypi.org timed out
+
+اگر پیام‌هایی مثل زیر می‌بینید، مشکل از دسترسی هاست به `pypi.org` است (نه از
+پروژه):
+
+```
+WARNING: Retrying ... after connection broken by 'ReadTimeoutError(
+HTTPSConnectionPool(host='pypi.org', port=443): Read timed out.
+```
+
+مهلت اتصال را بیشتر کنید:
+```bash
+pip install --timeout 60 --retries 5 -r requirements.txt
+```
+
+و اگر هاست شما (مثل بیشتر هاست‌های ایران) به pypi دسترسی مستقیم ندارد، از یک
+**میرور داخلی** استفاده کنید:
+```bash
+pip install -r requirements.txt \
+    --index-url https://mirror-pypi.runflare.com/simple/ \
+    --trusted-host mirror-pypi.runflare.com
+```
+برای اینکه همیشه اعمال شود، می‌توانید متغیر محیطی زیر را ست کنید (به‌روزرسانی
+خودکار از پنل مدیریت هم از همین متغیر استفاده می‌کند):
+```bash
+export PIP_INDEX_URL=https://mirror-pypi.runflare.com/simple/
+```
 
 ---
 

@@ -1,27 +1,44 @@
-# افزونه‌های باینری روی هاست اشتراکی نباید از سورس کامپایل شوند.
-# نسخه‌های زیر برای CPython 3.9 تا 3.14 و Linux manylinux2014 wheel آماده دارند.
---only-binary=greenlet,Pillow
+# Production dependency lock for the supported hosting runtime: CPython 3.11.
+# Binary-only installation prevents cPanel/CloudLinux from attempting fragile
+# source builds (notably greenlet, Pillow, cryptography and reportlab).
+--only-binary=:all:
 
-flask>=3.0
-flask-sqlalchemy==3.1.1
+# Direct application dependencies (validated for cp311 + manylinux2014_x86_64)
+Flask==3.1.3
+Flask-SQLAlchemy==3.1.1
 SQLAlchemy==2.0.30
-# 3.0.3 روی Python 3.13+ wheel ندارد و کامپایل آن در cPanel شکست می‌خورد.
 greenlet==3.2.5
-requests>=2.31
-defusedxml>=0.7.1
-# Pillow 12.3 دیگر wheel سازگار با glibc 2.17 هاست‌های قدیمی ندارد.
-# 11.3 آخرین نسخهٔ سازگار با Python 3.9 و 12.2 آخرین نسخه با manylinux2014 wheel است.
-Pillow==11.3.0; python_version < "3.10"
-Pillow==12.2.0; python_version >= "3.10"
-reportlab>=4.0
-# شکل‌دهی و جهت صحیح متن فارسی در PDF فاکتور/گواهی
-arabic-reshaper>=3.0.0
-python-bidi>=0.6.0
-# cryptography — نسخه امن (41.0.7 و پایین‌تر CVE دارند). 42+ از پایتون 3.7 پشتیبانی می‌کند
-cryptography>=42.0.0
-flask-admin>=1.6
-gunicorn>=22.0
-python-dotenv>=1.0
-pytest>=8.0
-redis>=5.0
-PyMySQL>=1.1
+requests==2.34.2
+Pillow==12.2.0
+reportlab==5.0.0
+arabic-reshaper==3.0.1
+python-bidi==0.6.11
+cryptography==50.0.0
+Flask-Admin==2.2.0
+gunicorn==26.1.0
+python-dotenv==1.2.3
+pytest==9.1.1
+redis==8.1.0
+PyMySQL==1.2.0
+
+# Transitive lock (keeps manual and automatic deployments reproducible)
+async-timeout==5.0.1
+blinker==1.9.0
+certifi==2026.7.22
+cffi==2.1.1
+charset-normalizer==3.5.1
+click==8.4.2
+defusedxml==0.7.1
+idna==3.19
+iniconfig==2.3.0
+itsdangerous==2.2.0
+Jinja2==3.1.6
+MarkupSafe==3.0.3
+packaging==26.3
+pluggy==1.6.0
+pycparser==3.0
+Pygments==2.21.0
+typing_extensions==4.16.0
+urllib3==2.7.0
+Werkzeug==3.1.8
+WTForms==3.2.2

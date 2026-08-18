@@ -7,7 +7,7 @@ Phusion Passenger WSGI — نقطه ورود برای هاست‌های اشتر
 نصب گام‌به‌گام روی هاست:
   1) این فایل در ریشه پروژه (کنار app.py) قرار دارد — تغییری ندهید.
   2) محیط مجازی بسازید:
-        python3 -m venv venv
+        python3.11 -m venv venv
         bash scripts/install_dependencies.sh ./venv/bin/python
   3) فایل .env بسازید (از روی نمونه):
         cp .env.example .env
@@ -121,7 +121,7 @@ pre{{background:#0f172a;color:#7dd3fc;border-radius:12px;padding:14px;font-size:
 </style></head><body><div class="card">
 <h1>⚠️ برنامه بالا نیامد — دلیل دقیق:</h1>
 <p>۱) مطمئن شوید پکیج‌ها نصب شده‌اند (در ترمینال هاست):</p>
-<p><code>python3 -m venv venv</code> &nbsp; <code>bash scripts/install_dependencies.sh ./venv/bin/python</code></p>
+<p><code>python3.11 -m venv venv</code> &nbsp; <code>bash scripts/install_dependencies.sh ./venv/bin/python</code></p>
 <p>۲) سپس ری‌استارت: <code>touch passenger_wsgi.py</code></p>
 <p>۳) اگر خطا ادامه داشت این بخش را برای پشتیبانی بفرستید:</p>
 <pre>{body}</pre>

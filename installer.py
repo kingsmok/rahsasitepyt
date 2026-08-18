@@ -8,6 +8,7 @@
 """
 import json
 import os
+import re
 import secrets
 import shutil
 import time
@@ -292,17 +293,48 @@ def write_env_file(db_url, secret_key):
         lines['DATABASE_URL'] = db_url
     else:
         lines.pop('DATABASE_URL', None)  # خالی = SQLite پیش‌فرض
+
+    # نصب/تعمیر نباید تنظیمات بروزرسانی موجود را حذف کند. برای نصب تازه نیز
+    # پیش‌فرض‌های امن و آزموده‌شدهٔ هاست Python 3.11 نوشته می‌شوند.
+    if not (lines.get('GIT_BRANCH') or '').strip():
+        lines['GIT_BRANCH'] = 'main'
+    update_defaults = {
+        'UPDATE_INSTALL_DEPENDENCIES': '1',
+        'UPDATE_TOUCH_RESTART': '1',
+        'GIT_FETCH_TIMEOUT': '300',
+        'DB_MIGRATION_TIMEOUT': '900',
+        'PIP_INSTALL_TIMEOUT': '900',
+        'PIP_DEFAULT_TIMEOUT': '120',
+        'PIP_RETRIES': '10',
+    }
+    for key, value in update_defaults.items():
+        if not (lines.get(key) or '').strip():
+            lines[key] = value
+
+    preferred = (
+        'SECRET_KEY', 'FLASK_ENV', 'APP_ENV', 'ENABLE_DEMO_FEATURES',
+        'INSTALL_REPAIR_TOKEN', 'LICENSE_ENFORCEMENT',
+        'LICENSE_PUBLIC_KEY_FILE', 'LICENSE_PUBLIC_KEY', 'LICENSE_FILE',
+        'DATABASE_URL', 'LOG_DIR', 'REDIS_URL',
+        'GIT_REPO_URL', 'GIT_BRANCH', 'GITHUB_WEBHOOK_SECRET',
+        'UPDATE_INSTALL_DEPENDENCIES', 'UPDATE_TOUCH_RESTART',
+        'GIT_FETCH_TIMEOUT', 'DB_MIGRATION_TIMEOUT', 'PIP_INSTALL_TIMEOUT',
+        'PIP_DEFAULT_TIMEOUT', 'PIP_RETRIES', 'PIP_INDEX_URL',
+        'CLARITY_ID', 'CRISP_WEBSITE_ID',
+        'GROQ_API_KEY', 'BING_API_KEY', 'BING_KEY_LOCATION',
+    )
+    # علاوه بر allowlist بالا، همهٔ متغیرهای معتبر قبلی (درگاه، ایمیل، SMS و
+    # تنظیمات اختصاصی هاست) حفظ می‌شوند؛ نسخهٔ قبلی آن‌ها را بی‌صدا حذف می‌کرد.
+    remaining = sorted(
+        key for key in lines
+        if key not in preferred and re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]*', key)
+    )
     with open(env_path, 'w', encoding='utf-8') as f:
         f.write('# ⚙️ تنظیمات محیطی — ساخته‌شده توسط نصب‌کننده آکادمی\n')
-        for k in ('SECRET_KEY', 'FLASK_ENV', 'APP_ENV', 'ENABLE_DEMO_FEATURES',
-                  'INSTALL_REPAIR_TOKEN', 'LICENSE_ENFORCEMENT',
-                  'LICENSE_PUBLIC_KEY_FILE', 'LICENSE_PUBLIC_KEY', 'LICENSE_FILE',
-                  'DATABASE_URL', 'LOG_DIR', 'REDIS_URL',
-                  'CLARITY_ID', 'CRISP_WEBSITE_ID',
-                  'GROQ_API_KEY', 'BING_API_KEY', 'BING_KEY_LOCATION'):
-            if k in lines and lines[k]:
-                f.write(f'{k}={lines[k]}\n')
-        f.write('\n# تنظیمات دیگر (پرداخت/پیامک/ایمیل) از پنل ادمین ← تنظیمات سوپر\n')
+        for key in preferred + tuple(remaining):
+            if key in lines and lines[key]:
+                f.write(f'{key}={lines[key]}\n')
+        f.write('\n# تنظیمات موجود هنگام نصب/تعمیر حفظ می‌شوند.\n')
     return env_path
 
 

@@ -610,17 +610,29 @@ def github_update_webhook():
     if event != 'push':
         return jsonify(ok=True, ignored=True, msg='این نوع رویداد نادیده گرفته شد.')
     payload = request.get_json(silent=True) or {}
-    ref = payload.get('ref', '')
+    if not isinstance(payload, dict):
+        return jsonify(ok=False, msg='payload وبهوک نامعتبر است.'), 400
+    ref = str(payload.get('ref') or '')
     branch = ref[len('refs/heads/'):] if ref.startswith('refs/heads/') else ''
     from updater import get_update_branch, start_update
     configured = get_update_branch()
-    if configured and configured.startswith('refs/heads/'):
+    if configured.startswith('refs/heads/'):
         configured = configured[len('refs/heads/'):]
-    if configured and branch != configured:
-        return jsonify(ok=True, ignored=True, msg='Push روی شاخهٔ هدف نبود.')
-    if not branch:
-        return jsonify(ok=True, ignored=True, msg='شاخهٔ Push قابل تشخیص نیست.')
-    started, msg = start_update(branch=branch)
+    repository = payload.get('repository') if isinstance(payload.get('repository'), dict) else {}
+    default_branch = str(repository.get('default_branch') or '').strip()
+    deployment_branch = configured or default_branch
+    deleted = bool(payload.get('deleted')) or str(payload.get('after') or '') == '0' * 40
+
+    if deleted:
+        return jsonify(ok=True, ignored=True,
+                       msg='حذف شاخه باعث بروزرسانی نمی‌شود.')
+    if not branch or not deployment_branch:
+        return jsonify(ok=True, ignored=True,
+                       msg='شاخهٔ امن مقصد مشخص نیست؛ GIT_BRANCH را تنظیم کنید.')
+    if branch != deployment_branch:
+        return jsonify(ok=True, ignored=True,
+                       msg='این Push مربوط به شاخهٔ deployment نیست.')
+    started, msg = start_update(branch=deployment_branch)
     return jsonify(ok=started, started=started, msg=msg), (202 if started else 409)
 
 

@@ -179,13 +179,13 @@ python scripts/verify_commercial_package.py \
 
 ```bash
 cd academy
-python3 -m venv venv
+python3.11 -m venv venv
 bash scripts/install_dependencies.sh ./venv/bin/python
 ./venv/bin/python app.py   # اجرای سرور روی http://localhost:5000
 # سپس نصب امن را از /install کامل کنید؛ هیچ داده یا حساب نمونه ساخته نمی‌شود.
 ```
 
-اسکریپت نصب برای اتصال کند PyPI از timeout/retry بلندتر و wheel باینری استفاده می‌کند. روی cPanel ابتدا محیط Python نمایش‌داده‌شده در پنل را فعال کنید و سپس `bash scripts/install_dependencies.sh` را اجرا کنید.
+این انتشار فقط برای **CPython 3.11** پشتیبانی می‌شود. اسکریپت نصب runtime را بررسی می‌کند، برای اتصال کند PyPI از timeout/retry بلندتر استفاده می‌کند، فقط wheel باینری می‌پذیرد و در پایان `pip check` اجرا می‌کند. روی cPanel محیط Python 3.11 نمایش‌داده‌شده در پنل را فعال کنید و سپس `bash scripts/install_dependencies.sh` را اجرا کنید.
 
 ## 🔑 حساب مدیر و ورود
 

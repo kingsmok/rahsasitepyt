@@ -216,7 +216,7 @@ flash('اگر این شماره ثبت شده باشد، کد بازیابی ا�
 | فایل | وضعیت |
 |---|---|
 | tests/ (۲۵ تست) | ✅ pytest سبز |
-| .github/workflows/ci.yml | ✅ Python 3.11/3.12 |
+| .github/workflows/ci.yml | ✅ Python 3.11 |
 | gunicorn.conf.py | ✅ ۳ worker + لاگ |
 | .env / .env.example | ✅ dotenv |
 | .gitignore | ✅ |

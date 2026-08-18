@@ -24,7 +24,7 @@
 
 | فیلد | مقدار مورد نظر | توضیح |
 | :--- | :--- | :--- |
-| **Python version** | `3.11` (یا `3.10`) | ترجیحاً نسخه 3.11 را انتخاب کنید |
+| **Python version** | `3.11` | **الزامی:** وابستگی‌های این انتشار برای CPython 3.11 قفل شده‌اند |
 | **Application root** | `public_html` (یا نام پوشه شما) | مسیری که فایل‌ها را آپلود کردید |
 | **Application URL** | `yourdomain.com` | دامنه یا زیردامنه سایت |
 | **Application startup file** | `passenger_wsgi.py` | **بسیار مهم:** حتماً همین نام نوشته شود |
@@ -47,7 +47,7 @@
   - در بالای صفحه Setup Python App، دستوری به شکل زیر نمایش داده می‌شود:
     `source /home/username/virtualenv/public_html/3.11/bin/activate && cd /home/username/public_html`
   - آن دستور را کپی کنید، ابزار **Terminal** را در سی‌پنل باز کرده، دستور را پیست و Enter کنید.
-  - سپس اسکریپت نصب پروژه را اجرا کنید. این اسکریپت timeout را از ۱۵ به ۱۲۰ ثانیه افزایش می‌دهد، ۱۰ بار تلاش می‌کند و wheel آماده را به کامپایل سورس ترجیح می‌دهد:
+  - سپس اسکریپت نصب پروژه را اجرا کنید. این اسکریپت CPython 3.11 را بررسی می‌کند، timeout را از ۱۵ به ۱۲۰ ثانیه افزایش می‌دهد، ۱۰ بار تلاش می‌کند، فقط wheel باینری نصب می‌کند و در پایان `pip check` می‌گیرد:
     ```bash
     bash scripts/install_dependencies.sh
     ```
@@ -89,7 +89,7 @@
 2. در سی‌پنل ابزار **Terminal** را باز کرده و دستورات زیر را اجرا کنید:
    ```bash
    cd ~/public_html
-   python3 -m venv venv
+   python3.11 -m venv venv
    bash scripts/install_dependencies.sh ./venv/bin/python
    ```
 3. فایل نمونه `.htaccess` را از پوشه `deploy` به ریشه سایت کپی کنید:
@@ -134,7 +134,7 @@
 
 ### خطای `ReadTimeoutError` یا `Failed building wheel for greenlet/Pillow`
 - **علت:** timeout پیش‌فرض pip فقط ۱۵ ثانیه است. همچنین `greenlet==3.0.3` برای Python 3.13+ wheel نداشت و Pillow 12.3 روی Linux قدیمی cPanel به کامپایل سورس می‌افتاد.
-- **رفع‌شده در این نسخه:** `greenlet` و `Pillow` به نسخه‌هایی پین شده‌اند که برای CPython 3.9 تا 3.14 روی `manylinux2014` wheel آماده دارند؛ کامپایل C لازم نیست.
+- **رفع‌شده در این نسخه:** همهٔ وابستگی‌ها برای CPython 3.11 قفل شده‌اند و نصب فقط از wheel سازگار `manylinux2014` مجاز است؛ `greenlet==3.2.5` و `Pillow==12.2.0` دیگر وارد کامپایل C نمی‌شوند.
 - **راه‌حل:** ابتدا فرمان `source .../bin/activate && cd ...` نمایش‌داده‌شده در Setup Python App را اجرا کنید و سپس:
   ```bash
   bash scripts/install_dependencies.sh

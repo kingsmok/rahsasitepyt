@@ -729,10 +729,8 @@ def defaults(wtype):
     # اسلایدر با یک محتوای خنثی و قابل ویرایش شروع می‌شود؛ هیچ آمار، ضمانت یا
     # ادعای ساختگی در صفحهٔ تازه قرار نمی‌گیرد.
     if wtype == 'slider':
-        imgs = [i for i in IMG_OPTIONS if i.startswith('cover-') and i.endswith(('.webp', '.jpg', '.png'))]
-        imgs = (imgs or IMG_OPTIONS)[:1]
         d['slides'] = [
-            dict(img=imgs[0] if imgs else '', title='دوره‌های آموزشی',
+            dict(img='', title='دوره‌های آموزشی',
                  sub='فهرست دوره‌های منتشرشده را ببینید و گزینه مناسب را انتخاب کنید.',
                  btn_text='مشاهده دوره‌ها', btn_url='/courses', align='right'),
         ]
@@ -744,6 +742,74 @@ def defaults(wtype):
         d['arrows'] = True
         d['swipe'] = True
     return d
+
+
+_BUILDER_URL_KEYS = {'url', 'link', 'btn_url'}
+_BUILDER_NUMERIC_STYLE_KEYS = {'radius', 'pt', 'pb', 'mt', 'mb'}
+
+
+def _safe_builder_url(value):
+    from html_sanitizer import safe_url
+    return safe_url(value)
+
+
+def _safe_builder_image(value):
+    """مرجع تصویر محلی؛ scheme/path traversal و CSS-breaking رد می‌شود."""
+    value = str(value or '').strip()[:500]
+    if (not value or '..' in value or '\\' in value or '://' in value or
+            any(char in value for char in ('\x00', '\r', '\n', '"', "'", '<', '>'))):
+        return ''
+    return value if re.match(r'^/?[A-Za-z0-9_./-]+$', value) else ''
+
+
+def _safe_css_value(value):
+    """مقدار ساده CSS بدون امکان بستن declaration یا بارگذاری URL بیرونی."""
+    value = str(value or '').strip()[:120]
+    lowered = value.lower()
+    if (not value or any(char in value for char in (';', '{', '}', '<', '>', '"', "'")) or
+            any(token in lowered for token in ('url(', 'expression', '@import',
+                                                'javascript:', 'behavior:'))):
+        return ''
+    return value
+
+
+def _safe_css_identifier(value, multiple=False):
+    value = str(value or '').strip()[:160]
+    pattern = r'^[A-Za-z_][A-Za-z0-9_-]*(?:\s+[A-Za-z_][A-Za-z0-9_-]*)*$' \
+        if multiple else r'^[A-Za-z_][A-Za-z0-9_-]*$'
+    return value if re.match(pattern, value) else ''
+
+
+def _builder_bool(value):
+    return value is True or str(value).lower() in ('1', 'true', 'yes', 'on')
+
+
+def _sanitize_builder_field(field, value):
+    key = field.get('key', '')
+    ftype = field.get('type', 'text')
+    if ftype == 'checkbox':
+        return _builder_bool(value)
+    if ftype == 'number':
+        try:
+            return max(-1000000, min(1000000, int(value or 0)))
+        except (TypeError, ValueError):
+            return 0
+    if isinstance(value, (int, float)):
+        value = str(value)
+    elif not isinstance(value, str):
+        value = ''
+    if key in _BUILDER_URL_KEYS:
+        return _safe_builder_url(value)
+    if ftype == 'image':
+        return _safe_builder_image(value)
+    if ftype == 'color':
+        return _safe_css_value(value)
+    if ftype == 'select' and field.get('options'):
+        allowed = {str(option[0] if isinstance(option, (list, tuple)) else option)
+                   for option in field['options']}
+        return value if value in allowed else ''
+    limit = 50000 if ftype in ('textarea', 'richtext') else 3000
+    return value[:limit]
 
 
 def _sanitize_widget(w):
@@ -762,36 +828,18 @@ def _sanitize_widget(w):
             if not isinstance(merged.get(f['key']), list):
                 merged[f['key']] = []
             cleaned_items = []
-            for it in merged[f['key']]:
+            for it in merged[f['key']][:100]:
                 if not isinstance(it, dict):
                     continue
                 itd = {}
                 for sf in f.get('item_fields', []):
-                    itd[sf['key']] = it.get(sf['key'],
-                        ([] if sf['type'] == 'repeater' else (False if sf['type'] == 'checkbox' else '')))
+                    raw = it.get(sf['key'], False if sf['type'] == 'checkbox' else '')
+                    itd[sf['key']] = _sanitize_builder_field(sf, raw)
                 cleaned_items.append(itd)
             merged[f['key']] = cleaned_items
-        elif f['type'] == 'number':
-            # مقادیر عددی: خالی → 0
-            try:
-                merged[f['key']] = int(merged.get(f['key']) or 0)
-            except (TypeError, ValueError):
-                merged[f['key']] = 0
-        elif f['type'] == 'checkbox':
-            # بولین اجباری
-            merged[f['key']] = bool(merged.get(f['key']))
         else:
-            # همه فیلدهای متنی/انتخابی/رنگ/تصویر: رشته اجباری — هر نوع دیگری (لیست/دیکته/عدد) به رشته امن تبدیل شود
-            v = merged.get(f['key'])
-            if v is None or v is False:
-                merged[f['key']] = ''
-            elif isinstance(v, str):
-                merged[f['key']] = v
-            elif isinstance(v, (int, float)):
-                merged[f['key']] = str(v)
-            else:
-                # لیست/دیکته/چیزهای عجیب → رشته امن (ضد هرگونه .get روی داده ناسازگار)
-                merged[f['key']] = ''
+            merged[f['key']] = _sanitize_builder_field(
+                f, merged.get(f['key'], False if f['type'] == 'checkbox' else ''))
     # مهاجرت داده قدیمی: ویجت‌هایی که فیلد «style» رشته‌ای داشتند (دکمه/جداکننده/CTA/سبد)
     _style_migrate = {'button': 'btn_style', 'add_to_cart': 'btn_style',
                       'divider': 'line_style', 'cta': 'cta_style'}
@@ -801,34 +849,88 @@ def _sanitize_widget(w):
             merged[newk] = merged['style']
         if isinstance(merged.get('style'), str):
             merged.pop('style', None)
-    # آبجکت «style» تب استایل: همیشه دیکشنری امن (اگر رشته/لیست باشد → خالی)
-    if 'style' in merged and not isinstance(merged.get('style'), dict):
+    # کلاس/id و آبجکت تب استایل فقط از مقادیر محدود CSS ساخته می‌شوند.
+    merged['css_class'] = _safe_css_identifier(merged.get('css_class'), multiple=True)
+    merged['css_id'] = _safe_css_identifier(merged.get('css_id'))
+    if isinstance(merged.get('style'), dict):
+        raw_style = merged['style']
+        merged['style'] = {
+            'align': raw_style.get('align') if raw_style.get('align') in
+                     ('right', 'center', 'left', 'justify') else '',
+            'color': _safe_css_value(raw_style.get('color')),
+            'bg': _safe_css_value(raw_style.get('bg')),
+            'width': _safe_css_value(raw_style.get('width')),
+        }
+        for style_key in _BUILDER_NUMERIC_STYLE_KEYS:
+            try:
+                merged['style'][style_key] = max(
+                    -500, min(2000, int(raw_style.get(style_key) or 0)))
+            except (TypeError, ValueError):
+                merged['style'][style_key] = 0
+    else:
         merged['style'] = {}
     if wt == 'inner_section':
         inner_cols = []
-        for col in (wd.get('cols') or []):
+        for col in (wd.get('cols') or [])[:12]:
             if not isinstance(col, list):
                 inner_cols.append([])
                 continue
-            inner_cols.append([x for x in (_sanitize_widget(x) for x in col) if x])
+            inner_cols.append([x for x in
+                               (_sanitize_widget(x) for x in col[:200]) if x])
         merged['cols'] = inner_cols
-    return {'id': w.get('id') or _new_id('w'), 'type': wt, 'data': merged}
+    widget_id = _safe_css_identifier(w.get('id')) or _new_id('w')
+    return {'id': widget_id, 'type': wt, 'data': merged}
+
+
+def _sanitize_row_settings(value):
+    raw = value if isinstance(value, dict) else {}
+    settings = {
+        'bg': _safe_css_value(raw.get('bg')),
+        'bg_image': _safe_builder_image(raw.get('bg_image')),
+        'widths': _safe_css_value(raw.get('widths')),
+        'css_class': _safe_css_identifier(raw.get('css_class'), multiple=True),
+        'css_id': _safe_css_identifier(raw.get('css_id')),
+        'hide_mobile': _builder_bool(raw.get('hide_mobile')),
+        'hide_desktop': _builder_bool(raw.get('hide_desktop')),
+        'locked': _builder_bool(raw.get('locked')),
+    }
+    for key in ('gap', 'radius', 'py', 'pt', 'pb', 'mt', 'mb'):
+        try:
+            settings[key] = max(-500, min(2000, int(raw.get(key) or 0)))
+        except (TypeError, ValueError):
+            settings[key] = 0
+    return settings
+
+
+def _sanitize_page_settings(value):
+    raw = value if isinstance(value, dict) else {}
+    return {
+        'page_bg': _safe_css_value(raw.get('page_bg')),
+        'seo_title': str(raw.get('seo_title') or '').strip()[:200],
+        'seo_desc': str(raw.get('seo_desc') or '').strip()[:500],
+        'hide_header': _builder_bool(raw.get('hide_header')),
+        'hide_footer': _builder_bool(raw.get('hide_footer')),
+        'template_name': str(raw.get('template_name') or '').strip()[:100],
+    }
 
 
 def _sanitize_rows(rows):
-    """پاکسازی داده‌های صفحه‌ساز"""
+    """پاکسازی داده‌های صفحه‌ساز با سقف اندازه برای جلوگیری از render DoS."""
     out = []
-    for r in rows or []:
+    if not isinstance(rows, list):
+        return out
+    for r in rows[:200]:
         if not isinstance(r, dict):
             continue
         cols = []
-        for c in (r.get('cols') or []):
+        raw_cols = r.get('cols') if isinstance(r.get('cols'), list) else []
+        for c in raw_cols[:12]:
             if not isinstance(c, list):
                 continue
-            cols.append([x for x in (_sanitize_widget(x) for x in c) if x])
-        rs = r.get('settings')
-        rs = rs if isinstance(rs, dict) else {}
-        out.append({'id': r.get('id') or _new_id('r'), 'settings': rs, 'cols': cols})
+            cols.append([x for x in (_sanitize_widget(x) for x in c[:200]) if x])
+        row_id = _safe_css_identifier(r.get('id')) or _new_id('r')
+        out.append({'id': row_id, 'settings': _sanitize_row_settings(r.get('settings')),
+                    'cols': cols})
     return out
 
 
@@ -1400,11 +1502,13 @@ def api_render():
         try:
             parts.append(render_template('builder/fragment_row.html', row=row, edit=edit))
         except Exception as e:
+            from markupsafe import escape
             from validators import log_exc
             log_exc('builder.render_row: ' + str(e)[:150])
+            safe_error = str(escape(str(e)))
             parts.append('<div class="pb-row pb-row-error" title="' +
-                         str(e).replace('"', '&quot;')[:200] + '">⚠️ خطا در رندر این ردیف: ' +
-                         str(e).replace('"', '&quot;')[:120] +
+                         safe_error[:200] + '">⚠️ خطا در رندر این ردیف: ' +
+                         safe_error[:120] +
                          '<br><small style="opacity:.75">صفحه را با Ctrl+Shift+R رفرش کنید — اگر ادامه داشت، ردیف را حذف و دوباره بسازید.</small></div>')
     html = ''.join(parts)
     return jsonify(ok=True, html=html, count=len(rows))
@@ -1433,13 +1537,15 @@ def api_save():
     if len(json.dumps(data, ensure_ascii=False)) > 500_000:
         return jsonify(ok=False, msg='حجم صفحه بیش از حد مجاز است (۵۰۰KB)'), 413
     page = Page.query.filter_by(slug=data.get('slug', '')).first_or_404()
-    new_content = json.dumps({'settings': data.get('settings', {}), 'rows': data.get('rows', [])},
+    safe_settings = _sanitize_page_settings(data.get('settings'))
+    safe_rows = _sanitize_rows(data.get('rows'))
+    new_content = json.dumps({'settings': safe_settings, 'rows': safe_rows},
                              ensure_ascii=False)
     # نسخه‌بندی: اگر محتوا تغییر کرده، نسخه قبلی ذخیره شود (تاریخچه)
     if page.content != new_content:
         from models import PageRevision
         db.session.add(PageRevision(page_id=page.id, content=page.content,
-                                    note=data.get('note') or 'ویرایش خودکار',
+                                    note=str(data.get('note') or 'ویرایش خودکار')[:200],
                                     author_id=g.user.id if g.user else None))
         # حداکثر ۲۰ نسخه نگهداری شود
         old_revs = PageRevision.query.filter_by(page_id=page.id) \
@@ -1448,7 +1554,7 @@ def api_save():
             db.session.delete(o)
     page.content = new_content
     if 'published' in data:
-        page.is_published = bool(data['published'])
+        page.is_published = _builder_bool(data['published'])
     db.session.commit()
     return jsonify(ok=True, msg='ذخیره شد ✅')
 
@@ -1500,7 +1606,10 @@ def api_section_template():
     row = data.get('row')
     if not name or not isinstance(row, dict) or not row:
         return jsonify(ok=False, msg='نام و سکشن معتبر الزامی است'), 400
-    ok, message = _append_library('section', {'name': name, 'row': row})
+    clean_rows = _sanitize_rows([row])
+    if not clean_rows:
+        return jsonify(ok=False, msg='سکشن قابل ذخیره‌سازی نیست'), 400
+    ok, message = _append_library('section', {'name': name, 'row': clean_rows[0]})
     return jsonify(ok=ok, msg=message), 200 if ok else 413
 
 
@@ -1516,8 +1625,12 @@ def api_page_template():
     settings = data.get('settings') or {}
     if not name or not isinstance(rows, list) or not rows or not isinstance(settings, dict):
         return jsonify(ok=False, msg='نام و محتوای معتبر صفحه الزامی است'), 400
+    clean_rows = _sanitize_rows(rows)
+    if not clean_rows:
+        return jsonify(ok=False, msg='صفحه قابل ذخیره‌سازی نیست'), 400
     ok, message = _append_library(
-        'page', {'name': name, 'rows': rows, 'settings': settings})
+        'page', {'name': name, 'rows': clean_rows,
+                 'settings': _sanitize_page_settings(settings)})
     return jsonify(ok=ok, msg=message), 200 if ok else 413
 
 

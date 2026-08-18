@@ -35,9 +35,13 @@ def test_sanitizer_strips_event_handlers():
 
 
 def test_sanitizer_blocks_javascript_url():
-    from html_sanitizer import sanitize_html
+    from html_sanitizer import safe_url, sanitize_html
     out = sanitize_html('<a href="javascript:alert(1)">کلیک</a>')
     assert 'javascript:' not in out.lower()
+    assert safe_url('//evil.example/phishing') == ''
+    assert safe_url('/\\evil.example/phishing') == ''
+    assert safe_url('/courses') == '/courses'
+    assert safe_url('https://example.com/path') == 'https://example.com/path'
 
 
 def test_sanitizer_blocks_data_html_url():

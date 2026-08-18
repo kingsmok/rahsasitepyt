@@ -2,6 +2,7 @@
 """رگرسیون‌های عرضه تجاری: انتشار، نقش‌ها، دموهای طراحی و همکار مدرس."""
 import json
 import re
+from pathlib import Path
 
 from conftest import login
 from models import db, Course, CourseTeacher, Setting, User
@@ -208,13 +209,46 @@ def test_design_demos_do_not_publish_fake_contact_details():
 
 
 def test_every_registered_theme_has_stylesheet():
-    from pathlib import Path
     from app import THEMES
     root = Path(__file__).resolve().parents[1]
     missing = [theme['id'] for theme in THEMES
                if not (root / 'static' / 'css' / 'themes' /
                        f'{theme["id"]}.css').is_file()]
     assert not missing
+
+
+def test_literal_static_references_resolve_to_real_files():
+    """منابع literal در CSS/Jinja نباید بعد از تحویل ZIP به 404 برسند."""
+    root = Path(__file__).resolve().parents[1]
+    static = root / 'static'
+    missing = []
+    for stylesheet in static.rglob('*.css'):
+        source = stylesheet.read_text(encoding='utf-8')
+        for value in re.findall(r"url\(\s*['\"]?([^'\")]+)", source, re.I):
+            value = value.strip()
+            if not value or value.startswith(('data:', 'http:', 'https:', '#', 'var(')):
+                continue
+            target = ((static / value[len('/static/'):])
+                      if value.startswith('/static/') else
+                      (stylesheet.parent / value).resolve())
+            if not target.is_file():
+                missing.append('%s -> %s' % (stylesheet.relative_to(root), value))
+    for template in (root / 'templates').rglob('*.html'):
+        source = template.read_text(encoding='utf-8')
+        for value in re.findall(
+                r"url_for\(\s*['\"]static['\"]\s*,\s*filename\s*=\s*['\"]([^'\"]+)",
+                source):
+            if not (static / value).is_file():
+                missing.append('%s -> %s' % (template.relative_to(root), value))
+    assert not missing, '\n'.join(missing)
+
+
+def test_public_empty_states_do_not_claim_unfinished_demo_features():
+    root = Path(__file__).resolve().parents[1] / 'templates'
+    for relative in ('community/live.html', 'features/success_stories.html',
+                     'learning_paths.html'):
+        source = (root / relative).read_text(encoding='utf-8')
+        assert 'به‌زودی' not in source and 'در حال توسعه' not in source, relative
 
 
 # ------------------------------------------------------------------

@@ -141,15 +141,21 @@
 {% endif %}
 {% endif %}
 
+{% set bottom_links = [] %}
 {% if builder_pages.get('mobile_menu') and builder_pages['mobile_menu'].is_published %}
-<nav class="mobile-bottom-nav" id="mobile-bottom-nav">
   {% for row in builder_pages['mobile_menu'].rows() %}{% for col in row.cols %}{% for b in col %}
     {% set md = b.data or {} %}
-    <a class="mb-item" href="{{ md.url or '#' }}" data-mb-link="{{ md.url or '' }}">
-      <span class="mb-icon">{{ md.icon or '•' }}</span>
-      <span class="mb-label">{{ md.label or '' }}</span>
-    </a>
+    {% if b.type == 'mobile_link' and md.url and md.label %}{% set _ = bottom_links.append(b) %}{% endif %}
   {% endfor %}{% endfor %}{% endfor %}
+{% endif %}
+{% if bottom_links %}
+<nav class="mobile-bottom-nav" id="mobile-bottom-nav">
+  {% for b in bottom_links %}{% set md = b.data or {} %}
+    <a class="mb-item" href="{{ md.url }}" data-mb-link="{{ md.url }}">
+      <span class="mb-icon">{{ md.icon or '•' }}</span>
+      <span class="mb-label">{{ md.label }}</span>
+    </a>
+  {% endfor %}
 </nav>
 {% endif %}
 <!-- بازگشت به بالا -->
@@ -203,13 +209,13 @@
     {% set mm_page = builder_pages.get('mobile_menu') %}
     {% set mm_links = [] %}
     {% if mm_page and mm_page.is_published %}
-      {% for row in mm_page.rows() %}{% for col in row.cols %}{% for b in col %}{% if b.type == 'mobile_link' %}
-        {% set _ = mm_links.append(b) %}
-      {% endif %}{% endfor %}{% endfor %}{% endfor %}
+      {% for row in mm_page.rows() %}{% for col in row.cols %}{% for b in col %}
+        {% set md = b.data or {} %}{% if b.type == 'mobile_link' and md.url and md.label %}{% set _ = mm_links.append(b) %}{% endif %}
+      {% endfor %}{% endfor %}{% endfor %}
     {% endif %}
     {% if mm_links %}
       {% for b in mm_links %}{% set md = b.data or {} %}
-      <a class="mm-link" href="{{ md.url or '#' }}" data-close-mm>
+      <a class="mm-link" href="{{ md.url }}" data-close-mm>
         <span class="mm-link-ic">{{ md.icon or '•' }}</span>
         <span class="mm-link-label">{{ md.label }}</span>
         {% if md.badge %}<span class="mm-link-badge">{{ md.badge }}</span>{% endif %}

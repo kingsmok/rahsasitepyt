@@ -6,10 +6,12 @@ import json
 import re
 from datetime import date
 
+import pytest
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
-from licensing import LicenseManager, get_license_manager, issue_token
+from licensing import (LicenseManager, domain_matches, get_license_manager,
+                       issue_token, normalize_domain)
 
 
 def _keys():
@@ -34,6 +36,22 @@ def _token(private, **overrides):
     return issue_token(private, payload)
 
 
+def test_domain_normalization_rejects_malformed_hosts():
+    assert normalize_domain('HTTPS://München.Example:443/path') == 'xn--mnchen-3ya.example'
+    assert normalize_domain('[2001:0db8::1]:5000') == '2001:db8::1'
+    assert normalize_domain('127.0.0.1:5000') == '127.0.0.1'
+    assert normalize_domain('localhost') == 'localhost'
+    for invalid in ('bad host', 'example.com/path', '-bad.example',
+                    'bad-.example', 'example.com:invalid', '[::1]:70000'):
+        assert normalize_domain(invalid) == ''
+    assert domain_matches('shop.customer.example', ['*.customer.example'])
+    assert not domain_matches('customer.example', ['*.customer.example'])
+
+    private, _public, _b64 = _keys()
+    with pytest.raises(ValueError, match='دامنه'):
+        _token(private, domains=['bad host'])
+
+
 def test_signed_license_domain_wildcard_and_tamper(tmp_path):
     private, public, _ = _keys()
     manager = LicenseManager(public_key=public,
@@ -44,6 +62,8 @@ def test_signed_license_domain_wildcard_and_tamper(tmp_path):
     assert manager.decode_and_verify(token, 'panel.customer.example').valid
     mismatch = manager.decode_and_verify(token, 'evil.example.com')
     assert mismatch.valid is False and mismatch.code == 'domain_mismatch'
+    invalid_host = manager.decode_and_verify(token, 'bad host')
+    assert invalid_host.valid is False and invalid_host.code == 'invalid_domain'
 
     head, body, signature = token.split('.')
     replacement = ('A' if signature[0] != 'A' else 'B')

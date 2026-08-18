@@ -3,6 +3,7 @@
 import hashlib
 import json
 import os
+import shutil
 import stat
 import subprocess
 import sys
@@ -12,6 +13,7 @@ from pathlib import Path
 import pytest
 
 from scripts.build_commercial_package import _PRIVATE_PEM_RE
+from scripts.verify_commercial_package import verify_package
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -93,6 +95,7 @@ def test_commercial_zip_has_pinned_public_key_and_no_runtime_secrets(tmp_path):
         assert 'COMMERCIAL-BUILD.json' in names
         assert '.env' not in names
         assert 'instance/license.json' not in names
+        assert 'static/video/sample.mp4' not in names
         assert not any('private' in Path(name).name.lower() for name in names)
         assert not any(_PRIVATE_PEM_RE.search(archive.read(name))
                        for name in names)
@@ -102,3 +105,15 @@ def test_commercial_zip_has_pinned_public_key_and_no_runtime_secrets(tmp_path):
         manifest = json.loads(archive.read('COMMERCIAL-BUILD.json'))
         for name, expected_hash in manifest['files'].items():
             assert hashlib.sha256(archive.read(name)).hexdigest() == expected_hash
+
+    verified = verify_package(output)
+    assert verified['ok'] is True
+    assert verified['files'] == len(manifest['files'])
+
+    tampered = tmp_path / 'academy-commercial-tampered.zip'
+    shutil.copy2(output, tampered)
+    with pytest.warns(UserWarning, match='Duplicate'):
+        with zipfile.ZipFile(str(tampered), 'a') as archive:
+            archive.writestr('README.md', b'tampered')
+    with pytest.raises(ValueError, match='تکراری'):
+        verify_package(tampered)

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import ipaddress
 import json
 import os
 import re
@@ -51,22 +52,46 @@ def _b64decode(value: str) -> bytes:
 
 
 def normalize_domain(value: str) -> str:
-    """Host/URL را به دامنه کوچک و بدون پورت تبدیل می‌کند."""
+    """Host/URL را به hostname معتبر، کوچک و بدون پورت تبدیل می‌کند."""
     value = str(value or '').strip().lower()
-    if '://' in value:
-        from urllib.parse import urlsplit
-        value = urlsplit(value).hostname or ''
-    else:
-        # IPv6 داخل [] و host:port
-        if value.startswith('[') and ']' in value:
-            value = value[1:value.index(']')]
-        elif value.count(':') == 1:
-            value = value.rsplit(':', 1)[0]
-    value = value.rstrip('.')
     try:
-        return value.encode('idna').decode('ascii')
+        if '://' in value:
+            from urllib.parse import urlsplit
+            value = urlsplit(value).hostname or ''
+        elif value.startswith('[') and ']' in value:
+            closing = value.index(']')
+            suffix = value[closing + 1:]
+            if suffix:
+                port = suffix[1:] if suffix.startswith(':') else ''
+                if not port.isdigit() or not 0 < int(port) <= 65535:
+                    return ''
+            value = value[1:closing]
+        elif value.count(':') == 1:
+            host, port = value.rsplit(':', 1)
+            if not port.isdigit() or not 0 < int(port) <= 65535:
+                return ''
+            value = host
+    except (TypeError, ValueError):
+        return ''
+    value = value.rstrip('.')
+    if not value or len(value) > 253 or any(char in value for char in '/\\?#@'):
+        return ''
+    try:
+        # IPv4/IPv6 با فرم canonical؛ localhost برای نصب و توسعه مجاز است.
+        return ipaddress.ip_address(value).compressed.lower()
+    except ValueError:
+        pass
+    try:
+        ascii_value = value.encode('idna').decode('ascii')
     except UnicodeError:
         return ''
+    if ascii_value == 'localhost':
+        return ascii_value
+    labels = ascii_value.split('.')
+    if any(not re.match(r'^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$', label)
+           for label in labels):
+        return ''
+    return ascii_value
 
 
 def domain_matches(current: str, licensed_domains: List[str]) -> bool:
@@ -302,7 +327,11 @@ class LicenseManager:
                 return LicenseState(True, self.enforced, False, 'expired',
                                     'اعتبار لایسنس به پایان رسیده است.', payload,
                                     current_domain)
-            if current_domain and not domain_matches(current_domain, domains):
+            if not current_domain:
+                return LicenseState(True, self.enforced, False, 'invalid_domain',
+                                    'دامنه فعلی سرور معتبر یا قابل تشخیص نیست.',
+                                    payload, current_domain)
+            if not domain_matches(current_domain, domains):
                 return LicenseState(True, self.enforced, False, 'domain_mismatch',
                                     'این لایسنس برای دامنه فعلی صادر نشده است.',
                                     payload, current_domain)

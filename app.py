@@ -277,8 +277,11 @@ def create_app():
     # ── پاکسازی HTML دلخواه (ضد XSS/فیشینگ) ──
     # هرجا در قالب‌ها HTML خام رندر می‌شود باید از این فیلتر عبور کند، نه |safe.
     # جزئیات دلیل امنیتی در html_sanitizer.py توضیح داده شده است.
-    from html_sanitizer import sanitize_markup as _sanitize_markup, escape_nl2br as _escape_nl2br
+    from html_sanitizer import (escape_nl2br as _escape_nl2br,
+                                safe_url as _safe_url,
+                                sanitize_markup as _sanitize_markup)
     app.jinja_env.filters['clean_html'] = _sanitize_markup
+    app.jinja_env.filters['safe_url'] = _safe_url
     app.jinja_env.filters['nl2br'] = _escape_nl2br
 
     def _safe_tracking_id(v):

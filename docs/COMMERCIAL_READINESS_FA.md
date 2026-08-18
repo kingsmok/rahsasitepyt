@@ -27,7 +27,7 @@
 - نبود کلید عمومی، نصب‌های قدیمی را قفل نمی‌کند؛ `LICENSE_ENFORCEMENT=1` بدون public key به‌صورت fail-closed متوقف می‌شود.
 - ZIP تجاری دارای `COMMERCIAL-BUILD.json` همیشه enforcement را فعال، fingerprint کلید عمومی را pin و در صورت حذف/تعویض کلید fail-closed عمل می‌کند.
 - private key فروشنده می‌تواند با رمزی که فقط از متغیر محیطی خوانده می‌شود رمزگذاری شود؛ رمز در آرگومان command line قرار نمی‌گیرد.
-- ابزار امن فروشنده: `scripts/license_tool.py` برای keygen، صدور و verify؛ سازنده ZIP: `scripts/build_commercial_package.py`. ضعف ذاتی توزیع سورس نیز صادقانه باقی است: فرد دارای دسترسی کامل به کد می‌تواند کنترل محلی را patch کند و برای سخت‌گیری بیشتر باید اعتبارسنجی سروری/ماژول کامپایل‌شده جداگانه ارائه شود.
+- ابزار امن فروشنده: `scripts/license_tool.py` برای keygen، صدور و verify؛ سازنده ZIP: `scripts/build_commercial_package.py`؛ کنترل مستقل hash/path/secret/fingerprint: `scripts/verify_commercial_package.py`. سازنده پیش از تحویل، verifier مستقل را نیز خودکار اجرا می‌کند. ضعف ذاتی توزیع سورس نیز صادقانه باقی است: فرد دارای دسترسی کامل به کد می‌تواند کنترل محلی را patch کند و برای سخت‌گیری بیشتر باید اعتبارسنجی سروری/ماژول کامپایل‌شده جداگانه ارائه شود.
 
 ## امنیت نصب و مدیر
 
@@ -95,20 +95,26 @@
 - بکاپ SQLite همیشه مسیر `instance/academy.db` را فرض می‌کرد؛ اکنون مسیر engine واقعی و API امن `sqlite3.backup` استفاده می‌شود.
 - کتابخانه قالب صفحه‌ساز فایل runtime را در ریشه سورس می‌نوشت؛ به `instance/libraries` با نوشتن اتمیک، قفل و محدودیت حجم منتقل شد.
 - مدیریت محصول اکنون آپلود امن تصویر، پیش‌نمایش و fallback فایل حذف‌شده دارد.
+- صفحه‌ساز URLهای `javascript:`/protocol-relative، CSS تزریقی، شناسه‌های نامعتبر و payloadهای بیش‌ازحد را هنگام preview، ذخیره و کتابخانه قالب پاک‌سازی می‌کند.
+- لینک‌ها و CTAهای بدون مقصد دیگر به `#` ختم نمی‌شوند و در خروجی عمومی به‌عنوان دکمه بی‌عمل رندر نمی‌شوند.
+- نقشه ثابت تهران و ویدئوی نمونه از خروجی مشتری حذف شدند؛ نقشه فقط با نشانی واقعی به Google Maps متصل می‌شود و ZIP تجاری ویدئوی seed توسعه را بسته‌بندی نمی‌کند.
 
 ## نتیجه تست
 
 ```text
-230 passed in 132.23s
-Commercial role crawl: 1,177 pages + 5,715 static references, 0 issues
+234 passed in 128.89s
+Commercial role crawl: 1,176 pages + 5,715 static references, 0 issues
 Commercial ZIP smoke: activate + HTTP 402/200 + health + manifest hashes, OK
-Commercial ZIP audit: 841 entries, no private key/.env/instance data
+Commercial ZIP audit: 840 entries, no private key/.env/instance/demo video
 Live public crawl: 47 routes, 0 errors
 Python compileall: OK
-Python 3.8 syntax parse (88 files): OK
+Python 3.8 syntax parse (89 files): OK
 JavaScript syntax (7 files): OK
 Jinja syntax (203 templates): OK
 pip check: No broken requirements found
+pip-audit: No known vulnerabilities found
+Ruff fatal/undefined-name checks: OK
+Bandit: 0 high-severity findings (medium findings manually reviewed)
 Git diff check: OK
 ```
 

@@ -85,6 +85,10 @@
        --output releases/academy-business-1.0.0.zip \
        --version 1.0.0
 
+  ۴) بررسی مستقل ZIP پیش از تحویل:
+     python scripts/verify_commercial_package.py \
+       releases/academy-business-1.0.0.zip
+
   ⚠️ فقط public key داخل ZIP می‌رود؛ private key باید آفلاین و امن بماند.
   مشتری بعد از نصب، توکن مرحله ۲ را در /license وارد می‌کند.
 

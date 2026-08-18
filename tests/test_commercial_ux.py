@@ -46,6 +46,52 @@ def test_referral_link_hidden_when_feature_is_disabled(client):
     assert '/dashboard/referral' not in page.text
 
 
+def test_builder_sanitizes_links_styles_and_render_limits(app):
+    from blueprints.builder import _sanitize_rows
+    rows = [{
+        'id': 'bad" onclick="alert(1)',
+        'settings': {
+            'bg': 'red;background:url(https://evil.example/x)',
+            'widths': '1fr;position:fixed', 'css_class': 'ok bad<script>',
+            'gap': '999999',
+        },
+        'cols': [[{
+            'id': 'button-1', 'type': 'button',
+            'data': {
+                'text': 'دکمه ناامن', 'url': 'java\nscript:alert(1)',
+                'style': {'bg': 'url(https://evil.example/x)',
+                          'width': '100%;position:fixed'},
+            },
+        }, {
+            'id': 'slider-1', 'type': 'slider',
+            'data': {'slides': [{
+                'title': 'اسلاید', 'btn_text': 'کلیک',
+                'btn_url': 'javascript:alert(2)',
+            }]},
+        }]],
+    }]
+    cleaned = _sanitize_rows(rows)
+    assert len(cleaned) == 1
+    assert cleaned[0]['id'] != rows[0]['id']
+    assert cleaned[0]['settings']['bg'] == ''
+    assert cleaned[0]['settings']['widths'] == ''
+    assert cleaned[0]['settings']['css_class'] == ''
+    assert cleaned[0]['settings']['gap'] == 2000
+    button, slider = cleaned[0]['cols'][0]
+    assert button['data']['url'] == ''
+    assert button['data']['style']['bg'] == ''
+    assert button['data']['style']['width'] == ''
+    assert slider['data']['slides'][0]['btn_url'] == ''
+
+    with app.test_request_context('/'):
+        html = app.jinja_env.get_template('builder/fragment_row.html').render(
+            row=cleaned[0], edit=False)
+    assert 'javascript:' not in html
+    assert 'evil.example' not in html
+    assert 'href="#"' not in html
+    assert 'دکمه ناامن' not in html
+
+
 def test_builder_library_rejects_empty_template_and_uses_instance(client, app):
     import json
     _make_admin(app)

@@ -35,6 +35,10 @@ _SECRET_NAMES = (
     'license_private_key.pem', 'vendor_license_private.pem', '.env',
     '.env.local', 'id_rsa', 'id_ed25519',
 )
+_COMMERCIAL_EXCLUDE_FILES = {
+    # فقط داده توسعه seed؛ نصب مشتری هیچ محتوای نمایشی نمی‌سازد.
+    'static/video/sample.mp4',
+}
 _PRIVATE_PEM_RE = re.compile(
     br'-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----\r?\n.{40,}?'
     br'-----END [A-Z0-9 ]*PRIVATE KEY-----', re.DOTALL)
@@ -55,7 +59,8 @@ def _source_files(include_tests=False, include_untracked=False):
         git_args.extend(['--cached', '--others', '--exclude-standard'])
     for relative in sorted(set(_git(*git_args).splitlines())):
         relative = relative.strip().replace('\\', '/')
-        if not relative or any(relative.startswith(prefix) for prefix in _ALWAYS_EXCLUDE):
+        if (not relative or relative in _COMMERCIAL_EXCLUDE_FILES or
+                any(relative.startswith(prefix) for prefix in _ALWAYS_EXCLUDE)):
             continue
         if not include_tests and relative.startswith('tests/'):
             continue
@@ -124,7 +129,7 @@ def build_package(public_key_path, output_path, version, include_tests=False,
         json.dumps(manifest, ensure_ascii=False, indent=2).encode('utf-8'),
     ))
 
-    temp_output = output.with_suffix(output.suffix + '.tmp')
+    temp_output = output.with_name(output.name + '.tmp.zip')
     try:
         with zipfile.ZipFile(str(temp_output), 'w', zipfile.ZIP_DEFLATED,
                              compresslevel=9) as archive:
@@ -136,6 +141,9 @@ def build_package(public_key_path, output_path, version, include_tests=False,
                 mode = 0o755 if relative.endswith('.sh') else 0o644
                 info.external_attr = mode << 16
                 archive.writestr(info, content)
+        # پیش از جایگزینی خروجی نهایی، همان ZIP موقت با verifier مستقل بررسی شود.
+        from scripts.verify_commercial_package import verify_package
+        verify_package(temp_output)
         os.replace(str(temp_output), str(output))
     finally:
         try:

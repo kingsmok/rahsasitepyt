@@ -132,12 +132,11 @@ WIDGETS = {
         dict(key='item_id', label='آیتم (کد دوره/محصول)', type='number'),
         dict(key='show_compare', label='نمایش مقایسه با سایر پلتفرم‌ها', type='checkbox'),
     ]),
-    'amazing_offer': dict(name='پیشنهاد شگفت‌انگیز', icon='⚡', cat='woo', desc='باکس فروش ویژه با تایمر معکوس نئون', fields=[
+    'amazing_offer': dict(name='پیشنهاد ویژه', icon='⚡', cat='woo', desc='باکس فروش برای تخفیف واقعی ثبت‌شده', fields=[
         dict(key='title', label='عنوان', type='text'),
         dict(key='sub', label='زیرعنوان', type='text'),
         dict(key='item_type', label='نوع', type='select', options=[('course', 'دوره'), ('product', 'محصول')]),
         dict(key='item_id', label='آیتم (کد)', type='number'),
-        dict(key='hours', label='ساعت باقی‌مانده', type='number'),
         dict(key='btn_text', label='متن دکمه', type='text'),
         dict(key='btn_url', label='لینک دکمه', type='text'),
     ]),
@@ -676,13 +675,10 @@ PAGE_TEMPLATES = {
         ]]}]),
     'faq_page': dict(name='صفحه سوالات متداول', icon='❓', desc='سکشن FAQ با آکاردئون',
         rows=(SECTION_TEMPLATES['faq']['rows'] + SECTION_TEMPLATES['cta']['rows'])),
-    'teacher_landing': dict(name='صفحه معرفی مدرس', icon='👨‍🏫', desc='لندینگ مدرس با دوره‌ها و نظرات',
+    'teacher_landing': dict(name='صفحه معرفی مدرس', icon='👨‍🏫', desc='لندینگ معرفی مدرس‌ها',
         rows=[{'id': 't1', 'settings': {'gap': 0, 'py': 60}, 'cols': [[
             {'id': 't1a', 'type': 'heading', 'data': {'text': '👨‍🏫 با اساتید ما آشنا شوید', 'tag': 'h1', 'align': 'center', 'mb': '10'}},
-            {'id': 't1b', 'type': 'teachers', 'data': {'title': 'اساتید برتر', 'limit': '4', 'columns': '4'}},
-            {'id': 't1c', 'type': 'testimonials', 'data': {'columns': '3', 'items': [
-                {'name': 'رضا موسوی', 'role': 'دانشجوی ML', 'stars': '5', 'color': '#0891b2', 'text': 'کیفیت تدریس فوق‌العاده بود.'}
-            ]}}
+            {'id': 't1b', 'type': 'teachers', 'data': {'title': 'اساتید', 'limit': '4', 'columns': '4'}}
         ]]}]),
 }
 
@@ -1014,7 +1010,7 @@ def builder_price_history(d):
         for r in rows:
             points.append(dict(price=r.final_price or r.price, date_fa=jdate(r.recorded_at)))
     current = item.final_price if item and hasattr(item, 'final_price') else 0
-    # مقایسه با پلتفرم‌های دیگر — نمونه: از تنظیمات site (competitive_prices JSON) یا پیش‌فرض
+    # مقایسه فقط از داده واقعی ثبت‌شده مدیر در competitive_prices خوانده می‌شود.
     compare = []
     try:
         from models import Setting as _S
@@ -1027,10 +1023,7 @@ def builder_price_history(d):
     except Exception as _e:
         from validators import log_exc as _lexc2
         _lexc2(f'builder.price_compare: {_e}')
-    if not compare and item:
-        base = current or 0
-        compare = [dict(name='در سایت‌های مشابه (مرجع)', price=max(1, int(base * 1.05))),
-                   dict(name='قیمت پیشنهادی دیگران', price=int(base * 1.12))]
+    # قیمت رقبا هرگز تخمینی ساخته نمی‌شود؛ فقط داده‌ای که مدیر واقعاً ثبت کرده.
     return dict(item=item, url=url, points=points, current=current, compare=compare)
 
 

@@ -92,6 +92,33 @@ def test_builder_sanitizes_links_styles_and_render_limits(app):
     assert 'دکمه ناامن' not in html
 
 
+def test_sales_widgets_do_not_fabricate_prices_or_expiring_deadlines(app):
+    from blueprints.builder import (builder_amazing_offer,
+                                    builder_price_history, _sanitize_rows)
+    from models import Course
+    with app.test_request_context('/'):
+        course = Course.query.filter_by(slug='test-course').first()
+        history = builder_price_history({
+            'item_type': 'course', 'item_id': course.id,
+        })
+        assert history['item'] is not None
+        assert history['compare'] == []
+
+        offer = builder_amazing_offer({'item_type': 'course', 'item_id': course.id})
+        assert offer['item'] is not None
+        row = _sanitize_rows([{
+            'id': 'offer-row', 'settings': {}, 'cols': [[{
+                'id': 'offer-widget', 'type': 'amazing_offer',
+                'data': {'item_type': 'course', 'item_id': course.id},
+            }]],
+        }])[0]
+        html = app.jinja_env.get_template('builder/fragment_row.html').render(
+            row=row, edit=False)
+    assert 'data-countdown' not in html
+    assert 'فقط تا پایان' not in html
+    assert 'قیمت پیشنهادی دیگران' not in html
+
+
 def test_builder_library_rejects_empty_template_and_uses_instance(client, app):
     import json
     _make_admin(app)

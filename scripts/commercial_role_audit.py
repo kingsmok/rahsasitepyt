@@ -72,9 +72,12 @@ ROLE_STARTS = {
     'operator': ['/admin/', '/admin/orders', '/admin/proofs', '/admin/sms'],
 }
 
-_HREF_RE = re.compile(r'''(?<![\w-])href=["']([^"']+)["']''', re.I)
+_ANCHOR_RE = re.compile(r'<a\b([^>]*)>', re.I)
 _SRC_RE = re.compile(r'''(?<![\w-])src=["']([^"']+)["']''', re.I)
+_FORM_RE = re.compile(r'<form\b([^>]*)>', re.I)
+_ATTR_RE = re.compile(r'''([:\w-]+)\s*=\s*["']([^"']*)["']''', re.I)
 _SKIP_PATHS = ('/auth/logout', '/admin/impersonate/exit')
+_ALLOWED_EXTERNAL_FORM_HOSTS = {'bpm.shaparak.ir', 'sep.shaparak.ir'}
 
 
 def _prepare_database():
@@ -122,6 +125,28 @@ def _same_site_url(current_path, value):
     return parsed.path + (('?' + parsed.query) if parsed.query else '')
 
 
+def _validate_form(current_path, attributes):
+    """فرم را بدون اجرای عملیات مخرب با route map و allowlist بررسی می‌کند."""
+    attrs = {key.lower(): value.strip() for key, value in _ATTR_RE.findall(attributes)}
+    method = (attrs.get('method') or 'GET').upper()
+    if method not in ('GET', 'POST'):
+        return 'method نامعتبر فرم: ' + method
+    action = attrs.get('action') or current_path
+    if action.startswith('#'):
+        action = current_path
+    absolute = urllib.parse.urljoin('http://audit.local' + current_path, action)
+    parsed = urllib.parse.urlsplit(absolute)
+    if parsed.netloc != 'audit.local':
+        if parsed.scheme == 'https' and parsed.hostname in _ALLOWED_EXTERNAL_FORM_HOSTS:
+            return None
+        return 'مقصد خارجی غیرمجاز فرم: ' + parsed.netloc
+    try:
+        app.url_map.bind('audit.local').match(parsed.path or '/', method=method)
+    except Exception as exc:
+        return '%s برای %s %s' % (type(exc).__name__, method, parsed.path or '/')
+    return None
+
+
 def crawl_role(role, starts, users):
     client = app.test_client()
     if role != 'guest':
@@ -134,6 +159,7 @@ def crawl_role(role, starts, users):
     queue = collections.deque((path, 'START') for path in starts)
     seen = set()
     assets = set()
+    forms = set()
     issues = []
     statuses = collections.Counter()
 
@@ -158,10 +184,32 @@ def crawl_role(role, starts, users):
         if response.status_code != 200 or 'text/html' not in response.content_type:
             continue
         html = response.get_data(as_text=True)
-        for href in _HREF_RE.findall(html):
-            target = _same_site_url(parsed.path, href)
+        for attributes in _ANCHOR_RE.findall(html):
+            anchor_attrs = {key.lower(): value.strip()
+                            for key, value in _ATTR_RE.findall(attributes)}
+            if 'href' not in anchor_attrs:
+                continue
+            raw_href = anchor_attrs['href']
+            handled = ('onclick' in anchor_attrs or
+                       any(key.startswith('data-') for key in anchor_attrs))
+            is_visual_preview = parsed.path.startswith('/admin/design-preview/')
+            if ((raw_href in ('', '#') and not handled and not is_visual_preview) or
+                    raw_href.lower().startswith('javascript:')):
+                issues.append(dict(status='INERT_LINK', path=path,
+                                   source=raw_href or '(empty)', kind='link'))
+                continue
+            target = _same_site_url(parsed.path, raw_href)
             if target and target not in seen:
                 queue.append((target, path))
+        for attributes in _FORM_RE.findall(html):
+            form_error = _validate_form(parsed.path, attributes)
+            attrs = {key.lower(): value for key, value in _ATTR_RE.findall(attributes)}
+            form_id = '%s %s' % ((attrs.get('method') or 'GET').upper(),
+                                 attrs.get('action') or parsed.path)
+            forms.add(form_id)
+            if form_error:
+                issues.append(dict(status='BROKEN_FORM', path=path,
+                                   source=form_id, detail=form_error, kind='form'))
         for src in _SRC_RE.findall(html):
             target = _same_site_url(parsed.path, src)
             if target and target.startswith('/static/'):
@@ -172,8 +220,8 @@ def crawl_role(role, starts, users):
         if response.status_code != 200:
             issues.append(dict(status=response.status_code, path=asset,
                                source=source, kind='asset'))
-    return dict(visited=len(seen), assets=len(assets), statuses=dict(statuses),
-                issues=issues)
+    return dict(visited=len(seen), assets=len(assets), forms=len(forms),
+                statuses=dict(statuses), issues=issues)
 
 
 def main():
@@ -188,13 +236,16 @@ def main():
             failures += len(result['issues'])
             print(
                 f"{role:10} pages={result['visited']:>3} assets={result['assets']:>3} "
-                f"statuses={result['statuses']} issues={len(result['issues'])}"
+                f"forms={result['forms']:>3} statuses={result['statuses']} "
+                f"issues={len(result['issues'])}"
             )
             for issue in result['issues'][:20]:
                 print(f"  {issue['status']} {issue['path']}  ← {issue['source']}")
         total_pages = sum(row['visited'] for row in results.values())
         total_assets = sum(row['assets'] for row in results.values())
-        print(f'\nTOTAL pages={total_pages} assets={total_assets} issues={failures}')
+        total_forms = sum(row['forms'] for row in results.values())
+        print(f'\nTOTAL pages={total_pages} assets={total_assets} '
+              f'forms={total_forms} issues={failures}')
         report_path = os.environ.get('COMMERCIAL_AUDIT_REPORT')
         if report_path:
             Path(report_path).write_text(

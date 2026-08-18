@@ -503,7 +503,7 @@
     {% else %}
     <p class="text-3" style="font-size:13px">هنوز داده کافی برای نمودار ثبت نشده — قیمت‌ها هنگام خرید و ویرایش ثبت می‌شوند.</p>
     {% endif %}
-    {% if d.show_compare %}
+    {% if d.show_compare and ph.compare %}
     <div style="border-top:1px dashed var(--border);margin-top:16px;padding-top:14px">
       <h4 style="font-size:13px;font-weight:900;margin-bottom:10px">⚖️ مقایسه با سایر پلتفرم‌ها</h4>
       <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px">
@@ -521,26 +521,19 @@
 
 {% elif t == 'amazing_offer' %}
   {% set ao = builder_amazing_offer(d) %}
-  <div class="card" style="position:relative;overflow:hidden;border-radius:20px;background:linear-gradient(135deg,#0f172a,#1e293b);color:#fff;padding:34px 30px;text-align:center">
+  {% if ao.item %}<div class="card" style="position:relative;overflow:hidden;border-radius:20px;background:linear-gradient(135deg,#0f172a,#1e293b);color:#fff;padding:34px 30px;text-align:center">
     <div style="position:absolute;top:-60px;left:-60px;width:180px;height:180px;border-radius:50%;background:radial-gradient(circle,{{ 'rgba(250,204,21,.35)' if ao.discount >= 40 else 'rgba(244,63,94,.35)' }},transparent 70%);pointer-events:none"></div>
-    <span class="badge" style="background:linear-gradient(90deg,#f43f5e,#f97316);color:#fff;font-size:12px;padding:6px 18px;box-shadow:0 0 24px rgba(244,63,94,.6)">⚡ پیشنهاد شگفت‌انگیز</span>
-    <h3 style="font-size:22px;font-weight:900;margin:14px 0 6px;color:#fff">{{ d.title or 'شگفت‌انگیزترین تخفیف امروز' }}</h3>
-    <p style="color:rgba(255,255,255,.75);font-size:13px;margin-bottom:18px">{{ d.sub or 'فقط تا پایان وقت امروز!' }}</p>
-    {% if ao.item %}
-    <div style="font-size:15px;font-weight:800;margin-bottom:16px">{{ ao.item.title }}</div>
+    <span class="badge" style="background:linear-gradient(90deg,#f43f5e,#f97316);color:#fff;font-size:12px;padding:6px 18px;box-shadow:0 0 24px rgba(244,63,94,.6)">⚡ پیشنهاد ویژه</span>
+    <h3 style="font-size:22px;font-weight:900;margin:14px 0 6px;color:#fff">{{ d.title or 'پیشنهاد ویژه دوره' }}</h3>
+    {% if d.sub %}<p style="color:rgba(255,255,255,.75);font-size:13px;margin-bottom:18px">{{ d.sub }}</p>{% endif %}
+    <div style="font-size:15px;font-weight:800;margin:14px 0 16px">{{ ao.item.title }}</div>
     <div style="display:flex;gap:14px;justify-content:center;align-items:center;margin-bottom:20px">
       <span style="color:rgba(255,255,255,.5);text-decoration:line-through;font-size:14px">{{ fa('{:,.0f}'.format(ao.item.price or 0)) }}</span>
       <b style="font-size:26px;color:#fde047;text-shadow:0 0 18px rgba(250,204,21,.6)">{{ fa('{:,.0f}'.format(ao.item.final_price or 0)) }}</b>
       <span class="badge" style="background:#f43f5e;font-size:12px">٪{{ fa(ao.discount) }} تخفیف</span>
     </div>
-    {% endif %}
-    <div class="countdown" data-countdown="{{ (d.hours or 8) * 3600 }}" style="justify-content:center;gap:10px;margin-bottom:22px">
-      <div class="cd" style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:12px;padding:10px 16px;min-width:64px;box-shadow:0 0 16px rgba(250,204,21,.25)"><b class="cd-h" style="font-size:22px;color:#fde047">00</b><small style="color:rgba(255,255,255,.7)">ساعت</small></div>
-      <div class="cd" style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:12px;padding:10px 16px;min-width:64px"><b class="cd-m" style="font-size:22px;color:#fde047">00</b><small style="color:rgba(255,255,255,.7)">دقیقه</small></div>
-      <div class="cd" style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:12px;padding:10px 16px;min-width:64px"><b class="cd-s" style="font-size:22px;color:#fde047">00</b><small style="color:rgba(255,255,255,.7)">ثانیه</small></div>
-    </div>
-    <a class="btn btn-lg" href="{{ d.btn_url or (ao.url or '/courses') }}" style="background:linear-gradient(90deg,#f59e0b,#f43f5e);color:#fff;font-weight:900;box-shadow:0 8px 30px rgba(244,63,94,.5)">{{ d.btn_text or 'همین حالا بخر' }} 🚀</a>
-  </div>
+    <a class="btn btn-lg" href="{{ d.btn_url or ao.url }}" style="background:linear-gradient(90deg,#f59e0b,#f43f5e);color:#fff;font-weight:900;box-shadow:0 8px 30px rgba(244,63,94,.5)">{{ d.btn_text or 'مشاهده پیشنهاد' }} ←</a>
+  </div>{% elif edit %}<div class="card" style="padding:24px;text-align:center">برای نمایش پیشنهاد، یک دوره یا محصول تخفیف‌دار منتشر کنید.</div>{% endif %}
 
 {% elif t == 'review_pro' %}
   {% set rp = builder_review_pro(d) %}

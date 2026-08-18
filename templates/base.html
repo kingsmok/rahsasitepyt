@@ -52,11 +52,12 @@
   <!-- کلاس‌های dv-* — ۲۰ واریانت UI/UX (بدون تداخل با استایل اصلی) -->
   <link rel="stylesheet" href="/static/css/design_variants.css?v={{ asset_v() }}">
   <link id="theme-css" rel="stylesheet" href="/static/css/themes/{{ theme }}.css?v={{ asset_v() }}">
-  {% if site.brand_color %}<style>:root{--primary:{{ site.brand_color }};--primary-2:{{ site.brand_color2 or site.brand_color }};--grad-brand:linear-gradient(135deg,{{ site.brand_color }},{{ site.brand_color2 or site.brand_color }})}</style>{% endif %}
-  {% set _eff_cont = eff_container or site.get('kit_container') or '' %}
-  {% set _eff_rad = eff_radius or site.get('kit_radius') or '' %}
-  {% if _eff_cont %}<style>:root{--container:{{ _eff_cont }}px}</style>{% endif %}
-  {% if _eff_rad %}<style>:root{--radius-sm:{{ _eff_rad }}px;--radius-md:{{ _eff_rad|int + 6 }}px;--radius-lg:{{ _eff_rad|int + 12 }}px}</style>{% endif %}
+  {% set _brand1 = site.brand_color|css_color %}{% set _brand2 = site.brand_color2|css_color %}
+  {% if _brand1 %}<style>:root{--primary:{{ _brand1 }};--primary-2:{{ _brand2 or _brand1 }};--grad-brand:linear-gradient(135deg,{{ _brand1 }},{{ _brand2 or _brand1 }})}</style>{% endif %}
+  {% set _eff_cont = (eff_container or site.get('kit_container') or '')|css_int(720, 1800) %}
+  {% set _eff_rad = (eff_radius or site.get('kit_radius') or '')|css_int(0, 40) %}
+  {% if _eff_cont != '' %}<style>:root{--container:{{ _eff_cont }}px}</style>{% endif %}
+  {% if _eff_rad != '' %}<style>:root{--radius-sm:{{ _eff_rad }}px;--radius-md:{{ _eff_rad + 6 }}px;--radius-lg:{{ _eff_rad + 12 }}px}</style>{% endif %}
   <!-- Schema.org: سازمان -->
   <script type="application/ld+json">
   {
@@ -85,6 +86,12 @@
 <a href="#main-content" class="skip-link" style="position:absolute;top:-60px;right:12px;z-index:9999;background:var(--primary);color:#fff;padding:10px 22px;border-radius:0 0 12px 12px;font-weight:800;font-size:13px;transition:top .2s ease" onfocus="this.style.top='0'" onblur="this.style.top='-60px'">پرش به محتوای اصلی</a>
 
 {% include 'partials/flash.html' %}
+
+{% if demo_features_enabled %}
+<div role="status" style="background:#fff7ed;color:#9a3412;border-bottom:1px solid #fed7aa;padding:7px 18px;text-align:center;font-size:12px;font-weight:800">
+  نسخه نمایشی توسعه — حساب‌ها، محتوا، قیمت‌ها و بازخوردهای این محیط واقعی نیستند و برای ارزیابی نرم‌افزار ساخته شده‌اند.
+</div>
+{% endif %}
 
 {% if session.get('admin_impersonating') %}
 <div style="background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;padding:8px 20px;font-size:13px;display:flex;align-items:center;justify-content:center;gap:12px;position:sticky;top:0;z-index:500">

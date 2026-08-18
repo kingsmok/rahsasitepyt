@@ -251,6 +251,16 @@ def test_public_empty_states_do_not_claim_unfinished_demo_features():
         assert 'به‌زودی' not in source and 'در حال توسعه' not in source, relative
 
 
+def test_demo_data_is_labeled_and_cannot_be_enabled_in_production(
+        client, monkeypatch):
+    page = client.get('/')
+    assert 'نسخه نمایشی توسعه' in page.text
+    from runtime import demo_features_enabled
+    monkeypatch.setenv('APP_ENV', 'production')
+    monkeypatch.setenv('ENABLE_DEMO_FEATURES', '1')
+    assert demo_features_enabled() is False
+
+
 # ------------------------------------------------------------------
 # همکار مدرس باید در همه صفحات پنل همان دوره را ببیند.
 # ------------------------------------------------------------------

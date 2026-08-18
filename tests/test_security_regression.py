@@ -43,6 +43,30 @@ def test_login_next_external_redirects_to_dashboard(client):
     assert 'evil.com' not in loc
 
 
+def test_brand_css_settings_cannot_inject_style_or_external_url(app, client):
+    from models import Setting, db
+    malicious = {
+        'brand_color': '#112233;background:url(https://evil.example/x)',
+        'brand_color2': 'red;}body{display:none',
+        'kit_container': '1200;background:url(https://evil.example/y)',
+        'kit_radius': '8;position:fixed',
+    }
+    with app.app_context():
+        for key, value in malicious.items():
+            row = db.session.get(Setting, key)
+            if row:
+                row.value = value
+            else:
+                db.session.add(Setting(key=key, value=value))
+        db.session.commit()
+        if hasattr(app, 'clear_cache'):
+            app.clear_cache()
+    response = client.get('/')
+    assert response.status_code == 200
+    assert 'evil.example' not in response.text
+    assert 'body{display:none' not in response.text
+
+
 # ---------------------------------------------------------------
 # ۲) اعتبارسنجی ورودی API
 # ---------------------------------------------------------------

@@ -284,6 +284,21 @@ def create_app():
     app.jinja_env.filters['safe_url'] = _safe_url
     app.jinja_env.filters['nl2br'] = _escape_nl2br
 
+    def _safe_css_color(value):
+        """رنگ برند فقط hex؛ از بستن style و CSS injection جلوگیری می‌کند."""
+        import re as _css_re
+        value = str(value or '').strip()
+        return value if _css_re.match(r'^#[0-9a-fA-F]{6}$', value) else ''
+
+    def _safe_css_int(value, minimum=0, maximum=2000):
+        try:
+            return max(int(minimum), min(int(maximum), int(value)))
+        except (TypeError, ValueError):
+            return ''
+
+    app.jinja_env.filters['css_color'] = _safe_css_color
+    app.jinja_env.filters['css_int'] = _safe_css_int
+
     def _safe_tracking_id(v):
         """شناسه سرویس تحلیلی (GA/Clarity/...) — فقط حروف، عدد، خط‌تیره.
 

@@ -69,6 +69,69 @@ def test_request_install_resumes_without_background_thread(tmp_path, monkeypatch
     engine.dispose()
 
 
+def test_real_http_installer_completes_clean_without_demo_data(tmp_path, monkeypatch):
+    """چرخه واقعی /install/run روی SQLite خالی، نه فقط تابع داخلی installer."""
+    db_path = tmp_path / 'instance' / 'academy.db'
+    db_path.parent.mkdir(parents=True)
+    state_path = tmp_path / 'instance' / '.install_progress.json'
+    marker_path = tmp_path / 'instance' / '.installed'
+    monkeypatch.setenv('DATABASE_URL', 'sqlite:///' + str(db_path))
+    monkeypatch.setenv('SECRET_KEY', 'http-installer-test-secret')
+    monkeypatch.delenv('LICENSE_PUBLIC_KEY', raising=False)
+    monkeypatch.delenv('LICENSE_ENFORCEMENT', raising=False)
+    monkeypatch.setattr(installer, 'INSTANCE_DIR', str(db_path.parent))
+    monkeypatch.setattr(installer, 'MARKER', str(marker_path))
+    monkeypatch.setattr(installer, '_INSTALL_STATE_FILE', str(state_path))
+    monkeypatch.setattr(installer, '_install_state', {
+        'status': 'idle', 'step': 0, 'steps': 5, 'msg': '', 'ok': False,
+    })
+    monkeypatch.setattr(
+        installer, 'write_env_file',
+        lambda *_args, **_kwargs: str(tmp_path / '.env'))
+
+    from app import create_app
+    from models import Course, Setting, User, db
+    web_app = create_app()
+    web_app.config.update(TESTING=True, INSTALL_GUARD=False)
+    client = web_app.test_client()
+    assert client.get('/install').status_code == 200
+
+    form = {
+        'db_type': 'sqlite', 'admin_name': 'مدیر واقعی',
+        'admin_email': 'owner@example.com',
+        'admin_pass': 'StrongOwner123!', 'admin_pass2': 'StrongOwner123!',
+        'site_name': 'آکادمی مشتری', 'site_desc': 'نصب تمیز',
+        'site_phone': '', 'site_email': 'info@example.com',
+        'site_url': 'https://academy.example.com',
+    }
+    result = None
+    for _attempt in range(30):
+        response = client.post('/install/run', data=form)
+        assert response.status_code == 200, response.get_data(as_text=True)
+        result = response.get_json()
+        assert result['ok'] is True
+        if result.get('done'):
+            break
+    assert result and result['done'] is True
+    assert result['redirect'] == '/'
+    assert marker_path.is_file()
+
+    with web_app.app_context():
+        owner = User.query.filter_by(email='owner@example.com').one()
+        owner_id = owner.id
+        assert owner.role == 'super_admin'
+        assert User.query.count() == 1
+        assert Course.query.count() == 0
+        assert db.session.get(Setting, 'site_active').value == '0'
+        assert db.session.get(Setting, 'allow_theme_switcher').value == '0'
+    with client.session_transaction() as session:
+        assert session.get('uid') == owner_id
+
+    repeated = client.post('/install/run', data=form).get_json()
+    assert repeated['done'] is True
+    assert repeated['msg'] == 'نصب قبلاً انجام شده است.'
+
+
 def test_inspect_and_attach_existing_sqlite(tmp_path, monkeypatch):
     """دیتابیس آپلودشده تشخیص داده شود و بدون پاک‌شدن وصل گردد."""
     monkeypatch.setattr(installer, 'INSTANCE_DIR', str(tmp_path))

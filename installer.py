@@ -311,19 +311,17 @@ def write_env_file(db_url, secret_key):
 # ============================================================
 HOME_PAGE_JSON = {
     "rows": [
-        {"cols": [[{"id": "inst-h1", "type": "slider", "data": {
-            "arrows": True, "autoplay": True, "dots": True, "height": "420",
-            "interval": "5", "overlay": "60", "radius": "0",
-            "slides": [
-                {"align": "right", "btn_text": "🚀 مشاهده همه دوره‌ها", "btn_url": "/courses",
-                 "img": "hero.webp",
-                 "sub": "دوره‌های منتشرشده را ببینید و مسیر مناسب خود را انتخاب کنید.",
-                 "title": "آینده‌ات را با مهارت‌های دیجیتال قدرتمندتر بساز"},
-                {"align": "center", "btn_text": "شروع یادگیری", "btn_url": "/courses",
-                 "img": "cover-flask.webp",
-                 "sub": "آموزش عملی ویدیویی به همراه تمرین و آزمون.",
-                 "title": "آموزش پروژه‌محور؛ از صفر تا یک محصول واقعی"}
-            ]}}]]},
+        {"settings": {"py": 72, "bg": "var(--hero-bg)"}, "cols": [[
+            {"id": "inst-h1", "type": "heading", "data": {
+                "text": "به {site_name} خوش آمدید", "tag": "h1", "align": "center",
+                "color": "#ffffff", "mb": "12"}},
+            {"id": "inst-h1-text", "type": "text", "data": {
+                "content": "دوره‌های منتشرشده را بررسی کنید و مسیر مناسب خود را انتخاب کنید.",
+                "align": "center", "color": "#ffffff", "size": "16"}},
+            {"id": "inst-h1-btn", "type": "button", "data": {
+                "text": "مشاهده دوره‌ها", "url": "/courses", "btn_style": "accent",
+                "size": "lg", "align": "center"}}
+        ]]},
         {"cols": [[{"id": "inst-h2", "type": "stats", "data": {
             "columns": "4",
             "items": [

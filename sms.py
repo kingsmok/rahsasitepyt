@@ -32,8 +32,8 @@ def _demo_send_allowed(provider):
     """سازگاری محدود با تست‌های خودکار؛ هرگز در production فعال نیست."""
     if provider not in ('', 'demo', 'disabled'):
         return False
-    from runtime import demo_features_enabled
-    return demo_features_enabled()
+    from runtime import automated_test_mode
+    return automated_test_mode()
 
 
 def send_sms(phone, text, settings):

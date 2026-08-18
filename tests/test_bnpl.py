@@ -220,6 +220,8 @@ def test_bnpl_full_snapppay_flow(client, app, monkeypatch):
         o = Order.query.filter_by(code=code).first()
         assert o and o.status == 'paid'
         assert o.gateway == 'snapppay'
+        assert {row.status for row in Installment.query.filter_by(order_id=o.id)} == {
+            'provider_managed'}
         enr = Enrollment.query.filter_by(order_id=o.id).first()
         assert enr is not None
         db.session.query(OrderItem).filter_by(order_id=o.id).delete()

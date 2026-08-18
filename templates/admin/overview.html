@@ -97,7 +97,7 @@
       <h3 style="font-size:16px;margin-bottom:14px">🔥 پربازدیدترین دوره‌ها</h3>
       {% for c in top_courses %}
       <a class="cart-row" href="{{ url_for('admin.course_edit', cid=c.id) }}" style="padding:10px 6px">
-        <img class="c-thumb" src="/static/img/{{ c.image }}" alt="" style="width:74px;height:46px">
+        <img class="c-thumb" src="{{ c.image_url }}" alt="" style="width:74px;height:46px">
         <div class="c-info"><h4 style="font-size:13px">{{ c.title }}</h4><small>{{ fa(c.views) }} بازدید — {{ fa(c.students_count) }} دانشجو</small></div>
         <span class="badge badge-gray">{{ fa(c.lesson_count) }} جلسه</span>
       </a>

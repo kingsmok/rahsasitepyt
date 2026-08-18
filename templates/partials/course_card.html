@@ -4,7 +4,7 @@
 <article class="card course-card card-hover">
   <div class="thumb">
     <a href="{{ url_for('site.course_detail', slug=course.slug) }}">
-      <img src="/static/img/{{ course.image }}" alt="دوره {{ course.title }} — {{ bc_site().get('site_name') or 'آکادمی آنلاین' }}" loading="lazy" decoding="async" width="640" height="360">
+      <img src="{{ course.image_url }}" alt="دوره {{ course.title }} — {{ bc_site().get('site_name') or 'آکادمی آنلاین' }}" loading="lazy" decoding="async" width="640" height="360">
     </a>
     <div class="badges">
       {% if course.has_discount %}<span class="discount-flag">٪{{ fa(course.discount_percent) }} تخفیف</span>{% endif %}

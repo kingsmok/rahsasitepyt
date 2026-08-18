@@ -22,7 +22,7 @@
     <div class="grid" style="grid-template-columns:1fr 1fr 1fr;gap:14px">
       <div class="form-group"><label>قیمت (تومان)</label><input class="form-control" type="number" name="price" value="{{ item.price if item else 0 }}"></div>
       <div class="form-group"><label>قیمت با تخفیف</label><input class="form-control" type="number" name="discount_price" value="{{ item.discount_price if item else 0 }}"></div>
-      <div class="form-group"><label>تصویر</label><input class="form-control" name="image" value="{{ item.image or 'cover-python.webp' }}"></div>
+      <div class="form-group"><label>تصویر</label><input class="form-control" name="image" value="{{ item.image or 'course-placeholder.webp' }}"></div>
     </div>
     {% set selected = (item.courses|map(attribute='id')|list) if item else [] %}
     <div class="form-group">

@@ -60,7 +60,7 @@ _SECRET_SETTING_KEYS = {
     'idpay_api_key', 'parsian_login_account', 'melli_password', 'sadad_key',
     'snapp_client_secret', 'digipay_api_key', 'tarb_api_key',
     'sms_kavenegar_key', 'sms_melli_password', 'sms_faraz_token',
-    'smtp_pass', 'dk_access_token', 'basalam_webhook_secret', 'mapir_api_key',
+    'smtp_pass', 'dk_access_token', 'basalam_webhook_secret',
 }
 
 
@@ -345,7 +345,7 @@ def _course_form(course):
         course.discount_price = int(f.get('discount_price') or 0)
         course.level = f.get('level', 'مقدماتی')
         course.duration_hours = int(f.get('duration_hours') or 0)
-        course.image = f.get('image', 'cover-python.webp')
+        course.image = f.get('image') or 'course-placeholder.webp'
         course.status = f.get('status', 'draft')
         course.featured = bool(f.get('featured'))
         course.what_you_learn = f.get('what_you_learn', '').strip()
@@ -1187,7 +1187,7 @@ def bundle_new():
                        description=request.form.get('description', '').strip(),
                        price=request.form.get('price', 0, type=int),
                        discount_price=request.form.get('discount_price', 0, type=int),
-                       image=request.form.get('image', 'cover-python.webp'))
+                       image=request.form.get('image') or 'course-placeholder.webp')
             db.session.add(b)
             db.session.flush()
             for cid in request.form.getlist('course_ids'):
@@ -1215,7 +1215,7 @@ def bundle_edit(bid):
             b.description = request.form.get('description', '').strip()
             b.price = request.form.get('price', 0, type=int)
             b.discount_price = request.form.get('discount_price', 0, type=int)
-            b.image = request.form.get('image', b.image or 'cover-python.webp')
+            b.image = request.form.get('image') or b.image or 'course-placeholder.webp'
             b.is_active = bool(request.form.get('is_active'))
             for old in list(b.courses):
                 b.courses.remove(old)
@@ -2676,7 +2676,7 @@ def super_settings():
                 'smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'smtp_from', 'smtp_tls',
                 # مارکت‌پلیس و سرویس‌ها
                 'dk_api_base', 'dk_access_token', 'basalam_webhook_secret', 'emalls_seller_id',
-                'mapir_api_key', 'competitive_prices', 'shipping_flat_rate', 'shipping_note',
+                'competitive_prices', 'shipping_flat_rate', 'shipping_note',
                 # صفحه‌ساز و طراحی
                 'kit_container', 'kit_radius', 'site_design', 'home_design',
                 'about_design', 'contact_design',

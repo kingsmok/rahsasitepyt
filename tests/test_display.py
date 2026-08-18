@@ -93,6 +93,19 @@ def test_set_theme_api_rejects_invalid(client, app):
     assert r.status_code == 400
 
 
+def test_missing_course_image_uses_neutral_placeholder(client, app):
+    from models import Course
+    with app.app_context():
+        course = Course.query.filter_by(slug='test-course').first()
+        course.image = 'missing-course-cover.jpg'
+        db.session.commit()
+        assert course.image_url == '/static/img/course-placeholder.webp'
+    page = client.get('/course/test-course')
+    assert page.status_code == 200
+    assert '/static/img/course-placeholder.webp' in page.text
+    assert 'cover-python' not in page.text
+
+
 # ---------------------------------------------------------------
 # انتخاب طرح از پنل ادمین
 # ---------------------------------------------------------------

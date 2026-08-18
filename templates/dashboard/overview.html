@@ -17,7 +17,7 @@
   <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px">
     {% for c in suggested %}
     <a class="card card-hover" href="{{ url_for('site.course_detail', slug=c.slug) }}" style="overflow:hidden">
-      <img src="/static/img/{{ c.image }}" alt="" style="width:100%;aspect-ratio:16/9;object-fit:cover">
+      <img src="{{ c.image_url }}" alt="" style="width:100%;aspect-ratio:16/9;object-fit:cover">
       <div style="padding:12px">
         <strong style="font-size:12.5px;display:block">{{ c.title[:35] }}</strong>
         <small class="text-3">{{ fa(c.students_count) }} دانشجو — {{ fa(c.final_price) }} تومان</small>
@@ -65,7 +65,7 @@
   <h3><span class="ic">▶️</span> ادامه یادگیری</h3>
   {% for e in in_progress[:3] %}
   <a class="cart-row" href="{{ url_for('student.learn', course_id=e.course_id) }}" style="border:1px solid var(--border);border-radius:14px;margin-bottom:12px;display:flex">
-    <img class="c-thumb" src="/static/img/{{ e.course.image }}" alt="">
+    <img class="c-thumb" src="{{ e.course.image_url }}" alt="">
     <div class="c-info">
       <h4>{{ e.course.title }}</h4>
       <div class="progress" style="margin-top:6px;max-width:400px"><div class="bar" style="width:{{ e.percent }}%"></div></div>

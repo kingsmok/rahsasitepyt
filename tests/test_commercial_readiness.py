@@ -261,6 +261,40 @@ def test_demo_data_is_labeled_and_cannot_be_enabled_in_production(
     assert demo_features_enabled() is False
 
 
+def test_sales_demo_cannot_enable_fake_otp_payment_or_bnpl(app, monkeypatch):
+    """ENABLE_DEMO_FEATURES فقط محتواست؛ عملیات مالی/OTP باید واقعی بماند."""
+    from flask import g
+    from models import Setting, db
+    from runtime import automated_test_mode, demo_content_enabled
+    from blueprints.shop import _sandbox_allowed
+    from sms import _demo_send_allowed
+    import bnpl
+
+    monkeypatch.delenv('PYTEST_CURRENT_TEST', raising=False)
+    monkeypatch.setenv('ENABLE_DEMO_FEATURES', '1')
+    monkeypatch.delenv('APP_ENV', raising=False)
+    monkeypatch.delenv('FLASK_ENV', raising=False)
+    old_testing = app.testing
+    app.testing = False
+    try:
+        with app.app_context():
+            row = db.session.get(Setting, 'bnpl_enabled')
+            if row:
+                row.value = '0'
+            else:
+                db.session.add(Setting(key='bnpl_enabled', value='0'))
+            db.session.commit()
+        with app.test_request_context('/'):
+            g.settings = {'sandbox_mode': '1', 'sms_provider': 'disabled'}
+            assert demo_content_enabled() is True
+            assert automated_test_mode() is False
+            assert _sandbox_allowed() is False
+            assert _demo_send_allowed('disabled') is False
+            assert bnpl.bnpl_enabled() is False
+    finally:
+        app.testing = old_testing
+
+
 # ------------------------------------------------------------------
 # همکار مدرس باید در همه صفحات پنل همان دوره را ببیند.
 # ------------------------------------------------------------------

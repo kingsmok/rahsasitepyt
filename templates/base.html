@@ -20,14 +20,15 @@
   <meta property="og:url" content="{{ seo.canonical }}">
   <meta property="og:site_name" content="{{ site.site_name or 'آکادمی آنلاین' }}">
   <meta property="og:locale" content="fa_IR">
-  <meta property="og:image" content="{{ request.host_url.rstrip('/') }}/static/img/{{ seo.og_image or 'hero.webp' }}">
+  {% set _og_img = seo.og_image or 'hero.webp' %}{% set _og_url = _og_img if _og_img.startswith('https://') else (request.host_url.rstrip('/') ~ _og_img if _og_img.startswith('/') else request.host_url.rstrip('/') ~ '/static/img/' ~ _og_img) %}
+  <meta property="og:image" content="{{ _og_url }}">
 
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image">
   {% if site.seo_twitter %}<meta name="twitter:site" content="{{ site.seo_twitter }}">{% endif %}
   <meta name="twitter:title" content="{{ seo.title or self.title() }}">
   <meta name="twitter:description" content="{{ seo.description or self.description() }}">
-  <meta name="twitter:image" content="{{ request.host_url.rstrip('/') }}/static/img/{{ seo.og_image or 'hero.webp' }}">
+  <meta name="twitter:image" content="{{ _og_url }}">
   <link rel="icon" href="/static/img/favicon.svg" type="image/svg+xml">
   <link rel="preload" href="/static/fonts/Vazirmatn-Variable.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="dns-prefetch" href="https://www.googletagmanager.com">
@@ -49,8 +50,6 @@
   </script>
   {% endif %}
   <link rel="stylesheet" href="/static/css/builder.css?v={{ asset_v() }}">
-  <!-- کلاس‌های dv-* — ۲۰ واریانت UI/UX (بدون تداخل با استایل اصلی) -->
-  <link rel="stylesheet" href="/static/css/design_variants.css?v={{ asset_v() }}">
   <link id="theme-css" rel="stylesheet" href="/static/css/themes/{{ theme }}.css?v={{ asset_v() }}">
   {% set _brand1 = site.brand_color|css_color %}{% set _brand2 = site.brand_color2|css_color %}
   {% if _brand1 %}<style>:root{--primary:{{ _brand1 }};--primary-2:{{ _brand2 or _brand1 }};--grad-brand:linear-gradient(135deg,{{ _brand1 }},{{ _brand2 or _brand1 }})}</style>{% endif %}

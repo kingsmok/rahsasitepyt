@@ -95,7 +95,7 @@
 {% macro _block_inner(b, d, edit=false) %}
 {% set t = b.type %}
 {% if t == 'heading' %}
-  <{{ d.tag or 'h2' }} class="pb-heading" style="text-align:{{ d.align or 'right' }};color:{{ d.color or '' }};margin-bottom:{{ d.mb or 0 }}px" {{ ('contenteditable="true" data-inline="text" spellcheck="false"' if edit)|safe }}>{{ rd(d.text or 'عنوان جدید') }}</{{ d.tag or 'h2' }}>
+  {% if d.text or edit %}<{{ d.tag or 'h2' }} class="pb-heading" style="text-align:{{ d.align or 'right' }};color:{{ d.color or '' }};margin-bottom:{{ d.mb or 0 }}px" {{ ('contenteditable="true" data-inline="text" spellcheck="false"' if edit)|safe }}>{{ rd(d.text or 'عنوان را وارد کنید') }}</{{ d.tag or 'h2' }}>{% endif %}
 
 {% elif t == 'text' %}
   <div class="pb-text" style="text-align:{{ d.align or 'right' }};color:{{ d.color or '' }};font-size:{{ d.size or 15 }}px" {{ ('contenteditable="true" data-inline="content" spellcheck="false"' if edit)|safe }}>{{ nl2br(d.content) }}</div>
@@ -237,7 +237,7 @@
   {% set cc = bc_current_course() %}
   {% if cc %}
   <div class="current-course-box" style="background:var(--card);border:1px solid var(--border);border-radius:18px;overflow:hidden;box-shadow:var(--shadow-md)">
-    {% if d.get('image') %}<img src="/static/img/{{ cc.image }}" alt="{{ cc.title }}" style="width:100%;aspect-ratio:16/9;object-fit:cover">{% endif %}
+    {% if d.get('image') %}<img src="{{ cc.image_url }}" alt="{{ cc.title }}" style="width:100%;aspect-ratio:16/9;object-fit:cover">{% endif %}
     <div style="padding:20px">
       {% if d.get('title') %}<h2 style="font-size:18px;margin-bottom:8px">{{ cc.title }}</h2>{% endif %}
       <p class="text-2" style="font-size:13.5px;margin-bottom:12px">{{ (cc.subtitle or '')[:120] }}</p>
@@ -434,7 +434,7 @@
   </div>
 
 {% elif t == 'exam_cta' %}
-  {% if bc_site().get('exam_enabled') == '1' or demo_features_enabled %}
+  {% if bc_site().get('exam_enabled') == '1' %}
   <div class="card" style="padding:34px 26px;border-radius:20px;text-align:center;background:linear-gradient(135deg,var(--primary),var(--primary-2,#7c3aed));color:#fff">
     <div style="font-size:36px">🎯</div>
     {% if d.get('title') %}<h2 style="font-size:clamp(19px,2.4vw,26px);font-weight:900;margin:10px 0 8px">{{ d.title }}</h2>{% endif %}
@@ -830,9 +830,9 @@
 {% elif t == 'image_box' %}
   <div class="card card-hover pb-image-box" style="overflow:hidden;text-align:{{ d.align or 'center' }}">
     {% if d.link %}<a href="{{ d.link }}">{% endif %}
-    <div class="pb-ib-img {{ 'pb-img-hover' if d.hover }}"><img src="/static/img/{{ d.image or 'hero.webp' }}" alt=""></div>
+    {% if d.image %}<div class="pb-ib-img {{ 'pb-img-hover' if d.hover }}"><img src="/static/img/{{ d.image }}" alt=""></div>{% endif %}
     <div class="pb-ib-body">
-      <h3 style="font-size:16.5px;margin-bottom:8px">{{ d.title or 'عنوان' }}</h3>
+      {% if d.title %}<h3 style="font-size:16.5px;margin-bottom:8px">{{ d.title }}</h3>{% endif %}
       <p class="text-2" style="font-size:13.5px">{{ nl2br(d.text) }}</p>
       {% if d.link %}<span class="pb-ib-link">بیشتر ←</span>{% endif %}
     </div>
@@ -842,7 +842,7 @@
 {% elif t == 'icon_box' %}
   <div class="card card-hover pb-icon-box" style="padding:28px 22px;text-align:{{ d.align or 'center' }};background:{{ d.bg or 'var(--card)' }}">
     <span class="pb-ibx-icon" style="font-size:38px;color:{{ d.icon_color or 'var(--primary)' }};display:inline-block;margin-bottom:12px">{{ d.icon or '✨' }}</span>
-    <h3 style="font-size:16px;margin-bottom:8px">{{ d.title or 'عنوان' }}</h3>
+    {% if d.title %}<h3 style="font-size:16px;margin-bottom:8px">{{ d.title }}</h3>{% endif %}
     <p class="text-2" style="font-size:13.5px">{{ nl2br(d.text) }}</p>
     {% if d.link %}<a class="pb-ibx-link" href="{{ d.link }}" style="display:inline-block;margin-top:12px;font-weight:800;color:var(--primary)">بیشتر ←</a>{% endif %}
   </div>
@@ -982,9 +982,9 @@
     </div>
     {% endif %}
     <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax({{ {'2':'420','3':'280','4':'220'}.get(d.columns or '3','280') }}px,1fr));gap:20px">
-      {% for it in d.get('items') or [] if it is mapping %}
+      {% for it in d.get('items') or [] if it is mapping and it.image and it.title %}
       <div class="pb-pf-item" data-cat="{{ it.category or '' }}">
-        <img src="/static/img/{{ it.image or 'cover-python.webp' }}" alt="{{ it.title }}">
+        <img src="/static/img/{{ it.image }}" alt="{{ it.title }}">
         <div class="pb-pf-overlay">
           <h4>{{ it.title }}</h4>
           {% if it.desc %}<p>{{ it.desc }}</p>{% endif %}
@@ -997,9 +997,9 @@
 
 {% elif t == 'gallery' %}
   <div class="pb-gallery {{ 'pb-gallery-lb' if d.lightbox }}" style="grid-template-columns:repeat({{ d.columns or 3 }}, 1fr);gap:12px">
-    {% for it in d.get('items') or [] if it is mapping %}
+    {% for it in d.get('items') or [] if it is mapping and it.image %}
     <figure class="pb-gal-item" style="border-radius:{{ d.radius or 0 }}px">
-      <img src="/static/img/{{ it.image or 'hero.webp' }}" alt="{{ it.caption or '' }}" loading="lazy">
+      <img src="/static/img/{{ it.image }}" alt="{{ it.caption or '' }}" loading="lazy">
       {% if it.caption %}<figcaption>{{ it.caption }}</figcaption>{% endif %}
     </figure>
     {% endfor %}
@@ -1077,7 +1077,7 @@
 
 {% elif t == 'post_title' %}
   {% set cp = bc_current_post() %}
-  <{{ d.tag or 'h2' }} style="text-align:{{ d.align or 'right' }}">{{ cp.title if cp else (d.fallback or 'عنوان پست') }}</{{ d.tag or 'h2' }}>
+  {% if cp or d.fallback %}<{{ d.tag or 'h2' }} style="text-align:{{ d.align or 'right' }}">{{ cp.title if cp else d.fallback }}</{{ d.tag or 'h2' }}>{% elif edit %}<div class="pb-empty-widget">عنوان پست در صفحه واقعی به‌صورت پویا نمایش داده می‌شود.</div>{% endif %}
 
 {% elif t == 'post_content' %}
   {% set cp = bc_current_post() %}
@@ -1085,7 +1085,8 @@
 
 {% elif t == 'featured_image' %}
   {% set cp = bc_current_post() %}
-  <img src="/static/img/{{ cp.image if cp else (d.fallback or 'hero.webp') }}" alt="" style="width:100%;border-radius:{{ d.radius or 0 }}px">
+  {% set featured_src = cp.image if cp and cp.image else d.fallback %}
+  {% if featured_src %}<img src="/static/img/{{ featured_src }}" alt="" style="width:100%;border-radius:{{ d.radius or 0 }}px">{% elif edit %}<div class="pb-empty-widget">تصویر شاخص پست در صفحه واقعی نمایش داده می‌شود.</div>{% endif %}
 
 {% elif t == 'post_info' %}
   {% set cp = bc_current_post() %}

@@ -330,7 +330,7 @@ SECRET_KEY=...        ← کلید امنیتی سشن
 <div class="ss-card">
   <h3>🗺 نقشه و ارسال</h3>
   <div class="ss-grid">
-    <div class="ss-field"><label>Map.ir — API Key</label><input name="mapir_api_key" value="" placeholder="خالی = بدون تغییر"></div>
+    <div class="ss-field"><label>نقشه نشانی</label><div class="setting-status setting-status--safe">✓ Google Maps واقعی بر اساس استان، شهر و آدرس کاربر</div><p class="ss-hint">بدون نیاز به کلید API؛ فقط برای پیش‌نمایش نشانی و مسیریابی استفاده می‌شود.</p></div>
     <div class="ss-field"><label>هزینه ثابت ارسال (تومان)</label><input type="number" min="0" name="shipping_flat_rate" value="{{ vals.get('shipping_flat_rate','0') }}"><p class="ss-hint">۰ یعنی هزینه پس از بررسی سفارش اعلام می‌شود.</p></div>
     <div class="ss-field"><label>توضیح زمان و روش ارسال</label><textarea name="shipping_note" rows="2">{{ vals.get('shipping_note','') }}</textarea></div>
     <div class="ss-field"><label>آدرس پایه سایت (Base URL)</label><input name="base_url" value="{{ vals.get('base_url','') }}" placeholder="https://academy.example.com"></div>

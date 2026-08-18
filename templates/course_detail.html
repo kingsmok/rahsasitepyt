@@ -21,7 +21,7 @@
   "@type": "VideoObject",
   "name": "معرفی دوره {{ course.title }}",
   "description": "{{ (course.subtitle or course.description or '')[:250] }}",
-  "thumbnailUrl": "{{ request.host_url.rstrip('/') }}/static/img/{{ course.image or 'hero.webp' }}",
+  "thumbnailUrl": "{{ course.image_url if course.image_url.startswith('https://') else request.host_url.rstrip('/') ~ course.image_url }}",
   "uploadDate": "{{ (course.updated_at or course.created_at).strftime('%Y-%m-%d') }}",
   "contentUrl": "{{ request.host_url.rstrip('/') ~ course.intro_video if course.intro_video.startswith('/') else course.intro_video }}",
   "embedUrl": "{{ course.intro_video.replace('watch?v=', 'embed/') if 'youtube' in course.intro_video else course.intro_video }}",
@@ -109,7 +109,7 @@
               {% elif 'aparat' in course.intro_video %}
               <iframe src="https://www.aparat.com/video/video/embed/videohash/{{ course.intro_video.split('/v/')[-1].split('?')[0] }}/vt/frame" frameborder="0" allowfullscreen style="width:100%;height:100%"></iframe>
               {% else %}
-              <video controls preload="none" poster="/static/img/{{ course.image }}" style="width:100%;height:100%;background:#000"><source src="{{ course.intro_video }}"></video>
+              <video controls preload="none" poster="{{ course.image_url }}" style="width:100%;height:100%;background:#000"><source src="{{ course.intro_video }}"></video>
               {% endif %}
             </div>
           </div>
@@ -279,7 +279,7 @@
       <aside>
         <div class="buy-card">
           <div class="thumb">
-            <img src="/static/img/{{ course.image }}" alt="دوره {{ course.title }} — کاور دوره {{ site.site_name or 'آکادمی آنلاین' }}" loading="lazy" width="640" height="360">
+            <img src="{{ course.image_url }}" alt="دوره {{ course.title }} — کاور دوره {{ site.site_name or 'آکادمی آنلاین' }}" loading="lazy" width="640" height="360">
             {% if course.has_discount %}
             <span class="badge badge-danger" style="position:absolute;top:12px;right:12px">٪{{ fa(course.discount_percent) }} تخفیف</span>
             {% endif %}

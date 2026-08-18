@@ -126,7 +126,7 @@ def test_missing_product_image_uses_real_fallback(client, app):
         product = Product.query.filter_by(slug='mug-test').first()
         product.image = 'deleted-file.jpg'
         db.session.commit()
-        assert product.image_url == '/static/img/cover-product-mug.webp'
+        assert product.image_url == '/static/img/product-placeholder.webp'
     response = client.get('/product/mug-test')
     assert response.status_code == 200
-    assert '/static/img/cover-product-mug.webp' in response.text
+    assert '/static/img/product-placeholder.webp' in response.text

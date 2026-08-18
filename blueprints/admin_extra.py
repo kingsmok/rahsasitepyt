@@ -369,7 +369,7 @@ def report_teachers():
 @admin_bp.route('/reports/exams')
 @admin_required
 def report_exams():
-    """گزارش شبیه‌ساز آزمون"""
+    """گزارش واقعی تلاش‌ها و نتایج آزمون‌های تمرینی."""
     from sqlalchemy import func as _func
     from models import ExamAttempt
     attempts = ExamAttempt.query.all()

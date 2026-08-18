@@ -41,13 +41,11 @@
     <button type="button" class="btn btn-primary btn-lg" id="calc-btn" style="margin-top:16px">نمایش شرایط ارسال</button>
 
     <div style="margin-top:22px">
-      <h3 style="font-size:15px;font-weight:900;margin-bottom:12px">🗺 پیش‌نمایش نقشه</h3>
+      <h3 style="font-size:15px;font-weight:900;margin-bottom:12px">🗺 پیش‌نمایش واقعی نشانی</h3>
       <div class="map-box">
-        {% if map_key %}
-        <iframe src="https://map.ir/embed?key={{ map_key }}" style="width:100%;height:100%;border:none" title="نقشه Map.ir"></iframe>
-        {% else %}
-        <span>🗺 نقشه Map.ir — کلید API در تنظیمات سایت وارد شود<br><small>(در حالت بدون کلید، نقشه غیرفعال است)</small></span>
-        {% endif %}
+        <iframe id="address-map" src="https://maps.google.com/maps?q=Iran&amp;output=embed"
+                style="width:100%;height:100%;border:none" loading="lazy"
+                referrerpolicy="no-referrer-when-downgrade" title="نقشه نشانی انتخاب‌شده"></iframe>
       </div>
     </div>
 
@@ -79,7 +77,10 @@
     var note=document.getElementById('est-note');
     box.classList.remove('show');
     if(!prov.value){note.textContent='لطفاً استان را انتخاب کنید.';return;}
+    var query=[prov.value,city.value,document.getElementById('address').value,'ایران'].filter(Boolean).join('، ');
+    document.getElementById('address-map').src='https://maps.google.com/maps?q='+encodeURIComponent(query)+'&output=embed';
     fetch('/api/address/shipping-estimate',{method:'POST',headers:{'Content-Type':'application/json'},
+      credentials:'same-origin',
       body:JSON.stringify({province:prov.value,city:city.value})})
       .then(function(r){return r.json()})
       .then(function(d){

@@ -14,7 +14,7 @@
   <div class="card card-hover course-card">
     <div class="thumb">
       <a href="{{ url_for('site.course_detail', slug=f.course.slug) }}">
-        <img src="/static/img/{{ f.course.image }}" alt="">
+        <img src="{{ f.course.image_url }}" alt="">
       </a>
       <button class="fav-btn active" data-fav="{{ f.course.id }}">❤️</button>
     </div>

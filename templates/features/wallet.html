@@ -15,16 +15,20 @@
 
     <div class="card" style="padding:26px;border-radius:20px;margin-bottom:20px">
       <h2 style="font-size:16px;margin-bottom:14px">💳 شارژ کیف پول</h2>
-      <form method="post" class="flex gap-1">
+      {% if topup_available %}
+      <form method="post" class="flex gap-1" id="wallet-topup-form">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
         <input class="form-control" name="amount" type="number" min="10000" step="10000" placeholder="مبلغ به تومان (حداقل ۱۰,۰۰۰)" dir="ltr" style="flex:1" required>
         <button class="btn btn-primary" type="submit">شارژ</button>
       </form>
       <div class="flex gap-1 mt-2" style="flex-wrap:wrap">
         {% for a in [50000, 100000, 200000, 500000] %}
-        <button class="btn btn-ghost btn-sm" type="button" onclick="this.form.elements['amount'].value='{{ a }}'">{{ fa('{:,.0f}'.format(a)) }}</button>
+        <button class="btn btn-ghost btn-sm" type="button" onclick="document.getElementById('wallet-topup-form').elements['amount'].value='{{ a }}'">{{ fa('{:,.0f}'.format(a)) }}</button>
         {% endfor %}
       </div>
+      {% else %}
+      <div class="license-message" style="background:var(--bg-2);color:var(--text-2)">شارژ آنلاین پس از پیکربندی حداقل یک درگاه واقعی یا کارت‌به‌کارت در دسترس قرار می‌گیرد.</div>
+      {% endif %}
     </div>
 
     <div class="card" style="padding:26px;border-radius:20px">

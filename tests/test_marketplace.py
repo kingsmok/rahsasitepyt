@@ -1,19 +1,41 @@
 # -*- coding: utf-8 -*-
 """تست فاز ۱۱ — فیدهای مارکت‌پلیس و وبهوک باسلام"""
+import hashlib
+import hmac
 import json
 import re
 from xml.dom.minidom import parseString
 
+import pytest
 from models import db, Product, Setting, Course
 from ext_models import MarketOrder
 
 
+_TEST_WEBHOOK_SECRET = 'marketplace-test-secret'
+
+
+@pytest.fixture(autouse=True)
+def _configured_webhook_secret(app):
+    with app.app_context():
+        row = db.session.get(Setting, 'basalam_webhook_secret')
+        if row:
+            row.value = _TEST_WEBHOOK_SECRET
+        else:
+            db.session.add(Setting(key='basalam_webhook_secret',
+                                   value=_TEST_WEBHOOK_SECRET))
+        db.session.commit()
+
+
 def _post_json(client, url, payload, headers=None):
-    h = {'Content-Type': 'application/json'}
+    raw = json.dumps(payload, ensure_ascii=False)
+    h = {
+        'Content-Type': 'application/json',
+        'X-Basalam-Signature': hmac.new(
+            _TEST_WEBHOOK_SECRET.encode(), raw.encode(), hashlib.sha256).hexdigest(),
+    }
     if headers:
         h.update(headers)
-    return client.post(url, data=json.dumps(payload, ensure_ascii=False),
-                       headers=h)
+    return client.post(url, data=raw, headers=h)
 
 
 def test_torob_json_feed_valid(client, app):
@@ -49,6 +71,15 @@ def test_emalls_json_valid(client):
     d = r.get_json()
     assert 'seller' in d and 'products' in d
     assert len(d['products']) >= 1
+
+
+def test_webhook_refuses_requests_until_secret_is_configured(client, app):
+    with app.app_context():
+        db.session.get(Setting, 'basalam_webhook_secret').value = ''
+        db.session.commit()
+    response = client.post('/api/marketplace/basalam/webhook',
+                           json={'id': 'NO-SECRET'})
+    assert response.status_code == 503
 
 
 def test_webhook_requires_phone(client):

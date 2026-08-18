@@ -26,7 +26,7 @@
 <a href="{{ url_for('community.forum') }}" class="{{ 'active' if request.endpoint and request.endpoint.startswith('community') }}"><span class="ic">{{ icon('message-circle', 17) }}</span> انجمن</a>
       <a href="{{ url_for('community.live') }}" class="{{ 'active' if request.endpoint == 'community.live' }}"><span class="ic">{{ icon('video', 17) }}</span> کلاس آنلاین</a>
 <a href="{{ url_for('features.support_chat') }}" class="{{ 'active' if request.endpoint == 'features.support_chat' }}"><span class="ic">{{ icon('message-circle', 17) }}</span> چت آنلاین</a>
-      {% if site.get('exam_enabled') == '1' or demo_features_enabled %}<a href="{{ url_for('features.exam_practice') }}" class="{{ 'active' if request.endpoint and request.endpoint.startswith('features.exam_practice') }}"><span class="ic">{{ icon('target', 17) }}</span> آزمون تمرینی</a>{% endif %}
+      {% if site.get('exam_enabled') == '1' %}<a href="{{ url_for('features.exam_practice') }}" class="{{ 'active' if request.endpoint and request.endpoint.startswith('features.exam_practice') }}"><span class="ic">{{ icon('target', 17) }}</span> آزمون تمرینی</a>{% endif %}
       <a href="{{ url_for('features.talent_test') }}" class="{{ 'active' if request.endpoint == 'features.talent_test' }}"><span class="ic">🧠</span> استعدادیابی</a>
 <a href="{{ url_for('features.challenge') }}" class="{{ 'active' if request.endpoint == 'features.challenge' }}"><span class="ic">🏆</span> چالش هفتگی</a>
 <a href="{{ url_for('features.notifications') }}" class="{{ 'active' if request.endpoint == 'features.notifications' }}">

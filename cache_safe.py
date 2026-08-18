@@ -34,7 +34,7 @@ class TeacherLite(UserLite):
 
 class CourseLite:
     """کارت دوره — همه چیزهایی که course_card و ویجت‌ها نیاز دارند."""
-    __slots__ = ('id', 'title', 'slug', 'image', 'featured', 'price',
+    __slots__ = ('id', 'title', 'slug', 'image', 'image_url', 'featured', 'price',
                  'discount_price', 'duration_hours', 'delivery_type',
                  'rating', 'review_count', 'students_count', 'category', 'teacher')
 
@@ -44,6 +44,10 @@ class CourseLite:
             for k in ('id', 'title', 'slug', 'image', 'featured', 'price',
                       'discount_price', 'duration_hours', 'delivery_type'):
                 setattr(self, k, fields.get(k))
+            image = str(self.image or '').strip()
+            self.image_url = (image if image.startswith('https://') else
+                              '/static/img/' + image if image else
+                              '/static/img/course-placeholder.webp')
             self.rating = rating
             self.review_count = review_count
             self.students_count = students_count
@@ -54,6 +58,7 @@ class CourseLite:
         self.title = c.title
         self.slug = c.slug
         self.image = c.image
+        self.image_url = c.image_url
         self.featured = bool(c.featured)
         self.price = c.price or 0
         self.discount_price = c.discount_price or 0

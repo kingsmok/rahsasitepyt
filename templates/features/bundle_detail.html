@@ -39,7 +39,7 @@
       <h2 style="font-size:16px;margin-bottom:14px">📚 دوره‌های این بسته</h2>
       {% for c in b.courses %}
       <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)">
-        <img src="/static/img/{{ c.image }}" alt="" style="width:64px;height:40px;object-fit:cover;border-radius:8px">
+        <img src="{{ c.image_url }}" alt="" style="width:64px;height:40px;object-fit:cover;border-radius:8px">
         <div style="flex:1;min-width:0">
           <a href="{{ url_for('site.course_detail', slug=c.slug) }}" style="font-size:13.5px;font-weight:700">{{ c.title }}</a>
           <small class="text-3" style="display:block;font-size:11px">⏱ {{ fa(c.duration_hours) }} ساعت — 👥 {{ fa(c.students_count) }} دانشجو — ⭐ {{ fa(c.rating) if c.rating else '—' }}</small>

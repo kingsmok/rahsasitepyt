@@ -32,12 +32,12 @@ def _codes_equal(a, b):
 
 
 def _is_demo_otp(settings):
-    """نمایش OTP فقط در تست خودکار/توسعهٔ صریح؛ هرگز روی سایت نهایی."""
+    """نمایش OTP فقط در تست خودکار؛ دموی فروش نیز باید SMS واقعی داشته باشد."""
     if _is_prod():
         return False
-    from runtime import demo_features_enabled
+    from runtime import automated_test_mode
     provider = (settings.get('sms_provider') or '').strip()
-    return demo_features_enabled() and provider in ('', 'disabled', 'demo')
+    return automated_test_mode() and provider in ('', 'disabled', 'demo')
 
 
 def _clear_otp_session():
@@ -230,9 +230,9 @@ def login():
             _ip_success()
             # تایید دومرحله‌ای مدیر فقط وقتی مدیر آن را فعال کرده باشد. در تست
             # خودکار نیز برای پوشش جریان امنیتی روشن می‌ماند.
-            from runtime import demo_features_enabled
+            from runtime import automated_test_mode
             admin_2fa_on = (g.settings.get('admin_2fa_enabled') == '1' or
-                            demo_features_enabled())
+                            automated_test_mode())
             if user.role in ('admin', 'super_admin') and admin_2fa_on:
                 code2 = _numeric_code(6)
                 from sms import send_sms
@@ -325,7 +325,7 @@ def phone_send():
     from sms import send_otp
     ok, msg = send_otp(phone, code, g.settings)
     if ok and _is_demo_otp(g.settings):
-        # فقط تست خودکار/توسعهٔ صریح؛ در production این شاخه غیرممکن است.
+        # فقط تست خودکار؛ در دموی فروش و production این شاخه غیرممکن است.
         flash(f'🔐 کد تست: {code}', 'info')
     elif ok:
         flash('📲 کد تایید به شماره شما پیامک شد.', 'success')

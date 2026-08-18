@@ -29,6 +29,18 @@
 - private key فروشنده می‌تواند با رمزی که فقط از متغیر محیطی خوانده می‌شود رمزگذاری شود؛ رمز در آرگومان command line قرار نمی‌گیرد.
 - ابزار امن فروشنده: `scripts/license_tool.py` برای keygen، صدور و verify؛ سازنده ZIP: `scripts/build_commercial_package.py`؛ کنترل مستقل hash/path/secret/fingerprint: `scripts/verify_commercial_package.py`. سازنده پیش از تحویل، verifier مستقل را نیز خودکار اجرا می‌کند. ضعف ذاتی توزیع سورس نیز صادقانه باقی است: فرد دارای دسترسی کامل به کد می‌تواند کنترل محلی را patch کند و برای سخت‌گیری بیشتر باید اعتبارسنجی سروری/ماژول کامپایل‌شده جداگانه ارائه شود.
 
+## جداسازی دمو از عملیات واقعی
+
+- `ENABLE_DEMO_FEATURES=1` فقط داده seed برچسب‌خورده را در development مجاز می‌کند.
+- OTP و 2FA نمایشی، sandbox پرداخت و providerهای BNPL ناقص فقط در `pytest`/`Flask TESTING` قابل استفاده‌اند؛ دموی فروش نیز باید SMS و درگاه واقعی داشته باشد.
+- شارژ کیف پول از سفارش واقعی، انتخاب درگاه پیکربندی‌شده و callback اتمیک عبور می‌کند؛ callback تکراری موجودی را دوباره افزایش نمی‌دهد.
+- اقساط سرویس‌های BNPL واقعی در پنل همان ارائه‌دهنده پیگیری می‌شوند و نرم‌افزار دیگر برای «قسط بعدی» کل مبلغ سفارش را دوباره به درگاه نمی‌فرستد.
+- Cashback پیش‌فرض صفر است و فقط با درصد صریح مدیر فعال می‌شود.
+- نقشه آدرس بر اساس استان، شهر و نشانی واردشده با Google Maps واقعی کار می‌کند؛ placeholder وابسته به کلید Map.ir حذف شده است.
+- وب‌هوک باسلام بدون secret دیگر هیچ سفارشی قبول نمی‌کند و HMAC-SHA256 برای همه درخواست‌ها اجباری است.
+- تصویر حذف‌شده دوره/محصول با placeholder خنثی مشخص می‌شود؛ کاور یک دوره یا کالای دیگر به‌عنوان fallback جعلی نمایش داده نمی‌شود.
+- صفحه اصلی نصب تازه فقط عنوان سایت، آمار صفر/واقعی و دوره‌های منتشرشده را نشان می‌دهد و اسلاید/کاور/ادعای آمادهٔ نمایشی ندارد.
+
 ## امنیت نصب و مدیر
 
 - مسیر تعمیر نصب و تعویض دیتابیس پس از نصب برای درخواست ناشناس قفل است.
@@ -76,7 +88,7 @@
 - ۵ طرح درباره ما
 - ۵ طرح تماس با ما
 - ۲۵ طرح کلی سایت
-- ۲۰ واریانت کامل طراحی ایرانی
+- ۲۰ پیش‌نمایش بصری داخلی برای مقایسه اجزای طراحی (نه route یا قابلیت مستقل)
 - وجود فایل CSS هر ۴۳ تم ثبت‌شده
 - صفحات پنل همه نقش‌های عملیاتی
 
@@ -105,10 +117,10 @@
 ## نتیجه تست
 
 ```text
-238 passed in 146.13s
-Commercial role crawl: 1,099 pages + 5,715 static references + 531 form targets, 0 issues
+243 passed in 133.93s
+Commercial role crawl: 1,093 pages + 5,691 static references + 519 form targets, 0 issues
 Commercial ZIP smoke: activate + HTTP 402/200 + health + manifest hashes, OK
-Commercial ZIP audit: 840 entries, no private key/.env/instance/demo video
+Commercial ZIP audit: 842 entries, no private key/.env/instance/demo video
 Live public crawl: 47 routes, 0 errors
 Python compileall: OK
 Python 3.8 syntax parse (89 files): OK

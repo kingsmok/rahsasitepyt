@@ -287,7 +287,7 @@ class Course(db.Model):
     slug = db.Column(db.String(220), unique=True, nullable=False)
     subtitle = db.Column(db.String(300))
     description = db.Column(db.Text)
-    image = db.Column(db.String(300), default='cover-python.png')
+    image = db.Column(db.String(300), default='course-placeholder.webp')
     category_id = db.Column(db.Integer, db.ForeignKey('categories.id'))
     teacher_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     price = db.Column(db.Integer, default=0)          # تومان
@@ -323,6 +323,20 @@ class Course(db.Model):
     sections = db.relationship('Section', backref='course', order_by='Section.sort',
                                cascade='all, delete-orphan', lazy=True)
     reviews = db.relationship('Review', backref='course', cascade='all, delete-orphan', lazy=True)
+
+    @property
+    def image_url(self):
+        """تصویر واقعی دوره یا placeholder خنثی؛ هرگز کاور دوره دیگری را جعل نمی‌کند."""
+        import os as _os
+        value = (self.image or '').strip()
+        if value.startswith('https://'):
+            return value
+        name = value[len('/static/img/'):] if value.startswith('/static/img/') else value.lstrip('/')
+        if name and '..' not in name and '\\' not in name:
+            path = _os.path.join(_os.path.dirname(__file__), 'static', 'img', name)
+            if _os.path.isfile(path):
+                return '/static/img/' + name
+        return '/static/img/course-placeholder.webp'
 
     @property
     def final_price(self):
@@ -943,7 +957,7 @@ class Bundle(db.Model):
     title = db.Column(db.String(200), nullable=False)
     slug = db.Column(db.String(220), unique=True, nullable=False)
     description = db.Column(db.Text)
-    image = db.Column(db.String(300), default='cover-python.webp')
+    image = db.Column(db.String(300), default='course-placeholder.webp')
     price = db.Column(db.Integer, default=0)
     discount_price = db.Column(db.Integer, default=0)
     is_active = db.Column(db.Boolean, default=True)
@@ -1461,7 +1475,7 @@ class Product(db.Model):
             path = _os.path.join(_os.path.dirname(__file__), 'static', 'img', name)
             if _os.path.isfile(path):
                 return '/static/img/' + name
-        return '/static/img/cover-product-mug.webp'
+        return '/static/img/product-placeholder.webp'
 
     @property
     def final_price(self):

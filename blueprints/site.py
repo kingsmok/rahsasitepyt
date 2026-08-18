@@ -224,14 +224,15 @@ def course_detail(slug):
     else:
         meta_parts.append("همین حالا ثبت‌نام کنید")
     g.seo['description'] = ('؛ '.join(meta_parts))[:158]
-    g.seo['og_image'] = course.image
+    g.seo['og_image'] = course.image_url
     # ─────────────── اسکیمای Course کامل (با E-E-A-T) ───────────────
     schema = {
         "@context": "https://schema.org",
         "@type": "Course",
         "name": course.title,
         "description": (course.subtitle or course.description or '')[:300],
-        "image": request.host_url.rstrip('/') + '/static/img/' + (course.image or 'hero.webp'),
+        "image": (course.image_url if course.image_url.startswith('https://') else
+                  request.host_url.rstrip('/') + course.image_url),
         "inLanguage": "fa",
         "category": course.category.name if course.category else 'آموزش',
         "provider": {"@type": "Organization", "name": site_name,
@@ -387,10 +388,10 @@ def sitemap():
     for u in ['/courses', '/teachers', '/blog', '/about', '/faq', '/contact', '/terms', '/privacy', '/become-teacher', '/learning-paths', '/consultation']:
         xml += f'<url><loc>{base}{u}</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>'
     # دوره‌ها با تصویر و اولویت بالا
-    from marketplace import _feed_image as _fimg
     for c in Course.query.filter_by(status='published').all():
         xml += f'<url><loc>{_xe(base)}/course/{_xe(c.slug)}</loc><changefreq>monthly</changefreq><priority>0.9</priority>'
-        xml += f'<image:image><image:loc>{_xe(base)}/static/img/{_xe(_fimg(c.image))}</image:loc><image:title>{_xe(c.title)}</image:title></image:image>'
+        image_url = c.image_url if c.image_url.startswith('https://') else base + c.image_url
+        xml += f'<image:image><image:loc>{_xe(image_url)}</image:loc><image:title>{_xe(c.title)}</image:title></image:image>'
         xml += '</url>'
     # مقالات
     for p in BlogPost.query.filter_by(published=True).all():

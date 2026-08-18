@@ -119,6 +119,32 @@ def test_sales_widgets_do_not_fabricate_prices_or_expiring_deadlines(app):
     assert 'قیمت پیشنهادی دیگران' not in html
 
 
+def test_address_map_and_shipping_use_real_configured_values(client, app):
+    from conftest import login
+    from models import Setting, db
+    login(client, 'demo@test.ir', 'demo123')
+    with app.app_context():
+        for key, value in (
+                ('shipping_flat_rate', '85000'),
+                ('shipping_note', 'ارسال با پست پیشتاز در روزهای کاری')):
+            row = db.session.get(Setting, key)
+            if row:
+                row.value = value
+            else:
+                db.session.add(Setting(key=key, value=value))
+        db.session.commit()
+    page = client.get('/address')
+    assert page.status_code == 200
+    assert 'https://maps.google.com/maps?q=Iran' in page.text
+    assert 'Map.ir' not in page.text
+    estimate = client.post('/api/address/shipping-estimate', json={
+        'province': 'تهران', 'city': 'تهران',
+    })
+    assert estimate.status_code == 200
+    assert estimate.get_json()['price'] == 85000
+    assert estimate.get_json()['note'] == 'ارسال با پست پیشتاز در روزهای کاری'
+
+
 def test_builder_library_rejects_empty_template_and_uses_instance(client, app):
     import json
     _make_admin(app)

@@ -16,16 +16,25 @@
       <input id="admin-menu-search" type="search" placeholder="جستجوی بخش‌ها..." autocomplete="off" data-admin-menu-search>
     </div>
     <nav class="as-nav">
-      {% set menu = bc_admin_menu() %}
-      {% for ep, label in menu %}
-      {% if ep == 'sep' %}
-      <div class="as-group" data-admin-group>{{ label }}</div>
-      {% else %}
-      <a href="{{ url_for(ep) }}" data-admin-link class="as-link {{ 'active' if request.endpoint and request.endpoint.startswith(ep.split('.')[0] + '.') and (ep.split('.')[1] == request.endpoint.split('.')[1] or request.endpoint in [ep]) }}">
-        <span class="as-link-icon" aria-hidden="true">{{ label.split(' ',1)[0] }}</span>
-        <span class="as-link-label">{{ label.split(' ',1)[1] if ' ' in label else label }}</span>
-      </a>
-      {% endif %}
+      {% set groups = bc_admin_groups() %}
+      {% for group in groups %}
+      <div class="as-group-head" data-admin-group-head>
+        <button type="button" class="as-group-toggle" data-admin-group-toggle
+                aria-expanded="{{ 'true' if group_has_active(group, request) else 'false' }}">
+          <span class="as-group-ic" aria-hidden="true">{{ group.icon }}</span>
+          <span class="as-group-label">{{ group.label }}</span>
+          <span class="as-group-chev" aria-hidden="true">⌄</span>
+        </button>
+      </div>
+      <div class="as-group-body{{ '' if group_has_active(group, request) else ' is-collapsed' }}"
+           data-admin-group-body>
+        {% for ep, label in group['items'] %}
+        <a href="{{ url_for(ep) }}" data-admin-link class="as-link {{ 'active' if request.endpoint == ep or (request.endpoint and ep and request.endpoint.startswith(ep.split('.')[0] + '.') and ep.split('.')[1] == request.endpoint.split('.')[1]) }}">
+          <span class="as-link-icon" aria-hidden="true">{{ label.split(' ',1)[0] }}</span>
+          <span class="as-link-label">{{ label.split(' ',1)[1] if ' ' in label else label }}</span>
+        </a>
+        {% endfor %}
+      </div>
       {% endfor %}
       <p class="as-no-result" data-admin-no-result hidden>بخشی با این عنوان پیدا نشد.</p>
       <div class="as-footer-links">

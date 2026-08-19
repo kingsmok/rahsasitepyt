@@ -1,30 +1,100 @@
 {% extends 'teacher/base.html' %}
 {% block tcontent %}
-<div class="dash-head">
-  <div><h1 style="font-size:20px">📊 داشبورد استاد</h1><p>نمای کلی دوره‌ها و فعالیت‌های آموزشی شما</p></div>
-</div>
-<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:22px">
-  <div class="card stat-ic stat-ic-1" style="padding:18px;text-align:center"><div style="font-size:26px">📚</div><strong style="font-size:20px;display:block">{{ fa(courses|length) }}</strong><small class="text-3">دوره</small></div>
-  <div class="card stat-ic stat-ic-2" style="padding:18px;text-align:center"><div style="font-size:26px">👥</div><strong style="font-size:20px;display:block">{{ fa(total_students) }}</strong><small class="text-3">دانشجو</small></div>
-  <div class="card stat-ic stat-ic-3" style="padding:18px;text-align:center"><div style="font-size:26px">💰</div><strong style="font-size:20px;display:block">{{ fa('{:,.0f}'.format(share)) }}</strong><small class="text-3">سهم شما (تومان)</small></div>
-  <div class="card stat-ic stat-ic-4" style="padding:18px;text-align:center"><div style="font-size:26px">📌</div><strong style="font-size:20px;display:block">{{ fa(pending_asgs) }}</strong><small class="text-3">تکلیف در انتظار</small></div>
-  <div class="card stat-ic stat-ic-5" style="padding:18px;text-align:center"><div style="font-size:26px">💬</div><strong style="font-size:20px;display:block">{{ fa(pending_qs) }}</strong><small class="text-3">پرسش بی‌پاسخ</small></div>
+<!-- ═══ هدر خوش‌آمدگویی — گلس‌مورفیسم ═══ -->
+<div class="tch-hero">
+  <div class="tch-hero-copy">
+    <span class="tch-hero-eyebrow">پنل استاد</span>
+    <h1>سلام، {{ cur_user.name }} 👋</h1>
+    <p>نمای کلی دوره‌ها، دانشجویان و درآمد شما — همه‌چیز یک‌جا.</p>
+    <div class="tch-hero-actions">
+      <a class="btn btn-primary" href="{{ url_for('teacher.my_courses') }}">📚 دوره‌های من</a>
+      <a class="btn tch-btn-glass" href="{{ url_for('teacher.students') }}">👥 دانشجویان</a>
+    </div>
+  </div>
+  <div class="tch-hero-stats">
+    <div class="tch-hero-stat">
+      <span class="tch-hero-stat-ic" style="background:linear-gradient(135deg,#6366f1,#8b5cf6)">📚</span>
+      <div><b>{{ fa(courses|length) }}</b><small>دوره فعال</small></div>
+    </div>
+    <div class="tch-hero-stat">
+      <span class="tch-hero-stat-ic" style="background:linear-gradient(135deg,#0ea5e9,#2563eb)">👥</span>
+      <div><b>{{ fa(total_students) }}</b><small>دانشجو</small></div>
+    </div>
+    <div class="tch-hero-stat">
+      <span class="tch-hero-stat-ic" style="background:linear-gradient(135deg,#059669,#10b981)">💰</span>
+      <div><b>{{ fa('{:,.0f}'.format(share)) }}</b><small>تومان سهم شما</small></div>
+    </div>
+  </div>
 </div>
 
-<div class="card" style="padding:22px">
-  <h2 style="font-size:15px;margin-bottom:12px">📌 تکالیف اخیر در انتظار نمره</h2>
-  {% if recent_submissions %}
+<!-- ═══ کارهای در انتظار ═══ -->
+<div class="tch-tasks">
+  <a class="tch-task-card {{ 'hot' if pending_asgs }}" href="{{ url_for('teacher.assignments') }}">
+    <span class="tch-task-ic">📌</span>
+    <div><b>{{ fa(pending_asgs) }}</b><small>تکلیف در انتظار نمره</small></div>
+  </a>
+  <a class="tch-task-card {{ 'hot' if pending_qs }}" href="{{ url_for('teacher.questions') }}">
+    <span class="tch-task-ic">💬</span>
+    <div><b>{{ fa(pending_qs) }}</b><small>پرسش بی‌پاسخ</small></div>
+  </a>
+  <a class="tch-task-card" href="{{ url_for('teacher.revenue') }}">
+    <span class="tch-task-ic">💳</span>
+    <div><b>تسویه</b><small>درخواست برداشت درآمد</small></div>
+  </a>
+  <a class="tch-task-card" href="{{ url_for('teacher.my_courses') }}">
+    <span class="tch-task-ic">➕</span>
+    <div><b>دوره</b><small>مدیریت جلسات و دانشجویان</small></div>
+  </a>
+</div>
+
+<!-- ═══ دوره‌های من ═══ -->
+<div class="tch-section-head">
+  <h2>📚 دوره‌های من</h2>
+  <a class="tch-more" href="{{ url_for('teacher.my_courses') }}">مشاهده همه ←</a>
+</div>
+{% if courses %}
+<div class="tch-course-grid">
+  {% for c in courses[:6] %}
+  <a class="tch-course-card" href="{{ url_for('teacher.course_students', cid=c.id) }}">
+    <div class="tch-course-thumb">
+      <img src="{{ c.image_url }}" alt="{{ c.title }}" loading="lazy">
+      <span class="tch-course-type">{{ c.delivery_icon }} {{ c.delivery_label }}</span>
+    </div>
+    <div class="tch-course-body">
+      <h3>{{ c.title }}</h3>
+      <div class="tch-course-meta">
+        <span>👥 {{ fa(c.students_count) }} دانشجو</span>
+        <span>📹 {{ fa(c.lesson_count) }} جلسه</span>
+      </div>
+      <div class="tch-course-share">سهم شما: {{ fa(c.teacher_percent()) }}٪</div>
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<div class="tch-empty">
+  <span>🎬</span>
+  <h3>هنوز دوره‌ای ندارید</h3>
+  <p>از مدیریت بخواهید دوره‌ای به شما اختصاص دهد؛ بعد از آن همه‌چیز همین‌جا نمایان می‌شود.</p>
+</div>
+{% endif %}
+
+<!-- ═══ تکالیف اخیر ═══ -->
+{% if recent_submissions %}
+<div class="tch-section-head" style="margin-top:26px"><h2>📌 تکالیف اخیر در انتظار نمره</h2></div>
+<div class="tch-panel">
   {% for s in recent_submissions %}
-  <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);font-size:13px">
-    <div><strong>{{ s.user.name if s.user else '—' }}</strong> — {{ s.assignment.title }} <small class="text-3">({{ s.created_at|jdatetime }})</small></div>
+  <div class="tch-panel-row">
+    <div class="tch-panel-row-main">
+      <strong>{{ s.user.name if s.user else '—' }}</strong>
+      <small>{{ s.assignment.title }} · {{ s.created_at|jdatetime }}</small>
+    </div>
     <div class="flex gap-1">
-      {% if s.file %}<a class="btn btn-ghost btn-sm" href="/uploads/submissions/{{ s.file }}" target="_blank">📎</a>{% endif %}
+      {% if s.file %}<a class="btn btn-ghost btn-sm" href="/uploads/submissions/{{ s.file }}" target="_blank" rel="noopener">📎 فایل</a>{% endif %}
       <a class="btn btn-primary btn-sm" href="{{ url_for('teacher.assignments') }}">نمره‌دهی</a>
     </div>
   </div>
   {% endfor %}
-  {% else %}
-  <p class="text-3" style="font-size:13px">تکلیفی در انتظار نیست. 🎉</p>
-  {% endif %}
 </div>
+{% endif %}
 {% endblock %}

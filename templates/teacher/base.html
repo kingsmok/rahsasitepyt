@@ -1,36 +1,52 @@
 {% extends 'base.html' %}
 {% block body_class %}has-buy-bar teacher-body{% endblock %}
 {% block content %}
-<section class="section" style="padding-top:26px">
-  <div class="container" style="max-width:1200px">
+<div class="tch-wrap">
+  <div class="tch-bg" aria-hidden="true"></div>
+  <div class="container" style="max-width:1220px;position:relative;z-index:1">
     <button class="panel-nav-toggle" type="button" data-panel-nav-toggle aria-controls="teacher-panel-nav" aria-expanded="false">
       {{ icon('menu-2', 18) }} <span>منوی پنل مدرس</span><span aria-hidden="true">⌄</span>
     </button>
     <div class="teacher-layout">
-      <aside class="card teacher-side" id="teacher-panel-nav">
-        <div style="text-align:center;padding:10px 0 16px;border-bottom:1px solid var(--border);margin-bottom:12px">
-          {% if cur_user.avatar %}<img class="avatar avatar-lg" src="{{ cur_user.avatar_url }}" alt="" style="width:64px;height:64px;margin:0 auto 8px;display:block;border-radius:20px">{% else %}<span class="avatar" style="background:{{ cur_user.avatar_color }};width:64px;height:64px;font-size:22px;margin:0 auto 8px">{{ cur_user.initials() }}</span>{% endif %}
-          <strong style="font-size:13.5px">{{ cur_user.name }}</strong>
-          <div class="badge badge-primary" style="margin-top:4px">👨‍🏫 استاد</div>
+      <aside class="tch-side" id="teacher-panel-nav">
+        <div class="tch-side-head">
+          {% if cur_user.avatar %}
+          <img class="tch-avatar" src="{{ cur_user.avatar_url }}" alt="{{ cur_user.name }}">
+          {% else %}
+          <span class="tch-avatar tch-avatar-fallback" style="background:{{ cur_user.avatar_color }}">{{ cur_user.initials() }}</span>
+          {% endif %}
+          <div>
+            <strong>{{ cur_user.name }}</strong>
+            <span class="tch-role">👨‍🏫 استاد آکادمی</span>
+          </div>
         </div>
-        <nav class="teacher-nav" aria-label="بخش‌های پنل مدرس">
-          <a class="dash-link {{ 'active' if request.endpoint == 'teacher.dashboard' }}" href="{{ url_for('teacher.dashboard') }}">📊 داشبورد</a>
-          <a class="dash-link {{ 'active' if request.endpoint in ['teacher.my_courses', 'teacher.course_students', 'teacher.attendance_sessions', 'teacher.attendance_mark'] }}" href="{{ url_for('teacher.my_courses') }}">📚 دوره‌های من</a>
-          <a class="dash-link {{ 'active' if request.endpoint == 'teacher.students' }}" href="{{ url_for('teacher.students') }}">👥 دانشجویان من</a>
-          <a class="dash-link {{ 'active' if request.endpoint == 'teacher.assignments' }}" href="{{ url_for('teacher.assignments') }}">📌 تکالیف</a>
-          <a class="dash-link {{ 'active' if request.endpoint == 'teacher.questions' }}" href="{{ url_for('teacher.questions') }}">💬 پرسش‌ها</a>
-          <a class="dash-link {{ 'active' if request.endpoint == 'teacher.revenue' }}" href="{{ url_for('teacher.revenue') }}">💰 درآمد من</a>
+        <nav class="tch-nav" aria-label="بخش‌های پنل مدرس">
+          <a class="tch-link {{ 'active' if request.endpoint == 'teacher.dashboard' }}" href="{{ url_for('teacher.dashboard') }}">
+            <span class="tch-link-ic">📊</span><span>داشبورد</span>
+          </a>
+          <a class="tch-link {{ 'active' if request.endpoint in ['teacher.my_courses', 'teacher.course_students', 'teacher.attendance_sessions', 'teacher.attendance_mark'] }}" href="{{ url_for('teacher.my_courses') }}">
+            <span class="tch-link-ic">📚</span><span>دوره‌های من</span>
+          </a>
+          <a class="tch-link {{ 'active' if request.endpoint == 'teacher.students' }}" href="{{ url_for('teacher.students') }}">
+            <span class="tch-link-ic">👥</span><span>دانشجویان من</span>
+          </a>
+          <a class="tch-link {{ 'active' if request.endpoint == 'teacher.assignments' }}" href="{{ url_for('teacher.assignments') }}">
+            <span class="tch-link-ic">📌</span><span>تکالیف</span>
+          </a>
+          <a class="tch-link {{ 'active' if request.endpoint == 'teacher.questions' }}" href="{{ url_for('teacher.questions') }}">
+            <span class="tch-link-ic">💬</span><span>پرسش‌ها</span>
+          </a>
+          <a class="tch-link {{ 'active' if request.endpoint == 'teacher.revenue' }}" href="{{ url_for('teacher.revenue') }}">
+            <span class="tch-link-ic">💰</span><span>درآمد من</span>
+          </a>
         </nav>
-        <a class="btn btn-ghost btn-sm btn-block mt-3" href="{{ url_for('student.dashboard') }}">→ پنل دانشجو</a>
+        <div class="tch-side-foot">
+          <a class="tch-link" href="{{ url_for('student.dashboard') }}"><span class="tch-link-ic">🎓</span><span>پنل دانشجو</span></a>
+          <a class="tch-link" href="{{ url_for('site.index') }}" target="_blank" rel="noopener"><span class="tch-link-ic">🌐</span><span>مشاهده سایت</span></a>
+        </div>
       </aside>
-      <div>{% block tcontent %}{% endblock %}</div>
+      <div class="tch-content">{% block tcontent %}{% endblock %}</div>
     </div>
   </div>
-</section>
-<style>
-.dash-link { display:flex; align-items:center; gap:8px; padding:9px 12px; border-radius:10px;
-  font-size:13px; font-weight:600; color:var(--text-2); transition:all .15s; }
-.dash-link:hover { background:var(--bg-2); color:var(--primary); }
-.dash-link.active { background:var(--primary-soft); color:var(--primary); font-weight:800; }
-</style>
+</div>
 {% endblock %}

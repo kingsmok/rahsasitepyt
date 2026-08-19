@@ -9,8 +9,8 @@
     (public_html یا /home/user/domain.com)
 
   قدم ۲) محیط مجازی (یک بار):
-    python3 -m venv venv
-    ./venv/bin/pip install -r requirements.txt
+    python3.11 -m venv venv
+    bash scripts/install_dependencies.sh ./venv/bin/python
 
   قدم ۳) فایل .htaccess (از deploy/passenger.htaccess):
     PassengerAppRoot /home/کاربر/پوشه‌پروژه
@@ -98,13 +98,13 @@
   🔧 عیبیابی — اگر خطای 500 دیدید:
 ═══════════════════════════════════════════════════════════════
 
-۱) **نسخه پایتون هاست**: نسخه پیشنهادی Python 3.11 یا 3.12 است.
-   وابستگی‌های فعلی حداقل Python 3.9 می‌خواهند. روی Python 3.8 یا قدیمی‌تر
-   نصب نکنید (پنل هاست → نسخه پایتون).
+۱) **نسخه پایتون هاست**: نسخهٔ الزامی این انتشار CPython 3.11 است.
+   نسخهٔ دیگر را انتخاب نکنید؛ نصب‌کننده پیش از هر تغییری runtime ناسازگار را
+   با پیام واضح رد می‌کند (پنل هاست → نسخه پایتون).
 
 ۲) **محیط مجازی**: حتماً venv ساخته و پکیجها نصب شده باشند:
-     python3 -m venv venv
-     ./venv/bin/pip install -r requirements.txt
+     python3.11 -m venv venv
+     bash scripts/install_dependencies.sh ./venv/bin/python
 
 ۳) **پرمیشن پوشهها** (مهم — علت رایج 500):
      chmod -R 775 instance logs
@@ -175,15 +175,15 @@
 ═══════════════════════════════════════════════════════════════
   📦 نسخههای پکیج (requirements.txt — پینشده)
 ═══════════════════════════════════════════════════════════════
-  flask>=3.0 · flask-sqlalchemy==3.1.1 · SQLAlchemy==2.0.30
-  greenlet==3.0.3 · requests>=2.31 · Pillow>=11.0.0
-  reportlab>=4.0 · arabic-reshaper>=3.0 · python-bidi>=0.6
-  cryptography>=42.0.0 · flask-admin>=1.6 · gunicorn>=22.0
-  python-dotenv>=1.0 · pytest>=8.0 · redis>=5.0 · PyMySQL>=1.1
+  Flask==3.1.3 · Flask-SQLAlchemy==3.1.1 · SQLAlchemy==2.0.30
+  greenlet==3.2.5 · requests==2.34.2 · Pillow==12.2.0
+  reportlab==5.0.0 · arabic-reshaper==3.0.1 · python-bidi==0.6.11
+  cryptography==50.0.0 · Flask-Admin==2.2.0 · gunicorn==26.1.0
+  python-dotenv==1.2.3 · pytest==9.1.1 · redis==8.1.0 · PyMySQL==1.2.0
 
   ✅ تست خودکار: 220+ سناریو
   ✅ خزش تجاری: ۷ نقش، ۱۱۷۳+ صفحه و ۵۷۱۵+ منبع استاتیک
-  ✅ نسخه پیشنهادی اجرا: Python 3.11/3.12
+  ✅ نسخهٔ پشتیبانی‌شدهٔ اجرا: CPython 3.11
 ═══════════════════════════════════════════════════════════════
 
 ═══════════════════════════════════════════════════════════════
@@ -197,8 +197,8 @@
   • همه پاسخ‌های نصب‌کننده JSON است — هیچ JSON.parse نمی‌شکند
 
   ۱) آپلود و استخراج بسته جدید
-  ۲) python3 -m venv venv
-  ۳) ./venv/bin/pip install -r requirements.txt
+  ۲) python3.11 -m venv venv
+  ۳) bash scripts/install_dependencies.sh ./venv/bin/python
   ۴) chmod -R 775 instance logs
   ۵) .htaccess (مثل قبل) + touch passenger_wsgi.py
   ۶) دامنه/install را باز کنید:

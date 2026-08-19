@@ -31,7 +31,7 @@ document.addEventListener('keydown', function(e){
   if(k === '/'){ e.preventDefault(); var s=document.querySelector('.dk-search input, .search-box input, header input[type="text"], input[placeholder*="جستجو"]'); if(s){s.focus();} }
   else if(k === 'h'){ window.location='/'; }
   else if(k === 'c'){ window.location='/courses'; }
-  else if(k === 'Escape'){ document.querySelectorAll('.modal.open,.mobile-menu.open,.theme-panel.open').forEach(function(m){m.classList.remove('open');}); }
+  else if(k === 'Escape'){ document.querySelectorAll('.modal.open,.mobile-menu.open').forEach(function(m){m.classList.remove('open');}); }
   else if(k === '?'){ e.preventDefault(); toast('⌨️ میانبرها: «/» جستجو · «h» خانه · «c» دوره‌ها · «Esc» بستن پنجره‌ها', 'info'); }
 });
 /* دکمه‌های state-based: هنگام submit فرم، لودینگ + غیرفعال (ضد ارسال دوباره) */

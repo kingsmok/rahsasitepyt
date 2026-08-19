@@ -247,30 +247,6 @@
   </div>
 </nav>
 
-<!-- ===== پنل انتخاب تم (اختیاری؛ پیش‌فرض نصب تجاری خاموش) ===== -->
-{% if site.get('allow_theme_switcher', '1') == '1' %}
-<button class="theme-fab" id="theme-fab" type="button" aria-label="تغییر ظاهر سایت" title="تغییر تم و حالت نمایش">{{ icon('palette', 24) }}</button>
-<div class="theme-panel" id="theme-panel" role="dialog" aria-label="انتخاب تم و حالت نمایش">
-  <div class="flex between" style="margin-bottom:10px">
-    <h4>🎨 حالت نمایش و تم</h4>
-    <button type="button" class="theme-panel-close" data-close-theme aria-label="بستن" style="width:30px;height:30px;border-radius:9px;background:var(--bg-2);color:var(--text-2);font-size:14px">{{ icon('x', 15) }}</button>
-  </div>
-  <p>تم فعال سایت را انتخاب کنید. انتخاب شما برای دفعات بعد ذخیره می‌شود.</p>
-  <div class="theme-grid">
-    {% for _t in THEMES %}
-    <button type="button" class="theme-opt {{ 'active' if theme == _t.id }}" data-theme="{{ _t.id }}" title="{{ _t.desc }}">
-      <span class="preview" style="background:linear-gradient(135deg,{{ _t.colors[0] }} 0%,{{ _t.colors[1] }} 70%,{{ _t.colors[2] }} 100%)">
-        {%- for _c in _t.colors -%}<i style="background:{{ _c }}"></i>{%- endfor -%}
-      </span>
-      <span class="t-name">{{ _t.name }}</span>
-      <span class="t-desc">{{ _t.desc }}</span>
-      {% if theme == _t.id %}<span class="check">✓</span>{% endif %}
-    </button>
-    {% endfor %}
-  </div>
-</div>
-{% endif %}
-
 <script>
 /* افزودن خودکار توکن CSRF به همه فرم‌های POST */
 (function () {
@@ -289,49 +265,6 @@
 </script>
 <script src="/static/js/app.js?v={{ asset_v() }}"></script>
 <script src="/static/js/ux.js?v={{ asset_v() }}"></script>
-<script>
-/* ===== پنل انتخاب تم (حالت نمایش) — باز/بستن + اعمال و ذخیره ===== */
-(function () {
-  var fab = document.getElementById('theme-fab');
-  var panel = document.getElementById('theme-panel');
-  var themeCss = document.getElementById('theme-css');
-  var csrf = {{ csrf_token|tojson }};
-  if (!fab || !panel) return;
-  function toggle(open) {
-    panel.classList.toggle('open', open !== undefined ? open : !panel.classList.contains('open'));
-  }
-  fab.addEventListener('click', function () { toggle(); });
-  document.querySelectorAll('[data-close-theme]').forEach(function (b) { b.addEventListener('click', function () { toggle(false); }); });
-  document.addEventListener('click', function (e) {
-    if (panel.classList.contains('open') && !panel.contains(e.target) && !fab.contains(e.target)) toggle(false);
-  });
-  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') toggle(false); });
-
-  function applyTheme(tid) {
-    if (themeCss) themeCss.href = '/static/css/themes/' + tid + '.css?v=' + Date.now();
-    document.querySelectorAll('.theme-opt').forEach(function (o) {
-      var on = o.dataset.theme === tid;
-      o.classList.toggle('active', on);
-      var ck = o.querySelector('.check');
-      if (on && !ck) { var s = document.createElement('span'); s.className = 'check'; s.textContent = '✓'; o.appendChild(s); }
-      else if (!on && ck) ck.remove();
-    });
-  }
-  document.querySelectorAll('.theme-opt').forEach(function (o) {
-    o.addEventListener('click', function () {
-      var tid = o.dataset.theme;
-      applyTheme(tid);
-      fetch('/api/theme', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
-        body: JSON.stringify({ theme: tid })
-      }).then(function (r) { return r.json().catch(function () { return {}; }); })
-        .then(function (d) { if (d && d.ok) toggle(false); })
-        .catch(function () { /* آفلاین — تم اعمال شده ولی ذخیره نشد */ });
-    });
-  });
-})();
-</script>
 <script src="/static/js/jalali.js?v={{ asset_v() }}"></script>
 <script src="/static/js/form-feedback.js?v={{ asset_v() }}"></script>
 {% block scripts %}{% endblock %}

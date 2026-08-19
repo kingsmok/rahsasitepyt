@@ -48,8 +48,7 @@ input[type="checkbox"],input[type="radio"],input[type="color"]{min-height:0}
 .admin-body{padding-bottom:0!important;background:var(--bg)}
 .admin-body>.site-header,.admin-body>.dk-footer-only,.admin-body>.mb-footer-only,
 .admin-body>.support-fab,.admin-body>.support-pop,.admin-body>.mobile-menu-fab,
-.admin-body>.mobile-menu,.admin-body>.theme-fab,.admin-body>.theme-panel,
-.admin-body>.back-to-top{display:none!important}
+.admin-body>.mobile-menu,.admin-body>.back-to-top{display:none!important}
 .admin-body #main-content{min-height:100vh}
 .admin-layout{grid-template-columns:270px minmax(0,1fr);min-height:100vh;background:var(--bg)}
 .admin-shell{min-width:0;display:flex;flex-direction:column}

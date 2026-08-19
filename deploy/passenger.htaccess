@@ -12,7 +12,7 @@
 PassengerAppRoot /home/username/domain.com
 
 # پایتون محیط مجازی پروژه — حتماً venv بسازید:
-#   python3 -m venv venv && ./venv/bin/pip install -r requirements.txt
+#   python3.11 -m venv venv && bash scripts/install_dependencies.sh ./venv/bin/python
 PassengerPython /home/username/domain.com/venv/bin/python
 
 # حالت اجرا: production | development

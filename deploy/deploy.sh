@@ -8,12 +8,23 @@ set -euo pipefail
 APP_NAME="academy"
 APP_DIR="/var/www/$APP_NAME"
 DOMAIN="${DOMAIN:-academy.example.com}"   # دامنه واقعی را قبل از اجرا بگذارید
+PYTHON_BIN="${PYTHON_BIN:-python3.11}"     # runtime پشتیبانی‌شدهٔ این انتشار
 
 echo "🚀 شروع استقرار $APP_NAME روی $DOMAIN"
 
 # ۱) پیش‌نیازها
 apt update -y
-apt install -y python3 python3-venv python3-pip nginx certbot python3-certbot-nginx git
+apt install -y nginx certbot python3-certbot-nginx git
+if ! command -v "$PYTHON_BIN" >/dev/null 2>&1; then
+    echo "❌ CPython 3.11 پیدا نشد. ابتدا Python 3.11 و ماژول venv آن را نصب کنید،" >&2
+    echo "   سپس در صورت نیاز PYTHON_BIN=/path/to/python3.11 را تعیین کنید." >&2
+    exit 2
+fi
+if ! "$PYTHON_BIN" -c 'import platform,sys; raise SystemExit(0 if platform.python_implementation()=="CPython" and sys.version_info[:2]==(3,11) else 1)'; then
+    echo "❌ مفسر انتخاب‌شده باید CPython 3.11 باشد: $PYTHON_BIN" >&2
+    exit 2
+fi
+PYTHON_BIN="$("$PYTHON_BIN" -c 'import sys; print(sys.executable)')"
 
 # ۲) انتقال پروژه (در صورت دستی بودن، پوشه از قبل اینجاست)
 if [ ! -d "$APP_DIR" ]; then
@@ -23,9 +34,9 @@ fi
 cd "$APP_DIR"
 
 # ۳) محیط پایتون
-python3 -m venv venv
-./venv/bin/pip install --upgrade pip
-./venv/bin/pip install -r requirements.txt
+# اسکریپت نصب برای PyPI کند timeout/retry مناسب دارد و فقط wheel باینری می‌پذیرد.
+"$PYTHON_BIN" -m venv venv
+bash scripts/install_dependencies.sh ./venv/bin/python
 
 # ۴) مجوزها (www-data برای instance و logs)
 chown -R www-data:www-data "$APP_DIR/instance" "$APP_DIR/logs" "$APP_DIR/static/uploads" 2>/dev/null || true
@@ -38,7 +49,7 @@ if [ ! -f .env ]; then
 fi
 # تولید SECRET_KEY امن اگر هنوز پیش‌فرض است
 if grep -q "changeme\|dev-only" .env; then
-    NEW_KEY=$(python3 -c "import secrets; print(secrets.token_hex(32))")
+    NEW_KEY=$("$PYTHON_BIN" -c "import secrets; print(secrets.token_hex(32))")
     sed -i "s/^SECRET_KEY=.*/SECRET_KEY=$NEW_KEY/" .env
     echo "🔑 SECRET_KEY امن تولید شد"
 fi

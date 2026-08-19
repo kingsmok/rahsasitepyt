@@ -238,7 +238,7 @@
 - 🔴 **پکیج ناقص در هاست** (مثلاً pip روی Pillow شکست خورده): 
   - `passenger_wsgi.py` fallback استندرد (بدون flask): صفحه HTML با خطای دقیق + دستور نصب — بهجای 500 خام
   - `run_install`: چک `import pymysql` با پیام نصب واضح
-  - `requirements.txt`: مارکر `python_version` — Pillow 9.5/cryptography 41 فقط برای ≤3.11، نسخه جدید برای 3.12+ (pip دیگر وسط نصب نمیشکند)
+  - `requirements.txt`: lock کامل CPython 3.11 و wheel-only برای همهٔ بسته‌ها؛ greenlet 3.2.5 و Pillow 12.2.0 با wheel سازگار manylinux2014 (pip سراغ کامپایل سورس نمی‌رود)
 - 🔴 **/install/status غنی**: پایتون، flask، sqlalchemy، pymysql، pillow، cryptography، قابل نوشتن instance، وضعیت دیتابیس — ویزارد پنل «🩺 بررسی سلامت سرور» خودکار نشان میدهد
 - 🔴 باگ env_db_url (مقدار کهنه از boot) → override=True برای خواندن تازه
 - ✅ تستهای واقعی (پایتون 3.11 + نسخههای پینشده): نصب ناقص → ریدایرکت تعمیر (نه 500) · تعمیر MySQL غلط → پیام واضح · تعمیر MySQL درست → ۶۵ جدول + داده ✅ · fallback بدون flask → صفحه راهنما ✅ · pytest 52 ✅

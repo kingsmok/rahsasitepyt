@@ -6,6 +6,7 @@ import json
 
 from sqlalchemy import inspect, text
 
+import updater
 from models import User, db
 from updater import (
     UpdateError, _display_repo, _migrate_db, _overlay_skip, _overlay_tree,
@@ -58,6 +59,93 @@ def test_github_webhook_signature_is_required(app, client, monkeypatch):
         headers={'X-GitHub-Event': 'ping', 'X-Hub-Signature-256': 'sha256=bad'},
     )
     assert bad.status_code == 401
+
+
+def _post_signed_push(client, secret, payload):
+    body = json.dumps(payload).encode('utf-8')
+    signature = 'sha256=' + hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
+    return client.post(
+        '/admin/update/webhook', data=body, content_type='application/json',
+        headers={'X-GitHub-Event': 'push', 'X-Hub-Signature-256': signature},
+    )
+
+
+def test_webhook_uses_default_branch_when_git_branch_is_blank(app, client, monkeypatch):
+    secret = 'test-webhook-secret'
+    calls = []
+    monkeypatch.setenv('GITHUB_WEBHOOK_SECRET', secret)
+    monkeypatch.setattr('updater.get_update_branch', lambda: '')
+    monkeypatch.setattr(
+        'updater.start_update',
+        lambda repo=None, branch=None: (calls.append(branch) is None, 'started'),
+    )
+    app.config['INSTALL_GUARD'] = False
+
+    feature = _post_signed_push(client, secret, {
+        'ref': 'refs/heads/feature/dangerous',
+        'after': 'a' * 40,
+        'repository': {'default_branch': 'main'},
+    })
+    assert feature.status_code == 200
+    assert feature.get_json()['ignored'] is True
+    assert calls == []
+
+    main = _post_signed_push(client, secret, {
+        'ref': 'refs/heads/main',
+        'after': 'b' * 40,
+        'repository': {'default_branch': 'main'},
+    })
+    assert main.status_code == 202
+    assert main.get_json()['started'] is True
+    assert calls == ['main']
+
+
+def test_webhook_configured_branch_overrides_payload_default(app, client, monkeypatch):
+    secret = 'test-webhook-secret'
+    calls = []
+    monkeypatch.setenv('GITHUB_WEBHOOK_SECRET', secret)
+    monkeypatch.setattr('updater.get_update_branch', lambda: 'release')
+    monkeypatch.setattr(
+        'updater.start_update',
+        lambda repo=None, branch=None: (calls.append(branch) is None, 'started'),
+    )
+    app.config['INSTALL_GUARD'] = False
+
+    ignored = _post_signed_push(client, secret, {
+        'ref': 'refs/heads/main',
+        'after': 'a' * 40,
+        'repository': {'default_branch': 'main'},
+    })
+    accepted = _post_signed_push(client, secret, {
+        'ref': 'refs/heads/release',
+        'after': 'b' * 40,
+        'repository': {'default_branch': 'main'},
+    })
+
+    assert ignored.get_json()['ignored'] is True
+    assert accepted.status_code == 202
+    assert calls == ['release']
+
+
+def test_webhook_ignores_deleted_branch(app, client, monkeypatch):
+    secret = 'test-webhook-secret'
+    monkeypatch.setenv('GITHUB_WEBHOOK_SECRET', secret)
+    monkeypatch.setattr('updater.get_update_branch', lambda: 'main')
+    monkeypatch.setattr(
+        'updater.start_update',
+        lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError('must not start')),
+    )
+    app.config['INSTALL_GUARD'] = False
+
+    response = _post_signed_push(client, secret, {
+        'ref': 'refs/heads/main',
+        'after': '0' * 40,
+        'deleted': True,
+        'repository': {'default_branch': 'main'},
+    })
+
+    assert response.status_code == 200
+    assert response.get_json()['ignored'] is True
 
 
 def test_parse_github_urls_and_tokens():
@@ -156,3 +244,124 @@ def test_check_for_update_unknown_branch_is_clear(monkeypatch):
         assert 'no-such-branch' in str(exc)
     else:
         raise AssertionError('expected UpdateError')
+
+
+def _mock_git_update_source(monkeypatch, requirements='same'):
+    monkeypatch.setattr(updater, '_current_commit', lambda revision='HEAD': 'old-commit')
+    monkeypatch.setattr(updater, '_read_local_requirements', lambda: requirements)
+    monkeypatch.setattr(updater, '_preserve_local_files', lambda: {})
+    monkeypatch.setattr(updater, '_restore_local_files', lambda saved: None)
+    monkeypatch.setattr(updater, '_set_step', lambda *args, **kwargs: None)
+    monkeypatch.setattr(updater, '_select_branch', lambda repo, branch=None: 'main')
+    monkeypatch.setattr(updater, '_ensure_local_git', lambda: True)
+    monkeypatch.setattr(
+        updater, '_fetch_target', lambda repo, branch: ('target-ref', 'new-commit')
+    )
+    monkeypatch.setattr(updater, '_verify_target', lambda ref: set(updater._REQUIRED_FILES))
+    monkeypatch.setattr(updater, '_changed_files', lambda old, new: ['app.py'])
+    monkeypatch.setattr(updater, '_git_file', lambda ref, path: requirements)
+
+
+def test_dependency_preflight_failure_does_not_replace_code(monkeypatch):
+    _mock_git_update_source(monkeypatch, requirements='old')
+    git_calls = []
+
+    def fake_git(args, timeout=120):
+        git_calls.append(args)
+        return 0, 'ok'
+
+    monkeypatch.setattr(updater, '_git', fake_git)
+    monkeypatch.setattr(
+        updater, '_git_file',
+        lambda ref, path: 'new dependency lock',
+    )
+    monkeypatch.setattr(
+        updater, '_install_changed_dependencies',
+        lambda *args, **kwargs: (_ for _ in ()).throw(UpdateError('pip failed clearly')),
+    )
+
+    try:
+        updater._perform_update('https://github.com/example/project.git', 'main')
+    except UpdateError as exc:
+        assert 'pip failed clearly' in str(exc)
+    else:
+        raise AssertionError('expected UpdateError')
+
+    assert not any(call[:2] == ['reset', '--hard'] for call in git_calls)
+
+
+def test_migration_failure_rolls_code_back_to_old_commit(monkeypatch):
+    _mock_git_update_source(monkeypatch)
+    reset_targets = []
+
+    def fake_git(args, timeout=120):
+        if args[:2] == ['reset', '--hard']:
+            reset_targets.append(args[2])
+        return 0, 'ok'
+
+    monkeypatch.setattr(updater, '_git', fake_git)
+    monkeypatch.setattr(
+        updater, '_install_changed_dependencies',
+        lambda *args, **kwargs: 'وابستگی‌ها تغییری نکرده‌اند.',
+    )
+    monkeypatch.setattr(updater, '_backup_sqlite_database', lambda: None)
+    monkeypatch.setattr(
+        updater, '_run_fresh_migration',
+        lambda: (_ for _ in ()).throw(UpdateError('migration failed clearly')),
+    )
+    monkeypatch.setattr(updater, '_clear_python_cache', lambda: None)
+
+    try:
+        updater._perform_update('https://github.com/example/project.git', 'main')
+    except UpdateError as exc:
+        assert 'migration failed clearly' in str(exc)
+        assert 'Rollback' in str(exc)
+        assert exc.restart_required is True
+    else:
+        raise AssertionError('expected UpdateError')
+
+    assert reset_targets == ['target-ref', 'old-commit']
+
+
+def test_archive_code_snapshot_restores_replaced_and_added_files(tmp_path, monkeypatch):
+    instance = tmp_path / 'instance'
+    instance.mkdir()
+    (tmp_path / 'app.py').write_text('old', encoding='utf-8')
+    monkeypatch.setattr(updater, 'BASE_DIR', str(tmp_path))
+    monkeypatch.setattr(updater, 'INSTANCE_DIR', str(instance))
+
+    snapshot = updater._snapshot_code_files({'app.py', 'new_module.py'})
+    try:
+        (tmp_path / 'app.py').write_text('new', encoding='utf-8')
+        (tmp_path / 'new_module.py').write_text('new', encoding='utf-8')
+        updater._restore_code_snapshot(snapshot)
+
+        assert (tmp_path / 'app.py').read_text(encoding='utf-8') == 'old'
+        assert not (tmp_path / 'new_module.py').exists()
+    finally:
+        updater._cleanup_code_snapshot(snapshot)
+
+
+def test_sqlite_backup_can_restore_migration_changes(tmp_path, monkeypatch):
+    import sqlite3
+
+    instance = tmp_path / 'instance'
+    instance.mkdir()
+    database = instance / 'academy.db'
+    with sqlite3.connect(database) as connection:
+        connection.execute('CREATE TABLE sample (value TEXT)')
+        connection.execute("INSERT INTO sample VALUES ('before')")
+
+    monkeypatch.setattr(updater, 'BASE_DIR', str(tmp_path))
+    monkeypatch.setattr(updater, 'INSTANCE_DIR', str(instance))
+    monkeypatch.delenv('DATABASE_URL', raising=False)
+    backup = updater._backup_sqlite_database()
+    try:
+        with sqlite3.connect(database) as connection:
+            connection.execute("UPDATE sample SET value='after'")
+        updater._restore_sqlite_database(backup)
+        with sqlite3.connect(database) as connection:
+            value = connection.execute('SELECT value FROM sample').fetchone()[0]
+        assert value == 'before'
+    finally:
+        updater._cleanup_sqlite_backup(backup)

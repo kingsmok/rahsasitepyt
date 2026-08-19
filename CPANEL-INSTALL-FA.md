@@ -24,7 +24,7 @@
 
 | فیلد | مقدار مورد نظر | توضیح |
 | :--- | :--- | :--- |
-| **Python version** | `3.11` (یا `3.10`) | ترجیحاً نسخه 3.11 را انتخاب کنید |
+| **Python version** | `3.11` | **الزامی:** وابستگی‌های این انتشار برای CPython 3.11 قفل شده‌اند |
 | **Application root** | `public_html` (یا نام پوشه شما) | مسیری که فایل‌ها را آپلود کردید |
 | **Application URL** | `yourdomain.com` | دامنه یا زیردامنه سایت |
 | **Application startup file** | `passenger_wsgi.py` | **بسیار مهم:** حتماً همین نام نوشته شود |
@@ -41,14 +41,15 @@
 * **روش الف (از داخل همان صفحه):**
   - در بخش **Configuration files** نام `requirements.txt` را بنویسید و دکمه **Add** را بزنید.
   - روی دکمه **Run Pip Install** که ظاهر می‌شود کلیک کنید و چند لحظه صبر کنید تا پیام موفقیت‌آمیز بودن نصب نشان داده شود.
+  - اگر پنل خطای timeout یا `Failed building wheel` داد، به‌جای تکرار این دکمه از روش ب استفاده کنید.
 
-* **روش ب (با ترمینال سی‌پنل - سریع‌تر):**
+* **روش ب (با ترمینال سی‌پنل — پیشنهادی و مقاوم در برابر timeout):**
   - در بالای صفحه Setup Python App، دستوری به شکل زیر نمایش داده می‌شود:
     `source /home/username/virtualenv/public_html/3.11/bin/activate && cd /home/username/public_html`
   - آن دستور را کپی کنید، ابزار **Terminal** را در سی‌پنل باز کرده، دستور را پیست و Enter کنید.
-  - سپس دستور زیر را اجرا کنید:
+  - سپس اسکریپت نصب پروژه را اجرا کنید. این اسکریپت CPython 3.11 را بررسی می‌کند، timeout را از ۱۵ به ۱۲۰ ثانیه افزایش می‌دهد، ۱۰ بار تلاش می‌کند، فقط wheel باینری نصب می‌کند و در پایان `pip check` می‌گیرد:
     ```bash
-    pip install -r requirements.txt
+    bash scripts/install_dependencies.sh
     ```
 
 ---
@@ -88,8 +89,8 @@
 2. در سی‌پنل ابزار **Terminal** را باز کرده و دستورات زیر را اجرا کنید:
    ```bash
    cd ~/public_html
-   python3 -m venv venv
-   ./venv/bin/pip install -r requirements.txt
+   python3.11 -m venv venv
+   bash scripts/install_dependencies.sh ./venv/bin/python
    ```
 3. فایل نمونه `.htaccess` را از پوشه `deploy` به ریشه سایت کپی کنید:
    ```bash
@@ -130,6 +131,15 @@
 ---
 
 ## 🛠️ عیب‌یابی خطاهای متداول نصب
+
+### خطای `ReadTimeoutError` یا `Failed building wheel for greenlet/Pillow`
+- **علت:** timeout پیش‌فرض pip فقط ۱۵ ثانیه است. همچنین `greenlet==3.0.3` برای Python 3.13+ wheel نداشت و Pillow 12.3 روی Linux قدیمی cPanel به کامپایل سورس می‌افتاد.
+- **رفع‌شده در این نسخه:** همهٔ وابستگی‌ها برای CPython 3.11 قفل شده‌اند و نصب فقط از wheel سازگار `manylinux2014` مجاز است؛ `greenlet==3.2.5` و `Pillow==12.2.0` دیگر وارد کامپایل C نمی‌شوند.
+- **راه‌حل:** ابتدا فرمان `source .../bin/activate && cd ...` نمایش‌داده‌شده در Setup Python App را اجرا کنید و سپس:
+  ```bash
+  bash scripts/install_dependencies.sh
+  ```
+  اسکریپت ابزارهای نصب را به‌روز می‌کند، timeout را ۱۲۰ ثانیه و retries را ۱۰ قرار می‌دهد و در پایان `pip check` اجرا می‌کند. اگر فقط `ReadTimeoutError` باقی ماند، اتصال سرور به `pypi.org` قطع یا محدود است؛ چند دقیقه بعد دوباره اجرا کنید یا از پشتیبانی هاست بخواهید دسترسی HTTPS به `pypi.org` و `files.pythonhosted.org` را بررسی کند. اگر خودِ ارائه‌دهندهٔ هاست یک mirror معتبر معرفی کرد، پیش از نصب `export PIP_INDEX_URL=https://.../simple/` را اجرا کنید؛ از mirror ناشناس استفاده نکنید.
 
 ### خطای «Duplicate entry '??????-?????' for key 'slug'»
 - **علت:** این خطا زمانی رخ می‌دهد که انکودینگ (Collation) دیتابیس MySQL روی `latin1` تنظیم شده باشد. در این حالت حروف فارسی به علامت سؤال (`?`) تبدیل شده و اسلاگ‌های دسته‌ها و دوره‌ها تکراری می‌شوند.

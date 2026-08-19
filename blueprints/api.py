@@ -111,22 +111,6 @@ def favorite_toggle():
     return jsonify(ok=True, fav=True, msg='به علاقه‌مندی‌ها اضافه شد', count=Favorite.query.filter_by(user_id=g.user.id).count())
 
 
-@api_bp.route('/theme', methods=['POST'])
-def set_theme():
-    theme = ((request.get_json(silent=True) or {}).get('theme') if request.is_json else request.form.get('theme')) or ''
-    from app import VALID_THEMES
-    if theme not in VALID_THEMES:
-        return jsonify(ok=False), 400
-    if g.user:
-        u = db.session.get(User, g.user.id)
-        if u:
-            u.theme = theme
-            db.session.commit()
-    resp = jsonify(ok=True, theme=theme)
-    resp.set_cookie('lms_theme', theme, max_age=60 * 60 * 24 * 365)
-    return resp
-
-
 @api_bp.route('/form', methods=['POST'])
 def submit_form():
     from models import ContactMessage, NewsletterEmail

@@ -72,7 +72,6 @@
     <div class="ss-field"><label>آپلود لوگو</label><input type="file" name="custom_logo_file" accept="image/*"></div>
     <div class="ss-field"><label>عرض محتوا (kit_container)</label><input name="kit_container" value="{{ vals.get('kit_container','') }}" placeholder="مثلا 1240"></div>
     <div class="ss-field"><label>گردی گوشه (kit_radius)</label><input name="kit_radius" value="{{ vals.get('kit_radius','') }}" placeholder="مثلا 14"></div>
-    <div class="ss-field"><label>انتخاب تم توسط بازدیدکننده</label><select name="allow_theme_switcher"><option value="0" {{ 'selected' if vals.get('allow_theme_switcher','0')=='0' }}>مخفی — ظاهر ثابت برند (پیشنهادی)</option><option value="1" {{ 'selected' if vals.get('allow_theme_switcher')=='1' }}>نمایش پنل ۴۳ تم</option></select><p class="ss-hint">برای نسخه دمو روشن و برای سایت مشتری خاموش باشد.</p></div>
     <div class="ss-field"><label>متن درباره ما</label><textarea rows="3" name="about_text">{{ vals.get('about_text','') }}</textarea></div>
   </div>
   <p class="ss-hint">💡 لوگوی فعلی: <code>{{ vals.get('custom_logo','—') }}</code> — آپلود جدید جایگزین می‌شود.</p>

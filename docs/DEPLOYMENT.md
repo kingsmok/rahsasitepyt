@@ -81,12 +81,14 @@ DOMAIN=academy.example.com sudo bash deploy/deploy.sh
 ### ۲) استقرار دستی
 ```bash
 # نصب پیش‌نیازها
-sudo apt update && sudo apt install -y python3-venv nginx certbot python3-certbot-nginx
+sudo apt update && sudo apt install -y nginx certbot python3-certbot-nginx
+# CPython 3.11 و ماژول venv آن را از منبع رسمی سیستم‌عامل/شرکت هاست نصب کنید.
+python3.11 --version
 
-# محیط پایتون
+# محیط پایتون 3.11
 cd /var/www/academy
-python3 -m venv venv
-./venv/bin/pip install -r requirements.txt
+python3.11 -m venv venv
+bash scripts/install_dependencies.sh ./venv/bin/python
 
 # .env
 cp .env.example .env
@@ -163,8 +165,8 @@ sudo nginx -t && sudo systemctl reload nginx
 1. **انتقال پروژه** به هاست (مثلاً `/home/user/domain.com/`)
 2. **محیط مجازی** بسازید:
    ```bash
-   python3 -m venv venv
-   ./venv/bin/pip install -r requirements.txt
+   python3.11 -m venv venv
+   bash scripts/install_dependencies.sh ./venv/bin/python
    ```
 3. **`.env`** بسازید و `SECRET_KEY` امن بگذارید:
    ```bash

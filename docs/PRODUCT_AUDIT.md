@@ -231,7 +231,7 @@ tests/
 | Logging ساختاریافته | فقط لاگر پیشفرض | ✅ RotatingFileHandler (5MB×5) + فرمت `زمان\|سطح\|logger\|پیام` |
 | محدودیت طول ورودی | پیام ۱۰۰KB پذیرفته میشد | ✅ `clamp_field()` در ۱۰ فرم/نقطه — تست: ۱۰۰KB → ۵۰۰۰ |
 | Rate limit | فقط حافظه (شکننده با چند worker) | ✅ Redis-ready: `REDIS_URL` → Redis INCR+EXPIRE، بدون → fallback حافظه |
-| CI | وجود نداشت | ✅ `.github/workflows/ci.yml` — pytest روی Python 3.11/3.12 |
+| CI | وجود نداشت | ✅ `.github/workflows/ci.yml` — pytest روی Python 3.11 |
 | ایندکسها | فقط FK پیشفرض | ✅ ۱۶ ایندکس اجرا + ۱۱ مدل با `__table_args__` |
 | آپلودهای خصوصی | داخل `static/uploads` | ✅ منتقل به `instance/uploads` + route محافظتشده `/uploads/...` |
 | کش builder | هر ویجت کوئری مستقل (۴۸) | ✅ TTL cache — **۴۸ → ۱۹ کوئری (۶۰٪)** |

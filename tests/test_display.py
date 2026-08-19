@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""تست حالت‌های نمایش — اعمال طراحی سایت (container/radius)، پنل تم، API تم."""
+"""تست ظاهر سایت — اعمال طراحی مدیر و نبود انتخاب‌گر رنگ عمومی."""
 from models import db, Setting
 
 
@@ -50,47 +50,35 @@ def test_pd_design_uses_persian_theme(client, app):
 
 
 # ---------------------------------------------------------------
-# پنل انتخاب تم
+# حذف انتخاب‌گر رنگ/تم عمومی
 # ---------------------------------------------------------------
-def test_theme_panel_present(client, app):
-    """پنل تم باید در صفحه موجود باشد و تم‌ها را نمایش دهد."""
+def test_public_theme_picker_is_removed_from_all_base_pages(client, app):
+    """حتی تنظیم قدیمی نباید دکمه یا پنل شناور رنگ را دوباره نمایش دهد."""
+    _set(app, 'allow_theme_switcher', '1')
+    for path in ('/', '/courses', '/auth/login'):
+        response = client.get(path)
+        assert response.status_code == 200
+        body = response.get_data(as_text=True)
+        assert 'id="theme-fab"' not in body
+        assert 'id="theme-panel"' not in body
+        assert 'data-close-theme' not in body
+        assert "fetch('/api/theme'" not in body
+
+
+def test_public_theme_api_is_removed(client):
+    """مسیر قدیمی نباید امکان ذخیره تم شخصی یا کوکی رنگ ایجاد کند."""
+    response = client.post('/api/theme', json={'theme': 'theme-08'})
+    assert response.status_code == 404
+    assert 'lms_theme=' not in response.headers.get('Set-Cookie', '')
+
+
+def test_legacy_theme_cookie_cannot_override_admin_design(client, app):
+    """رنگ سایت برای همه بازدیدکنندگان از طراحی مدیر می‌آید، نه کوکی قدیمی."""
+    _set(app, 'site_design', '1')
+    client.set_cookie('lms_theme', 'theme-08')
     body = client.get('/').get_data(as_text=True)
-    assert 'theme-fab' in body
-    assert 'theme-panel' in body
-    assert 'آبی کلاسیک' in body      # تم ۰۱
-    assert 'فیروزه‌ای اصفهان' in body  # تم ایرانی pd-01
-
-
-def test_theme_panel_can_be_hidden_for_commercial_brand(client, app):
-    _set(app, 'allow_theme_switcher', '0')
-    body = client.get('/').get_data(as_text=True)
-    assert 'id="theme-fab"' not in body
-    assert 'id="theme-panel"' not in body
-
-
-def test_theme_panel_shows_all_themes(client, app):
-    """هر ۴۳ تم باید در پنل حضور داشته باشد."""
-    from app import THEMES
-    body = client.get('/').get_data(as_text=True)
-    for t in THEMES:
-        assert f'data-theme="{t["id"]}"' in body, f'missing {t["id"]}'
-
-
-def test_set_theme_api_works(client, app):
-    """API تغییر تم باید کوکی را ست کند و تم را اعمال کند."""
-    r = client.post('/api/theme', json={'theme': 'theme-08'})
-    assert r.status_code == 200
-    assert r.get_json().get('ok') is True
-    assert 'lms_theme=theme-08' in r.headers.get('Set-Cookie', '')
-    # رندر بعدی باید تم جدید را لینک کند
-    body = client.get('/').get_data(as_text=True)
-    assert 'themes/theme-08.css' in body
-
-
-def test_set_theme_api_rejects_invalid(client, app):
-    """تم نامعتبر نباید پذیرفته شود."""
-    r = client.post('/api/theme', json={'theme': 'theme-999'})
-    assert r.status_code == 400
+    assert 'themes/theme-22.css' in body
+    assert 'themes/theme-08.css' not in body
 
 
 def test_missing_course_image_uses_neutral_placeholder(client, app):

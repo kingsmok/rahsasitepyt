@@ -332,7 +332,6 @@ def seed():
         'maintenance': '0',
         'allow_register': '1',
         'allow_phone_login': '1',
-        'allow_theme_switcher': '1',
         'site_design': '1',
         'home_design': '1',
         'about_design': '1',

@@ -137,7 +137,7 @@ Git diff check: OK
 
 ```bash
 python -m venv .venv
-.venv/bin/pip install -r requirements.txt
+bash scripts/install_dependencies.sh ./.venv/bin/python
 .venv/bin/pytest -q
 ```
 

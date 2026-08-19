@@ -10,6 +10,7 @@
 ماژول‌های پایتونِ پردازش وب هنوز نسخهٔ قدیمی را در حافظه دارند، اجرای مایگریشن
 در همان Thread باعث می‌شد ستون‌های نسخهٔ جدید اصلاً دیده نشوند.
 """
+import filecmp
 import json
 import os
 import re
@@ -48,7 +49,7 @@ LOCK_FILE = os.path.join(INSTANCE_DIR, '.update.lock')
 APPLIED_COMMIT_FILE = os.path.join(INSTANCE_DIR, '.update_commit')
 STALE_SECONDS = 1800  # مایگریشن دیتابیس‌های بزرگ ممکن است چند دقیقه طول بکشد.
 UPDATE_REF_PREFIX = 'refs/remotes/academy-update'
-_REQUIRED_FILES = ('app.py', 'models.py', 'passenger_wsgi.py')
+_REQUIRED_FILES = ('app.py', 'models.py', 'passenger_wsgi.py', 'requirements.txt')
 _PRESERVE_FILES = ('instance/.update_progress.json', 'instance/update_history.json',
                    'instance/.update_commit')
 _BRANCH_RE = re.compile(r'^[A-Za-z0-9][A-Za-z0-9._/-]*$')
@@ -671,26 +672,159 @@ def _read_local_requirements():
         return None
 
 
-def _requirements_changed(old_commit, old_requirements=None):
+def _requirements_changed(old_commit, old_requirements=None, new_requirements=None):
     old = old_requirements
     if old is None and old_commit:
         old = _git_file(old_commit, 'requirements.txt')
-    new = _read_local_requirements()
+    new = new_requirements if new_requirements is not None else _read_local_requirements()
     return old is not None and new is not None and old != new
 
 
-def _install_changed_dependencies(old_commit, old_requirements=None):
-    if not _requirements_changed(old_commit, old_requirements=old_requirements):
+def _bounded_env_int(name, default, minimum, maximum):
+    """خواندن عدد تنظیمات updater با خطای واضح و جلوگیری از timeout نامحدود."""
+    raw = os.environ.get(name, str(default)).strip()
+    try:
+        value = int(raw)
+    except (TypeError, ValueError):
+        raise UpdateError('تنظیم {} باید عدد صحیح باشد (مقدار فعلی: {!r}).'.format(name, raw))
+    if not minimum <= value <= maximum:
+        raise UpdateError(
+            'تنظیم {} باید بین {} و {} باشد (مقدار فعلی: {}).'.format(
+                name, minimum, maximum, value
+            )
+        )
+    return value
+
+
+def _validate_update_runtime():
+    """وابستگی‌های قفل‌شده فقط با همان runtime هاست نصب شوند."""
+    implementation = getattr(sys, 'implementation', None)
+    implementation_name = getattr(implementation, 'name', '')
+    if implementation_name != 'cpython' or sys.version_info[:2] != (3, 11):
+        raise UpdateError(
+            'نصب خودکار وابستگی‌ها فقط برای CPython 3.11 پشتیبانی می‌شود؛ '
+            'مفسر فعلی {} {}.{} است. Python App هاست را روی 3.11 تنظیم کنید.'.format(
+                implementation_name or 'unknown', sys.version_info.major, sys.version_info.minor
+            )
+        )
+
+
+def _pip_settings():
+    process_timeout = _bounded_env_int('PIP_INSTALL_TIMEOUT', 900, 60, 3600)
+    request_timeout = _bounded_env_int('PIP_DEFAULT_TIMEOUT', 120, 15, 600)
+    retries = _bounded_env_int('PIP_RETRIES', 10, 0, 50)
+    env = {
+        **_git_env(),
+        'PIP_DISABLE_PIP_VERSION_CHECK': '1',
+        'PIP_DEFAULT_TIMEOUT': str(request_timeout),
+        'PIP_RETRIES': str(retries),
+        'PIP_PREFER_BINARY': '1',
+        'PIP_ONLY_BINARY': ':all:',
+    }
+    common = [
+        '--disable-pip-version-check',
+        '--timeout', str(request_timeout),
+        '--retries', str(retries),
+        '--prefer-binary',
+        '--only-binary=:all:',
+    ]
+    return process_timeout, env, common
+
+
+def _pip_failure(stage, output):
+    detail = _redact_text((output or '').strip()[-1200:]) or 'pip خروجی بیشتری ثبت نکرد.'
+    return UpdateError('{} شکست خورد:\n{}'.format(stage, detail))
+
+
+def _install_requirements_file(requirements_path, upgrade_tools=True):
+    """نصب wheel-only و سپس ``pip check`` با همان مفسر Passenger."""
+    _validate_update_runtime()
+    process_timeout, pip_env, common = _pip_settings()
+    pip = [sys.executable, '-m', 'pip']
+
+    if upgrade_tools:
+        code, out = _run(
+            pip + ['install'] + common + ['--upgrade', 'pip', 'setuptools', 'wheel'],
+            timeout=process_timeout, env=pip_env,
+        )
+        if code != 0:
+            raise _pip_failure('ارتقای pip/setuptools/wheel', out)
+
+    code, out = _run(
+        pip + ['install'] + common + ['-r', requirements_path],
+        timeout=process_timeout, env=pip_env,
+    )
+    if code != 0:
+        raise _pip_failure('نصب requirements.txt جدید', out)
+
+    code, out = _run(pip + ['check'], timeout=min(process_timeout, 300), env=pip_env)
+    if code != 0:
+        raise _pip_failure('بررسی نهایی pip check', out)
+
+
+def _temporary_requirements(content):
+    """requirements نسخهٔ مقصد را پیش از جایگزینی کد در ریشه پروژه بساز."""
+    handle = tempfile.NamedTemporaryFile(
+        mode='w', encoding='utf-8', prefix='.requirements-update-', suffix='.txt',
+        dir=BASE_DIR, delete=False,
+    )
+    try:
+        handle.write(content)
+        handle.flush()
+        return handle.name
+    finally:
+        handle.close()
+
+
+def _install_changed_dependencies(old_commit, old_requirements=None,
+                                  new_requirements=None):
+    if not _requirements_changed(
+            old_commit, old_requirements=old_requirements,
+            new_requirements=new_requirements):
         return 'وابستگی‌ها تغییری نکرده‌اند.'
     flag = os.environ.get('UPDATE_INSTALL_DEPENDENCIES', '1').strip().lower()
     if flag in ('0', 'false', 'no', 'off'):
         return 'نصب وابستگی‌ها طبق تنظیم UPDATE_INSTALL_DEPENDENCIES غیرفعال است.'
-    pip_timeout = int(os.environ.get('PIP_INSTALL_TIMEOUT', '900'))
-    code, out = _run([sys.executable, '-m', 'pip', 'install', '-r', 'requirements.txt'],
-                     timeout=pip_timeout, env={**_git_env(), 'PIP_DISABLE_PIP_VERSION_CHECK': '1'})
-    if code != 0:
-        raise UpdateError('نصب وابستگی‌های جدید شکست خورد: ' + _redact_text(out[-500:]))
-    return 'وابستگی‌های جدید نصب شدند.'
+
+    requirements_path = os.path.join(BASE_DIR, 'requirements.txt')
+    temporary_path = ''
+    if new_requirements is not None:
+        temporary_path = _temporary_requirements(new_requirements)
+        requirements_path = temporary_path
+    try:
+        _install_requirements_file(requirements_path, upgrade_tools=True)
+    except Exception as exc:
+        rollback = ''
+        if old_requirements is not None:
+            try:
+                rollback = ' ' + _restore_dependencies(old_requirements)
+            except Exception as rollback_exc:
+                rollback = ' بازیابی وابستگی‌های قبلی نیز شکست خورد: {}'.format(rollback_exc)
+        if isinstance(exc, UpdateError):
+            raise UpdateError(str(exc) + rollback) from exc
+        raise
+    finally:
+        if temporary_path:
+            try:
+                os.remove(temporary_path)
+            except OSError:
+                pass
+    return 'وابستگی‌های جدید از wheel باینری نصب شدند و pip check موفق بود.'
+
+
+def _restore_dependencies(requirements_content):
+    """در rollback، مجموعهٔ دقیق وابستگی‌های نسخهٔ قبلی را برگردان."""
+    if requirements_content is None:
+        return 'requirements نسخهٔ قبلی در دسترس نبود.'
+    path = _temporary_requirements(requirements_content)
+    try:
+        _install_requirements_file(path, upgrade_tools=False)
+    finally:
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+    return 'وابستگی‌های نسخهٔ قبلی بازیابی و بررسی شدند.'
 
 
 def _run_fresh_migration():
@@ -718,7 +852,7 @@ def _run_fresh_migration():
     env['PYTHONPATH'] = BASE_DIR + os.pathsep + env.get('PYTHONPATH', '')
     
     # اجرا با timeout بلندتر برای دیتابیس‌های بزرگ
-    timeout = int(os.environ.get('DB_MIGRATION_TIMEOUT', '900'))
+    timeout = _bounded_env_int('DB_MIGRATION_TIMEOUT', 900, 60, 3600)
     
     code, out = _run(cmd, timeout=timeout, env=env)
     
@@ -889,13 +1023,167 @@ def _overlay_tree(src_root, dest_root):
                 continue
             source = os.path.join(dirpath, filename)
             dest = os.path.join(dest_root, *rel.split('/'))
+            # فایل یکسان را دوباره ننویس؛ به‌ویژه تغییر بی‌دلیل mtime فایل WSGI
+            # می‌تواند Passenger را وسط migration زودتر از موعد restart کند.
+            try:
+                if os.path.isfile(dest) and filecmp.cmp(source, dest, shallow=False):
+                    continue
+            except OSError:
+                pass
             os.makedirs(os.path.dirname(dest), exist_ok=True)
             shutil.copy2(source, dest)
             changed.append(rel)
     return changed
 
 
-def _apply_github_archive(repo, branch):
+def _archive_files(root):
+    files = set()
+    for dirpath, dirnames, filenames in os.walk(root):
+        rel_dir = os.path.relpath(dirpath, root)
+        if rel_dir == '.':
+            rel_dir = ''
+        kept = []
+        for dirname in dirnames:
+            rel = (rel_dir + '/' + dirname).replace('\\', '/').lstrip('/') \
+                if rel_dir else dirname
+            if not _overlay_skip(rel):
+                kept.append(dirname)
+        dirnames[:] = kept
+        for filename in filenames:
+            rel = os.path.relpath(os.path.join(dirpath, filename), root)
+            rel = rel.replace('\\', '/')
+            if not _overlay_skip(rel):
+                files.add(rel)
+    return files
+
+
+def _safe_project_path(relative_path):
+    rel = (relative_path or '').replace('\\', '/').lstrip('/')
+    normalized = os.path.normpath(rel).replace('\\', '/')
+    if not rel or normalized in ('.', '..') or normalized.startswith('../'):
+        raise UpdateError('مسیر نامعتبر در آرشیو بروزرسانی: {}'.format(relative_path))
+    candidate = os.path.join(BASE_DIR, *normalized.split('/'))
+    try:
+        if os.path.commonpath((os.path.realpath(BASE_DIR), os.path.realpath(candidate))) != \
+                os.path.realpath(BASE_DIR):
+            raise UpdateError('مسیر آرشیو از ریشهٔ پروژه خارج می‌شود: {}'.format(relative_path))
+    except ValueError:
+        raise UpdateError('مسیر نامعتبر در آرشیو بروزرسانی: {}'.format(relative_path))
+    return candidate, normalized
+
+
+def _snapshot_code_files(files):
+    """از فایل‌هایی که ZIP بازنویسی می‌کند snapshot موقت بگیر."""
+    os.makedirs(INSTANCE_DIR, exist_ok=True)
+    root = tempfile.mkdtemp(prefix='.code-rollback-', dir=INSTANCE_DIR)
+    entries = []
+    try:
+        for rel in sorted(set(files)):
+            if _overlay_skip(rel):
+                continue
+            dest, normalized = _safe_project_path(rel)
+            if os.path.isdir(dest):
+                raise UpdateError('فایل بروزرسانی با پوشهٔ موجود تداخل دارد: {}'.format(rel))
+            existed = os.path.isfile(dest)
+            entries.append((normalized, existed))
+            if existed:
+                backup = os.path.join(root, *normalized.split('/'))
+                os.makedirs(os.path.dirname(backup), exist_ok=True)
+                shutil.copy2(dest, backup)
+        return {'root': root, 'entries': entries}
+    except Exception:
+        shutil.rmtree(root, ignore_errors=True)
+        raise
+
+
+def _restore_code_snapshot(snapshot):
+    if not snapshot:
+        return
+    root = snapshot['root']
+    for rel, existed in snapshot['entries']:
+        dest, normalized = _safe_project_path(rel)
+        backup = os.path.join(root, *normalized.split('/'))
+        if existed:
+            os.makedirs(os.path.dirname(dest), exist_ok=True)
+            shutil.copy2(backup, dest)
+        elif os.path.isfile(dest) or os.path.islink(dest):
+            os.remove(dest)
+
+
+def _cleanup_code_snapshot(snapshot):
+    if snapshot:
+        shutil.rmtree(snapshot.get('root', ''), ignore_errors=True)
+
+
+def _sqlite_database_path():
+    url = os.environ.get('DATABASE_URL', '').strip()
+    if not url:
+        return os.path.join(INSTANCE_DIR, 'academy.db')
+    match = re.match(r'^sqlite(?:\+pysqlite)?:///(.*)$', url, re.I)
+    if not match:
+        return None
+    value = urllib.parse.unquote(match.group(1).split('?', 1)[0])
+    if value in ('', ':memory:'):
+        return None
+    if value.startswith('/'):
+        return os.path.abspath(value)
+    return os.path.abspath(os.path.join(BASE_DIR, value))
+
+
+def _backup_sqlite_database():
+    """قبل از migration از SQLite با API سازگار با WAL بکاپ بگیر."""
+    database_path = _sqlite_database_path()
+    if not database_path or not os.path.isfile(database_path):
+        return None
+    import sqlite3
+    os.makedirs(INSTANCE_DIR, exist_ok=True)
+    fd, backup_path = tempfile.mkstemp(prefix='.database-rollback-', suffix='.db',
+                                       dir=INSTANCE_DIR)
+    os.close(fd)
+    source = target = None
+    try:
+        source = sqlite3.connect(database_path, timeout=30)
+        target = sqlite3.connect(backup_path, timeout=30)
+        source.backup(target)
+        return {'database': database_path, 'backup': backup_path}
+    except Exception:
+        try:
+            os.remove(backup_path)
+        except OSError:
+            pass
+        raise UpdateError('تهیهٔ بکاپ SQLite پیش از مایگریشن شکست خورد.')
+    finally:
+        if target is not None:
+            target.close()
+        if source is not None:
+            source.close()
+
+
+def _restore_sqlite_database(backup):
+    if not backup:
+        return
+    import sqlite3
+    source = target = None
+    try:
+        source = sqlite3.connect(backup['backup'], timeout=30)
+        target = sqlite3.connect(backup['database'], timeout=30)
+        source.backup(target)
+    finally:
+        if target is not None:
+            target.close()
+        if source is not None:
+            source.close()
+
+
+def _cleanup_sqlite_backup(backup):
+    if backup:
+        try:
+            os.remove(backup.get('backup', ''))
+        except OSError:
+            pass
+
+
+def _apply_github_archive(repo, branch, old_commit='', old_requirements=None):
     """جایگزینی کد از ZIP گیت‌هاب — برای نصب‌های سی‌پنل بدون پوشهٔ .git."""
     info = _parse_github(repo)
     if not info:
@@ -933,20 +1221,47 @@ def _apply_github_archive(repo, branch):
                    if not os.path.isfile(os.path.join(root, name))]
         if missing:
             raise UpdateError('آرشیو مخزن فایل‌های ضروری را ندارد: ' + '، '.join(missing))
-        changed = _overlay_tree(root, BASE_DIR)
-        files = set()
-        for dirpath, dirnames, filenames in os.walk(root):
-            dirnames[:] = [d for d in dirnames if d not in _OVERLAY_SKIP]
-            for filename in filenames:
-                rel = os.path.relpath(os.path.join(dirpath, filename), root)
-                files.add(rel.replace('\\', '/'))
+        files = _archive_files(root)
+        with open(os.path.join(root, 'requirements.txt'), encoding='utf-8') as handle:
+            target_requirements = handle.read()
+        dependencies_changed = _requirements_changed(
+            old_commit, old_requirements=old_requirements,
+            new_requirements=target_requirements,
+        )
+        dependency_msg = _install_changed_dependencies(
+            old_commit, old_requirements=old_requirements,
+            new_requirements=target_requirements,
+        )
+        snapshot = _snapshot_code_files(files)
+        try:
+            changed = _overlay_tree(root, BASE_DIR)
+        except Exception as exc:
+            rollback_messages = []
+            try:
+                _restore_code_snapshot(snapshot)
+                rollback_messages.append('فایل‌های قبلی بازیابی شدند.')
+            except Exception as rollback_exc:
+                rollback_messages.append('بازیابی فایل‌ها شکست خورد: ' + str(rollback_exc))
+            if (dependencies_changed and _dependency_install_enabled() and
+                    old_requirements is not None):
+                try:
+                    rollback_messages.append(_restore_dependencies(old_requirements))
+                except Exception as rollback_exc:
+                    rollback_messages.append('بازیابی وابستگی‌ها شکست خورد: ' + str(rollback_exc))
+            _cleanup_code_snapshot(snapshot)
+            raise UpdateError(
+                'جایگزینی فایل‌های آرشیو شکست خورد: {} | {}'.format(
+                    _redact_text(str(exc), repo)[:500],
+                    _redact_text(' '.join(rollback_messages), repo)[:700],
+                )
+            ) from exc
         commit = ''
         try:
             refs, _ = _remote_refs(repo, heads=True)
             commit = refs.get(branch, '')
         except Exception:
             commit = ''
-        return commit, files, changed
+        return commit, files, changed, dependency_msg, dependencies_changed, snapshot
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
@@ -990,8 +1305,13 @@ def _set_step(step, msg):
     _set_state(step=step, msg=msg, status='running')
 
 
+def _dependency_install_enabled():
+    return os.environ.get('UPDATE_INSTALL_DEPENDENCIES', '1').strip().lower() \
+        not in ('0', 'false', 'no', 'off')
+
+
 def _perform_update(repo, branch=None):
-    """اجرای synchronous عملیات؛ هم Thread وب و هم cron/CLI از همین استفاده می‌کنند."""
+    """اجرای همگام بروزرسانی با preflight وابستگی و rollback مرحله‌ای."""
     repo = _validate_repo_url(repo)
     old_commit = _current_commit('HEAD')
     old_requirements = _read_local_requirements()
@@ -1008,41 +1328,135 @@ def _perform_update(repo, branch=None):
     files = set()
     changed = []
     target_commit = ''
+    target_ref = ''
+    dependency_msg = 'وابستگی‌ها تغییری نکرده‌اند.'
+    dependencies_changed = False
+    dependencies_installed = False
+    code_snapshot = None
+    database_backup = None
     git_error = None
+
+    # ابتدا فقط منبع مقصد را دریافت و اعتبارسنجی کن. خطای fetch می‌تواند از
+    # archive fallback استفاده کند، اما خطای pip/reset نباید با دانلود دوباره
+    # پنهان شود.
     try:
         if not _ensure_local_git():
             raise UpdateError('دستور git روی این هاست در دسترس نیست.')
         target_ref, target_commit = _fetch_target(repo, chosen)
         files = _verify_target(target_ref)
         changed = _changed_files(old_commit, target_ref)
-        _set_step(2, 'جایگزینی فایل‌های برنامه با نسخهٔ تاییدشده...')
-        code, out = _git(['reset', '--hard', target_ref], timeout=120)
-        if code != 0:
-            raise UpdateError('جایگزینی کدها شکست خورد: ' + _redact_text(out[-400:], repo))
     except Exception as exc:
         git_error = exc
         if not _parse_github(repo):
             if isinstance(exc, UpdateError):
                 raise
             raise UpdateError(str(exc)) from exc
+    else:
+        target_requirements = _git_file(target_ref, 'requirements.txt')
+        if target_requirements is None:
+            raise UpdateError('خواندن requirements.txt نسخهٔ مقصد ممکن نیست.')
+        dependencies_changed = _requirements_changed(
+            old_commit, old_requirements=old_requirements,
+            new_requirements=target_requirements,
+        )
+        dependency_msg = _install_changed_dependencies(
+            old_commit, old_requirements=old_requirements,
+            new_requirements=target_requirements,
+        )
+        dependencies_installed = dependencies_changed and _dependency_install_enabled()
+        if not old_commit:
+            code_snapshot = _snapshot_code_files(files)
+        _set_step(2, 'جایگزینی فایل‌های برنامه با نسخهٔ تاییدشده...')
+        code, out = _git(['reset', '--hard', target_ref], timeout=120)
+        if code != 0:
+            rollback = []
+            try:
+                if old_commit:
+                    restore_code, restore_out = _git(['reset', '--hard', old_commit], timeout=120)
+                    if restore_code != 0:
+                        raise UpdateError(restore_out[-400:])
+                else:
+                    _restore_code_snapshot(code_snapshot)
+                _restore_local_files(preserved)
+                rollback.append('فایل‌های نسخهٔ قبلی بازیابی شدند.')
+            except Exception as rollback_exc:
+                rollback.append('بازیابی فایل‌ها شکست خورد: {}'.format(rollback_exc))
+            if dependencies_installed and old_requirements is not None:
+                try:
+                    rollback.append(_restore_dependencies(old_requirements))
+                except Exception as rollback_exc:
+                    rollback.append('بازیابی وابستگی‌ها شکست خورد: {}'.format(rollback_exc))
+            _cleanup_code_snapshot(code_snapshot)
+            raise UpdateError(
+                'جایگزینی کدها شکست خورد: {} | {}'.format(
+                    _redact_text(out[-500:], repo),
+                    _redact_text(' '.join(rollback), repo)[:800],
+                )
+            )
+
+    if git_error is not None:
         _set_step(2, 'دریافت آرشیو GitHub و جایگزینی کدها (بدون مخزن محلی)...')
         try:
-            target_commit, files, changed = _apply_github_archive(repo, chosen)
+            (target_commit, files, changed, dependency_msg,
+             dependencies_changed, code_snapshot) = _apply_github_archive(
+                repo, chosen, old_commit=old_commit,
+                old_requirements=old_requirements,
+            )
         except Exception as archive_exc:
             git_msg = _redact_text(str(git_error), repo)[:280]
-            arch_msg = _redact_text(str(archive_exc), repo)[:280]
+            arch_msg = _redact_text(str(archive_exc), repo)[:700]
             raise UpdateError(
                 'بروزرسانی شکست خورد. گیت: {} | آرشیو: {}'.format(git_msg, arch_msg)
             ) from archive_exc
+        dependencies_installed = dependencies_changed and _dependency_install_enabled()
         method = 'archive'
+
     _restore_local_files(preserved)
+
+    # SQLite پیش از migration با API backup (سازگار با WAL) ذخیره می‌شود.
+    # migrationهای MySQL این پروژه افزایشی‌اند؛ rollback کد همچنان انجام می‌شود.
+    try:
+        database_backup = _backup_sqlite_database()
+        _set_step(3, 'اجرای مایگریشن ساختار و داده‌های دیتابیس...')
+        migration_msg = _run_fresh_migration()
+    except Exception as exc:
+        rollback = []
+        if database_backup:
+            try:
+                _restore_sqlite_database(database_backup)
+                rollback.append('دیتابیس SQLite بازیابی شد.')
+            except Exception as rollback_exc:
+                rollback.append('بازیابی SQLite شکست خورد: {}'.format(rollback_exc))
+        try:
+            if method == 'git' and old_commit:
+                code, out = _git(['reset', '--hard', old_commit], timeout=120)
+                if code != 0:
+                    raise UpdateError(out[-500:])
+            else:
+                _restore_code_snapshot(code_snapshot)
+            _restore_local_files(preserved)
+            rollback.append('کد نسخهٔ قبلی بازیابی شد.')
+        except Exception as rollback_exc:
+            rollback.append('بازیابی کد شکست خورد: {}'.format(rollback_exc))
+        if dependencies_installed and old_requirements is not None:
+            try:
+                rollback.append(_restore_dependencies(old_requirements))
+            except Exception as rollback_exc:
+                rollback.append('بازیابی وابستگی‌ها شکست خورد: {}'.format(rollback_exc))
+        _clear_python_cache()
+        _cleanup_code_snapshot(code_snapshot)
+        _cleanup_sqlite_backup(database_backup)
+        detail = _redact_text(str(exc), repo)[:1200]
+        rollback_detail = _redact_text(' '.join(rollback), repo)[:1200]
+        error = UpdateError('{}\nRollback: {}'.format(detail, rollback_detail))
+        # state/history باید پیش از لمس Passenger ذخیره شود؛ catch سطح بالا پس
+        # از ثبت گزارش، نسخهٔ بازیابی‌شده را reload می‌کند.
+        error.restart_required = True
+        raise error from exc
+
+    _cleanup_code_snapshot(code_snapshot)
+    _cleanup_sqlite_backup(database_backup)
     _write_applied_commit(target_commit)
-
-    dependency_msg = _install_changed_dependencies(
-        old_commit, old_requirements=old_requirements)
-
-    _set_step(3, 'اجرای مایگریشن ساختار و داده‌های دیتابیس...')
-    migration_msg = _run_fresh_migration()
 
     _set_step(4, 'پاک‌سازی cache و آماده‌سازی ری‌استارت...')
     _clear_python_cache()
@@ -1051,23 +1465,11 @@ def _perform_update(repo, branch=None):
     restarted = _restart_enabled() and any(
         os.path.exists(os.path.join(BASE_DIR, name))
         for name in ('passenger_wsgi.py', 'wsgi.py'))
-    new_info = _commit_info('HEAD')
-    
-    # اگه فایل‌ها تغییری نکرده، همه فایل‌ها رو لیست کن
-    if not changed and target_commit:
-        try:
-            changed = _changed_files('', target_ref) if '_git' in dir() and old_commit else []
-            if not changed:
-                # همه فایل‌های پروژه رو لیست کن
-                for root, dirs, filenames in os.walk(BASE_DIR):
-                    dirs[:] = [d for d in dirs if d not in _OVERLAY_SKIP and d not in ('.git',)]
-                    for f in filenames:
-                        rel = os.path.relpath(os.path.join(root, f), BASE_DIR)
-                        if rel not in _OVERLAY_SKIP:
-                            changed.append(rel.replace('\\', '/'))
-        except Exception:
-            pass
-    
+    new_info = _commit_info('HEAD') if method == 'git' else {
+        'short': target_commit[:10], 'hash': target_commit,
+        'message': '', 'date': '',
+    }
+
     result = {
         'repo': _display_repo(repo),
         'branch': chosen,
@@ -1088,18 +1490,21 @@ def _perform_update(repo, branch=None):
 
 def _success_message(result):
     """ساخت پیام موفقیت با جزئیات کامل."""
-    restart = 'ری‌استارت Passenger درخواست شد.' if result.get('restart_requested') else 'ری‌استارت خودکار فعال نبود.'
+    restart = ('ری‌استارت Passenger درخواست شد.' if result.get('restart_requested')
+               else 'ری‌استارت خودکار فعال نبود.')
     method = result.get('method', 'git')
-    method_text = ' (روش: Git)' if method == 'git' else ' (روش: آرشیو GitHub)'
+    method_text = 'Git' if method == 'git' else 'آرشیو GitHub'
     return (
         'بروزرسانی کامل شد ✅ نسخهٔ {} از شاخهٔ {} نصب شد؛ '
-        '{} فایل تغییر کرد. {}{}'
+        '{} فایل تغییر کرد (روش: {}). {} وابستگی: {} مایگریشن: {}'
     ).format(
         result.get('new_short', '—'),
         result.get('branch', '—'),
         result.get('changed_count', 0),
+        method_text,
         restart,
-        result.get('migration', '')
+        result.get('dependencies', '—'),
+        result.get('migration', '—'),
     )
 
 
@@ -1126,10 +1531,12 @@ def run_update(repo=None, branch=None):
             _touch_restart()
         return True, _success_message(result), result
     except Exception as exc:
-        message = 'خطا در بروزرسانی: ' + _redact_text(str(exc), repo or '')[:900]
+        message = 'خطا در بروزرسانی: ' + _redact_text(str(exc), repo or '')[:2400]
         _set_state(status='error', ok=False, report=result, msg=message)
         _log_history(repo or '', '', success=False, error=message,
                      branch=branch or get_update_branch())
+        if getattr(exc, 'restart_required', False):
+            _touch_restart()
         return False, message, result
     finally:
         _release_update_lock(handle)
@@ -1167,10 +1574,12 @@ def start_update(repo=None, branch=None):
             if result.get('restart_requested'):
                 _touch_restart()
         except Exception as exc:
-            message = 'خطا در بروزرسانی: ' + _redact_text(str(exc), resolved_repo or '')[:900]
+            message = 'خطا در بروزرسانی: ' + _redact_text(str(exc), resolved_repo or '')[:2400]
             _set_state(status='error', ok=False, report=result, msg=message)
             _log_history(resolved_repo or '', '', success=False, error=message,
                          branch=resolved_branch or '')
+            if getattr(exc, 'restart_required', False):
+                _touch_restart()
         finally:
             _release_update_lock(handle)
 

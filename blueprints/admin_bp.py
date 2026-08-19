@@ -456,7 +456,37 @@ def _course_form(course):
 @admin_bp.route('/courses/<int:cid>/delete', methods=['POST'])
 @admin_required
 def course_delete(cid):
+    """حذف ایمن دوره — بدون یتیم‌کردن داده‌های وابسته.
+
+    حذف فیزیکی دوره‌ای که دانشجو/سفارش/علاقه‌مندی/آزمون دارد، ردیف‌های وابسته را
+    بدون FK-cascade بی‌سرپرست می‌کرد (enrollments، order_items، favorites،
+    quizzes، assignments و...) و سپس داشبورد دانشجو/مدرس با
+    ``NoneType.lesson_count`` خطای 500 می‌داد. برای دورهٔ دارای سوابق، به‌جای
+    حذف، مدیر باید آن را «پیش‌نویس» کند؛ حذف فیزیکی فقط برای دوره‌های کاملاً
+    خالی (بدون هیچ وابستگی) مجاز است.
+    """
     course = db.get_or_404(Course, cid)
+    from models import Enrollment, Favorite, OrderItem, Quiz, Assignment, BundleCourse, ForumTopic
+    dependents = []
+    if Enrollment.query.filter_by(course_id=course.id).first():
+        dependents.append('ثبت‌نام دانشجویان')
+    if OrderItem.query.filter_by(course_id=course.id).first():
+        dependents.append('سفارش‌ها/فاکتورها')
+    if Favorite.query.filter_by(course_id=course.id).first():
+        dependents.append('علاقه‌مندی‌ها')
+    if Quiz.query.filter_by(course_id=course.id).first():
+        dependents.append('آزمون‌ها')
+    if Assignment.query.filter_by(course_id=course.id).first():
+        dependents.append('تمرین‌ها')
+    if BundleCourse.query.filter_by(course_id=course.id).first():
+        dependents.append('باندل‌ها')
+    if ForumTopic.query.filter_by(course_id=course.id).first():
+        dependents.append('تاپیک‌های انجمن')
+    if dependents:
+        flash('این دوره قابل حذف نیست؛ سوابق وابسته دارد: ' +
+              '، '.join(dependents) +
+              '. برای مخفی‌کردن آن، وضعیت را به «پیش‌نویس» تغییر دهید.', 'error')
+        return redirect(url_for('admin.courses'))
     db.session.delete(course)
     db.session.commit()
     flash('دوره حذف شد.', 'info')
@@ -1773,13 +1803,15 @@ def form_entries_export(pid):
     buf = io.StringIO()
     w = csv.writer(buf)
     w.writerow(['#', 'زمان'] + labels)
+    from validators import csv_cell
     for i, e in enumerate(entries, 1):
         data = {}
         try:
             data = json.loads(e.data or '{}')
         except Exception:
             _lexc('blueprints/admin_bp.py')
-        w.writerow([i, jdate_num(e.created_at) + ' ' + jtime(e.created_at)] + [data.get(l, '') for l in labels])
+        w.writerow([i, jdate_num(e.created_at) + ' ' + jtime(e.created_at)] +
+                   [csv_cell(data.get(l, '')) for l in labels])
     out = '\ufeff' + buf.getvalue()  # BOM برای اکسل
     from urllib.parse import quote
     return Response(out, mimetype='text/csv; charset=utf-8',
@@ -2291,9 +2323,11 @@ def course_students_export(cid):
     buf = io.StringIO()
     w = csv.writer(buf)
     w.writerow(['نام', 'موبایل', 'ایمیل', 'پیشرفت٪', 'تاریخ ثبت‌نام', 'گواهی'])
+    from validators import csv_cell
     for e in Enrollment.query.filter_by(course_id=cid).all():
-        w.writerow([e.user.name if e.user else '', e.user.phone if e.user else '',
-                    e.user.email if e.user else '', e.percent,
+        w.writerow([csv_cell(e.user.name if e.user else ''),
+                    csv_cell(e.user.phone if e.user else ''),
+                    csv_cell(e.user.email if e.user else ''), e.percent,
                     jdate_num(e.created_at), 'بله' if e.completed_at else 'خیر'])
     out = '\ufeff' + buf.getvalue()
     return Response(out, mimetype='text/csv; charset=utf-8',

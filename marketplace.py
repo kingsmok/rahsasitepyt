@@ -112,8 +112,8 @@ def torob_xml():
     items = _feed_items()
     xml = ['<?xml version="1.0" encoding="UTF-8"?>',
            '<yml_catalog date="{}"><shop>'.format(datetime.now(UTC).strftime('%Y-%m-%d %H:%M')),
-           f'<name>{_cfg("site_name", "آکادمی آنلاین")}</name>',
-           f'<url>{request.host_url.rstrip("/")}</url>',
+           f'<name>{_xml_escape(_cfg("site_name", "آکادمی آنلاین"))}</name>',
+           f'<url>{_xml_escape(request.host_url.rstrip("/"))}</url>',
            '<currencies><currency id="IRR" rate="1"/></currencies>',
            '<categories><category id="1">آموزش</category></categories>',
            '<offers>']

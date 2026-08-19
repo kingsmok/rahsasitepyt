@@ -175,6 +175,15 @@ class PostLite:
         self.title = title
         self.id = pid
 
+    @property
+    def image_url(self):
+        """URL سالم تصویر پست — مثل BlogPost.image_url (پشتیبانی از کتابخانه
+        رسانه، مسیر local و URL خارجی). کارت پست در صفحه‌ساز قبلاً مسیر را با
+        پیشوند ثابت /static/img/ می‌ساخت و برای تصاویر کتابخانه رسانه/URL خارجی
+        شکسته می‌شد."""
+        from models import resolve_image_url
+        return resolve_image_url(self.image, '/static/img/course-placeholder.webp')
+
 
 # ---------------------------------------------------------------- سازنده‌ها
 

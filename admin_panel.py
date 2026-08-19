@@ -62,6 +62,17 @@ class UserView(SecureModelView):
                          national_code='کد ملی', role='نقش', is_active='فعال',
                          created_at='تاریخ عضویت')
 
+    # ⚠️ امنیت: فرم Flask-Admin شامل فیلد role است؛ اگر مدیر عادی (نه سوپرادمین)
+    # به این ویو دسترسی داشت، می‌توانست نقش خود یا دیگری را به super_admin ارتقا
+    # دهد (ارتقای سطح دسترسی). مدیریت کاربران از پنل اصلی (/admin/users) با
+    # کنترل‌های سخت‌گیرانهٔ نقش انجام می‌شود؛ اینجا فقط سوپرادمین مجاز است.
+    def is_accessible(self):
+        uid = session.get('uid')
+        if not uid:
+            return False
+        u = db.session.get(User, uid)
+        return bool(u and u.role == 'super_admin')
+
 
 class CourseView(SecureModelView):
     column_list = ['id', 'title', 'category', 'teacher', 'price', 'discount_price',
@@ -133,8 +144,18 @@ class PageView(SecureModelView):
 
 
 def init_admin(app):
+    # ── قالب پایهٔ اختصاصی برای Flask-Admin ──
+    # Flask-Admin به‌صورت پیش‌فرض ``master.html`` خود را از ``admin/base.html``
+    # extend می‌کند؛ چون ما هم قالب ``templates/admin/base.html`` (پوستهٔ پنل
+    # مدیریت خودمان) را داریم، Jinja قالبِ ما را به‌جای قالب Flask-Admin انتخاب
+    # می‌کرد و رابط کاربری Flask-Admin به‌طور کامل سایه می‌افتاد (صفحهٔ
+    # /admin-extra به‌جای UI مدل‌ها، سایدبار پنل ما را رندر می‌کرد). با theme
+    # سفارشی، base_template به مسیر غیرمتداخل ``fa_admin_base.html`` اشاره
+    # می‌کند تا هر دو پنل مستقل از هم کار کنند.
+    from flask_admin.theme import Bootstrap4Theme
     admin = Admin(app, name='fa_admin', url='/admin-extra',
-                  index_view=SecureIndexView(url='/admin-extra/'))
+                  index_view=SecureIndexView(url='/admin-extra/'),
+                  theme=Bootstrap4Theme(base_template='fa_admin_base.html'))
     admin.add_view(UserView(User, db, name='کاربران', category='مدیریت'))
     admin.add_view(CourseView(Course, db, name='دوره‌ها', category='مدیریت'))
     admin.add_view(LessonView(Lesson, db, name='جلسات', category='مدیریت'))

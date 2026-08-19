@@ -563,8 +563,12 @@ def zarinpal_verify():
         try:
             merchant = g.settings.get('zarinpal_merchant')
             from validators import http_request
+            # مبلغ باید به واحد ریال (همان واحد انتظاری زرین‌پال) تبدیل شود؛
+            # ارسال مستقیم order.final_total (تومان) باعث رد شدن تایید با مغایرت مبلغ می‌شد.
+            from gateways import _amount_rial
             resp = http_request('post', 'https://api.zarinpal.com/pg/v4/payment/verify.json', json={
-                'merchant_id': merchant, 'amount': order.final_total, 'authority': authority,
+                'merchant_id': merchant, 'amount': _amount_rial(g.settings, order),
+                'authority': authority,
             }, timeout=10)
             data = resp.json()
             if data.get('data', {}).get('code') == 100:

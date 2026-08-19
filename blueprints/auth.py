@@ -369,6 +369,19 @@ def phone_verify():
         else:
             session.pop('otp_tries', None)
             user = User.query.filter_by(phone=phone).first()
+            # ضد دور زدن تعلیق حساب: کاربر غیرفعال نباید با کد تایید وارد شود.
+            # (پیش‌تر این کنترل فقط در ورود با ایمیل بود و حساب مسدود از مسیر
+            # OTP همچنان قابل ورود بود — در درخواست بعدی سشن پاک می‌شد اما پیام
+            # موفقیت گمراه‌کننده بود.)
+            if user and not user.is_active:
+                session.pop('otp_phone', None)
+                session.pop('otp_code_hash', None)
+                session.pop('otp_ts', None)
+                import logging as _lg
+                _lg.getLogger('academy.auth').info(
+                    'phone login blocked: حساب غیرفعال (%s)', phone)
+                flash('این حساب غیرفعال شده است. با پشتیبانی تماس بگیرید.', 'error')
+                return redirect(url_for('auth.login'))
             if not user:
                 user = User(phone=phone, name='', role='student',
                             avatar_color=random.choice(AVATAR_COLORS))

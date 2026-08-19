@@ -11,22 +11,22 @@ except ImportError:  # پایتون < 3.11 (هاست‌های اشتراکی)
 def utcnow():
     """زمان UTC بدون timezone (سازگار با SQLite و مقایسه‌ها)"""
     return datetime.now(UTC).replace(tzinfo=None)
+import hmac
 import json
 import os
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 
 # ═══════════════════════════════════════════════════════════════════════════
-# خط‌مشی هش‌گذاری رمز عبور (درخواست صاحب سایت — قابلیت ویرایش مستقیم در DB)
+# خط‌مشی هش‌گذاری رمز عبور — هش قوی (PBKDF2/scrypt ورک‌زگ)
 # ───────────────────────────────────────────────────────────────────────────
-# ۱) رمزهای جدید → قالب استاندارد ``md5:<hex32>`` ذخیره می‌شوند؛ مدیر می‌تواند
-#    مستقیم در phpMyAdmin بنویسد: ``md5:` + MD5('password')`` یا حتی MD5 خام
-#    ۳۲ کاراکتری (در اولین ورود موفق خودکار نرمال می‌شود).
-# ۲) حساب‌های قدیمی با هش قوی ورک‌زگ همچنان بدون تغییر رمز وارد می‌شوند و
-#    در همان ورود به قالب MD5 تبدیل می‌شوند (مهاجرت خودکار، بدون قطعی).
-# ۳) متغیر قدیمی ALLOW_LEGACY_MD5 دیگر گیت نیست؛ MD5 خام همیشه پذیرفته می‌شود.
+# ۱) رمزهای جدید با ``generate_password_hash`` (هش قوی و سالت‌دار ورک‌زگ)
+#    ذخیره می‌شوند — هرگز MD5 خام یا ``md5:`` برای رمز جدید تولید نمی‌شود.
+# ۲) سازگاری با دادهٔ قدیمی (مهاجرت خودکار): اگر در دیتابیس موجود، رمز با
+#    قالب ``md5:<hex32>`` یا MD5 خام ۳۲ کاراکتری ذخیره شده باشد، ورود همچنان
+#    کار می‌کند و بلافاصله در همان ورود موفق به هش قوی ارتقا می‌یابد.
+# ۳) هش قوی ورک‌زگِ حساب‌های قدیمی نیز بدون تغییر رمز پذیرفته می‌شود.
 # ═══════════════════════════════════════════════════════════════════════════
-LEGACY_MD5 = os.environ.get('ALLOW_LEGACY_MD5', '1') == '1'  # سازگاری backward؛ دیگر گیت نیست
 
 import hashlib as _hashlib
 import re as _re
@@ -35,6 +35,7 @@ _MD5_RE = _re.compile(r'^[0-9a-f]{32}$')
 
 
 def _md5_hex(text):
+    """MD5 — فقط برای استعلام کدهای قدیمی گواهینامه/رمز (نه برای رمز جدید)."""
     return _hashlib.md5((text or '').encode('utf-8'), usedforsecurity=False).hexdigest()
 
 
@@ -183,54 +184,57 @@ class User(db.Model):
         return self.session_token
 
     def set_password(self, p):
-        """رمز با MD5 (درخواست صاحب سایت برای ویرایش مستقیم در دیتابیس).
+        """رمز جدید با هش قوی و سالت‌دار ورک‌زگ (PBKDF2/scrypt) ذخیره می‌شود.
 
-        قالب ذخیره: ``md5:<hex32>`` — با phpMyAdmin هم می‌توان نوشت:
-        ``md5:` + MD5('yourpassword')`` یا فقط MD5 خام ۳۲ کاراکتری
-        (در ورود بعدی خودکار به قالب استاندارد نرمال می‌شود).
+        MD5 هرگز برای رمز جدید تولید نمی‌شود؛ پشتیبانی از MD5 فقط برای
+        ورود حساب‌های قدیمی و ارتقای خودکار آن‌ها باقی مانده است.
         """
-        self.password_hash = 'md5:' + _md5_hex(p)
+        self.password_hash = generate_password_hash(p or '')
 
     def check_password(self, p):
-        """بررسی رمز عبور — پشتیبانی کامل از هر سه قالب تاریخی:
-        ۱) ``md5:<hex>`` — قالب استاندارد جدید (قابل ویرایش مستقیم در DB)
-        ۲) MD5 خام ۳۲ کاراکتری — مثل UPDATE ... SET password_hash = MD5('...')
-        ۳) هش قوی قدیمی ورک‌زگ — برای حساب‌های ساخته‌شده قبل از این تغییر
+        """بررسی رمز عبور — با ارتقای خودکار هر قالب قدیمی به هش قوی.
 
-        ورود موفق با قالب‌های ۲ یا ۳، رمز را به قالب استاندارد ``md5:``
-        نرمال می‌کند تا بعداً مستقیم در دیتابیس قابل تغییر باشد.
+        قالب‌های پذیرفته‌شده (صرفاً برای سازگاری با دادهٔ قدیمی):
+        ۱) هش قوی ورک‌زگ — قالب استاندارد فعلی
+        ۲) ``md5:<hex32>`` — قالب قدیمی (در ورود موفق ارتقا می‌یابد)
+        ۳) MD5 خام ۳۲ کاراکتری — مثل UPDATE ... SET password_hash = MD5('...')
+
+        هیچ‌کدام از این دو قالب MD5، رمز جدید را نمی‌سازند؛ فقط در همان
+        ورود موفقِ حساب قدیمی، بلافاصله به هش قوی تبدیل می‌شوند.
         """
         if not self.password_hash:
             return False
         stored = (self.password_hash or '').strip()
-        # ۱) قالب استاندارد جدید
+        if not stored:
+            return False
+        # ۱) قالب استاندارد فعلی: هش قوی ورک‌زگ
+        if not stored.startswith('md5:') and not _MD5_RE.match(stored.lower()):
+            try:
+                return check_password_hash(stored, p)
+            except (ValueError, TypeError):
+                return False
+        # ۲) قالب قدیمی md5:<hex> — پذیرش + ارتقای خودکار
         if stored.startswith('md5:'):
             hex_part = stored[4:].strip().lower()
-            if _MD5_RE.match(hex_part):
-                return hex_part == _md5_hex(p)
+            if _MD5_RE.match(hex_part) and hmac.compare_digest(hex_part, _md5_hex(p)):
+                self._upgrade_hash(p)
+                return True
             return False
-        # ۲) MD5 خام (تغییر مستقیم در phpMyAdmin)
+        # ۳) MD5 خام (تغییر مستقیم قدیمی در phpMyAdmin) — پذیرش + ارتقای خودکار
         if _MD5_RE.match(stored.lower()):
-            if stored.lower() == _md5_hex(p):
-                self._normalize_hash(p)
+            if hmac.compare_digest(stored.lower(), _md5_hex(p)):
+                self._upgrade_hash(p)
                 return True
             return False
-        # ۳) هش قوی قدیمی ورک‌زگ (حساب‌های پیش از مهاجرت به MD5)
-        try:
-            if check_password_hash(stored, p):
-                self._normalize_hash(p)
-                return True
-        except (ValueError, TypeError):
-            pass
         return False
 
-    def _normalize_hash(self, p):
-        """نرمال‌سازی هش قدیمی به قالب ``md5:`` در همان ورود موفق.
+    def _upgrade_hash(self, p):
+        """ارتقای هش قدیمی (MD5) به هش قوی در همان ورود موفق.
 
         شکست این گام هرگز جلوی ورود موفق را نمی‌گیرد (فقط commit بعدی است).
         """
         try:
-            self.password_hash = 'md5:' + _md5_hex(p)
+            self.password_hash = generate_password_hash(p)
             db.session.add(self)
             db.session.commit()
         except Exception:
@@ -238,6 +242,9 @@ class User(db.Model):
                 db.session.rollback()
             except Exception:
                 pass
+
+    # نام سازگار قدیمی — برخی ماژول‌ها/اسکریپت‌ها ممکن است آن را صدا بزنند.
+    _normalize_hash = _upgrade_hash
 
     def initials(self):
         parts = (self.name or '؟').split()
@@ -678,6 +685,10 @@ class Enrollment(db.Model):
     def percent(self):
         if self.completed_at:
             return 100
+        # گارد دفاعی: رکوردهای قدیمی که دوره‌شان در دیتابیس نصب‌های قبلی
+        # بدون cascade حذف شده بود (Enrollment یتیم) نباید باعث خطای 500 شوند.
+        if self.course is None:
+            return 0
         total = self.course.lesson_count
         if not total:
             return 0
@@ -711,7 +722,10 @@ class Enrollment(db.Model):
         پرداخت شده است؛ با هر قسط بعدی N جلسهٔ دیگر باز می‌شود.
         """
         course = self.course
-        per = int(course.unlock_per_installment or 0) if course else 0
+        # گارد دفاعی برای رکوردهای یتیم نصب‌های قدیمی.
+        if course is None:
+            return 0
+        per = int(course.unlock_per_installment or 0)
         if per <= 0:
             return 0
         try:
@@ -1251,6 +1265,11 @@ class Bundle(db.Model):
     created_at = db.Column(db.DateTime, default=utcnow)
     courses = db.relationship('Course', secondary='bundle_courses',
                               backref='bundles', lazy='joined')
+
+    @property
+    def image_url(self):
+        """تصویر باندل — مسیر محلی/کتابخانه رسانه/URL خارجی با fallback امن."""
+        return resolve_image_url(self.image, '/static/img/course-placeholder.webp')
 
 
 class BundleCourse(db.Model):

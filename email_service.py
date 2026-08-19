@@ -101,12 +101,14 @@ def send_ticket_reply(user, ticket, reply, settings):
     # احترام به تنظیم اعلان شخصی کاربر (خارج از ایمیل‌های امنیتی)
     if getattr(user, 'notify_email', True) is False:
         return False, 'skipped: user disabled email notifications'
+    # پاسخ را پیش از قرار گرفتن در بدنهٔ HTML escape کن (ضد HTML Injection)
+    reply_html = _esc(reply).replace('\n', '<br>')
     html = f"""<div dir="rtl" style="font-family:Tahoma;max-width:560px;margin:auto;border:1px solid #e2e8f0;border-radius:16px;overflow:hidden">
       <div style="background:#0891b2;color:#fff;padding:20px;text-align:center;font-size:18px;font-weight:bold">🎫 پاسخ تیکت پشتیبانی</div>
       <div style="padding:26px;color:#334155;font-size:14px;line-height:2">
         <p>سلام <b>{_esc(user.name)}</b>،</p>
         <p>تیکت «<b>{_esc(ticket.subject)}</b>» پاسخ داده شد:</p>
-        <div style="background:#f5f7fa;border-radius:12px;padding:14px;margin:10px 0">{reply}</div>
+        <div style="background:#f5f7fa;border-radius:12px;padding:14px;margin:10px 0">{reply_html}</div>
         <p><a href="{settings.get('base_url') or '/'}/dashboard/tickets" style="color:#f2640c;font-weight:bold">مشاهده تیکت ←</a></p>
       </div>
     </div>"""

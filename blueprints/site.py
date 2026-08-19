@@ -103,11 +103,20 @@ def courses():
     elif price == 'paid':
         query = query.filter(or_(Course.discount_price > 0, Course.price > 0))
 
+    # «ارزان‌ترین/گران‌ترین» باید بر اساس قیمت نهایی مؤثر مرتب شود، نه صرفاً
+    # ستون discount_price: دورهٔ بدون تخفیف مقدار discount_price=0 دارد و قبلاً
+    # به‌اشتباه ارزان‌تر از همهٔ دوره‌های تخفیف‌دار (حتی گران‌تر) دیده می‌شد.
+    from sqlalchemy import case, and_
+    _final_price = case(
+        (and_(Course.discount_price > 0, Course.discount_price < Course.price),
+         Course.discount_price),
+        else_=Course.price,
+    )
     sort_map = {
         'newest': Course.created_at.desc(),
         'oldest': Course.created_at.asc(),
-        'cheap': Course.discount_price.asc(),
-        'expensive': Course.discount_price.desc(),
+        'cheap': _final_price.asc(),
+        'expensive': _final_price.desc(),
         'popular': Course.views.desc(),
         'rating': Course.id.desc(),
     }

@@ -8,10 +8,14 @@
    به‌صورت متن می‌دید؛ حالا هم درست نمایش داده می‌شود و هم امن است. #}
 {% macro nl2br(t) %}{{ t|nl2br }}{% endmacro %}
 
-{# مسیر صحیح تصویر: آپلودهای کتابخانه رسانه در /static/uploads/... و تصاویر عادی در /static/img/... #}
+{# مسیر صحیح تصویر: URL خارجی/data، مسیر مطلق، آپلودهای کتابخانه رسانه
+   (uploads/...) و تصاویر عادی (/static/img/...) را درست resolve می‌کند. #}
 {% macro img_url(src) %}
-{%- set s = (src or '')|string -%}
-{%- if s.startswith('/') %}{{ s }}{% elif '/' in s %}/static/{{ s }}{% elif s %}/static/img/{{ s }}{% endif -%}
+{%- set s = (src or '')|string|trim -%}
+{%- if s.startswith('http://') or s.startswith('https://') or s.startswith('data:') %}{{ s }}
+{%- elif s.startswith('/') %}{{ s }}
+{%- elif '/' in s %}/static/{{ s }}
+{%- elif s %}/static/img/{{ s }}{% endif -%}
 {% endmacro %}
 
 {% macro anim_attr(d) %}{% if d.get('anim') %} data-anim="{{ d['anim'] }}"{% endif %}{% endmacro %}
@@ -314,7 +318,7 @@
   <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:22px;margin-top:20px">
     {% for p in ps %}
     <article class="card card-hover post-card">
-      <a class="thumb" href="{{ url_for('site.blog_post', slug=p.slug) }}"><img src="/static/img/{{ p.image }}" alt="" loading="lazy" loading="lazy"></a>
+      <a class="thumb" href="{{ url_for('site.blog_post', slug=p.slug) }}"><img src="{{ p.image_url }}" alt="{{ p.title }}" loading="lazy"></a>
       <div class="body">
         <div class="p-meta"><span class="badge badge-primary">{{ p.category }}</span><span>{{ p.created_at|jdate }}</span></div>
         <h3 style="font-size:14.5px"><a href="{{ url_for('site.blog_post', slug=p.slug) }}">{{ p.title }}</a></h3>
@@ -830,7 +834,7 @@
 {% elif t == 'image_box' %}
   <div class="card card-hover pb-image-box" style="overflow:hidden;text-align:{{ d.align or 'center' }}">
     {% if d.link %}<a href="{{ d.link }}">{% endif %}
-    {% if d.image %}<div class="pb-ib-img {{ 'pb-img-hover' if d.hover }}"><img src="/static/img/{{ d.image }}" alt=""></div>{% endif %}
+    {% if d.image %}<div class="pb-ib-img {{ 'pb-img-hover' if d.hover }}"><img src="{{ img_url(d.image) }}" alt=""></div>{% endif %}
     <div class="pb-ib-body">
       {% if d.title %}<h3 style="font-size:16.5px;margin-bottom:8px">{{ d.title }}</h3>{% endif %}
       <p class="text-2" style="font-size:13.5px">{{ nl2br(d.text) }}</p>
@@ -984,7 +988,7 @@
     <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax({{ {'2':'420','3':'280','4':'220'}.get(d.columns or '3','280') }}px,1fr));gap:20px">
       {% for it in d.get('items') or [] if it is mapping and it.image and it.title %}
       <div class="pb-pf-item" data-cat="{{ it.category or '' }}">
-        <img src="/static/img/{{ it.image }}" alt="{{ it.title }}">
+        <img src="{{ img_url(it.image) }}" alt="{{ it.title }}">
         <div class="pb-pf-overlay">
           <h4>{{ it.title }}</h4>
           {% if it.desc %}<p>{{ it.desc }}</p>{% endif %}
@@ -999,7 +1003,7 @@
   <div class="pb-gallery {{ 'pb-gallery-lb' if d.lightbox }}" style="grid-template-columns:repeat({{ d.columns or 3 }}, 1fr);gap:12px">
     {% for it in d.get('items') or [] if it is mapping and it.image %}
     <figure class="pb-gal-item" style="border-radius:{{ d.radius or 0 }}px">
-      <img src="/static/img/{{ it.image }}" alt="{{ it.caption or '' }}" loading="lazy">
+      <img src="{{ img_url(it.image) }}" alt="{{ it.caption or '' }}" loading="lazy">
       {% if it.caption %}<figcaption>{{ it.caption }}</figcaption>{% endif %}
     </figure>
     {% endfor %}
@@ -1010,7 +1014,7 @@
   <div class="grid" style="grid-template-columns:repeat({{ d.columns or 1 }}, 1fr);gap:14px">
     {% for it in d.get('items') or [] if it is mapping %}
     <div class="pb-price-list">
-      {% if it.image %}<img src="/static/img/{{ it.image }}" alt="" loading="lazy">{% endif %}
+      {% if it.image %}<img src="{{ img_url(it.image) }}" alt="" loading="lazy">{% endif %}
       <div class="pb-pl-info">
         <div class="pb-pl-head"><strong>{{ it.title }}</strong><span class="pb-pl-line"></span><b>{{ it.price }}</b></div>
         {% if it.desc %}<p>{{ it.desc }}</p>{% endif %}
@@ -1085,8 +1089,7 @@
 
 {% elif t == 'featured_image' %}
   {% set cp = bc_current_post() %}
-  {% set featured_src = cp.image if cp and cp.image else d.fallback %}
-  {% if featured_src %}<img src="/static/img/{{ featured_src }}" alt="" style="width:100%;border-radius:{{ d.radius or 0 }}px">{% elif edit %}<div class="pb-empty-widget">تصویر شاخص پست در صفحه واقعی نمایش داده می‌شود.</div>{% endif %}
+  {% if cp and cp.image %}<img src="{{ cp.image_url }}" alt="{{ cp.title }}" style="width:100%;border-radius:{{ d.radius or 0 }}px">{% elif d.fallback %}<img src="{{ img_url(d.fallback) }}" alt="" style="width:100%;border-radius:{{ d.radius or 0 }}px">{% elif edit %}<div class="pb-empty-widget">تصویر شاخص پست در صفحه واقعی نمایش داده می‌شود.</div>{% endif %}
 
 {% elif t == 'post_info' %}
   {% set cp = bc_current_post() %}

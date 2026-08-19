@@ -8,7 +8,7 @@
       <span>{{ b.title }}</span>
     </nav>
     <div class="card" style="overflow:hidden;border-radius:20px">
-      <img src="/static/img/{{ b.image }}" alt="{{ b.title }}" style="width:100%;aspect-ratio:21/9;object-fit:cover">
+      <img src="{{ b.image_url }}" alt="{{ b.title }}" style="width:100%;aspect-ratio:21/9;object-fit:cover">
       <div style="padding:30px">
         <h1 style="font-size:22px;margin-bottom:8px">{{ b.title }}</h1>
         <p class="text-2" style="font-size:13.5px;margin-bottom:16px">{{ b.description }}</p>

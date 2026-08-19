@@ -2566,6 +2566,7 @@ def roles_manage():
 def protected_lesson_file(lid):
     """دانلود محافظت‌شده؛ فقط مدیر یا دانشجوی مجاز در دورهٔ قابل‌دانلود."""
     from models import Lesson
+    from blueprints.student import _installment_locked
     from flask import send_from_directory
     if not g.user:
         return redirect(url_for('auth.login', next=request.path))
@@ -2576,6 +2577,12 @@ def protected_lesson_file(lid):
             abort(403)
         enr = Enrollment.query.filter_by(user_id=g.user.id, course_id=course.id).first()
         if not enr:
+            abort(403)
+        if les.release_days and les.release_days > 0 and not les.is_free:
+            from datetime import timedelta as _td
+            if utcnow() < (enr.created_at + _td(days=les.release_days)).replace(tzinfo=None):
+                abort(403)
+        if _installment_locked(enr, les):
             abort(403)
     if not les.file_url:
         abort(404)
@@ -2671,6 +2678,16 @@ def backup_restore(name):
         from datetime import datetime as _dt
         shutil.copy2(db_path, _os.path.join(_os.path.dirname(_os.path.dirname(__file__)),
                                             'instance', 'backups', f'pre-restore-{_dt.now():%Y%m%d-%H%M}.db'))
+    try:
+        db.engine.dispose()
+    except Exception:
+        pass
+    for sidecar in (db_path + '-wal', db_path + '-shm'):
+        if _os.path.exists(sidecar):
+            try:
+                _os.remove(sidecar)
+            except OSError:
+                pass
     shutil.copy2(bk, db_path)
     flash('دیتابیس از بکاپ بازیابی شد — برای اعمال، سرور ری‌استارت می‌شود. ♻️', 'success')
     # ری‌استارت خودکار در dev ممکن نیست — کاربر را راهنمایی می‌کنیم

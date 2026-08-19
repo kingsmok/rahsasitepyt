@@ -768,6 +768,10 @@ def custom_form(slug):
                     if not safe:
                         flash('فرمت فایل مجاز نیست.', 'error')
                         return redirect(request.url)
+                    from uploads_helper import file_content_is_safe
+                    if not file_content_is_safe(up.stream, os.path.splitext(safe)[1].lower()):
+                        flash('محتوای فایل ارسالی نامعتبر یا ناامن است.', 'error')
+                        return redirect(request.url)
                     from uploads_helper import uploads_dir, uploads_url
                     up_dir = uploads_dir('forms')
                     fname = 'f_' + uuid.uuid4().hex[:8] + os.path.splitext(safe)[1]

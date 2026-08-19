@@ -1441,9 +1441,11 @@ def import_page():
         while Page.query.filter_by(slug=slug).first():
             slug = f'{base}-{n}'
             n += 1
+        safe_settings = _sanitize_page_settings(data.get('settings', {}))
+        safe_rows = _sanitize_rows(data.get('rows', []))
         page = Page(title=title, slug=slug, ptype=ptype, is_published=False,
-                    content=json.dumps({'settings': data.get('settings', {}),
-                                        'rows': data.get('rows', [])}, ensure_ascii=False))
+                    content=json.dumps({'settings': safe_settings,
+                                        'rows': safe_rows}, ensure_ascii=False))
         db.session.add(page)
         db.session.commit()
         flash('صفحه با موفقیت وارد شد.', 'success')

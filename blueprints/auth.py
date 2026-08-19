@@ -125,10 +125,16 @@ def _ip_fail():
     if len(lst) >= MAX_FAILS:
         _LOGIN_LOCK[ip] = now + LOCK_MINUTES * 60
         _LOGIN_ATTEMPTS[ip] = []
-    # پاک‌سازی حافظه برای جلوگیری از Memory DoS با IPهای یکتا
+    # پاک‌سازی حافظه برای جلوگیری از Memory DoS بدون حذف قفل‌های فعال
     if len(_LOGIN_ATTEMPTS) > _MAX_IP_TRACKED:
-        _LOGIN_ATTEMPTS.clear()
-        _LOGIN_LOCK.clear()
+        expired_ips = [k for k, timestamps in list(_LOGIN_ATTEMPTS.items())
+                       if not timestamps or (now - timestamps[-1] >= LOCK_MINUTES * 60)]
+        for k in expired_ips:
+            _LOGIN_ATTEMPTS.pop(k, None)
+    if len(_LOGIN_LOCK) > _MAX_IP_TRACKED:
+        unlocked_ips = [k for k, until in list(_LOGIN_LOCK.items()) if now >= until]
+        for k in unlocked_ips:
+            _LOGIN_LOCK.pop(k, None)
 
 
 def _ip_success():

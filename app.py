@@ -1020,7 +1020,7 @@ def create_app():
 
     @app.errorhandler(405)
     def method_not_allowed(e):
-        if request.path.startswith('/install'):
+        if request.path.startswith(('/install', '/api/', '/builder/api/')):
             from flask import jsonify as _j
             return _j(ok=False, msg='روش درخواست نامعتبر است', code=405), 405
         p = request.path

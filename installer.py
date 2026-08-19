@@ -161,11 +161,14 @@ def ensure_mysql_db(db_url):
     if not str(db_url).startswith('mysql'):
         return True, ''
     try:
+        import re
         from sqlalchemy import create_engine, text
         parts = db_url.split('://', 1)[-1].split('/')
         if len(parts) >= 2:
             db_name_part = parts[1].split('?')[0]
             if db_name_part:
+                if not re.match(r'^[a-zA-Z0-9_]{1,64}$', db_name_part):
+                    return False, 'نام دیتابیس فقط می‌تواند شامل حروف، اعداد و خط زیر (_) باشد.'
                 server_url = db_url.split(f'/{db_name_part}', 1)[0] + '/'
                 if '?' in db_url:
                     server_url += '?' + db_url.split('?', 1)[1]

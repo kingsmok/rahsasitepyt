@@ -1390,27 +1390,17 @@ def create_app():
                 request.endpoint.startswith('student.') and request.endpoint != 'student.profile':
             # کاربرانی که با شماره تماس وارد شده‌اند باید پروفایل را کامل کنند
             return redirect(url_for('auth.complete_profile'))
-        # انتخاب تم — طراحی کلی سایت (site_design) برنده است مگر پیش‌فرض (۱)
+        # ظاهر سایت فقط از طراحی ذخیره‌شدهٔ مدیر می‌آید. انتخاب شخصی بازدیدکننده
+        # و کوکی قدیمی تم عمداً نادیده گرفته می‌شوند تا رنگ/ظاهر در همه صفحات
+        # ثابت بماند. پیش‌نمایش URL نیز فقط برای مدیر واردشده مجاز است.
         from designs import SITE_DESIGNS
-        theme = None
-        # پیش‌نمایش طرح از URL فقط برای مدیر واردشده مجاز است؛ کاربران عمومی
-        # همیشه نسخهٔ اصلی سایت را می‌بینند.
         _pv = request.args.get('site_design', '') if (g.user and g.user.is_admin) else ''
         _saved_design = g.settings.get('site_design', '')
         sd = _pv if _pv in SITE_DESIGNS else (_saved_design or '1')
-        # اگر مدیر طرحی را ذخیره یا صریحاً preview کرده، تم همان طرح باید اعمال
-        # شود (طرح ۱ هم واقعاً theme-22 است). نبود تنظیم در نصب‌های قدیمی یعنی
-        # حالت آزاد و امکان انتخاب تم شخصی/کوکی؛ این سازگاری API تم را حفظ می‌کند.
-        _force_design_theme = bool(_pv in SITE_DESIGNS or _saved_design in SITE_DESIGNS)
-        if _force_design_theme:
+        if sd in SITE_DESIGNS:
             theme = SITE_DESIGNS[sd]['theme']
         else:
-            if g.user:
-                theme = g.user.theme
-            if not theme:
-                theme = request.cookies.get('lms_theme')
-            if not theme or theme not in VALID_THEMES:
-                theme = g.settings.get('default_theme', 'theme-01')
+            theme = g.settings.get('default_theme', 'theme-01')
         if theme not in VALID_THEMES:
             theme = 'theme-01'
         g.theme = theme
@@ -1519,9 +1509,8 @@ def create_app():
                 return None
             if session.get('uid') or session.get('_flashes'):
                 return None
-            _theme = request.cookies.get('lms_theme') or ''
             _qs = request.query_string.decode('utf-8', 'replace')
-            return f'{p}?{_qs}|t={_theme}|c={session.get("_csrf_token", "")}|a={_asset_v()}'
+            return f'{p}?{_qs}|c={session.get("_csrf_token", "")}|a={_asset_v()}'
         except Exception:
             return None
 

@@ -63,9 +63,6 @@ def test_request_install_resumes_without_background_thread(tmp_path, monkeypatch
         assert conn.execute(text(
             "SELECT value FROM settings WHERE key='site_active'"
         )).scalar() == '0'
-        assert conn.execute(text(
-            "SELECT value FROM settings WHERE key='allow_theme_switcher'"
-        )).scalar() == '0'
     engine.dispose()
 
 
@@ -124,7 +121,7 @@ def test_real_http_installer_completes_clean_without_demo_data(tmp_path, monkeyp
         assert User.query.count() == 1
         assert Course.query.count() == 0
         assert db.session.get(Setting, 'site_active').value == '0'
-        assert db.session.get(Setting, 'allow_theme_switcher').value == '0'
+        assert db.session.get(Setting, 'allow_theme_switcher') is None
         home_content = Page.query.filter_by(slug='home').one().content
         assert 'hero.webp' not in home_content and 'cover-' not in home_content
         assert '{site_name}' in home_content

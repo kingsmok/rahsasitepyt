@@ -2681,7 +2681,7 @@ def super_settings():
                 'kit_container', 'kit_radius', 'site_design', 'home_design',
                 'about_design', 'contact_design',
                 # امنیت و نگهداری
-                'maintenance', 'allow_register', 'allow_phone_login', 'allow_theme_switcher',
+                'maintenance', 'allow_register', 'allow_phone_login',
                 'admin_2fa_enabled', 'exam_enabled', 'spin_enabled',
             ]
             for k in keys:

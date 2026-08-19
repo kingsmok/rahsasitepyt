@@ -86,7 +86,7 @@ def test_quiz_full_flow_pass(app, client):
     assert r.status_code == 200
     body = r.get_data(as_text=True)
     assert 'آفرین، قبول شدی' in body  # نمره ۱۰۰ → قبول
-    assert '100' in body
+    assert '۱۰۰' in body  # نمره در رابط فارسی با رقم‌های فارسی نمایش داده می‌شود
 
     # نمره ذخیره شده است
     with app.app_context():

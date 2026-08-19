@@ -24,7 +24,7 @@
           {% for kind, obj in items %}
           <div class="cart-row">
             {% if kind == 'course' %}
-            <img class="c-thumb" src="/static/img/{{ obj.image }}" alt="">
+            <img class="c-thumb" src="{{ obj.image_url }}" alt="{{ obj.title }}">
             <div class="c-info">
               <h4>{{ obj.title }}</h4>
               <small>🎓 دوره — {{ obj.level }} — {{ fa(obj.duration_hours) }} ساعت</small>

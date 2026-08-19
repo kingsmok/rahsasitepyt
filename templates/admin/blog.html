@@ -11,7 +11,7 @@
     <tbody>
       {% for p in posts %}
       <tr>
-        <td><div class="flex gap-1"><img src="/static/img/{{ p.image }}" alt="" style="width:54px;height:36px;border-radius:8px;object-fit:cover"><strong style="font-size:13px">{{ p.title }}</strong></div></td>
+        <td><div class="flex gap-1"><img src="{{ p.image_url }}" alt="" style="width:54px;height:36px;border-radius:8px;object-fit:cover"><strong style="font-size:13px">{{ p.title }}</strong></div></td>
         <td>{{ p.category }}</td>
         <td>{{ fa(p.views) }}</td>
         <td>{{ p.created_at|jdate }}</td>

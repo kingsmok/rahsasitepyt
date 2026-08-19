@@ -182,8 +182,14 @@ def learn(course_id):
             flash('این جلسه {} روز دیگر باز می‌شود.'.format(
                 fa_num(lock_info.get('days', 1))), 'info')
         first_open = next((lesson for lesson in lessons if lesson.id not in locked), None)
+        # اگر هیچ جلسهٔ بازی وجود نداشت (همه قفل)، ریدایرکت به خودِ همین مسیر
+        # بدون پارامتر lesson باعث حلقهٔ بینهایت ریدایرکت می‌شد؛ در عوض صفحهٔ
+        # دوره را با فهرست قفل‌ها نمایش می‌دهیم.
+        if first_open is None:
+            return render_template('dashboard/learn_empty.html', course=course,
+                                   enrollment=enrollment, done=done)
         return redirect(url_for('student.learn', course_id=course.id,
-                                lesson=first_open.id if first_open else None))
+                                lesson=first_open.id))
     # چک‌پوینت یادگیری: بعد از هر ۵ جلسه، پیشنهاد کوییز
     from models import Quiz as _Quiz
     checkpoint_quiz = None

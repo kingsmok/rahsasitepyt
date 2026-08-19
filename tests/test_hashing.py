@@ -1,39 +1,59 @@
 # -*- coding: utf-8 -*-
-"""تست خط‌مشی هش‌گذاری MD5 — قابل ویرایش مستقیم در دیتابیس + سازگاری با هش‌های قدیمی."""
+"""تست خط‌مشی هش‌گذاری رمز — هش قوی ورک‌زگ + ارتقای خودکار قالب‌های قدیمی MD5."""
 import hashlib
+from werkzeug.security import check_password_hash
 from models import (User, db, certificate_code, certificate_code_legacy_md5,
                     certificate_code_legacy_sha1)
 
 
-def test_new_password_uses_md5_format(app):
-    """رمز جدید با قالب ``md5:<hex>`` ذخیره می‌شود تا مستقیم در DB قابل تغییر باشد."""
+def test_new_password_uses_strong_hash(app):
+    """رمز جدید با هش قوی (ورک‌زگ) ذخیره می‌شود — نه MD5."""
     with app.app_context():
         u = User(name='هش تست', email='hash@test.ir', phone='09120000111', role='student')
         u.set_password('Secret-123')
         h = u.password_hash
-        assert h.startswith('md5:')
-        assert h == 'md5:' + hashlib.md5('Secret-123'.encode()).hexdigest()
+        # هرگز نباید قالب MD5 تولید شود
+        assert not h.startswith('md5:')
+        assert not hashlib.md5(b'Secret-123').hexdigest() == h
+        # و باید با تابع استاندارد ورک‌زگ قابل تایید باشد
+        assert check_password_hash(h, 'Secret-123') is True
         assert u.check_password('Secret-123') is True
         assert u.check_password('wrong') is False
 
 
-def test_raw_md5_in_db_accepted_and_normalized(app):
-    """MD5 خامی که مدیر مستقیم در دیتابیس نوشته پذیرفته و به قالب md5: نرمال می‌شود."""
+def test_raw_md5_in_db_accepted_and_upgraded(app):
+    """MD5 خامی که در دیتابیس قدیمی نوشته شده، پذیرفته و به هش قوی ارتقا می‌یابد."""
     with app.app_context():
         u = User(name='قدیمی', email='legacy@test.ir', phone='09120000222', role='student')
         raw = hashlib.md5('old-pass-99'.encode()).hexdigest()
-        u.password_hash = raw  # شبیه‌سازی UPDATE مستقیم در phpMyAdmin
+        u.password_hash = raw  # شبیه‌سازی UPDATE مستقیم قدیمی در phpMyAdmin
         db.session.add(u)
         db.session.commit()
         assert u.check_password('old-pass-99') is True
         db.session.refresh(u)
-        assert u.password_hash == 'md5:' + raw  # نرمال‌سازی خودکار
+        # نرمال‌سازی خودکار → هش قوی (نه قالب md5:)
+        assert not u.password_hash.startswith('md5:')
+        assert check_password_hash(u.password_hash, 'old-pass-99') is True
         assert User.query.filter_by(email='legacy@test.ir').first() \
             .check_password('wrong') is False
 
 
-def test_old_werkzeug_hash_still_accepted_and_converted(app):
-    """حساب‌های ساخته‌شده قبل از مهاجرت (هش قوی ورک‌زگ) بدون تغییر رمز وارد می‌شوند."""
+def test_md5_prefix_hash_still_accepted_and_upgraded(app):
+    """قالب قدیمی ``md5:<hex>`` پذیرفته و در همان ورود به هش قوی ارتقا می‌یابد."""
+    with app.app_context():
+        u = User(name='قدیمی پیشونددار', email='md5prefix@test.ir',
+                 phone='09120000223', role='student')
+        u.password_hash = 'md5:' + hashlib.md5('legacy-pass-5'.encode()).hexdigest()
+        db.session.add(u)
+        db.session.commit()
+        assert u.check_password('legacy-pass-5') is True
+        db.session.refresh(u)
+        assert not u.password_hash.startswith('md5:')
+        assert check_password_hash(u.password_hash, 'legacy-pass-5') is True
+
+
+def test_old_werkzeug_hash_still_accepted(app):
+    """حساب‌های قدیمی با هش قوی ورک‌زگ بدون تغییر رمز وارد می‌شوند (بدون تبدیل اضافه)."""
     from werkzeug.security import generate_password_hash
     with app.app_context():
         u = User(name='قوی قدیمی', email='oldstrong@test.ir', phone='09120000333',
@@ -42,25 +62,25 @@ def test_old_werkzeug_hash_still_accepted_and_converted(app):
         db.session.add(u)
         db.session.commit()
         assert u.check_password('Strong-Old-1') is True
-        db.session.refresh(u)
-        # بعد از ورود موفق به قالب استاندارد MD5 تبدیل شده
-        assert u.password_hash.startswith('md5:')
+        assert u.check_password('wrong') is False
 
 
-def test_admin_can_change_password_directly_in_db(app):
-    """سناریوی اصلی کاربر: مدیر MD5 را دستی در DB می‌نویسد و کاربر وارد می‌شود."""
+def test_admin_legacy_md5_in_db_still_logs_in_and_upgrades(app):
+    """سناریوی مهاجرت: مدیر در دیتابیس قدیمی MD5 نوشته و کاربر وارد می‌شود."""
     with app.app_context():
         u = User(name='کاربر', email='direct@test.ir', phone='09120000444', role='student')
         u.set_password('first-pass')
         db.session.add(u)
         db.session.commit()
-        # مدیر در دیتابیس: password_hash = MD5('new-pass-77')
+        # مدیر در دیتابیس قدیمی: password_hash = MD5('new-pass-77')
         db.session.query(User).filter_by(email='direct@test.ir').update(
             {'password_hash': hashlib.md5('new-pass-77'.encode()).hexdigest()})
         db.session.commit()
         fresh = User.query.filter_by(email='direct@test.ir').first()
         assert fresh.check_password('new-pass-77') is True
         assert fresh.check_password('first-pass') is False
+        # و هش به قالب قوی ارتقا یافته است
+        assert not fresh.password_hash.startswith('md5:')
 
 
 def test_certificate_codes_hmac_and_legacy(app):

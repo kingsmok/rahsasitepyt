@@ -19,7 +19,7 @@
       {% for kind, obj in items %}
       <div class="cart-row" style="display:flex;gap:14px;align-items:center;padding:14px 0;border-bottom:1px solid var(--border)">
         {% if kind == 'course' %}
-        <img class="c-thumb" src="/static/img/{{ obj.image }}" alt="{{ obj.title }}" style="width:84px;height:56px;border-radius:10px;object-fit:cover">
+        <img class="c-thumb" src="{{ obj.image_url }}" alt="{{ obj.title }}" style="width:84px;height:56px;border-radius:10px;object-fit:cover">
         <div style="flex:1">
           <h4 style="font-size:14.5px"><a href="{{ url_for('site.course_detail', slug=obj.slug) }}">{{ obj.title }}</a></h4>
           <small class="text-3">🎓 دوره — {{ obj.level }} — {{ fa(obj.duration_hours) }} ساعت</small>

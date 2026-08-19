@@ -258,12 +258,14 @@ def reports_export():
     """خروجی اکسل (CSV) گزارش فروش"""
     import csv, io
     from flask import Response
+    from validators import csv_cell
     buf = io.StringIO()
     w = csv.writer(buf)
     w.writerow(['کد سفارش', 'کاربر', 'مبلغ کل', 'تخفیف', 'نهایی', 'درگاه', 'وضعیت', 'زمان'])
     for o in Order.query.order_by(Order.created_at.desc()).limit(2000).all():
-        w.writerow([o.code, o.user.email if o.user else '', o.total, o.discount,
-                    o.final_total, o.gateway or '', o.status,
+        w.writerow([csv_cell(o.code), csv_cell(o.user.email if o.user else ''),
+                    o.total, o.discount, o.final_total,
+                    csv_cell(o.gateway or ''), o.status,
                     jdate_num(o.created_at) + ' ' + jtime(o.created_at)])
     out = '\ufeff' + buf.getvalue()
     return Response(out, mimetype='text/csv; charset=utf-8',

@@ -9,6 +9,17 @@ from validators import safe_referrer, safe_int
 
 seo_bp = Blueprint('seo_admin', __name__, url_prefix='/admin/seo')
 
+# محدودهٔ طول ستون‌های SeoMeta — جلوگیری از «Data too long» در MySQL strict mode
+_SEO_LIMITS = {
+    'title': 200, 'description': 400, 'keywords': 300, 'focus_keyword': 100,
+    'canonical': 300, 'og_image': 300, 'og_title': 200, 'og_desc': 400,
+}
+
+
+def _clip(value, key):
+    """برش مقدار به طول ستون مربوطه — همیشه رشته برمی‌گرداند."""
+    return str(value or '').strip()[: _SEO_LIMITS.get(key, 300)]
+
 
 def _admin_required():
     if not g.user:
@@ -141,16 +152,16 @@ def edit(mid):
         return r
     m = db.get_or_404(SeoMeta, mid)
     if request.method == 'POST':
-        m.title = request.form.get('title', '').strip()
-        m.description = request.form.get('description', '').strip()
-        m.keywords = request.form.get('keywords', '').strip()
-        m.focus_keyword = request.form.get('focus_keyword', '').strip()
-        m.canonical = request.form.get('canonical', '').strip()
+        m.title = _clip(request.form.get('title', ''), 'title')
+        m.description = _clip(request.form.get('description', ''), 'description')
+        m.keywords = _clip(request.form.get('keywords', ''), 'keywords')
+        m.focus_keyword = _clip(request.form.get('focus_keyword', ''), 'focus_keyword')
+        m.canonical = _clip(request.form.get('canonical', ''), 'canonical')
         m.noindex = bool(request.form.get('noindex'))
         m.nofollow = bool(request.form.get('nofollow'))
-        m.og_image = request.form.get('og_image', '').strip()
-        m.og_title = request.form.get('og_title', '').strip()
-        m.og_desc = request.form.get('og_desc', '').strip()
+        m.og_image = _clip(request.form.get('og_image', ''), 'og_image')
+        m.og_title = _clip(request.form.get('og_title', ''), 'og_title')
+        m.og_desc = _clip(request.form.get('og_desc', ''), 'og_desc')
         schema_raw = request.form.get('schema_json', '').strip()
         if schema_raw:
             import json as _json
@@ -252,13 +263,13 @@ def bulk():
                 m = db.session.get(SeoMeta, mid)
                 if m:
                     if field == 'title':
-                        m.title = val.strip()
+                        m.title = _clip(val, 'title')
                     elif field == 'desc':
-                        m.description = val.strip()
+                        m.description = _clip(val, 'description')
                     elif field == 'kw':
-                        m.keywords = val.strip()
+                        m.keywords = _clip(val, 'keywords')
                     elif field == 'focus':
-                        m.focus_keyword = val.strip()
+                        m.focus_keyword = _clip(val, 'focus_keyword')
                     saved += 1
         db.session.commit()
         flash(f'{saved} فیلد ذخیره شد ✅', 'success')
@@ -287,13 +298,13 @@ def auto_generate():
             db.session.add(m)
             created += 1
         if not m.title:
-            m.title = f'{c.title} | {sn}'
+            m.title = _clip(f'{c.title} | {sn}', 'title')
         if not m.description:
-            m.description = (c.subtitle or c.description or '')[:160]
+            m.description = (c.subtitle or c.description or '')[:400]
         if not m.focus_keyword:
             # کلمه کلیدی از عنوان: اولین کلمه مهم
             words = [w for w in (c.title or '').split() if len(w) > 2][:2]
-            m.focus_keyword = ' '.join(words)
+            m.focus_keyword = ' '.join(words)[:100]
         if not m.og_image:
             m.og_image = c.image
         updated += 1
@@ -305,12 +316,12 @@ def auto_generate():
             db.session.add(m)
             created += 1
         if not m.title:
-            m.title = f'{p.title} | {sn}'
+            m.title = _clip(f'{p.title} | {sn}', 'title')
         if not m.description:
-            m.description = (p.excerpt or '')[:160]
+            m.description = (p.excerpt or '')[:400]
         if not m.focus_keyword:
             words = [w for w in (p.title or '').split() if len(w) > 2][:2]
-            m.focus_keyword = ' '.join(words)
+            m.focus_keyword = ' '.join(words)[:100]
         updated += 1
     # مدرس‌ها (صفحه پروفایل با اسکیمای Person)
     for t in User.query.filter(User.role.in_(('teacher', 'admin')),
@@ -322,9 +333,9 @@ def auto_generate():
             db.session.add(m)
             created += 1
         if not m.title:
-            m.title = f'{t.name} | {sn}'
+            m.title = _clip(f'{t.name} | {sn}', 'title')
         if not m.focus_keyword:
-            m.focus_keyword = (t.name or 'مدرس').strip()
+            m.focus_keyword = (t.name or 'مدرس').strip()[:100]
         updated += 1
     db.session.commit()
     flash(f'متاها ساخته/تکمیل شد: {created} جدید، {updated} بررسی شد ✅', 'success')

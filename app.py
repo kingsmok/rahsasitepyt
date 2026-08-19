@@ -26,6 +26,19 @@ from jdates import (fa, fa_num, money, MONTHS, slugify, jdate, jdatetime, jdate_
                   jalali_to_gregorian, g2j, j2g)
 from validators import log_exc as _lexc
 
+
+class _CSRFTokenValue(str):
+    """رشتهٔ توکن CSRF که «قابل فراخوانی» هم هست.
+
+    قالب‌های خودِ ما توکن را با ``{{ csrf_token }}`` چاپ می‌کنند؛ اما قالب‌های
+    Flask-Admin آن را به‌صورت تابع ``csrf_token()`` صدا می‌زنند. قبلاً
+    context-processor ما یک str ساده تزریق می‌کرد و همین باعث می‌شد
+    Flask-Admin با ``TypeError: 'str' object is not callable`` از کار بیفتد.
+    این کلاس هر دو حالت را پوشش می‌دهد: چاپ مثل رشتهٔ معمولی، فراخوانی مثل تابع.
+    """
+    def __call__(self):
+        return str(self)
+
 # ------------------------------------------------------------------
 # تم‌های ۲۰‌گانه
 # ------------------------------------------------------------------
@@ -1002,7 +1015,11 @@ def create_app():
                 not request.path.startswith('/install') and \
                 not request.path.startswith('/pay/verify/') and \
                 request.path != '/admin/update/webhook':
-            token = request.form.get('_csrf_token') or request.headers.get('X-CSRF-Token')
+            # Flask-Admin فرم‌هایش را با نام فیلد `csrf_token` ارسال می‌کند؛
+            # پنل اصلی ما از `_csrf_token` استفاده می‌کند. هر دو باید با توکن
+            # سشن یکسان مقایسه شوند تا هر دو پنل در برابر CSRF محافظت بمانند.
+            token = (request.form.get('_csrf_token') or request.form.get('csrf_token') or
+                     request.headers.get('X-CSRF-Token'))
             expected = session.get('_csrf_token') or ''
             if not token:
                 abort(400, description='توکن امنیتی (CSRF) ارسال نشده است. لطفاً صفحه را رفرش کنید و دوباره تلاش کنید.')
@@ -1101,6 +1118,11 @@ def create_app():
                         'demo@academy.ir', 'sara@academy.ir', 'amir@academy.ir',
                         'mehdi@academy.ir', 'negar@academy.ir', 'hossein@academy.ir',
                         'zahra@academy.ir',
+                        # ⚠️ ادمینِ seed نیز باید در production غیرفعال شود:
+                        # seed.py حساب `admin@academy.ir / admin123` (رمز منتشرشده)
+                        # می‌سازد؛ اگر دیتابیس seed‌شده به production بیاید، این
+                        # حسابِ با رمز شناخته‌شده قبلاً فعال می‌ماند (backdoor).
+                        'admin@academy.ir',
                     )
                     demo_users = User.query.filter(User.email.in_(demo_emails)).all()
                     demo_user_ids = [user.id for user in demo_users]
@@ -1738,7 +1760,7 @@ def create_app():
                     enrolled_ids=enrolled_ids,
                     eff_container=getattr(g, 'eff_container', ''),
                     eff_radius=getattr(g, 'eff_radius', ''),
-                    csrf_token=getattr(g, 'csrf_token', ''),
+                    csrf_token=_CSRFTokenValue(getattr(g, 'csrf_token', '')),
                     # آیا درگاه پرداخت بانکی واقعی پیکربندی شده است؟
                     # ادعاهای «پرداخت امن شتاب / درگاه بانکی معتبر» فقط وقتی نمایش
                     # داده می‌شوند که واقعاً درست باشند — ادعای نادرست دربارهٔ

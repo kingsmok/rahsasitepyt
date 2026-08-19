@@ -16,7 +16,7 @@
       {% for b in bundles %}
       <div class="card card-hover" style="overflow:hidden;display:flex;flex-direction:column">
         <div style="aspect-ratio:16/9;overflow:hidden;position:relative">
-          <img src="/static/img/{{ b.image }}" alt="{{ b.title }}" style="width:100%;height:100%;object-fit:cover" loading="lazy">
+          <img src="{{ b.image_url }}" alt="{{ b.title }}" style="width:100%;height:100%;object-fit:cover" loading="lazy">
           {% if b.discount_price and b.discount_price < b.price %}
           <span class="discount-flag" style="position:absolute;top:12px;right:12px">٪{{ fa(((b.price - b.discount_price) * 100 // b.price) if b.price else 0) }} تخفیف</span>
           {% endif %}

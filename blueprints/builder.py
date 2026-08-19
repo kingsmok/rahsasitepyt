@@ -996,7 +996,9 @@ def builder_price_history(d):
     try:
         if d.get('item_type') == 'product':
             item = db.session.get(_P, int(d.get('item_id') or 0))
-            if item: url = url_for('products.product_detail', pid=item.id)
+            # ⚠️ این endpoint فقط پارامتر slug می‌گیرد؛ ارسال pid باعث BuildError
+            # می‌شد و ویجتِ تاریخچهٔ قیمتِ محصولات (لینک + قیمت فعلی) از کار می‌افتاد.
+            if item: url = url_for('products.product_detail', slug=item.slug)
         else:
             item = db.session.get(_C, int(d.get('item_id') or 0))
             if item: url = url_for('site.course_detail', slug=item.slug)
@@ -1040,8 +1042,18 @@ def builder_amazing_offer(d):
     except Exception:
         item = None
     if not item:
-        item = _C.query.filter(_C.discount_percent > 0, _C.status == 'published') \
-            .order_by(_C.discount_percent.desc()).first()
+        # fallback: دورهٔ با بیشترین درصد تخفیف.
+        # ⚠️ discount_percent یک property (محاسبه‌شده) است نه ستون جدول؛
+        # فیلتر/مرتب‌سازی مستقیم با آن روی کوئری SQLAlchemy باعث خطای 500
+        # (TypeError: '>' not supported between 'property' and 'int') می‌شد.
+        # بنابراین نامزدها را با ستون‌های واقعی می‌گیریم و در پایتون بهترین را
+        # بر اساس همان property انتخاب می‌کنیم.
+        candidates = _C.query.filter(
+            _C.status == 'published',
+            _C.discount_price > 0,
+            _C.discount_price < _C.price,
+        ).order_by(_C.discount_price.asc()).limit(50).all()
+        item = max(candidates, key=lambda c: c.discount_percent, default=None)
     url = '#'
     if item:
         url = url_for('products.product_detail', slug=item.slug) if hasattr(item, 'stock') \
@@ -1204,8 +1216,16 @@ def builder_courses(d):
              .filter_by(status='published'))
         if str(cat).isdigit():
             q = q.filter_by(category_id=int(cat))
+        # مرتب‌سازی بر اساس قیمت نهایی مؤثر (نه discount_price خام که برای
+        # دورهٔ بدون تخفیف صفر است) — مثل لیست اصلی دوره‌ها.
+        from sqlalchemy import case as _case, and_ as _and
+        _final_price = _case(
+            (_and(Course.discount_price > 0, Course.discount_price < Course.price),
+             Course.discount_price),
+            else_=Course.price,
+        )
         order = {'newest': Course.created_at.desc(), 'popular': Course.views.desc(),
-                 'cheap': Course.discount_price.asc(), 'expensive': Course.discount_price.desc()}.get(sort, Course.created_at.desc())
+                 'cheap': _final_price.asc(), 'expensive': _final_price.desc()}.get(sort, Course.created_at.desc())
         rows = _attach_course_aggs(q.order_by(order).limit(_lim).all())
         # نسخهٔ سبک غیر-ORM — ایمن برای کش بین درخواست‌ها
         return [course_lite(c) for c in rows]

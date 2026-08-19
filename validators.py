@@ -286,3 +286,25 @@ def safe_referrer(default=None):
             return default
         return ref
     return default
+
+
+# ================================================================
+# ضد تزریق فرمول در CSV/Excel (CSV/Formula Injection — OWASP)
+# ================================================================
+_CSV_RISKY_RE = re.compile(r'^[=+\-@\t\r]')
+
+
+def csv_cell(value):
+    """ایمن‌سازی یک سلول CSV در برابر تزریق فرمول.
+
+    دادهٔ کاربر (نام، ایمیل، پاسخ فرم و...) که مستقیماً در خروجی اکسل نوشته
+    می‌شود، اگر با ``=`` ، ``+`` ، ``-`` ، ``@`` ، tab یا CR شروع شود، توسط
+    اکسل/شیتز به‌عنوان فرمول/فرمان اجرا می‌شود (CSV Injection). این تابع با
+    پیشوند ``'`` آن را به متن خنثی تبدیل می‌کند.
+    """
+    if value is None:
+        return ''
+    s = str(value)
+    if _CSV_RISKY_RE.match(s):
+        return "'" + s
+    return s

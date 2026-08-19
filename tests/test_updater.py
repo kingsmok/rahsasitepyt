@@ -253,7 +253,7 @@ def _mock_git_update_source(monkeypatch, requirements='same'):
     monkeypatch.setattr(updater, '_restore_local_files', lambda saved: None)
     monkeypatch.setattr(updater, '_set_step', lambda *args, **kwargs: None)
     monkeypatch.setattr(updater, '_select_branch', lambda repo, branch=None: 'main')
-    monkeypatch.setattr(updater, '_ensure_local_git', lambda: True)
+    monkeypatch.setattr(updater, '_is_git_worktree', lambda: True)
     monkeypatch.setattr(
         updater, '_fetch_target', lambda repo, branch: ('target-ref', 'new-commit')
     )

@@ -2070,7 +2070,8 @@ def run_update(repo=None, branch=None):
                      branch=result.get('branch'), old_commit=result.get('old_commit'),
                      new_commit=result.get('new_commit'),
                      changed_count=result.get('changed_count', 0),
-                     dependencies=result.get('dependencies', ''))
+                     dependencies=result.get('dependencies', ''),
+                     method=result.get('method', ''))
         if result.get('restart_requested'):
             _touch_restart()
         return True, _success_message(result), result

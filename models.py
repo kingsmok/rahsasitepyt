@@ -237,9 +237,12 @@ class User(db.Model):
 
     @property
     def avatar_url(self):
-        if self.avatar:
-            return '/static/img/uploads/avatars/' + self.avatar
-        return None
+        """آواتار کاربر — فایل آپلودی، کتابخانه رسانه یا URL خارجی؛
+        در صورت نامعتبربودن None (UI از حروف ابتدایی نام استفاده می‌کند)."""
+        if not self.avatar:
+            return None
+        url = resolve_image_url(self.avatar, '')
+        return url or None
 
     @property
     def masked_national_code(self):
@@ -326,17 +329,9 @@ class Course(db.Model):
 
     @property
     def image_url(self):
-        """تصویر واقعی دوره یا placeholder خنثی؛ هرگز کاور دوره دیگری را جعل نمی‌کند."""
-        import os as _os
-        value = (self.image or '').strip()
-        if value.startswith('https://'):
-            return value
-        name = value[len('/static/img/'):] if value.startswith('/static/img/') else value.lstrip('/')
-        if name and '..' not in name and '\\' not in name:
-            path = _os.path.join(_os.path.dirname(__file__), 'static', 'img', name)
-            if _os.path.isfile(path):
-                return '/static/img/' + name
-        return '/static/img/course-placeholder.webp'
+        """تصویر واقعی دوره (کتابخانه رسانه/آپلود/URL) یا placeholder خنثی؛
+        هرگز کاور دوره دیگری را جعل نمی‌کند."""
+        return resolve_image_url(self.image, '/static/img/course-placeholder.webp')
 
     @property
     def final_price(self):
@@ -683,9 +678,105 @@ class BlogPost(db.Model):
     author = db.relationship('User')
 
     @property
-    def read_time(self):
-        words = len((self.body or '').split())
-        return max(1, round(words / 220))
+    def image_url(self):
+        """تصویر مطلب — کتابخانه رسانه، مسیر محلی یا URL خارجی با fallback امن."""
+        return resolve_image_url(self.image, '/static/img/course-placeholder.webp')
+
+    @property
+    def read_time(self):        return max(1, round(words / 220))
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# ابزارهای مرکزی تصویر — مسیرهای محلی/کتابخانه/URL خارجی
+# ═══════════════════════════════════════════════════════════════════════════
+def resolve_image_url(value, fallback=''):
+    """تبدیل مقدار «تصویر» مدل‌ها به URL معتبر با fallback امن.
+
+    پشتیبانی از همهٔ حالت‌های تاریخی و جدید:
+      * URL خارجی (http/https) و data: → همان مقدار (بدون بررسی فایل)
+      * ``/static/...`` یا ``static/...`` → همان مسیر static
+      * ``uploads/media/...`` → کتابخانهٔ رسانه (``/static/uploads/media/...``)
+      * ``uploads/products|avatars|brand/...`` → ``/static/img/uploads/...``
+      * نام ساده (مثل cover-python.webp) → ``/static/img/...``
+
+    برای مسیرهای محلی وجود واقعی فایل چک می‌شود؛ اگر نباشد fallback
+    برمی‌گردد تا رابط کاربری هرگز با تصویر شکسته دیده نشود.
+    """
+    import os as _os
+    value = (value or '').strip()
+    if not value:
+        return fallback
+    if value.startswith(('http://', 'https://', 'data:')):
+        return value
+    # مسیرهایی که مستقیماً زیر static هستند (خروجی کتابخانهٔ رسانه)
+    for prefix in ('/static/', 'static/'):
+        if value.startswith(prefix):
+            name = value[len(prefix):].lstrip('/')
+            if '..' in name or '\\' in name:
+                return fallback
+            path = _os.path.join(_os.path.dirname(__file__), 'static', name)
+            if _os.path.isfile(path):
+                return '/static/' + name
+            return fallback
+    name = value.lstrip('/')
+    if not name or '..' in name or '\\' in name:
+        return fallback
+    # کتابخانهٔ رسانهٔ مرکزی: uploads/media/x.jpg زیر static/uploads
+    if name.startswith('uploads/media/'):
+        path = _os.path.join(_os.path.dirname(__file__), 'static', name)
+        if _os.path.isfile(path):
+            return '/static/' + name
+        return fallback
+    # مسیرهای قدیمی محصولات/آواتار/برند: زیر static/img
+    if name.startswith('uploads/'):
+        path = _os.path.join(_os.path.dirname(__file__), 'static', 'img', name)
+        if _os.path.isfile(path):
+            return '/static/img/' + name
+        return fallback
+    # نام ساده یا مسیر زیر static/img (دوره‌ها/وبلاگ قدیمی)
+    path = _os.path.join(_os.path.dirname(__file__), 'static', 'img', name)
+    if _os.path.isfile(path):
+        return '/static/img/' + name
+    # آواتارهای قدیمی فقط با نام فایل (av_...) در پوشهٔ مخصوص آواتارها
+    if name.startswith('av_'):
+        path = _os.path.join(_os.path.dirname(__file__), 'static', 'img',
+                             'uploads', 'avatars', name)
+        if _os.path.isfile(path):
+            return '/static/img/uploads/avatars/' + name
+    return fallback
+
+
+def normalize_logo_url(value):
+    """URL سالم برای لوگوی سایت از تنظیم ``custom_logo``.
+
+    حالت‌های تاریخی مختلف ذخیره‌شده (``uploads/brand/x``،
+    ``/static/img/uploads/brand/x`` یا URL کامل) را به یک URL معتبر
+    تبدیل می‌کند؛ اگر فایل/مقدار نامعتبر بود '' برمی‌گردد تا UI به
+    لوگوی پیش‌فرض fallback کند.
+    """
+    import os as _os
+    value = (value or '').strip()
+    if not value:
+        return ''
+    if value.startswith(('http://', 'https://')):
+        return value
+    for prefix in ('/static/', 'static/'):
+        if value.startswith(prefix):
+            name = value[len(prefix):].lstrip('/')
+            break
+    else:
+        name = value.lstrip('/')
+    if not name or '..' in name or '\\' in name:
+        return ''
+    # مسیرهای تاریخی uploads/brand → static/img/uploads/brand
+    if name.startswith('uploads/') and not name.startswith('uploads/media/'):
+        path = _os.path.join(_os.path.dirname(__file__), 'static', 'img', name)
+    else:
+        path = _os.path.join(_os.path.dirname(__file__), 'static', name)
+    if _os.path.isfile(path):
+        rel = _os.path.relpath(path, _os.path.join(_os.path.dirname(__file__), 'static'))
+        return '/static/' + rel.replace('\\', '/')
+    return ''
 
 
 class SeoMeta(db.Model):
@@ -1465,17 +1556,9 @@ class Product(db.Model):
 
     @property
     def image_url(self):
-        """آدرس تصویر با fallback؛ فایل حذف‌شده یا مسیر ناسالم UI را نمی‌شکند."""
-        import os as _os
-        value = (self.image or '').strip()
-        if value.startswith('https://'):
-            return value
-        name = value[len('/static/img/'):] if value.startswith('/static/img/') else value.lstrip('/')
-        if name and '..' not in name and '\\' not in name:
-            path = _os.path.join(_os.path.dirname(__file__), 'static', 'img', name)
-            if _os.path.isfile(path):
-                return '/static/img/' + name
-        return '/static/img/product-placeholder.webp'
+        """آدرس تصویر با fallback؛ فایل حذف‌شده، مسیر ناسالم یا URL خارجی
+        (http/https) هرگز UI را نمی‌شکند."""
+        return resolve_image_url(self.image, '/static/img/product-placeholder.webp')
 
     @property
     def final_price(self):

@@ -19,7 +19,7 @@
         <span class="text-3" style="font-size:12.5px">⏱ {{ fa(post.read_time) }} دقیقه مطالعه</span>
         <span class="text-3" style="font-size:12.5px">👁 {{ fa(post.views) }} بازدید</span>
       </div>
-      <img src="/static/img/{{ post.image }}" alt="{{ post.title }}" style="border-radius:18px;margin-bottom:26px;width:100%;aspect-ratio:16/8;object-fit:cover">
+      <img src="{{ post.image_url }}" alt="{{ post.title }}" style="border-radius:18px;margin-bottom:26px;width:100%;aspect-ratio:16/8;object-fit:cover">
       <div class="post-body">
         {% for para in post.body.split('\n') %}
           {% if para.strip() %}<p>{{ para.strip() }}</p>{% endif %}
@@ -87,7 +87,7 @@
       <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:18px">
         {% for r in recent %}
         <a class="card card-hover post-card" href="{{ url_for('site.blog_post', slug=r.slug) }}">
-          <div class="thumb"><img src="/static/img/{{ r.image }}" alt=""></div>
+          <div class="thumb"><img src="{{ r.image_url }}" alt=""></div>
           <div class="body"><h3 style="font-size:14px">{{ r.title }}</h3></div>
         </a>
         {% endfor %}

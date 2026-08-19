@@ -437,7 +437,7 @@ def profile():
         g.user.marital_status = clamp_field(request.form.get('marital_status'), 'default')
         if password:
             g.user.set_password(password)
-        # آپلود عکس پروفایل
+        # آپلود عکس پروفایل — فایل مستقیم یا انتخاب از کتابخانهٔ رسانه
         f = request.files.get('avatar')
         if f and f.filename:
             up = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
@@ -461,6 +461,12 @@ def profile():
                     except OSError:
                         pass
                 g.user.avatar = fname
+        else:
+            avatar_lib = (request.form.get('avatar_lib') or '').strip()
+            if avatar_lib:
+                from models import resolve_image_url
+                if resolve_image_url(avatar_lib):
+                    g.user.avatar = avatar_lib
         db.session.commit()
         flash('پروفایل شما با موفقیت به‌روزرسانی شد.', 'success')
     colors = ['#2563eb', '#7c3aed', '#059669', '#dc2626', '#ea580c', '#db2777', '#0891b2', '#f59e0b']

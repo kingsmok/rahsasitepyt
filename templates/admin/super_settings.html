@@ -69,7 +69,11 @@
   <div class="ss-grid">
     <div class="ss-field"><label>رنگ اصلی (Primary)</label><input type="color" name="brand_color" value="{{ vals.get('brand_color','#2563eb') }}"></div>
     <div class="ss-field"><label>رنگ دوم (Secondary)</label><input type="color" name="brand_color2" value="{{ vals.get('brand_color2','#1d4ed8') }}"></div>
-    <div class="ss-field"><label>آپلود لوگو</label><input type="file" name="custom_logo_file" accept="image/*"></div>
+    <div class="ss-field"><label>آپلود لوگو</label><input type="file" name="custom_logo_file" accept="image/*">
+      <button type="button" class="mm-btn-lib" style="margin-top:8px"
+              onclick="MediaLibrary.open({target:'custom_logo_hidden', filter:'image'})">📁 کتابخانه رسانه</button>
+      <input type="hidden" id="custom_logo_hidden" name="custom_logo" value="{{ vals.get('custom_logo','') }}">
+    </div>
     <div class="ss-field"><label>عرض محتوا (kit_container)</label><input name="kit_container" value="{{ vals.get('kit_container','') }}" placeholder="مثلا 1240"></div>
     <div class="ss-field"><label>گردی گوشه (kit_radius)</label><input name="kit_radius" value="{{ vals.get('kit_radius','') }}" placeholder="مثلا 14"></div>
     <div class="ss-field"><label>متن درباره ما</label><textarea rows="3" name="about_text">{{ vals.get('about_text','') }}</textarea></div>

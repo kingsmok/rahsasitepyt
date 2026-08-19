@@ -198,3 +198,43 @@ a.contact-method:hover{border-color:var(--primary);transform:translateY(-2px)}
 @media (prefers-reduced-motion:reduce){
   .as-sidebar{transition:none}
 }
+
+/* ═══════════════════════════════════════════════════════════
+   📁 کتابخانه رسانه (شبیه وردپرس) — انتخابگر سراسری فایل
+   ═══════════════════════════════════════════════════════════ */
+.mm-overlay{position:fixed;inset:0;background:rgba(15,23,42,.62);backdrop-filter:blur(4px);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px}
+.mm-panel{background:var(--bg, #fff);border:1px solid var(--border,#e2e8f0);border-radius:18px;width:min(920px,96vw);max-height:88vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 70px rgba(2,6,23,.45);position:relative}
+.mm-head{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--border,#e2e8f0)}
+.mm-title{font-size:15px;font-weight:800}
+.mm-close{background:var(--bg-2,#f1f5f9);border:0;border-radius:10px;width:34px;height:34px;font-size:15px;cursor:pointer;color:var(--text,#0f172a)}
+.mm-tabs{display:flex;gap:8px;padding:12px 20px 0}
+.mm-tab{border:1px solid var(--border,#e2e8f0);background:var(--bg-2,#f8fafc);border-radius:999px;padding:7px 16px;font-size:12.5px;cursor:pointer;color:var(--text-2,#475569)}
+.mm-tab.active{background:var(--primary,#2563eb);color:#fff;border-color:var(--primary,#2563eb)}
+.mm-tabpane{padding:16px 20px 20px;overflow:auto;flex:1}
+.mm-bar{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.mm-search{flex:1;min-width:200px}
+.mm-search,.mm-kind{padding:9px 12px;border:1px solid var(--border,#e2e8f0);border-radius:11px;font-size:13px;background:var(--bg,#fff);color:var(--text,#0f172a);font-family:inherit}
+.mm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px}
+.mm-item{position:relative;border:1px solid var(--border,#e2e8f0);border-radius:13px;overflow:hidden;background:var(--bg-2,#f8fafc);cursor:pointer;transition:transform .12s, box-shadow .12s}
+.mm-item:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(2,6,23,.14)}
+.mm-item.selected{outline:3px solid var(--primary,#2563eb);outline-offset:-2px}
+.mm-thumb{height:96px;background:var(--bg-3,#eef2f7);display:flex;align-items:center;justify-content:center;overflow:hidden}
+.mm-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.mm-kind-ic{font-size:30px;opacity:.85}
+.mm-meta{padding:7px 9px 9px}
+.mm-name{font-size:11.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;direction:ltr;text-align:right}
+.mm-sub{font-size:10px;color:var(--text-3,#94a3b8);margin-top:3px}
+.mm-del{position:absolute;top:6px;left:6px;background:rgba(255,255,255,.92);border:1px solid var(--border,#e2e8f0);border-radius:8px;width:26px;height:26px;font-size:12px;cursor:pointer;line-height:1}
+.mm-more{display:block;margin:16px auto 0;border:1px dashed var(--border,#cbd5e1);background:transparent;border-radius:999px;padding:8px 22px;font-size:12.5px;cursor:pointer;color:var(--text-2,#475569)}
+.mm-drop{border:2px dashed var(--border,#cbd5e1);border-radius:16px;padding:34px 20px;text-align:center;cursor:pointer;color:var(--text-2,#475569);transition:all .15s}
+.mm-drop.drag{border-color:var(--primary,#2563eb);background:rgba(37,99,235,.06)}
+.mm-drop-ic{font-size:34px;margin-bottom:8px}
+.mm-drop-hint{font-size:11px;color:var(--text-3,#94a3b8);margin-top:8px}
+.mm-progress{margin-top:14px;font-size:12.5px;color:var(--primary,#2563eb);font-weight:700}
+.mm-toast{position:absolute;bottom:18px;right:18px;background:#0f172a;color:#fff;padding:11px 18px;border-radius:12px;font-size:12.5px;z-index:10;box-shadow:0 10px 30px rgba(2,6,23,.4)}
+.mm-toast.err{background:#b91c1c}
+.mm-toast.ok{background:#15803d}
+.mm-empty{grid-column:1/-1;text-align:center;color:var(--text-3,#94a3b8);padding:38px 10px;font-size:13px}
+.mm-btn-lib{display:inline-flex;align-items:center;gap:7px;border:1px dashed var(--primary,#2563eb);color:var(--primary,#2563eb);background:rgba(37,99,235,.05);border-radius:11px;padding:8px 14px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit}
+.mm-btn-lib:hover{background:rgba(37,99,235,.12)}
+.mm-preview-img{max-width:150px;max-height:150px;border-radius:12px;border:1px solid var(--border,#e2e8f0);object-fit:contain;margin-top:8px;background:var(--bg-2,#f8fafc)}

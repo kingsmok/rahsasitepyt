@@ -1075,6 +1075,15 @@ def create_app():
             g.settings = _ttl_cache('all_settings', 60, _get_all_settings)
         except Exception:
             _lexc('app.py')
+        # URL نرمال‌شدهٔ لوگو — همهٔ حالت‌های تاریخی ذخیره‌شده در تنظیم
+        # (uploads/brand/x یا /static/img/...) را به URL سالم تبدیل می‌کند.
+        try:
+            from models import normalize_logo_url
+            g.settings['logo_url'] = normalize_logo_url(
+                g.settings.get('custom_logo', ''))
+        except Exception:
+            _lexc('app.py')
+            g.settings['logo_url'] = ''
 
         # مهاجرت ایمن نصب‌های قدیمی: داده‌های شناخته‌شدهٔ seed حذف نمی‌شوند تا
         # سابقه و روابط دیتابیس آسیب نبیند، اما از دید عموم غیرفعال/پیش‌نویس

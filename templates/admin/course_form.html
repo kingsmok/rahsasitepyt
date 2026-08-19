@@ -123,6 +123,14 @@
 
   <div class="form-group">
     <label>تصویر دوره</label>
+    <div class="flex gap-2 wrap" style="align-items:center;margin-bottom:10px">
+      <img id="course-image-preview" src="{{ course.image_url if course else '/static/img/course-placeholder.webp' }}"
+           alt="" style="width:96px;height:60px;object-fit:cover;border-radius:10px;border:1px solid var(--border)">
+      <button type="button" class="mm-btn-lib"
+              onclick="MediaLibrary.open({target:'image-input', preview:'course-image-preview', filter:'image'})">
+        📁 انتخاب از کتابخانه رسانه
+      </button>
+    </div>
     <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:10px">
       {% for img in images %}
       <img class="img-picker" data-src="{{ img }}" src="/static/img/{{ img }}" alt=""

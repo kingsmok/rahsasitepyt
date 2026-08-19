@@ -13,7 +13,18 @@
     <div class="form-group"><label for="f_image_1">تصویر</label>
       <select id="f_image_1" class="form-control" name="image">
         {% for img in images %}<option value="{{ img }}" {{ 'selected' if post and post.image == img }}>{{ img }}</option>{% endfor %}
+        {% if post and post.image and post.image not in images %}
+        <option value="{{ post.image }}" selected>📁 فعلی: {{ post.image }}</option>
+        {% endif %}
       </select>
+      <div class="flex gap-1" style="align-items:center;margin-top:8px">
+        <img id="blog-image-preview" src="{{ post.image_url if post else '/static/img/' + images[0] }}"
+             alt="" style="width:72px;height:48px;object-fit:cover;border-radius:9px;border:1px solid var(--border);display:{{ 'block' if post and post.image else 'none' }}">
+        <button type="button" class="mm-btn-lib"
+                onclick="MediaLibrary.open({target:'f_image_1', preview:'blog-image-preview', filter:'image'})">
+          📁 انتخاب از کتابخانه رسانه
+        </button>
+      </div>
     </div>
   </div>
   <div class="form-group"><label for="f_excerpt_1">خلاصه</label><textarea id="f_excerpt_1" class="form-control" name="excerpt" style="min-height:70px">{{ post.excerpt if post else '' }}</textarea></div>

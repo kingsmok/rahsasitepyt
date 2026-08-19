@@ -128,7 +128,7 @@
         </div>
       </div>
 {% if cur_user.avatar %}
-      <img class="avatar avatar-lg" src="{{ cur_user.avatar_url }}" alt="عکس پروفایل"
+      <img class="avatar avatar-lg" id="profile-avatar-preview" src="{{ cur_user.avatar_url }}" alt="عکس پروفایل"
            style="width:96px;height:96px;margin:0 auto 12px;display:block;border-radius:26px;object-fit:cover">
       {% else %}
       <span class="avatar avatar-lg" style="background:{{ cur_user.avatar_color }};margin:0 auto 12px;display:flex;align-items:center;justify-content:center">{{ cur_user.initials() }}</span>
@@ -140,6 +140,19 @@
         <input type="file" name="avatar" accept="image/*" class="form-control" style="font-size:12px;padding:8px">
         <button class="btn btn-ghost btn-sm btn-block mt-1" type="submit">⬆ آپلود عکس پروفایل</button>
       </form>
+      <button type="button" class="mm-btn-lib btn-block" style="margin-top:8px;justify-content:center"
+              onclick="MediaLibrary.open({target:'avatar-lib', preview:'profile-avatar-preview', filter:'image'})">📁 از کتابخانه رسانه</button>
+      <input type="hidden" id="avatar-lib" name="avatar_lib" value="">
+      <script>
+      (function(){
+        var input = document.getElementById('avatar-lib');
+        var img = document.getElementById('profile-avatar-preview');
+        if (!input || !img) return;
+        input.addEventListener('change', function(){
+          if (input.value) { img.src = input.value; img.style.display = 'block'; }
+        });
+      })();
+      </script>
       <div class="mt-3">
         <div class="badge badge-primary mb-1">عضو از {{ cur_user.created_at|jdate }}</div>
         {% set bd = cur_user.birth_jalali %}

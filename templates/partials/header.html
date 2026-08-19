@@ -28,7 +28,8 @@
   <div class="container">
     <div class="dk-main">
       <a class="dk-logo" href="{{ url_for('site.index') }}">
-        <span class="dk-logo-ic">{{ icon('school', 22) }}</span>
+        {% if site.get('logo_url') %}<img src="{{ site.get('logo_url') }}" alt="لوگوی {{ site.site_name or 'آکادمی آنلاین' }}" class="dk-logo-img">
+        {% else %}<span class="dk-logo-ic">{{ icon('school', 22) }}</span>{% endif %}
         <span><b>{{ site.site_name or 'آکادمی آنلاین' }}</b><small>{{ site.site_desc or 'آموزش آنلاین' }}</small></span>
       </a>
 

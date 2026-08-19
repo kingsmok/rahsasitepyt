@@ -1987,6 +1987,29 @@ def user_add():
         else:
             u = User(name=name, email=email, phone=phone or None, role=role,
                      avatar_color=random.choice(['#2563eb', '#7c3aed', '#059669', '#dc2626', '#ea580c']))
+            # آواتار: آپلود مستقیم اولویت دارد؛ بعد مقدار انتخاب‌شده از کتابخانهٔ رسانه
+            avatar_file = request.files.get('avatar_file') if request.files else None
+            avatar_value = (request.form.get('avatar') or '').strip()
+            if avatar_file and avatar_file.filename:
+                from validators import (safe_filename, ALLOWED_IMAGE_EXT,
+                                        file_content_is_safe)
+                safe = safe_filename(avatar_file.filename or '', ALLOWED_IMAGE_EXT)
+                ext = os.path.splitext(safe or '')[1].lower()
+                if safe and file_content_is_safe(avatar_file.stream, ext):
+                    up = os.path.join(os.path.dirname(os.path.dirname(
+                        os.path.abspath(__file__))), 'static', 'img',
+                        'uploads', 'avatars')
+                    os.makedirs(up, exist_ok=True)
+                    fname = 'av_' + uuid.uuid4().hex[:10] + ext
+                    avatar_file.save(os.path.join(up, fname))
+                    u.avatar = fname
+                else:
+                    flash('فایل آواتار نامعتبر است و نادیده گرفته شد.', 'error')
+            elif avatar_value:
+                # مقدار کامل مسیر از کتابخانه رسانه (uploads/media/...) یا URL
+                from models import resolve_image_url
+                if resolve_image_url(avatar_value):
+                    u.avatar = avatar_value
             u.set_password(password)
             db.session.add(u)
             db.session.commit()
@@ -2744,10 +2767,13 @@ def super_settings():
                     lname = 'logo' + os.path.splitext(safe)[1].lower()
                     logo_f.save(os.path.join(up, lname))
                     st = db.session.get(Setting, 'custom_logo')
+                    # مسیر کانونی یکسان برای هر دو فرم تنظیمات (باگ قبلی:
+                    # این فرم «uploads/brand/...» ذخیره می‌کرد که لوگو را می‌شکست)
                     if st:
-                        st.value = 'uploads/brand/' + lname
+                        st.value = '/static/img/uploads/brand/' + lname
                     else:
-                        db.session.add(Setting(key='custom_logo', value='uploads/brand/' + lname))
+                        db.session.add(Setting(key='custom_logo',
+                                               value='/static/img/uploads/brand/' + lname))
             db.session.commit()
             flash('تنظیمات با موفقیت ذخیره شد ✅', 'success')
             return redirect(url_for('admin.super_settings', tab=request.form.get('tab', '')))
@@ -2867,8 +2893,12 @@ def _product_int(value, maximum=2_000_000_000):
         return 0
 
 
-def _save_product_image(file_storage):
-    """ذخیره امن تصویر محصول و برگرداندن مسیر نسبی static/img."""
+def _save_product_image(file_storage, uploader_id=None):
+    """ذخیره امن تصویر محصول + ثبت در کتابخانه رسانه مرکزی.
+
+    برگرداندن مسیر نسبی (مثل uploads/products/product-xxx.jpg)؛
+    اگر آپلود نامعتبر باشد None و خطا flash می‌شود.
+    """
     if not file_storage or not file_storage.filename:
         return None
     from validators import (ALLOWED_IMAGE_EXT, file_content_is_safe,
@@ -2882,7 +2912,26 @@ def _save_product_image(file_storage):
                              'static', 'img', 'uploads', 'products')
     os.makedirs(directory, exist_ok=True)
     filename = f'product-{uuid.uuid4().hex[:12]}{ext}'
-    file_storage.save(os.path.join(directory, filename))
+    fpath = os.path.join(directory, filename)
+    file_storage.save(fpath)
+    # ثبت در کتابخانه رسانه مرکزی — تصویر آپلودشده اینجا هم قابل استفاده است
+    try:
+        from models import Media
+        size = os.path.getsize(fpath)
+        width = height = None
+        try:
+            from PIL import Image as _Img
+            with _Img.open(fpath) as im:
+                width, height = im.size
+        except Exception:
+            pass
+        db.session.add(Media(filename=safe, path='uploads/products/' + filename,
+                             mime=file_storage.mimetype or '', size=size,
+                             width=width, height=height, kind='image',
+                             uploaded_by=uploader_id or (getattr(g, 'user', None) and g.user.id)))
+        db.session.flush()
+    except Exception:
+        _lexc('blueprints/admin_bp.py')
     return 'uploads/products/' + filename
 
 

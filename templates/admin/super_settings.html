@@ -242,6 +242,7 @@
     <div class="ss-field"><label>ترب — API Key</label><input name="tarb_api_key" value="" placeholder="خالی = بدون تغییر"></div>
     <div class="ss-field"><label>ترب — Merchant</label><input name="tarb_merchant" value="{{ vals.get('tarb_merchant','') }}"></div>
     <div class="ss-field"><label>حداکثر تعداد قسط</label><input type="number" name="bnpl_max_installments" value="{{ vals.get('bnpl_max_installments','4') }}"></div>
+    <div class="ss-field"><label>درصد پیش‌فرض سهم مدرس از فروش دوره</label><input type="number" min="0" max="100" name="teacher_default_share" value="{{ vals.get('teacher_default_share','50') }}"><p class="ss-hint">در هر دوره به‌طور جداگانه قابل تغییر است.</p></div>
     <div class="ss-field"><label>درصد بازگشت به کیف پول</label><input type="number" min="0" max="50" name="cashback_percent" value="{{ vals.get('cashback_percent','0') }}"><p class="ss-hint">۰ یعنی غیرفعال؛ فقط درصد واقعی سیاست فروش را وارد کنید.</p></div>
     <div class="ss-field"><label>درصد تخفیف وفاداری</label><input type="number" min="0" max="50" name="loyalty_discount_percent" value="{{ vals.get('loyalty_discount_percent','0') }}"><p class="ss-hint">برای کاربری که قبلاً خرید داشته است؛ ۰ یعنی غیرفعال.</p></div>
     <div class="ss-field"><label>درصد پاداش معرفی</label><input type="number" min="0" max="50" name="referral_bonus_percent" value="{{ vals.get('referral_bonus_percent','0') }}"><p class="ss-hint">فقط اولین خرید کاربر معرفی‌شده؛ ۰ یعنی غیرفعال.</p></div>

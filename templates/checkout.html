@@ -105,6 +105,11 @@
           <label class="quiz-opt" style="padding:8px 14px"><input form="create-order-form" type="radio" name="installment_count" value="4" {{ 'checked' if installment_count == 4 }}> ۴ قسط ماهانه</label>
         </div>
         <p class="form-hint">مبلغ و سررسید دقیق اقساط در مرحله بعد و توسط سرویس انتخابی نمایش داده می‌شود.</p>
+        {% for _course in courses %}
+          {% if _course.unlock_per_installment %}
+          <p class="form-hint" style="color:var(--primary)">🔓 «{{ _course.title }}»: با هر قسط پرداخت‌شده {{ fa(_course.unlock_per_installment) }} جلسه باز می‌شود.</p>
+          {% endif %}
+        {% endfor %}
       </div>
       {% endif %}
       <div class="summary-box" style="position:sticky;top:96px">

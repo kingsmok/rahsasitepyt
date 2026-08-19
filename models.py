@@ -325,10 +325,12 @@ class Course(db.Model):
     seeded_students = db.Column(db.Integer, default=0)
     intro_video = db.Column(db.String(500), default='')   # ویدئوی معرفی (یوتیوب/آپارات/مستقیم)
     access_days = db.Column(db.Integer, default=0)        # مدت دسترسی به دوره (روز) — 0 = نامحدود
-    delivery_type = db.Column(db.String(20), default='online')  # online | offline | hybrid
+    delivery_type = db.Column(db.String(20), default='online')  # inperson | online | offline | hybrid
     allow_download = db.Column(db.Boolean, default=False)       # دانلود پیوست‌های درس
     attendance_required_percent = db.Column(db.Integer, default=75)  # حداقل حضور دوره حضوری
     audience = db.Column(db.String(300), default='')      # مناسب برای چه افرادی
+    revenue_percent = db.Column(db.Integer, nullable=True)  # درصد درآمد مدرس از فروش دوره (None = پیش‌فرض سایت)
+    unlock_per_installment = db.Column(db.Integer, default=0)  # تعداد جلسات بازشونده به ازای هر قسط (۰ = همه باز)
     created_at = db.Column(db.DateTime, default=utcnow)
 
     teacher = db.relationship('User', backref='courses_taught')
@@ -413,6 +415,53 @@ class Course(db.Model):
 
     def is_free(self):
         return self.final_price == 0
+
+    # ── انواع برگزاری دوره: ۴ نوع مجزا ──
+    @property
+    def delivery_label(self):
+        return DELIVERY_TYPE_LABELS.get(self.delivery_type or 'online', 'آنلاین')
+
+    @property
+    def delivery_icon(self):
+        return {'inperson': '🏫', 'online': '🌐', 'offline': '📚', 'hybrid': '🔀'} \
+            .get(self.delivery_type or 'online', '📚')
+
+    @property
+    def is_attendance_based(self):
+        """حضور و غیاب فقط برای دوره حضوری و ترکیبی معنا دارد."""
+        return (self.delivery_type or 'online') in ('inperson', 'hybrid')
+
+    def teacher_percent(self):
+        """درصد درآمد مدرس این دوره — مقدار دوره یا پیش‌فرض سایت (۵۰٪)."""
+        if self.revenue_percent is not None:
+            return max(0, min(100, int(self.revenue_percent)))
+        try:
+            from models import Setting as _S
+            st = _S.query.filter_by(key='teacher_default_share').first()
+            if st and str(st.value or '').isdigit():
+                return max(0, min(100, int(st.value)))
+        except Exception:
+            pass
+        return 50
+
+    def teacher_share_amount(self, teacher_id, sold):
+        """سهم تومانی یک مدرس از مبلغ فروش قطعی دوره.
+
+        * مدرس اصلی: باقی‌ماندهٔ استخر بعد از کسر سهم مدرس‌های کمکی.
+        * مدرس کمکی: share_percent خودش از استخر درصدی دوره.
+        """
+        sold = int(sold or 0)
+        pool = round(sold * self.teacher_percent() / 100)
+        co_shares = {link.teacher_id: max(0, min(100, int(link.share_percent or 0)))
+                     for link in self.co_teacher_links
+                     if link.share_percent is not None}
+        if teacher_id == self.teacher_id:
+            used = sum(round(pool * pct / 100) for pct in co_shares.values())
+            return max(0, pool - used)
+        pct = co_shares.get(teacher_id)
+        if pct:
+            return round(pool * pct / 100)
+        return 0
 
 
 class Section(db.Model):
@@ -522,6 +571,23 @@ class Order(db.Model):
                 'failed': 'ناموفق', 'canceled': 'لغو شده',
                 'pending_verify': 'در انتظار تایید فیش'}.get(self.status, self.status)
 
+    def unlock_notice(self):
+        """توضیح قفل اقساطی برای صفحه اقساط/تسویه — اگر سفارش شامل دوره‌ای
+        با `unlock_per_installment` است، تعداد جلسات بازشونده به ازای هر قسط
+        را نشان می‌دهد؛ در غیر این صورت '' برمی‌گردد."""
+        per = 0
+        for item in self.items:
+            if item.course_id and item.course and item.course.unlock_per_installment:
+                per = int(item.course.unlock_per_installment)
+                break
+        if per <= 0 or not (self.installment_count and self.installment_count > 1):
+            return ''
+        _fa_digits = str.maketrans('0123456789', '۰۱۲۳۴۵۶۷۸۹')
+        per_fa = str(per).translate(_fa_digits)
+        return ('این خرید اقساطی است: بعد از پرداخت قسط اول {} جلسهٔ اول دوره باز '
+                'می‌شود و با پرداخت هر قسط بعدی {} جلسهٔ دیگر باز می‌شود.').format(
+                    per_fa, per_fa)
+
 
 class PaymentProof(db.Model):
     """فیش واریزی کارت‌به‌کارت — ثبت و تایید توسط ادمین"""
@@ -595,6 +661,7 @@ class Enrollment(db.Model):
     updated_at = db.Column(db.DateTime, default=utcnow, onupdate=utcnow)  # آخرین فعالیت (یادآور ادامه یادگیری)
     user = db.relationship('User', backref='enrollments')
     course = db.relationship('Course', backref='enrollments')
+    order = db.relationship('Order', foreign_keys=[order_id])
 
     def progress_list(self):
         try:
@@ -619,6 +686,53 @@ class Enrollment(db.Model):
     @property
     def is_completed(self):
         return bool(self.completed_at) or self.percent >= 100
+
+    # ── قفل اقساطی (دسته ۴): فقط N جلسه به ازای هر قسط پرداخت‌شده ──
+    def installment_paid_count(self):
+        """تعداد قسط‌هایی که «پرداخت قطعی» ثبت شده (۰ اگر سفارش نبود).
+
+        قسط اول در همان لحظهٔ تسویه پرداخت می‌شود؛ بقیه با ثبت وصول از
+        پنل سرویس اقساطی (اسنپ‌پی/دیجی‌پی) یا دکمهٔ ادمین «paid» می‌شوند.
+        """
+        if not self.order_id:
+            return 0
+        try:
+            from models import Installment as _I
+            return _I.query.filter_by(order_id=self.order_id).filter(
+                _I.status == 'paid').count()
+        except Exception:
+            return 0
+
+    def unlocked_lesson_limit(self):
+        """حداکثر تعداد جلسات باز برای خرید اقساطی؛ ۰ = همه باز.
+
+        فقط وقتی محدودیت دارد که دوره `unlock_per_installment` تعیین کرده
+        باشد و هنوز قسط پرداخت‌نشده‌ای باقی مانده باشد. قسط اول هنگام تسویه
+        پرداخت شده است؛ با هر قسط بعدی N جلسهٔ دیگر باز می‌شود.
+        """
+        course = self.course
+        per = int(course.unlock_per_installment or 0) if course else 0
+        if per <= 0:
+            return 0
+        try:
+            insts = sorted(self.order.installments, key=lambda i: i.number) \
+                if self.order else []
+        except Exception:
+            insts = []
+        if not insts:
+            return 0
+        # قسط اول هنگام تسویه پرداخت شده است؛ اگر همهٔ قسط‌های بعدی هم ثبت
+        # شده باشند، سفارش عملاً کامل است و قفل برداشته می‌شود.
+        if len(insts) == 1 or all(i.status == 'paid' for i in insts[1:]):
+            return 0
+        paid = self.installment_paid_count()
+        # قسط اول در زمان تسویه پرداخت شده؛ مگر اینکه جداگانه ثبت شده باشد
+        first_recorded = insts[0].status == 'paid'
+        if paid <= 0:
+            paid = 1
+        elif not first_recorded:
+            paid += 1
+        return paid * per
 
 
 class CourseMeeting(db.Model):
@@ -747,6 +861,19 @@ def unique_slug_for(model_class, title, exclude_id=None, fallback='item'):
         candidate = '{}-{}'.format(base[:216], n)
         n += 1
     return '{}-{}'.format(base[:200], os.urandom(3).hex())
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# انواع برگزاری دوره — ۴ نوع مجزا (دسته ۴: LMS)
+# ═══════════════════════════════════════════════════════════════════════════
+DELIVERY_TYPE_LABELS = {
+    'inperson': 'حضوری',
+    'online': 'آنلاین',
+    'offline': 'آفلاین',
+    'hybrid': 'ترکیبی',
+}
+# مقادیر معتبر برای فرم/اعتبارسنجی (ترتیب نمایش)
+DELIVERY_TYPES = ('online', 'inperson', 'offline', 'hybrid')
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -1441,6 +1568,7 @@ class CourseTeacher(db.Model):
     course_id = db.Column(db.Integer, db.ForeignKey('courses.id'), nullable=False)
     teacher_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     role_name = db.Column(db.String(100), default='مدرس')
+    share_percent = db.Column(db.Integer, nullable=True)  # سهم این مدرس از استخر درصد دوره (None = بدون سهم)
 
 
 class TicketReply(db.Model):

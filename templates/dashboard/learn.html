@@ -127,10 +127,11 @@
           <div style="font-size:13px;font-weight:800;color:var(--text-2);padding:12px 10px 6px">{{ sec.title }}</div>
           {% for l in sec.lessons %}
           {% if l.id in locked %}
-          <div class="lesson-item" style="opacity:.55;cursor:not-allowed" title="🔒 این جلسه {{ fa(locked[l.id]) }} روز دیگر باز می‌شود (دسترسی تدریجی)">
+          <div class="lesson-item" style="opacity:.55;cursor:not-allowed"
+               title="{% if locked[l.id].installment %}🔒 این جلسه با پرداخت قسط بعدی باز می‌شود{% else %}🔒 این جلسه {{ fa(locked[l.id].days) }} روز دیگر باز می‌شود (دسترسی تدریجی){% endif %}">
             <span class="l-num">🔒</span>
             <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ l.title }}</span>
-            <span style="font-size:10.5px;color:var(--text-3)">{{ fa(locked[l.id]) }} روز</span>
+            <span style="font-size:10.5px;color:var(--text-3)">{% if locked[l.id].installment %}قسط بعدی{% else %}{{ fa(locked[l.id].days) }} روز{% endif %}</span>
           </div>
           {% else %}
           <a class="lesson-item {{ 'active' if l.id == current.id }} {{ 'done' if l.id in done }}"

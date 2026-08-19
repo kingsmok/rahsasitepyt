@@ -12,6 +12,7 @@ from flask import (Blueprint, render_template, request, redirect, url_for, flash
 from models import (utcnow, db, User, Course, Enrollment, Favorite, Order, Ticket, ActivityLog, StudyDay)
 from validators import youtube_id, aparat_hash, is_valid_phone, is_valid_national_code
 from validators import log_exc as _lexc
+from jdates import fa_num
 
 student_bp = Blueprint('student', __name__)
 
@@ -32,6 +33,25 @@ def _stream_token(user_id, lesson_id, quality='sd'):
     from itsdangerous import URLSafeTimedSerializer
     serializer = URLSafeTimedSerializer(current_app.config['SECRET_KEY'], salt='lesson-stream-v1')
     return serializer.dumps({'u': int(user_id), 'l': int(lesson_id), 'q': quality})
+
+
+def _installment_locked(enrollment, lesson):
+    """آیا این درس به‌خاطر قفل اقساطی هنوز باز نیست؟ (دسته ۴)
+
+    فقط وقتی فعال است که دوره `unlock_per_installment` تعیین کرده و سفارش
+    هنوز کامل تسویه نشده باشد. درس‌های رایگان و داخل سقف قسط‌های پرداخت‌شده
+    باز هستند. خروجی: bool
+    """
+    limit = enrollment.unlocked_lesson_limit()
+    if limit <= 0:
+        return False
+    if lesson.is_free:
+        return False
+    lessons = enrollment.course.lessons
+    for idx, l in enumerate(lessons, start=1):
+        if l.id == lesson.id:
+            return idx > limit
+    return True  # درس خارج از فهرست — محافظه‌کارانه قفل
 
 
 def _login_required():
@@ -140,9 +160,27 @@ def learn(course_id):
         if l.release_days and l.release_days > 0 and not l.is_free:
             unlock = (enrollment.created_at + _td(days=l.release_days)).replace(tzinfo=None)
             if utcnow() < unlock:
-                locked[l.id] = (unlock - utcnow()).days + 1
+                locked[l.id] = {'days': (unlock - utcnow()).days + 1, 'installment': False}
+    # قفل اقساطی (دسته ۴): خرید اقساطی فقط N جلسه به ازای هر قسط باز می‌کند
+    limit = enrollment.unlocked_lesson_limit()
+    if limit > 0:
+        for idx, l in enumerate(lessons, start=1):
+            if l.is_free or l.id in locked:
+                continue
+            if idx > limit:
+                paid = enrollment.installment_paid_count()
+                if paid <= 0:
+                    paid = 1  # قسط اول هنگام تسویه پرداخت شده
+                locked[l.id] = {'days': 0, 'installment': True,
+                                'next_number': paid + 1}
     if current.id in locked:
-        flash(f'این جلسه {locked[current.id]} روز دیگر باز می‌شود.', 'info')
+        lock_info = locked[current.id]
+        if lock_info.get('installment'):
+            flash('این جلسه با پرداخت قسط بعدی (قسط {}) باز می‌شود.'.format(
+                fa_num(lock_info.get('next_number', 2))), 'info')
+        else:
+            flash('این جلسه {} روز دیگر باز می‌شود.'.format(
+                fa_num(lock_info.get('days', 1))), 'info')
         first_open = next((lesson for lesson in lessons if lesson.id not in locked), None)
         return redirect(url_for('student.learn', course_id=course.id,
                                 lesson=first_open.id if first_open else None))
@@ -211,6 +249,8 @@ def lesson_stream(lid):
             unlock_at = (enrollment.created_at + _td(days=lesson.release_days)).replace(tzinfo=None)
             if utcnow() < unlock_at:
                 abort(403)
+        if _installment_locked(enrollment, lesson):
+            abort(403)
     filename = _local_video_filename(lesson.video_url_hd if quality == 'hd' else lesson.video_url)
     if not filename:
         abort(404)
@@ -235,7 +275,7 @@ def complete_lesson(course_id, lesson_id):
     lesson = next((l for l in lessons if l.id == lesson_id), None)
     if not lesson:
         abort(404)
-    # مسیر POST مستقیم نباید محدودیت زمان دسترسی یا انتشار تدریجی را دور بزند.
+    # مسیر POST مستقیم نباید محدودیت زمان دسترسی، انتشار تدریجی یا قفل اقساطی را دور بزند.
     from datetime import timedelta as _td
     if course.access_days and course.access_days > 0:
         expires_at = (enrollment.created_at + _td(days=course.access_days)).replace(tzinfo=None)
@@ -245,6 +285,8 @@ def complete_lesson(course_id, lesson_id):
         unlock_at = (enrollment.created_at + _td(days=lesson.release_days)).replace(tzinfo=None)
         if utcnow() < unlock_at:
             abort(403)
+    if _installment_locked(enrollment, lesson):
+        abort(403)
     done = set(enrollment.progress_list())
     action = request.form.get('action', 'complete')
     if action == 'complete':

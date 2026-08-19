@@ -9,7 +9,7 @@
     <div class="badges">
       {% if course.has_discount %}<span class="discount-flag">٪{{ fa(course.discount_percent) }} تخفیف</span>{% endif %}
       {% if course.is_free() %}<span class="badge badge-success">رایگان</span>{% endif %}
-      <span class="badge badge-gray">{{ {'online':'آنلاین','offline':'حضوری','hybrid':'ترکیبی'}.get(course.delivery_type or 'online', 'آنلاین') }}</span>
+      <span class="badge badge-gray">{{ course.delivery_icon }} {{ course.delivery_label }}</span>
       {% if course.featured %}<span class="badge badge-accent">ویژه</span>{% endif %}
     </div>
     <button class="fav-btn {{ 'active' if cu and (cu.id, course.id) in fids }}" data-fav="{{ course.id }}" title="علاقه‌مندی">

@@ -76,10 +76,18 @@ def dashboard():
         .join(Assignment).filter(Assignment.course_id.in_(course_ids),
                                  AssignmentSubmission.status == 'submitted') \
         .order_by(AssignmentSubmission.created_at.desc()).limit(8).all()
+    # سهم واقعی این مدرس — طبق درصد تعیین‌شده برای هر دوره (نه ۵۰٪ ثابت)
+    share = 0
+    for course in courses:
+        sold = db.session.query(func.coalesce(func.sum(OrderItem.price), 0)) \
+            .join(Order, Order.id == OrderItem.order_id) \
+            .filter(OrderItem.course_id == course.id, Order.status == 'paid') \
+            .scalar() or 0
+        share += course.teacher_share_amount(g.user.id, sold)
     g.seo['title'] = 'داشبورد استاد — آکادمی آنلاین'
     return render_template('teacher/dashboard.html', courses=courses,
                            total_students=total_students, revenue=revenue,
-                           share=round(int(revenue or 0) * 0.5),
+                           share=share,
                            pending_asgs=pending_asgs, pending_qs=pending_qs,
                            recent_submissions=recent_submissions)
 
@@ -144,7 +152,7 @@ def enrollment_completion(eid):
     enrollment = db.get_or_404(Enrollment, eid)
     if not _can_manage_course(enrollment.course):
         abort(403)
-    if enrollment.course.delivery_type == 'online':
+    if not enrollment.course.is_attendance_based:
         abort(400)
     action = request.form.get('action', 'complete')
     if action == 'complete':
@@ -185,7 +193,7 @@ def attendance_sessions(cid):
     course = db.get_or_404(Course, cid)
     if not _can_manage_course(course):
         abort(403)
-    if course.delivery_type == 'online':
+    if not course.is_attendance_based:
         flash('حضور و غیاب فقط برای دوره حضوری یا ترکیبی فعال است.', 'info')
         return redirect(url_for('teacher.my_courses'))
     if request.method == 'POST':
@@ -346,19 +354,23 @@ def revenue():
     courses = _managed_courses()
     rows = []
     total = 0
+    share = 0
     for course in courses:
         sold = db.session.query(func.coalesce(func.sum(OrderItem.price), 0)) \
             .join(Order, Order.id == OrderItem.order_id) \
             .filter(OrderItem.course_id == course.id, Order.status == 'paid') \
             .scalar() or 0
         count = Enrollment.query.filter_by(course_id=course.id).count()
+        # سهم این مدرس طبق درصد همان دوره (مدرس اصلی = باقی‌مانده پس از کسر کمکی‌ها)
+        course_share = course.teacher_share_amount(g.user.id, sold)
         rows.append({'course': course, 'sold': sold, 'count': count,
-                     'share': round(int(sold or 0) * 0.5)})
+                     'share': course_share,
+                     'percent': course.teacher_percent()})
         total += int(sold or 0)
+        share += course_share
     pending = PayoutRequest.query.filter_by(teacher_id=g.user.id, status='pending').first()
     paid_out = db.session.query(func.coalesce(func.sum(PayoutRequest.amount), 0)) \
         .filter_by(teacher_id=g.user.id, status='paid').scalar() or 0
-    share = round(total * 0.5)
     available = max(0, share - int(paid_out or 0) - (pending.amount if pending else 0))
     return render_template('teacher/revenue.html', rows=rows,
                            total=total, share=share, pending=pending,
@@ -374,16 +386,17 @@ def payout_request():
         abort(403)
     amount = request.form.get('amount', 0, type=int)
     account = request.form.get('account', '').strip()
-    course_ids = _managed_course_ids()
-    sold = 0
-    if course_ids:
+    # سهم قابل تسویه = مجموع سهم این مدرس از هر دوره طبق درصد همان دوره
+    available = 0
+    for course in _managed_courses():
         sold = db.session.query(func.coalesce(func.sum(OrderItem.price), 0)) \
             .join(Order, Order.id == OrderItem.order_id) \
-            .filter(OrderItem.course_id.in_(course_ids), Order.status == 'paid') \
+            .filter(OrderItem.course_id == course.id, Order.status == 'paid') \
             .scalar() or 0
+        available += course.teacher_share_amount(g.user.id, sold)
     paid_out = db.session.query(func.coalesce(func.sum(PayoutRequest.amount), 0)) \
         .filter_by(teacher_id=g.user.id, status='paid').scalar() or 0
-    available = max(0, round(int(sold or 0) * 0.5) - int(paid_out or 0))
+    available = max(0, int(available) - int(paid_out or 0))
     if amount < 50000:
         flash('حداقل مبلغ تسویه ۵۰,۰۰۰ تومان است.', 'error')
     elif amount > available:

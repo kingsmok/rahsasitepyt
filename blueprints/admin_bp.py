@@ -26,7 +26,7 @@ import re as _re
 from validators import human_size, safe_int
 from validators import log_exc as _lexc
 from validators import safe_referrer
-from jdates import jdate_num, jtime
+from jdates import jdate_num, jtime, fa_num
 
 
 def _save_lesson_file(f):
@@ -371,7 +371,8 @@ def _course_form(course):
         course.intro_video = _iv
         course.access_days = int(f.get('access_days') or 0)
         course.delivery_type = f.get('delivery_type', 'online')
-        if course.delivery_type not in ('online', 'offline', 'hybrid'):
+        from models import DELIVERY_TYPES
+        if course.delivery_type not in DELIVERY_TYPES:
             course.delivery_type = 'online'
         course.allow_download = bool(f.get('allow_download'))
         try:
@@ -379,6 +380,42 @@ def _course_form(course):
         except (TypeError, ValueError):
             course.attendance_required_percent = 75
         course.audience = f.get('audience', '').strip()
+        # سهم درآمد مدرس این دوره (٪) — خالی یعنی پیش‌فرض سایت
+        _rev_raw = f.get('revenue_percent', '').strip()
+        if _rev_raw == '':
+            course.revenue_percent = None
+        else:
+            try:
+                course.revenue_percent = max(0, min(100, int(_rev_raw)))
+            except (TypeError, ValueError):
+                course.revenue_percent = None
+        # تعداد جلسات بازشونده به ازای هر قسط (۰ = همه باز)
+        try:
+            course.unlock_per_installment = max(0, min(500, int(f.get('unlock_per_installment') or 0)))
+        except (TypeError, ValueError):
+            course.unlock_per_installment = 0
+        # مدرس‌های کمکی + درصد سهم هر کدام (باگ قبلی: انتخاب‌ها هرگز ذخیره نمی‌شد)
+        try:
+            from models import CourseTeacher as _CT
+            db.session.flush()  # دوره جدید id بگیرد تا لینک‌ها قابل حذف/ساخت باشند
+            _CT.query.filter_by(course_id=course.id).delete()
+            selected_ids = []
+            for raw in f.getlist('co_teacher_ids'):
+                for piece in raw.split(','):
+                    piece = piece.strip()
+                    if piece.isdigit() and int(piece) not in selected_ids:
+                        selected_ids.append(int(piece))
+            if course.teacher_id in selected_ids:
+                selected_ids.remove(course.teacher_id)
+            for tid in selected_ids:
+                share_raw = f.get('co_share_{}'.format(tid), '').strip()
+                share = None
+                if share_raw.isdigit():
+                    share = max(0, min(100, int(share_raw)))
+                db.session.add(_CT(course_id=course.id, teacher_id=tid,
+                                   share_percent=share))
+        except Exception:
+            _lexc('blueprints/admin_bp.py')
         if not course.title:
             flash('عنوان دوره الزامی است.', 'error')
         else:
@@ -2075,6 +2112,38 @@ def installments():
     return render_template('admin/installments.html', items=items, status=status)
 
 
+@admin_bp.route('/installments/<int:iid>/mark-paid', methods=['POST'])
+@admin_required
+def installment_mark_paid(iid):
+    """ثبت دستی پرداخت یک قسط — برای همگام‌سازی وصولی‌های اسنپ‌پی/دیجی‌پی
+    (که در پنل خود ارائه‌دهنده انجام می‌شود) و باز شدن جلسات بعدی دوره."""
+    from models import Installment as _I, Notification as _N
+    inst = db.get_or_404(_I, iid)
+    if inst.status == 'paid':
+        flash('این قسط قبلاً پرداخت شده است.', 'info')
+        return redirect(url_for('admin.installments'))
+    order = inst.order
+    inst.status = 'paid'
+    inst.paid_at = utcnow()
+    inst.ref_id = (inst.ref_id or '') + ' | ADMIN-MANUAL'
+    remaining = _I.query.filter_by(order_id=order.id).filter(
+        _I.status != 'paid').count()
+    _N.notify(order.user_id, 'قسط شما ثبت شد ✅',
+              'قسط {} از {} سفارش {} ثبت شد. جلسات بیشتری از دوره باز شد.'.format(
+                  fa_num(inst.number), fa_num(order.installment_count or 1), order.code),
+              '💳', url_for('student.my_courses'))
+    if remaining == 0:
+        order.status = 'paid'
+        order.paid_at = utcnow()
+        _N.notify(order.user_id, 'تکمیل پرداخت اقساطی 🎉',
+                  'همه قسط‌های سفارش {} پرداخت شد؛ همه جلسات دوره باز شد.'.format(order.code),
+                  '✅', url_for('student.my_courses'))
+    db.session.commit()
+    flash('قسط {}/{} به‌عنوان پرداخت‌شده ثبت شد؛ جلسات دوره طبق قفل اقساطی باز شد.'.format(
+        fa_num(inst.number), fa_num(order.installment_count or 1)), 'success')
+    return redirect(url_for('admin.installments'))
+
+
 @admin_bp.route('/users/<int:uid>/notify', methods=['POST'])
 @admin_required
 def user_notify(uid):
@@ -2706,6 +2775,7 @@ def super_settings():
                 'digipay_api_key', 'digipay_merchant', 'tarb_api_url', 'tarb_api_key', 'tarb_merchant',
                 'invoice_prefix', 'certificate_text', 'certificate_sign',
                 'watermark_enabled', 'bnpl_enabled', 'bnpl_max_installments', 'cashback_percent',
+                'teacher_default_share',
                 'loyalty_discount_percent', 'referral_bonus_percent', 'refund_days',
                 # پیامک و ایمیل
                 'sms_provider', 'sms_test_phone', 'sms_kavenegar_key', 'sms_kavenegar_sender',
@@ -2738,7 +2808,8 @@ def super_settings():
                         v = str(max(0, min(90, int(v or 0))))
                     except ValueError:
                         v = '0'
-                elif k in ('cashback_percent', 'loyalty_discount_percent', 'referral_bonus_percent'):
+                elif k in ('cashback_percent', 'loyalty_discount_percent',
+                            'referral_bonus_percent', 'teacher_default_share'):
                     try:
                         v = str(max(0, min(50, int(v or 0))))
                     except ValueError:

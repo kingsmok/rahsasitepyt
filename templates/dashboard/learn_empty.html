@@ -1,11 +1,11 @@
 {% extends 'dashboard/base.html' %}
 {% block dtitle %}{{ course.title }}{% endblock %}
 {% block dcontent %}
-<div class="dash-head"><div><h1>{{ course.title }}</h1><p>نوع برگزاری: {{ {'online':'آنلاین','offline':'حضوری','hybrid':'ترکیبی'}.get(course.delivery_type or 'online', 'آنلاین') }}</p></div></div>
+<div class="dash-head"><div><h1>{{ course.title }}</h1><p>نوع برگزاری: {{ course.delivery_label }}</p></div></div>
 <div class="card empty-state">
-  <div class="es-icon">{{ '🏫' if course.delivery_type == 'offline' else '📚' }}</div>
+  <div class="es-icon">{{ course.delivery_icon }}</div>
   <h2>هنوز جلسه‌ای در پنل منتشر نشده است</h2>
-  {% if course.delivery_type == 'offline' %}
+  {% if course.is_attendance_based %}
   <p>این دوره حضوری است. زمان، مکان و برنامه کلاس را از اطلاعیه‌های دوره یا پشتیبانی پیگیری کنید.</p>
   {% else %}
   <p>پس از انتشار جلسات توسط مدرس، محتوای دوره در همین صفحه نمایش داده می‌شود.</p>

@@ -15,7 +15,7 @@
         <a class="btn btn-ghost btn-sm" href="{{ url_for('teacher.course_students', cid=c.id) }}">دانشجویان</a>
         <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.course_edit', cid=c.id) }}">✏️ ویرایش</a>
         <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.course_lessons', cid=c.id) }}">جلسات</a>
-        {% if c.delivery_type != 'online' %}<a class="btn btn-ghost btn-sm" href="{{ url_for('teacher.attendance_sessions', cid=c.id) }}">حضور و غیاب</a>{% endif %}
+        {% if c.is_attendance_based %}<a class="btn btn-ghost btn-sm" href="{{ url_for('teacher.attendance_sessions', cid=c.id) }}">حضور و غیاب</a>{% endif %}
       </div>
     </div>
   </div>

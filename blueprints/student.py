@@ -326,22 +326,18 @@ def certificate(course_id):
         return redirect(url_for('student.learn', course_id=course.id))
     from models import certificate_code
     code = certificate_code(course.slug, g.user.email, enrollment.id)
-    return render_template('certificate.html', course=course, enrollment=enrollment, code=code)
-
-
     try:
         from models import Notification
         Notification.notify(g.user.id, 'گواهینامه شما صادر شد 🏅',
                             f'گواهی دوره «{course.title}» آماده دانلود است.',
                             '🏅', url_for('student.certificate', course_id=course_id))
-        from models import certificate_code
-        cert_code = certificate_code(course.slug, g.user.email, enrollment.id)
         from email_service import send_certificate_email
         if g.user.email:
-            send_certificate_email(g.user, course, cert_code, g.settings)
+            send_certificate_email(g.user, course, code, g.settings)
         db.session.commit()
     except Exception:
         _lexc('blueprints/student.py')
+    return render_template('certificate.html', course=course, enrollment=enrollment, code=code)
 @student_bp.route('/dashboard/favorites')
 def favorites():
     r = _login_required()

@@ -396,7 +396,9 @@ def payout_request():
         available += course.teacher_share_amount(g.user.id, sold)
     paid_out = db.session.query(func.coalesce(func.sum(PayoutRequest.amount), 0)) \
         .filter_by(teacher_id=g.user.id, status='paid').scalar() or 0
-    available = max(0, int(available) - int(paid_out or 0))
+    pending_out = db.session.query(func.coalesce(func.sum(PayoutRequest.amount), 0)) \
+        .filter_by(teacher_id=g.user.id, status='pending').scalar() or 0
+    available = max(0, int(available) - int(paid_out or 0) - int(pending_out or 0))
     if amount < 50000:
         flash('حداقل مبلغ تسویه ۵۰,۰۰۰ تومان است.', 'error')
     elif amount > available:

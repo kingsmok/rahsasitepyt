@@ -149,6 +149,11 @@ def submit_form():
 
 @api_bp.route('/contact/read/<int:mid>', methods=['POST'])
 def contact_read(mid):
+    if not g.user:
+        return jsonify(ok=False, msg='ابتدا وارد شوید'), 401
+    from permissions import has_any_permission
+    if not (g.user.is_admin or has_any_permission(g.user, ('view_consultations', 'manage_settings'))):
+        return jsonify(ok=False, msg='دسترسی غیرمجاز'), 403
     from models import ContactMessage
     m = db.session.get(ContactMessage, mid)
     if m:

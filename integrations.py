@@ -246,8 +246,8 @@ def api_ai_writer():
 @services_bp.route('/admin/ai-writer')
 def admin_ai_writer_page():
     """صفحه ابزار تولید مقاله با هوش مصنوعی — فقط مدیران"""
-    from flask import render_template
+    from flask import render_template, abort
     u = getattr(g, 'user', None)
     if not u or u.role not in ('admin', 'super_admin'):
-        return jsonify(ok=False, msg='دسترسی غیرمجاز'), 403
+        abort(403)
     return render_template('admin/ai_writer.html', key_set=bool(groq_key()))

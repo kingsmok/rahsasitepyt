@@ -140,7 +140,7 @@ def messages():
     stats = db.session.query(
         peer.label('peer_id'),
         func.max(PrivateMessage.created_at).label('last_at'),
-        func.sum(case((PrivateMessage.recipient_id == uid, 1), else_=0)).label('unread'),
+        func.sum(case(((PrivateMessage.recipient_id == uid) & (PrivateMessage.is_read == False), 1), else_=0)).label('unread'),
     ).filter(
         or_(PrivateMessage.sender_id == uid, PrivateMessage.recipient_id == uid)
     ).group_by(peer).all()

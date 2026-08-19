@@ -175,6 +175,10 @@ def assignment_view(aid):
                            '.png', '.webp', '.txt', '.csv', '.ipynb'):
                 flash('فرمت فایل مجاز نیست. کد خود را داخل فایل zip بفرستید.', 'error')
                 return redirect(url_for('features.assignment_view', aid=aid))
+            from uploads_helper import file_content_is_safe
+            if not file_content_is_safe(f.stream, ext):
+                flash('محتوای فایل ارسالی نامعتبر یا ناامن است.', 'error')
+                return redirect(url_for('features.assignment_view', aid=aid))
             fname = f'asg-{aid}-{g.user.id}{ext}'
             from uploads_helper import uploads_dir
             f.save(os.path.join(uploads_dir('submissions'), fname))

@@ -191,6 +191,7 @@ def test_check_for_update_works_without_local_git(monkeypatch):
         lambda repo, heads=False: ({'main': 'abcdef1234567890'}, ''),
     )
     monkeypatch.setattr('updater._remote_default_branch', lambda repo: 'main')
+    monkeypatch.setattr('updater._remote_version_txt', lambda repo, branch: '2.0.0')
 
     info = check_for_update('https://github.com/kingsmok/rahsasitepyt.git')
     assert info['ok'] is True

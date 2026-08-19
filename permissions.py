@@ -297,3 +297,149 @@ def menu_for(user):
         if endpoint == 'sep' or can_access_endpoint(user, endpoint):
             items.append((endpoint, label))
     return _clean_separators(items)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# منوی گروه‌بندی‌شده (دسته ۶: UI/UX) — سایدبار تمیز با دسته‌های جمع‌شونده
+# ═══════════════════════════════════════════════════════════════════════════
+_ADMIN_GROUPS = [
+    {'label': 'داشبورد و وضعیت', 'icon': '🏠', 'items': [
+        ('admin.overview', 'داشبورد'),
+        ('admin.go_live', 'راه‌اندازی نهایی'),
+        ('license.activate', 'لایسنس نسخه'),
+        ('admin.activity', 'لاگ فعالیت'),
+    ]},
+    {'label': 'فروش و مالی', 'icon': '💳', 'items': [
+        ('admin.orders', 'سفارش‌ها'),
+        ('admin.installments', 'اقساط'),
+        ('admin.proofs', 'فیش‌های واریزی'),
+        ('admin.payouts', 'تسویه مدرس‌ها'),
+        ('admin.gateways', 'درگاه‌های پرداخت'),
+        ('admin.products_admin', 'محصولات فروشگاه'),
+        ('admin.coupons', 'کدهای تخفیف'),
+        ('market.admin_marketplace', 'مارکت‌پلیس‌ها'),
+    ]},
+    {'label': 'محتوا و آموزش', 'icon': '📚', 'items': [
+        ('admin.courses', 'دوره‌ها'),
+        ('admin.blog', 'وبلاگ'),
+        ('admin.categories', 'دسته‌بندی‌ها'),
+        ('admin.quizzes', 'آزمون‌ها'),
+        ('admin.question_bank', 'بانک سوال'),
+        ('admin.assignments', 'تمرین‌ها'),
+        ('admin.bundles', 'باندل‌ها'),
+        ('admin.success_stories', 'داستان‌های موفقیت'),
+        ('admin.certificates', 'گواهی‌ها'),
+    ]},
+    {'label': 'دانشجویان و کلاس', 'icon': '🎓', 'items': [
+        ('admin.users', 'کاربران'),
+        ('admin.roles_manage', 'نقش‌ها و دسترسی‌ها'),
+        ('admin.consultations', 'لیدهای مشاوره'),
+        ('admin.live_sessions', 'کلاس آنلاین'),
+        ('admin.forum_moderate', 'انجمن'),
+        ('admin.behavior_report', 'رفتار دانشجو'),
+    ]},
+    {'label': 'پشتیبانی و ارتباط', 'icon': '🎫', 'items': [
+        ('admin.tickets', 'تیکت‌ها'),
+        ('admin.chat', 'چت آنلاین'),
+        ('admin.canned_replies', 'پاسخ‌های آماده'),
+        ('admin.newsletters', 'خبرنامه'),
+        ('admin.admin_notifications', 'اعلان گروهی'),
+    ]},
+    {'label': 'طراحی و صفحات', 'icon': '🧩', 'items': [
+        ('admin.pages', 'صفحات'),
+        ('builder.index', 'صفحه‌ساز'),
+        ('admin.forms', 'فرم‌ساز'),
+        ('admin.menus', 'منوساز'),
+        ('admin.designs', 'طراحی‌های سایت'),
+        ('admin.media_library', 'کتابخانه رسانه'),
+        ('admin.icons_browser', 'آیکون‌ها'),
+        ('admin.optimizer', 'بهینه‌ساز تصویر'),
+    ]},
+    {'label': 'سئو و بازاریابی', 'icon': '📈', 'items': [
+        ('seo_admin.dashboard', 'داشبورد سئو'),
+        ('seo_admin.redirects', 'ریدایرکت‌های ۳۰۱'),
+        ('services.admin_ai_writer_page', 'نویسنده هوشمند'),
+        ('admin.sms_settings', 'پیامک'),
+        ('admin.messengers', 'پیام‌رسان‌ها'),
+    ]},
+    {'label': 'گزارش‌ها', 'icon': '📊', 'items': [
+        ('admin.reports_export', 'خروجی اکسل'),
+        ('admin.report_revenue_courses', 'درآمد هر دوره'),
+        ('admin.report_teachers', 'درآمد مدرس‌ها'),
+        ('admin.report_popular_pages', 'صفحات پربازدید'),
+        ('admin.report_inactive_users', 'کاربران غیرفعال'),
+        ('admin.report_seo_health', 'سلامت سئو'),
+        ('admin.tickets_report', 'گزارش پشتیبانی'),
+        ('admin.report_coupons', 'گزارش تخفیف‌ها'),
+        ('admin.report_feedback', 'رضایت‌سنجی'),
+        ('admin.report_exams', 'گزارش آزمون‌ها'),
+    ]},
+    {'label': 'سیستم', 'icon': '⚙️', 'items': [
+        ('admin.super_settings', 'تنظیمات سوپر'),
+        ('admin.backup_list', 'بکاپ‌ها'),
+        ('admin.update_page', 'بروزرسانی نرم‌افزار'),
+        ('admin.install_manager', 'نصب و اتصالات'),
+    ]},
+]
+
+_STAFF_GROUPS = [
+    {'label': 'عملیات', 'icon': '📋', 'items': [
+        ('admin.overview', 'داشبورد'),
+        ('admin.users', 'کاربران'),
+        ('admin.user_add', 'ثبت کاربر'),
+        ('admin.consultations', 'مشاوره‌ها'),
+    ]},
+    {'label': 'فروش', 'icon': '💳', 'items': [
+        ('admin.orders', 'سفارش‌ها'),
+        ('admin.proofs', 'بررسی فیش‌ها'),
+    ]},
+    {'label': 'پشتیبانی', 'icon': '🎫', 'items': [
+        ('admin.tickets', 'تیکت‌ها'),
+        ('admin.canned_replies', 'پاسخ‌های آماده'),
+        ('admin.chat', 'چت آنلاین'),
+        ('admin.sms_settings', 'پیامک'),
+    ]},
+    {'label': 'کلاس و گزارش', 'icon': '📊', 'items': [
+        ('admin.live_sessions', 'کلاس‌های روزانه'),
+        ('admin.behavior_report', 'رفتار دانشجو'),
+        ('admin.reports_export', 'گزارش‌ها'),
+    ]},
+]
+
+_TEACHER_GROUPS = [
+    {'label': 'آموزش', 'icon': '📚', 'items': [
+        ('teacher.dashboard', 'داشبورد'),
+        ('teacher.my_courses', 'دوره‌های من'),
+        ('teacher.students', 'دانشجویان من'),
+    ]},
+    {'label': 'فعالیت‌ها', 'icon': '✍️', 'items': [
+        ('teacher.assignments', 'تکالیف'),
+        ('teacher.questions', 'پرسش‌ها'),
+    ]},
+    {'label': 'مالی', 'icon': '💰', 'items': [
+        ('teacher.revenue', 'درآمد من'),
+    ]},
+]
+
+
+def menu_groups_for(user):
+    """منوی گروه‌بندی‌شده برای سایدبار جدید — فقط آیتم‌های مجاز هر نقش."""
+    if not user:
+        return []
+    if user.role == 'teacher':
+        # پنل استاد کنترل دسترسی خودش را دارد (teacher_required)؛ همهٔ گروه‌ها
+        # برای او قابل نمایش‌اند — مثل menu_for قبلی.
+        return [{'label': g['label'], 'icon': g['icon'],
+                 'items': list(g['items'])} for g in _TEACHER_GROUPS]
+    if user.role in ('admin', 'super_admin'):
+        source = _ADMIN_GROUPS
+    else:
+        source = _STAFF_GROUPS
+    groups = []
+    for group in source:
+        items = [(ep, label) for ep, label in group['items']
+                 if ep == 'sep' or can_access_endpoint(user, ep)]
+        if items:
+            groups.append({'label': group['label'], 'icon': group['icon'],
+                           'items': items})
+    return groups

@@ -6,7 +6,19 @@
 * دریافت نسخهٔ جدید کد از GitHub (به‌صورت دستی از پنل یا خودکار از Webhook).
 * همگام‌سازی ساختار دیتابیس با مدل‌های نسخهٔ جدید، بدون حذف داده‌های قبلی.
 
-نکتهٔ مهم: مایگریشن در یک پردازش جدا اجرا می‌شود. چون بعد از ``git reset``
+استراتژی دو مسیره:
+
+* سایت نصب‌شده از ZIP سی‌پنل (بدون پوشهٔ ``.git``) → **مسیر آرشیو**: آرشیو ZIP
+  شاخهٔ مقصد از GitHub دانلود و فایل‌هایش روی سایت overlay می‌شود؛ اصلاً به git
+  وابسته نیست و روی هاست‌های اشتراکی که git ندارند یا شبکهٔ git آن‌ها بسته است
+  هم کار می‌کند. فایل‌های محلی (.env، آپلودها، بکاپ‌ها، .htaccess) هرگز لمس
+  نمی‌شوند.
+* پوشه‌ای که واقعاً مخزن git است (توسعه/CI) → **مسیر Git** (fetch + reset).
+
+نسخهٔ محلی در نصب‌های ZIP از ``version.txt`` و ``instance/.update_commit``
+خوانده می‌شود، بنابراین «نسخهٔ محلی پیدا نشد» دیگر اتفاق نمی‌افتد.
+
+نکتهٔ مهم: مایگریشن در یک پردازش جدا اجرا می‌شود. چون بعد از جایگزینی کدها
 ماژول‌های پایتونِ پردازش وب هنوز نسخهٔ قدیمی را در حافظه دارند، اجرای مایگریشن
 در همان Thread باعث می‌شد ستون‌های نسخهٔ جدید اصلاً دیده نشوند.
 """
@@ -22,6 +34,7 @@ import threading
 import time
 import urllib.parse
 import urllib.request
+import zipfile
 from datetime import datetime
 
 try:
@@ -47,17 +60,51 @@ STATE_FILE = os.path.join(INSTANCE_DIR, '.update_progress.json')
 HISTORY_FILE = os.path.join(INSTANCE_DIR, 'update_history.json')
 LOCK_FILE = os.path.join(INSTANCE_DIR, '.update.lock')
 APPLIED_COMMIT_FILE = os.path.join(INSTANCE_DIR, '.update_commit')
-STALE_SECONDS = 1800  # مایگریشن دیتابیس‌های بزرگ ممکن است چند دقیقه طول بکشد.
+MANIFEST_FILE = os.path.join(INSTANCE_DIR, '.update_manifest.json')
+VERSION_FILE = os.path.join(BASE_DIR, 'version.txt')
+MIGRATIONS_DIR = os.environ.get(
+    'MIGRATIONS_DIR', os.path.join(BASE_DIR, 'migrations'))
+
+
+def _env_int(name, default, minimum=None, maximum=None):
+    """خواندن عدد صحیح از محیط با fallback امن؛ خطای مقدار فقط برای کاربری که
+    خودش متغیر را دستی تنظیم کرده است معنی دارد، پس silently به default برمی‌گردد."""
+    try:
+        value = int(str(os.environ.get(name, default)).strip())
+    except (TypeError, ValueError):
+        return default
+    if minimum is not None and value < minimum:
+        return minimum
+    if maximum is not None and value > maximum:
+        return maximum
+    return value
+
+
+def _env_flag(name, default='1'):
+    return str(os.environ.get(name, str(default))).strip().lower() \
+        not in ('0', 'false', 'no', 'off')
+
+
+# اگر heartbeat (به‌روزرسانی زمان ``_updated``) بیش از این مدت قطع بماند و قفلِ
+# زنده‌ای هم دیده نشود، بروزرسانی «متوقف‌شده» اعلام می‌شود. مایگریشن دیتابیس‌های
+# بزرگ ممکن است چند دقیقه طول بکشد؛ مقدار پیش‌فرض ۳۰ دقیقه و قابل تنظیم است.
+STALE_SECONDS = _env_int('UPDATE_STALE_SECONDS', 1800, 60, 86400)
+HEARTBEAT_SECONDS = _env_int('UPDATE_HEARTBEAT_SECONDS', 10, 2, 120)
 UPDATE_REF_PREFIX = 'refs/remotes/academy-update'
 _REQUIRED_FILES = ('app.py', 'models.py', 'passenger_wsgi.py', 'requirements.txt')
 _PRESERVE_FILES = ('instance/.update_progress.json', 'instance/update_history.json',
-                   'instance/.update_commit')
+                   'instance/.update_commit', 'instance/.update_manifest.json')
 _BRANCH_RE = re.compile(r'^[A-Za-z0-9][A-Za-z0-9._/-]*$')
+# فایل‌ها/پوشه‌هایی که هرگز از آرشیو بروزرسانی روی سایت کپی نمی‌شوند و
+# هرگز حذف هم نمی‌شوند: .env، آپلودها، بکاپ‌ها، .htaccess، venv و لاگ‌ها.
 _OVERLAY_SKIP = {
-    '.env', '.env.local', '.htaccess', '.git',
-    'instance', 'uploads', 'venv', '.venv', 'env', 'logs',
-    '__pycache__', 'node_modules',
+    '.env', '.env.local', '.htaccess', '.git', '.gitignore',
+    'instance', 'uploads', 'backups', 'backup', 'venv', '.venv', 'env', 'logs',
+    '__pycache__', 'node_modules', 'releases',
 }
+# مانیفست فایل‌هایی که خودِ بروزرسان روی سایت نوشته است؛ برای حذف امن
+# فایل‌های حذف‌شده در نسخهٔ جدید و هرگز دست‌نزدن به فایل‌های دستی کاربر.
+_MANIFEST_MAX_FILES = 50000
 _GIT_CANDIDATES = (
     '/usr/bin/git',
     '/usr/local/bin/git',
@@ -127,10 +174,39 @@ def _set_state(**values):
     _save()
 
 
+def _lock_pid():
+    """PID فرایندی که قفل بروزرسانی را نگه داشته؛ اگر قفل آزاد باشد None."""
+    try:
+        with open(LOCK_FILE, encoding='utf-8') as f:
+            raw = (f.read() or '').strip()
+        return int(raw)
+    except (OSError, ValueError, TypeError):
+        return None
+
+
+def _pid_alive(pid):
+    """آیا فرایند با این PID هنوز زنده است؟ (بدون وابستگی به ps)"""
+    if not pid or pid <= 0:
+        return False
+    if pid == os.getpid():
+        return True
+    try:
+        os.kill(pid, 0)
+        return True
+    except OSError:
+        return False
+    except Exception:  # pragma: no cover - دفاعی
+        return False
+
+
 def update_progress():
     """وضعیت فعلی بروزرسانی را از فایل مشترک برمی‌گرداند.
     
-    این تابع توسط polling فرانت‌اند فراخوانی می‌شود.
+    این تابع توسط polling فرانت‌اند فراخوانی می‌شود. اگر heartbeat مدتی قطع شده
+    باشد اما فرایندِ نگه‌دارندهٔ قفل همچنان زنده باشد، بروزرسانی «متوقف‌شده»
+    اعلام نمی‌شود — فقط «مرحلهٔ طولانی» گزارش می‌شود. پیام قدیمیِ
+    «بروزرسانی متوقف شده است» فقط وقتی می‌آید که واقعاً هیچ فرایند زنده‌ای
+    قفل را نگه نداشته باشد.
     """
     _load()
     with _state_lock:
@@ -139,11 +215,20 @@ def update_progress():
     st['stale'] = False
     updated = float(st.get('_updated') or 0)
     if st.get('status') == 'running' and time.time() - updated > STALE_SECONDS:
-        st['status'] = 'error'
-        st['ok'] = False
-        st['stale'] = True
-        st['msg'] = 'بروزرسانی متوقف شده است — دوباره تلاش کنید.'
-        _set_state(status='error', ok=False, msg=st['msg'])
+        pid = _lock_pid()
+        if _pid_alive(pid):
+            # heartbeat قطع شده اما خود فرایند زنده است (pip/دانلود طولانی).
+            # زمان را تمدید می‌کنیم تا polling‌های بعدی دوباره خطا ندهند.
+            st['long_running'] = True
+            st['msg'] = ('بروزرسانی همچنان در حال اجراست؛ مرحلهٔ فعلی طولانی است '
+                         '(PID {}). صبر کنید...').format(pid)
+            _set_state(msg=st['msg'])
+        else:
+            st['status'] = 'error'
+            st['ok'] = False
+            st['stale'] = True
+            st['msg'] = 'بروزرسانی متوقف شده است — دوباره تلاش کنید.'
+            _set_state(status='error', ok=False, msg=st['msg'])
     
     # اگر وضعیت idle است، آخرین نتیجه را برگردان
     if st.get('status') == 'idle':
@@ -152,6 +237,18 @@ def update_progress():
             st['msg'] = report.get('migration', '') or 'آماده برای بروزرسانی'
     
     return st
+
+
+def _heartbeat():
+    """به‌روزرسانی زمان آخرین فعالیت در state مشترک — بدون تغییر پیام.
+
+    در گام‌های طولانی (دانلود، pip، مایگریشن) هر چند ثانیه صدا زده می‌شود تا
+    تشخیص «توقف» هرگز false positive ندهد.
+    """
+    try:
+        _save()
+    except Exception:
+        pass
 
 
 def _git_env():
@@ -226,9 +323,41 @@ def _read_applied_commit():
     return ''
 
 
+def _read_version_txt():
+    """نسخهٔ انتشار از ``version.txt`` — در نصب‌های ZIP تنها مرجع نسخه است."""
+    try:
+        with open(VERSION_FILE, encoding='utf-8') as f:
+            value = (f.read() or '').strip().splitlines()
+        value = value[0].strip() if value else ''
+    except OSError:
+        return ''
+    if value and len(value) <= 64:
+        return value
+    return ''
+
+
 def _local_version():
     """هش نسخهٔ فعلی: HEAD گیت یا آخرین commit اعمال‌شده از بروزرسانی ZIP."""
     return _current_commit('HEAD') or _read_applied_commit()
+
+
+def _local_version_info():
+    """اطلاعات کامل نسخهٔ محلی برای صفحهٔ پنل و «بررسی نسخهٔ جدید».
+
+    در نصب ZIP (بدون .git) commit خالی است ولی ``version.txt`` همیشه هست؛
+    بنابراین تشخیص قدیمی‌بودن نسخه بدون مخزن محلی هم ممکن می‌شود.
+    """
+    commit = _local_version()
+    version_txt = _read_version_txt()
+    kind = 'git' if commit and _is_git_worktree() else (
+        'zip' if version_txt or commit else 'unknown')
+    return {
+        'kind': kind,
+        'commit': commit,
+        'commit_short': commit[:10] if commit else '',
+        'version_txt': version_txt,
+        'label': version_txt or (commit[:10] if commit else ''),
+    }
 
 
 def _write_applied_commit(commit):
@@ -313,6 +442,71 @@ def _run(cmd, cwd=BASE_DIR, timeout=120, env=None):
         return -2, str(e)
 
 
+def _run_streaming(cmd, cwd=BASE_DIR, timeout=900, env=None, progress_cb=None):
+    """اجرای فرمان با heartbeat دوره‌ای و جمع‌آوری خروجی — برای گام‌های طولانی.
+
+    خروجی در یک Thread جدا خوانده می‌شود و هر ``HEARTBEAT_SECONDS`` ثانیه
+    ``progress_cb`` صدا زده می‌شود تا تشخیص «توقف بروزرسانی» false positive
+    ندهد. در صورت timeout فرایند kill می‌شود.
+    """
+    try:
+        process = subprocess.Popen(
+            cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            text=True, encoding='utf-8', errors='replace',
+            env=env or _git_env(),
+        )
+    except Exception as e:
+        return -2, str(e)
+
+    chunks = []
+    done = threading.Event()
+
+    def _reader():
+        try:
+            for line in process.stdout:
+                chunks.append(line)
+                # خروجی خیلی بلند حافظه را نمی‌ترکاند.
+                if len(chunks) > 400:
+                    del chunks[:200]
+        except Exception:
+            pass
+        finally:
+            done.set()
+
+    reader = threading.Thread(target=_reader, name='updater-stream-reader',
+                              daemon=True)
+    reader.start()
+    deadline = time.time() + timeout
+    try:
+        while True:
+            code = process.poll()
+            if code is not None:
+                break
+            if time.time() > deadline:
+                try:
+                    process.kill()
+                except OSError:
+                    pass
+                done.wait(timeout=10)
+                return -1, 'timeout: ' + ''.join(chunks)[-400:]
+            if progress_cb:
+                try:
+                    progress_cb()
+                except Exception:
+                    pass
+            time.sleep(min(HEARTBEAT_SECONDS, 5))
+    finally:
+        try:
+            done.wait(timeout=15)
+        finally:
+            try:
+                reader.join(timeout=5)
+            except Exception:
+                pass
+    output = ''.join(chunks)
+    return process.returncode, output
+
+
 def _validate_repo_url(url):
     url = (url or '').strip()
     if not url:
@@ -373,6 +567,7 @@ def get_git_info():
     branch = _current_branch()
     if not branch:
         branch = 'بدون مخزن محلی' if not _is_git_worktree() else 'detached'
+    local = _local_version_info()
     return {
         'branch': branch,
         'target_branch': get_update_branch() or 'تشخیص خودکار',
@@ -380,6 +575,9 @@ def get_git_info():
         'commit_hash': info['short'],
         'commit_msg': info['message'],
         'commit_date': info['date'],
+        'install_kind': local['kind'],
+        'version': local['version_txt'],
+        'applied_commit': _read_applied_commit(),
     }
 
 
@@ -486,6 +684,54 @@ def _github_default_branch(repo_url):
     if branch and _BRANCH_RE.match(branch) and '..' not in branch and '//' not in branch:
         return branch
     return ''
+
+
+def _remote_version_txt(repo, branch):
+    """نسخهٔ ``version.txt`` شاخهٔ مقصد در GitHub — برای مقایسه در نصب‌های ZIP.
+
+    اول raw.githubusercontent (سریع)، بعد API contents (با پشتیبانی Token).
+    اگر هیچ‌کدام در دسترس نبود None برمی‌گردد؛ این یعنی «نامشخص» و هرگز
+    نباید جلوی بروزرسانی را بگیرد.
+    """
+    info = _parse_github(repo)
+    if not info:
+        return None
+    quoted = urllib.parse.quote(branch, safe='')
+    urls = [
+        ('raw', 'https://raw.githubusercontent.com/{}/{}/{}/version.txt'.format(
+            info['owner'], info['name'], quoted)),
+    ]
+    for _kind, url in urls:
+        try:
+            req = urllib.request.Request(url, headers={
+                'User-Agent': 'rahsasitepyt-updater',
+            })
+            if info['token']:
+                req.add_header('Authorization', 'Bearer ' + info['token'])
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                raw = resp.read().decode('utf-8', 'replace').strip()
+            value = raw.splitlines()[0].strip() if raw else ''
+            if value and len(value) <= 64:
+                return value
+            return None
+        except Exception:
+            continue
+    # fallback: API contents (base64)
+    try:
+        data = _http_json(
+            'https://api.github.com/repos/{}/{}/contents/version.txt?ref={}'.format(
+                info['owner'], info['name'], quoted),
+            token=info['token'], timeout=30,
+        )
+        if isinstance(data, dict) and data.get('content'):
+            import base64
+            raw = base64.b64decode(data['content']).decode('utf-8', 'replace').strip()
+            value = raw.splitlines()[0].strip() if raw else ''
+            if value and len(value) <= 64:
+                return value
+    except Exception:
+        pass
+    return None
 
 
 def _remote_refs(repo, heads=False):
@@ -619,7 +865,8 @@ def _changed_files(old_commit, new_ref):
     """لیست فایل‌های تغییرکرده بین دو commit.
     
     اگر old_commit خالی باشد (نصب اولیه از ZIP)، همه فایل‌های پروژه
-    به‌عنوان «جدید» برگردانده می‌شوند.
+    به‌عنوان «جدید» برگردانده می‌شوند — به‌جز محتوای کاربر
+    (آپلودها، .env، بکاپ‌ها، instance و ...) که با ``_overlay_skip`` حذف می‌شود.
     """
     if not new_ref:
         return []
@@ -628,12 +875,13 @@ def _changed_files(old_commit, new_ref):
         # نصب اولیه: همه فایل‌های پروژه رو لیست کن
         files = []
         for root, dirs, filenames in os.walk(BASE_DIR):
-            # حذف پوشه‌های که نباید تغییر کنند
-            dirs[:] = [d for d in dirs if d not in _OVERLAY_SKIP and d not in ('.git',)]
+            # حذف پوشه‌هایی که نباید تغییر کنند
+            dirs[:] = [d for d in dirs if not _overlay_skip(d) and d not in ('.git',)]
             for f in filenames:
                 rel = os.path.relpath(os.path.join(root, f), BASE_DIR)
-                if rel and rel not in _OVERLAY_SKIP and not rel.startswith('.'):
-                    files.append(rel.replace('\\', '/'))
+                rel = rel.replace('\\', '/')
+                if rel and not _overlay_skip(rel) and not rel.startswith('.'):
+                    files.append(rel)
         return files
     
     code, out = _git(['diff', '--name-only', old_commit, new_ref], timeout=60)
@@ -830,9 +1078,9 @@ def _restore_dependencies(requirements_content):
 def _run_fresh_migration():
     """مایگریشن را با import تازهٔ مدل‌ها در یک پردازش جدا اجرا می‌کند.
     
-    این تابع مهم است چون بعد از git reset، پردازش وب هنوز نسخهٔ قدیمی کد را
-    در حافظه دارد. اجرای مایگریشن در همان پردازش باعث می‌شود ستون‌های جدید
-    دیده نشوند.
+    این تابع مهم است چون بعد از جایگزینی کدها، پردازش وب هنوز نسخهٔ قدیمی کد
+    را در حافظه دارد. اجرای مایگریشن در همان پردازش باعث می‌شود ستون‌های جدید
+    دیده نشوند. در طول اجرا heartbeat زنده نگه داشته می‌شود.
     """
     # پاک‌سازی pyc cache قبل از اجرا برای اطمینان از استفاده از کد جدید
     _clear_python_cache()
@@ -851,10 +1099,11 @@ def _run_fresh_migration():
     env = _git_env()
     env['PYTHONPATH'] = BASE_DIR + os.pathsep + env.get('PYTHONPATH', '')
     
-    # اجرا با timeout بلندتر برای دیتابیس‌های بزرگ
+    # اجرا با timeout بلندتر برای دیتابیس‌های بزرگ + heartbeat دوره‌ای
     timeout = _bounded_env_int('DB_MIGRATION_TIMEOUT', 900, 60, 3600)
     
-    code, out = _run(cmd, timeout=timeout, env=env)
+    code, out = _run_streaming(cmd, timeout=timeout, env=env,
+                               progress_cb=_heartbeat)
     
     if code != 0:
         # اگر خطای پایتون است، جزئیات بیشتری برگردان
@@ -863,6 +1112,40 @@ def _run_fresh_migration():
         raise UpdateError('مایگریشن دیتابیس شکست خورد:\n' + _redact_text(error_msg[-1200:]))
     
     return out.strip()[-1200:] or 'مایگریشن انجام شد.'
+
+
+def _smoke_enabled():
+    return os.environ.get('UPDATE_SMOKE_TEST', '1').strip().lower() \
+        not in ('0', 'false', 'no', 'off')
+
+
+def _smoke_test_after_update():
+    """تست سلامت بلافاصله بعد از بروزرسانی در یک پردازش تازه.
+
+    اگر سایت بعد از جایگزینی کدها بالا نیاید، بروزرسانی ناموفق اعلام و
+    rollback خودکار انجام می‌شود — سایت هرگز روی کد خراب نمی‌ماند.
+    (روی هاست‌هایی که subprocess بسیار محدود است، با UPDATE_SMOKE_TEST=0
+    قابل غیرفعال‌کردن است.)
+    """
+    if not _smoke_enabled():
+        return 'تست سلامت غیرفعال است (UPDATE_SMOKE_TEST).'
+    code = (
+        'from app import app; '
+        'c = app.test_client(); '
+        'r = c.get("/health"); '
+        'raise SystemExit(0 if r.status_code in (200, 301, 302, 303, 307, 308) else 1)'
+    )
+    cmd = [sys.executable, '-u', '-c', code]
+    env = _git_env()
+    env['PYTHONPATH'] = BASE_DIR + os.pathsep + env.get('PYTHONPATH', '')
+    timeout = _bounded_env_int('UPDATE_SMOKE_TIMEOUT', 180, 30, 600)
+    rc, out = _run_streaming(cmd, timeout=timeout, env=env,
+                             progress_cb=_heartbeat)
+    if rc != 0:
+        raise UpdateError(
+            'تست سلامت سایت پس از بروزرسانی شکست خورد:\n' +
+            _redact_text((out or '').strip()[-600:]))
+    return 'تست سلامت سایت پس از بروزرسانی موفق بود ✅'
 
 
 def _clear_python_cache():
@@ -964,7 +1247,7 @@ def _log_history(repo, migration, **extra):
         pass
 
 
-def _download_file(url, dest, token='', timeout=180):
+def _download_file(url, dest, token='', timeout=180, progress_cb=None):
     req = urllib.request.Request(url, headers={
         'User-Agent': 'rahsasitepyt-updater',
         'Accept': 'application/zip, */*',
@@ -972,7 +1255,18 @@ def _download_file(url, dest, token='', timeout=180):
     if token:
         req.add_header('Authorization', 'Bearer ' + token)
     with urllib.request.urlopen(req, timeout=timeout) as resp, open(dest, 'wb') as handle:
-        shutil.copyfileobj(resp, handle)
+        total = 0
+        while True:
+            chunk = resp.read(1024 * 256)
+            if not chunk:
+                break
+            handle.write(chunk)
+            total += len(chunk)
+            if progress_cb:
+                try:
+                    progress_cb(total)
+                except Exception:
+                    pass
     if not os.path.exists(dest) or os.path.getsize(dest) < 64:
         raise UpdateError('آرشیو دانلودشده خالی یا نامعتبر است.')
 
@@ -996,17 +1290,30 @@ def _overlay_skip(rel):
     top = rel.split('/', 1)[0]
     if top in _OVERLAY_SKIP:
         return True
-    # استثناء امنیتی: فایل .htaccess محافظ پوشهٔ آپلود باید همیشه به‌روزرسانی شود.
-    # بدون آن، روی هاست آپاچی فایل‌های آپلودی (php/html/svg) اجرا می‌شوند و
-    # دامنه توسط Google Safe Browsing با «Dangerous site» مسدود می‌گردد.
+    # استثناء: فایل .htaccess محافظ پوشهٔ آپلود باید روی سایت‌هایی که هنوز آن
+    # را ندارند ساخته شود؛ اما اگر سایت آن را دارد، _overlay_tree هرگز
+    # بازنویسی‌اش نمی‌کند (تنظیمات دستی هاست حفظ می‌شود).
     if rel.endswith('/.htaccess'):
         return False
     return rel == 'static/uploads' or rel.startswith('static/uploads/')
 
 
-def _overlay_tree(src_root, dest_root):
-    """کپی فایل‌های آرشیو روی سایت، بدون دست‌زدن به .env / instance / آپلود / venv."""
+def _is_htaccess(rel):
+    rel = (rel or '').replace('\\', '/').lstrip('/')
+    return rel == '.htaccess' or rel.endswith('/.htaccess')
+
+
+def _overlay_tree(src_root, dest_root, progress_cb=None):
+    """کپی فایل‌های آرشیو روی سایت، بدون دست‌زدن به .env / instance / آپلود / venv.
+
+    قوانین حفاظتی:
+      * فایل‌های ``_OVERLAY_SKIP`` و ``static/uploads`` هرگز کپی نمی‌شوند.
+      * ``.htaccess`` موجود روی سایت هرگز بازنویسی نمی‌شود (تنظیمات دستی هاست
+        کاربر حفظ می‌شود)؛ فقط اگر سایت هنوز آن را ندارد، نسخهٔ محافظِ آرشیو
+        (مثلاً جلوگیری از اجرای فایل‌های آپلودی) ساخته می‌شود.
+    """
     changed = []
+    count = 0
     for dirpath, dirnames, filenames in os.walk(src_root):
         rel_dir = os.path.relpath(dirpath, src_root)
         if rel_dir == '.':
@@ -1014,15 +1321,30 @@ def _overlay_tree(src_root, dest_root):
         kept = []
         for name in dirnames:
             rel = (rel_dir + '/' + name).replace('\\', '/').lstrip('/') if rel_dir else name
-            if not _overlay_skip(rel):
-                kept.append(name)
+            if _overlay_skip(rel):
+                # فقط برای رسیدن به .htaccess محافظ داخل پوشهٔ آپلود، وارد
+                # static/uploads می‌شویم؛ خود فایل‌های داخل آن در حلقهٔ
+                # filenames باز هم skip می‌شوند.
+                if not (rel == 'static/uploads' or rel.startswith('static/uploads/')):
+                    continue
+            kept.append(name)
         dirnames[:] = kept
         for filename in filenames:
             rel = (rel_dir + '/' + filename).replace('\\', '/').lstrip('/') if rel_dir else filename
             if _overlay_skip(rel):
                 continue
+            count += 1
+            if progress_cb and count % 100 == 0:
+                try:
+                    progress_cb(count)
+                except Exception:
+                    pass
             source = os.path.join(dirpath, filename)
             dest = os.path.join(dest_root, *rel.split('/'))
+            # .htaccess موجود روی سایت دست نمی‌خورد (خواستهٔ صاحب سایت)؛
+            # فقط وقتی وجود ندارد از آرشیو ساخته می‌شود تا محافظت آپلود برقرار شود.
+            if _is_htaccess(rel) and os.path.isfile(dest):
+                continue
             # فایل یکسان را دوباره ننویس؛ به‌ویژه تغییر بی‌دلیل mtime فایل WSGI
             # می‌تواند Passenger را وسط migration زودتر از موعد restart کند.
             try:
@@ -1115,6 +1437,110 @@ def _cleanup_code_snapshot(snapshot):
         shutil.rmtree(snapshot.get('root', ''), ignore_errors=True)
 
 
+# ═══════════════════════════════════════════════════════════════════════════
+# مانیفست فایل‌های مدیریت‌شده + بکاپ کد پیش از جایگزینی
+# ═══════════════════════════════════════════════════════════════════════════
+def _read_manifest():
+    """لیست فایل‌هایی که خودِ بروزرسان قبلاً روی سایت نوشته است."""
+    try:
+        with open(MANIFEST_FILE, encoding='utf-8') as f:
+            data = json.load(f)
+        files = data.get('files') if isinstance(data, dict) else None
+        if isinstance(files, list):
+            return files[: _MANIFEST_MAX_FILES]
+    except (OSError, ValueError, TypeError):
+        pass
+    return []
+
+
+def _write_manifest(files, commit=''):
+    """ثبت اتمیک فایل‌های مدیریت‌شده — برای پاک‌سازی امن در بروزرسانی بعدی."""
+    try:
+        os.makedirs(INSTANCE_DIR, exist_ok=True)
+        tmp = MANIFEST_FILE + '.tmp'
+        with open(tmp, 'w', encoding='utf-8') as f:
+            json.dump({
+                'updated_at': datetime.now(UTC).isoformat(),
+                'commit': (commit or '')[:40],
+                'files': sorted(set(files))[:_MANIFEST_MAX_FILES],
+            }, f, ensure_ascii=False)
+            f.flush()
+        os.replace(tmp, MANIFEST_FILE)
+    except OSError:
+        pass
+
+
+def _cleanup_stale_files(new_files):
+    """حذف فایل‌هایی که بروزرسان قبلاً نوشته ولی در نسخهٔ جدید نیستند.
+
+    فقط فایل‌های داخل مانیفست قبلی حذف می‌شوند؛ فایل‌های دستی کاربر و
+    فایل‌های محافظت‌شده (.env، آپلود، بکاپ، .htaccess) هرگز لمس نمی‌شوند.
+    """
+    previous = set(_read_manifest())
+    current = set(new_files or [])
+    removed = []
+    for rel in sorted(previous - current):
+        if _overlay_skip(rel) or _is_htaccess(rel):
+            continue
+        path, _normalized = _safe_project_path(rel)
+        try:
+            if os.path.isfile(path) or os.path.islink(path):
+                os.remove(path)
+                removed.append(rel)
+        except OSError:
+            continue
+        # پوشهٔ والدِ خالی‌شده را هم (فقط اگر خالی است) جمع می‌کنیم.
+        parent = os.path.dirname(path)
+        try:
+            while parent and parent != BASE_DIR and os.path.isdir(parent):
+                if os.listdir(parent):
+                    break
+                os.rmdir(parent)
+                parent = os.path.dirname(parent)
+        except OSError:
+            break
+    return removed
+
+
+def _write_code_backup(snapshot, commit=''):
+    """بکاپ zip از فایل‌های پیش از جایگزینی در ``instance/backups``.
+
+    snapshot فقط شامل فایل‌هایی است که بروزرسان قرار است بازنویسی کند؛
+    آپلود/instance/.env داخل آن نیست. حداکثر ۵ بکاپ نگه داشته می‌شود.
+    """
+    if not snapshot:
+        return ''
+    try:
+        root = snapshot.get('root', '')
+        if not root or not os.path.isdir(root):
+            return ''
+        backup_dir = os.path.join(INSTANCE_DIR, 'backups')
+        os.makedirs(backup_dir, exist_ok=True)
+        stamp = datetime.now(UTC).strftime('%Y%m%d-%H%M%S')
+        short = (commit or 'code')[:10]
+        zip_path = os.path.join(backup_dir, 'update-pre-{}-{}.zip'.format(stamp, short))
+        with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zf:
+            for dirpath, _dirnames, filenames in os.walk(root):
+                for filename in filenames:
+                    full = os.path.join(dirpath, filename)
+                    rel = os.path.relpath(full, root).replace('\\', '/')
+                    zf.write(full, arcname=rel)
+        # جلوگیری از رشد نامحدود پوشهٔ بکاپ (فقط بکاپ‌های خودِ بروزرسان).
+        existing = sorted(
+            [p for p in os.listdir(backup_dir) if p.startswith('update-pre-')],
+            key=lambda p: os.path.getmtime(os.path.join(backup_dir, p)),
+            reverse=True,
+        )
+        for old in existing[5:]:
+            try:
+                os.remove(os.path.join(backup_dir, old))
+            except OSError:
+                pass
+        return os.path.basename(zip_path)
+    except Exception:
+        return ''
+
+
 def _sqlite_database_path():
     url = os.environ.get('DATABASE_URL', '').strip()
     if not url:
@@ -1183,58 +1609,64 @@ def _cleanup_sqlite_backup(backup):
             pass
 
 
-def _apply_github_archive(repo, branch, old_commit='', old_requirements=None):
-    """جایگزینی کد از ZIP گیت‌هاب — برای نصب‌های سی‌پنل بدون پوشهٔ .git."""
-    info = _parse_github(repo)
-    if not info:
-        raise UpdateError(
-            'این پوشه مخزن گیت نیست و آدرس هم GitHub نیست؛ '
-            'نمی‌توان آرشیو را دانلود کرد.'
-        )
-    quoted = urllib.parse.quote(branch, safe='')
-    urls = [
-        'https://codeload.github.com/{}/{}/zip/refs/heads/{}'.format(
-            info['owner'], info['name'], quoted),
-        'https://github.com/{}/{}/archive/refs/heads/{}.zip'.format(
-            info['owner'], info['name'], quoted),
-    ]
-    tmp = tempfile.mkdtemp(prefix='academy-upd-')
-    try:
-        zip_path = os.path.join(tmp, 'src.zip')
-        last_err = 'دانلود انجام نشد.'
-        downloaded = False
-        for url in urls:
-            try:
-                _download_file(url, zip_path, token=info['token'])
-                downloaded = True
-                break
-            except Exception as exc:
-                last_err = str(exc)
-        if not downloaded:
-            raise UpdateError('دانلود آرشیو GitHub شکست خورد: ' +
-                              _redact_text(last_err, repo)[:300])
-        extract_dir = os.path.join(tmp, 'src')
-        os.makedirs(extract_dir, exist_ok=True)
-        shutil.unpack_archive(zip_path, extract_dir)
-        root = _archive_root(extract_dir)
-        missing = [name for name in _REQUIRED_FILES
-                   if not os.path.isfile(os.path.join(root, name))]
-        if missing:
-            raise UpdateError('آرشیو مخزن فایل‌های ضروری را ندارد: ' + '، '.join(missing))
-        files = _archive_files(root)
-        with open(os.path.join(root, 'requirements.txt'), encoding='utf-8') as handle:
-            target_requirements = handle.read()
-        dependencies_changed = _requirements_changed(
-            old_commit, old_requirements=old_requirements,
-            new_requirements=target_requirements,
-        )
+def _apply_extracted_archive(root, repo='', branch='', old_commit='',
+                             old_requirements=None, commit='', progress_cb=None,
+                             skip_dependencies=False):
+    """اعمال یک آرشیوِ از قبل extract شده روی سایت — بخش اصلی مسیر ZIP.
+
+    ترتیب امن:
+      1. نصب وابستگی‌های جدید (قبل از لمس کدها).
+      2. snapshot از فایل‌هایی که قرار است تغییر کنند یا حذف شوند (برای rollback).
+      3. بکاپ zip از همان snapshot در ``instance/backups``.
+      4. overlay آرشیو روی سایت (بدون .env / آپلود / بکاپ / .htaccess موجود).
+      5. حذف فایل‌های منسوخ فقط طبق مانیفست قبلی (هرگز فایل دستی کاربر).
+      6. ثبت مانیفست جدید.
+    """
+    missing = [name for name in _REQUIRED_FILES
+               if not os.path.isfile(os.path.join(root, name))]
+    if missing:
+        raise UpdateError('آرشیو مخزن فایل‌های ضروری را ندارد: ' + '، '.join(missing))
+    files = _archive_files(root)
+    with open(os.path.join(root, 'requirements.txt'), encoding='utf-8') as handle:
+        target_requirements = handle.read()
+    dependencies_changed = _requirements_changed(
+        old_commit, old_requirements=old_requirements,
+        new_requirements=target_requirements,
+    )
+    if skip_dependencies:
+        dependency_msg = 'وابستگی‌ها قبلاً در مسیر گیت نصب شده بودند.'
+    else:
         dependency_msg = _install_changed_dependencies(
             old_commit, old_requirements=old_requirements,
             new_requirements=target_requirements,
         )
-        snapshot = _snapshot_code_files(files)
+
+    # فایل‌های منسوخ (در مانیفست قبلی، خارج از آرشیو جدید) هم داخل snapshot
+    # می‌روند تا rollback بتواند آن‌ها را برگرداند.
+    stale = []
+    for rel in sorted(set(_read_manifest()) - set(files)):
+        if _overlay_skip(rel) or _is_htaccess(rel):
+            continue
         try:
-            changed = _overlay_tree(root, BASE_DIR)
+            path, _normalized = _safe_project_path(rel)
+            if os.path.isfile(path):
+                stale.append(rel)
+        except UpdateError:
+            continue
+
+    snapshot = _snapshot_code_files(set(files) | set(stale))
+    try:
+        _write_code_backup(snapshot, commit or old_commit)
+        def _progress(done):
+            _heartbeat()
+            if progress_cb:
+                try:
+                    progress_cb(done)
+                except Exception:
+                    pass
+        try:
+            changed = _overlay_tree(root, BASE_DIR, progress_cb=_progress)
+            removed = _cleanup_stale_files(files)
         except Exception as exc:
             rollback_messages = []
             try:
@@ -1255,34 +1687,106 @@ def _apply_github_archive(repo, branch, old_commit='', old_requirements=None):
                     _redact_text(' '.join(rollback_messages), repo)[:700],
                 )
             ) from exc
+    except Exception:
+        _cleanup_code_snapshot(snapshot)
+        raise
+    _write_manifest(files, commit or old_commit)
+    return commit, files, changed, removed, dependency_msg, dependencies_changed, snapshot
+
+
+def _apply_github_archive(repo, branch, old_commit='', old_requirements=None,
+                          progress_cb=None, skip_dependencies=False):
+    """دانلود و جایگزینی کد از ZIP گیت‌هاب — برای نصب‌های سی‌پنل بدون .git.
+
+    بدون هیچ وابستگی به git: با urllib دانلود، با zipfile استخراج و با
+    overlay امن جایگزین می‌شود. این مسیر روی هاست‌های اشتراکی که اصلاً git
+    ندارند یا دسترسی شبکهٔ git آن‌ها بسته است هم کار می‌کند.
+    """
+    info = _parse_github(repo)
+    if not info:
+        raise UpdateError(
+            'این پوشه مخزن گیت نیست و آدرس هم GitHub نیست؛ '
+            'نمی‌توان آرشیو را دانلود کرد.'
+        )
+    quoted = urllib.parse.quote(branch, safe='')
+    urls = [
+        'https://codeload.github.com/{}/{}/zip/refs/heads/{}'.format(
+            info['owner'], info['name'], quoted),
+        'https://github.com/{}/{}/archive/refs/heads/{}.zip'.format(
+            info['owner'], info['name'], quoted),
+    ]
+    tmp = tempfile.mkdtemp(prefix='academy-upd-')
+    try:
+        zip_path = os.path.join(tmp, 'src.zip')
+        last_err = 'دانلود انجام نشد.'
+        downloaded = False
+        for url in urls:
+            try:
+                _download_file(url, zip_path, token=info['token'],
+                               progress_cb=lambda *a: _heartbeat())
+                downloaded = True
+                break
+            except Exception as exc:
+                last_err = str(exc)
+        if not downloaded:
+            raise UpdateError('دانلود آرشیو GitHub شکست خورد: ' +
+                              _redact_text(last_err, repo)[:300])
+        extract_dir = os.path.join(tmp, 'src')
+        os.makedirs(extract_dir, exist_ok=True)
+        shutil.unpack_archive(zip_path, extract_dir)
+        root = _archive_root(extract_dir)
+        # commit شاخه برای ثبت در .update_commit و گزارش (اختیاری است).
         commit = ''
         try:
             refs, _ = _remote_refs(repo, heads=True)
             commit = refs.get(branch, '')
         except Exception:
             commit = ''
-        return commit, files, changed, dependency_msg, dependencies_changed, snapshot
+        return _apply_extracted_archive(
+            root, repo=repo, branch=branch, old_commit=old_commit,
+            old_requirements=old_requirements, commit=commit,
+            progress_cb=progress_cb, skip_dependencies=skip_dependencies,
+        )
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
 
 def check_for_update(repo_url=None, branch=None):
-    """بررسی نسخهٔ GitHub بدون تغییر کد یا دیتابیس (برای دکمهٔ «بررسی»)."""
+    """بررسی نسخهٔ GitHub بدون تغییر کد یا دیتابیس (برای دکمهٔ «بررسی»).
+
+    در نصب‌های ZIP (بدون .git) مقایسه با ``version.txt`` انجام می‌شود، پس
+    «نسخهٔ محلی پیدا نشد» دیگر مانع بررسی/بروزرسانی نیست.
+    """
     repo = _validate_repo_url(repo_url or _git_remote())
     chosen = _select_branch(repo, branch)
     refs, _ = _remote_refs(repo, heads=True)
     remote_commit = refs.get(chosen, '')
     if not remote_commit:
         raise UpdateError('شاخهٔ «{}» در مخزن پیدا نشد.'.format(chosen))
-    local_commit = _local_version()
-    available = bool(remote_commit and remote_commit != local_commit)
-    if not local_commit:
-        msg = 'نسخهٔ محلی ثبت نشده (نصب ZIP). نسخهٔ مخزن آمادهٔ نصب است.'
+    local = _local_version_info()
+    local_commit = local['commit']
+
+    available = False
+    remote_version = ''
+    if local_commit and remote_commit == local_commit:
+        msg = 'کد سایت با آخرین نسخهٔ مخزن یکسان است.'
+    elif local_commit:
         available = True
-    elif available:
         msg = 'نسخهٔ جدید موجود است.'
     else:
-        msg = 'کد سایت با آخرین نسخهٔ مخزن یکسان است.'
+        # نصب ZIP: commit محلی نداریم؛ version.txt را مقایسه می‌کنیم.
+        remote_version = _remote_version_txt(repo, chosen) or ''
+        if remote_version and local['version_txt'] == remote_version:
+            msg = ('کد سایت با آخرین نسخهٔ مخزن یکسان است '
+                   '(نسخهٔ {} — نصب ZIP).'.format(local['version_txt']))
+        elif remote_version and local['version_txt']:
+            available = True
+            msg = ('نسخهٔ جدید موجود است (محلی {} ← مخزن {}).'.format(
+                local['version_txt'], remote_version))
+        else:
+            # نسخهٔ محلی/ریموت قابل مقایسه نیست؛ بروزرسانی را مسدود نمی‌کنیم.
+            available = True
+            msg = 'نسخهٔ محلی ثبت نشده (نصب ZIP). نسخهٔ مخزن آمادهٔ نصب است.'
     return {
         'ok': True,
         'available': available,
@@ -1293,6 +1797,9 @@ def check_for_update(repo_url=None, branch=None):
         'remote_short': remote_commit[:10],
         'repo': _display_repo(repo),
         'git_worktree': _is_git_worktree(),
+        'install_kind': local['kind'],
+        'local_version': local['version_txt'],
+        'remote_version': remote_version,
         'msg': msg,
     }
 
@@ -1311,7 +1818,20 @@ def _dependency_install_enabled():
 
 
 def _perform_update(repo, branch=None):
-    """اجرای همگام بروزرسانی با preflight وابستگی و rollback مرحله‌ای."""
+    """اجرای همگام بروزرسانی با preflight وابستگی و rollback مرحله‌ای.
+
+    استراتژی دو مسیره (unbreakable):
+
+    * پوشه بدون ``.git`` (نصب ZIP سی‌پنل) → مستقیم مسیر آرشیو: دانلود ZIP از
+      GitHub + overlay امن + مانیفست + بکاپ. هیچ ``git init`` در پوشهٔ تولید
+      انجام نمی‌شود (روی هاست‌های اشتراکی با git قدیمی/بدون شبکه این کار
+      قبلاً به «بروزرسانی متوقف شده» ختم می‌شد).
+    * پوشهٔ واقعاً مخزن git → fetch + reset؛ اگر شکست خورد و مخزن GitHub
+      است، آرشیو fallback می‌شود.
+
+    در همهٔ مسیرها: وابستگی‌های جدید نصب، مایگریشن دیتابیس در پردازش جدا،
+    تست سلامت سایت و rollback خودکار در صورت هر شکستی انجام می‌شود.
+    """
     repo = _validate_repo_url(repo)
     old_commit = _current_commit('HEAD')
     old_requirements = _read_local_requirements()
@@ -1324,101 +1844,115 @@ def _perform_update(repo, branch=None):
     _set_step(1, 'اتصال به GitHub و دریافت آخرین نسخه...')
     chosen = _select_branch(repo, branch)
 
-    method = 'git'
+    method = 'git' if _is_git_worktree() else 'archive'
     files = set()
     changed = []
+    removed = []
     target_commit = ''
-    target_ref = ''
     dependency_msg = 'وابستگی‌ها تغییری نکرده‌اند.'
     dependencies_changed = False
     dependencies_installed = False
     code_snapshot = None
     database_backup = None
-    git_error = None
+    deps_attempted = False
+    git_error_msg = ''
 
-    # ابتدا فقط منبع مقصد را دریافت و اعتبارسنجی کن. خطای fetch می‌تواند از
-    # archive fallback استفاده کند، اما خطای pip/reset نباید با دانلود دوباره
-    # پنهان شود.
-    try:
-        if not _ensure_local_git():
-            raise UpdateError('دستور git روی این هاست در دسترس نیست.')
-        target_ref, target_commit = _fetch_target(repo, chosen)
-        files = _verify_target(target_ref)
-        changed = _changed_files(old_commit, target_ref)
-    except Exception as exc:
-        git_error = exc
-        if not _parse_github(repo):
-            if isinstance(exc, UpdateError):
-                raise
-            raise UpdateError(str(exc)) from exc
-    else:
-        target_requirements = _git_file(target_ref, 'requirements.txt')
-        if target_requirements is None:
-            raise UpdateError('خواندن requirements.txt نسخهٔ مقصد ممکن نیست.')
-        dependencies_changed = _requirements_changed(
-            old_commit, old_requirements=old_requirements,
-            new_requirements=target_requirements,
-        )
-        dependency_msg = _install_changed_dependencies(
-            old_commit, old_requirements=old_requirements,
-            new_requirements=target_requirements,
-        )
-        dependencies_installed = dependencies_changed and _dependency_install_enabled()
-        if not old_commit:
-            code_snapshot = _snapshot_code_files(files)
-        _set_step(2, 'جایگزینی فایل‌های برنامه با نسخهٔ تاییدشده...')
-        code, out = _git(['reset', '--hard', target_ref], timeout=120)
-        if code != 0:
-            rollback = []
-            try:
-                if old_commit:
-                    restore_code, restore_out = _git(['reset', '--hard', old_commit], timeout=120)
-                    if restore_code != 0:
-                        raise UpdateError(restore_out[-400:])
-                else:
-                    _restore_code_snapshot(code_snapshot)
-                _restore_local_files(preserved)
-                rollback.append('فایل‌های نسخهٔ قبلی بازیابی شدند.')
-            except Exception as rollback_exc:
-                rollback.append('بازیابی فایل‌ها شکست خورد: {}'.format(rollback_exc))
-            if dependencies_installed and old_requirements is not None:
-                try:
-                    rollback.append(_restore_dependencies(old_requirements))
-                except Exception as rollback_exc:
-                    rollback.append('بازیابی وابستگی‌ها شکست خورد: {}'.format(rollback_exc))
-            _cleanup_code_snapshot(code_snapshot)
-            raise UpdateError(
-                'جایگزینی کدها شکست خورد: {} | {}'.format(
-                    _redact_text(out[-500:], repo),
-                    _redact_text(' '.join(rollback), repo)[:800],
-                )
-            )
-
-    if git_error is not None:
-        _set_step(2, 'دریافت آرشیو GitHub و جایگزینی کدها (بدون مخزن محلی)...')
+    if method == 'git':
+        # ── مسیر Git: فقط وقتی پوشه واقعاً مخزن است (توسعه/CI) ──
+        # مرحلهٔ ۱: فقط دریافت و اعتبارسنجی نسخهٔ مقصد. خطای این مرحله
+        # (fetch/network) می‌تواند از مسیر آرشیو fallback شود؛ اما خطای
+        # نصب وابستگی یا reset نباید با دانلود دوباره پنهان شود.
+        target_ref = ''
         try:
-            (target_commit, files, changed, dependency_msg,
+            target_ref, target_commit = _fetch_target(repo, chosen)
+            files = _verify_target(target_ref)
+            changed = _changed_files(old_commit, target_ref)
+            target_requirements = _git_file(target_ref, 'requirements.txt')
+            if target_requirements is None:
+                raise UpdateError('خواندن requirements.txt نسخهٔ مقصد ممکن نیست.')
+        except Exception as exc:
+            git_error_msg = _redact_text(str(exc), repo)[:500]
+            # git شکست خورد؛ اگر مخزن GitHub است با مسیر آرشیو ادامه می‌دهیم.
+            if not _parse_github(repo):
+                if isinstance(exc, UpdateError):
+                    raise
+                raise UpdateError(git_error_msg) from exc
+            method = 'archive'
+        else:
+            # مرحلهٔ ۲: وابستگی‌ها و جایگزینی کدها — بدون fallback آرشیو.
+            dependencies_changed = _requirements_changed(
+                old_commit, old_requirements=old_requirements,
+                new_requirements=target_requirements,
+            )
+            dependency_msg = _install_changed_dependencies(
+                old_commit, old_requirements=old_requirements,
+                new_requirements=target_requirements,
+            )
+            dependencies_installed = dependencies_changed and _dependency_install_enabled()
+            deps_attempted = True
+            if not old_commit:
+                code_snapshot = _snapshot_code_files(files)
+            _set_step(2, 'جایگزینی فایل‌های برنامه با نسخهٔ تاییدشده...')
+            code, out = _git(['reset', '--hard', target_ref], timeout=120)
+            if code != 0:
+                rollback = []
+                try:
+                    if old_commit:
+                        restore_code, restore_out = _git(
+                            ['reset', '--hard', old_commit], timeout=120)
+                        if restore_code != 0:
+                            raise UpdateError(restore_out[-400:])
+                    else:
+                        _restore_code_snapshot(code_snapshot)
+                    _restore_local_files(preserved)
+                    rollback.append('فایل‌های نسخهٔ قبلی بازیابی شدند.')
+                except Exception as rollback_exc:
+                    rollback.append('بازیابی فایل‌ها شکست خورد: {}'.format(rollback_exc))
+                if dependencies_installed and old_requirements is not None:
+                    try:
+                        rollback.append(_restore_dependencies(old_requirements))
+                    except Exception as rollback_exc:
+                        rollback.append('بازیابی وابستگی‌ها شکست خورد: {}'.format(rollback_exc))
+                _cleanup_code_snapshot(code_snapshot)
+                raise UpdateError(
+                    'جایگزینی کدها شکست خورد: {} | {}'.format(
+                        _redact_text(out[-500:], repo),
+                        _redact_text(' '.join(rollback), repo)[:800],
+                    )
+                )
+
+    if method == 'archive':
+        # ── مسیر آرشیو: بدون هیچ وابستگی به git — مخصوص نصب‌های ZIP ──
+        _set_step(2, 'دانلود آرشیو GitHub و جایگزینی کدها (روش ZIP — بدون مخزن محلی)...')
+        try:
+            (target_commit, files, changed, removed, dependency_msg,
              dependencies_changed, code_snapshot) = _apply_github_archive(
                 repo, chosen, old_commit=old_commit,
                 old_requirements=old_requirements,
+                progress_cb=_heartbeat,
+                skip_dependencies=deps_attempted,
             )
         except Exception as archive_exc:
-            git_msg = _redact_text(str(git_error), repo)[:280]
-            arch_msg = _redact_text(str(archive_exc), repo)[:700]
-            raise UpdateError(
-                'بروزرسانی شکست خورد. گیت: {} | آرشیو: {}'.format(git_msg, arch_msg)
-            ) from archive_exc
+            arch_msg = _redact_text(str(archive_exc), repo)[:900]
+            if git_error_msg:
+                raise UpdateError(
+                    'بروزرسانی شکست خورد. گیت: {} | آرشیو: {}'.format(
+                        git_error_msg, arch_msg)
+                ) from archive_exc
+            raise UpdateError('بروزرسانی از آرشیو GitHub شکست خورد: ' + arch_msg) \
+                from archive_exc
         dependencies_installed = dependencies_changed and _dependency_install_enabled()
-        method = 'archive'
 
     _restore_local_files(preserved)
 
     # SQLite پیش از migration با API backup (سازگار با WAL) ذخیره می‌شود.
     # migrationهای MySQL این پروژه افزایشی‌اند؛ rollback کد همچنان انجام می‌شود.
+    # تست سلامت هم داخل همین بلوک است تا سایت هیچ‌وقت روی کد خراب نماند.
     try:
         database_backup = _backup_sqlite_database()
         _set_step(3, 'اجرای مایگریشن ساختار و داده‌های دیتابیس...')
         migration_msg = _run_fresh_migration()
+        smoke_msg = _smoke_test_after_update()
     except Exception as exc:
         rollback = []
         if database_backup:
@@ -1479,8 +2013,11 @@ def _perform_update(repo, branch=None):
         'new_short': new_info['short'] or target_commit[:10],
         'changed_files': changed,
         'changed_count': len(changed) if changed else 0,
+        'removed_files': removed,
+        'removed_count': len(removed) if removed else 0,
         'required_files': sorted(set(_REQUIRED_FILES).intersection(files)),
         'migration': migration_msg,
+        'smoke_test': smoke_msg,
         'dependencies': dependency_msg,
         'restart_requested': restarted,
         'backup_ref': backup_ref,
@@ -1488,23 +2025,30 @@ def _perform_update(repo, branch=None):
     return result
 
 
+
 def _success_message(result):
     """ساخت پیام موفقیت با جزئیات کامل."""
     restart = ('ری‌استارت Passenger درخواست شد.' if result.get('restart_requested')
                else 'ری‌استارت خودکار فعال نبود.')
     method = result.get('method', 'git')
-    method_text = 'Git' if method == 'git' else 'آرشیو GitHub'
+    method_text = 'Git' if method == 'git' else 'آرشیو GitHub (ZIP)'
+    removed_count = result.get('removed_count', 0)
+    removed_text = (' و {} فایل منسوخ حذف شد'.format(removed_count)
+                    if removed_count else '')
+    smoke = result.get('smoke_test', '')
+    smoke_text = ' تست سلامت: {}'.format(smoke) if smoke else ''
     return (
         'بروزرسانی کامل شد ✅ نسخهٔ {} از شاخهٔ {} نصب شد؛ '
-        '{} فایل تغییر کرد (روش: {}). {} وابستگی: {} مایگریشن: {}'
+        '{} فایل تغییر کرد{}. {} وابستگی: {} مایگریشن: {}{}'
     ).format(
         result.get('new_short', '—'),
         result.get('branch', '—'),
         result.get('changed_count', 0),
-        method_text,
+        removed_text,
         restart,
         result.get('dependencies', '—'),
         result.get('migration', '—'),
+        smoke_text,
     )
 
 
@@ -1526,7 +2070,8 @@ def run_update(repo=None, branch=None):
                      branch=result.get('branch'), old_commit=result.get('old_commit'),
                      new_commit=result.get('new_commit'),
                      changed_count=result.get('changed_count', 0),
-                     dependencies=result.get('dependencies', ''))
+                     dependencies=result.get('dependencies', ''),
+                     method=result.get('method', ''))
         if result.get('restart_requested'):
             _touch_restart()
         return True, _success_message(result), result
@@ -1644,10 +2189,16 @@ def _column_default_value(column):
 def _literal_default(column, dialect):
     """تبدیل default مدل به literal امن برای ALTER TABLE."""
     try:
-        from sqlalchemy import literal
+        from sqlalchemy import literal, text as sa_text
         default = column.server_default
         if default is not None:
             arg = default.arg
+            # server_default متنیِ امن (مثل CURRENT_TIMESTAMP) عیناً منتقل می‌شود؛
+            # literal_binds آن را به رشتهٔ اشتباه تبدیل می‌کرد.
+            if isinstance(arg, sa_text) and arg.text:
+                raw = arg.text.strip()
+                if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_()' .:+-]*", raw):
+                    return raw
             if hasattr(arg, 'compile'):
                 return str(arg.compile(dialect=dialect,
                                        compile_kwargs={'literal_binds': True}))
@@ -1661,11 +2212,11 @@ def _literal_default(column, dialect):
         return None
 
 
-def _column_ddl(column, dialect):
+def _column_ddl(column, dialect, with_default=True):
     preparer = dialect.identifier_preparer
     name = preparer.quote(column.name)
     coltype = column.type.compile(dialect=dialect)
-    default_sql = _literal_default(column, dialect)
+    default_sql = _literal_default(column, dialect) if with_default else None
     # MySQL/MariaDB روی Text/Blob در نسخه‌های قدیمی DEFAULT را قبول نمی‌کنند.
     try:
         from sqlalchemy import LargeBinary, Text
@@ -1717,15 +2268,155 @@ def _migration_indexes(engine, metadata):
     return added, warnings
 
 
-def _migrate_db():
+def _column_exists(engine, table_name, column_name):
+    """آیا ستون در جدول هست؟ (استعلام تازه — برای تحمل race بین workerها)"""
+    from sqlalchemy import inspect
+    return column_name in {
+        c['name'] for c in inspect(engine).get_columns(table_name)}
+
+
+def _safe_add_column(engine, table, column):
+    """افزودن یک ستون با تحمل race و محدودیت‌های SQLite/MySQL.
+
+    خروجی: ``'added'`` | ``'exists'`` | ``'added_nullable'``
+    * اگر worker دیگری همان ستون را افزوده باشد → 'exists' (خطا نیست).
+    * اگر SQLite «default غیرثابت» را رد کند → ستون nullable اضافه و backfill
+      جدا انجام می‌شود؛ هیچ‌وقت داده از بین نمی‌رود.
+    """
+    from sqlalchemy import inspect, text
+    ddl, _default_sql = _column_ddl(column, engine.dialect)
+    table_sql = _quote_table(table, engine.dialect)
+    sql = 'ALTER TABLE {} ADD COLUMN {}'.format(table_sql, ddl)
+    try:
+        with engine.begin() as conn:
+            conn.execute(text(sql))
+        return 'added'
+    except Exception as exc:
+        # race: شاید worker دیگر (یا retry قبلی) همین ستون را افزوده است.
+        try:
+            if _column_exists(engine, table.name, column.name):
+                return 'exists'
+        except Exception:
+            pass
+        error_text = str(exc).lower()
+        # SQLite: DEFAULT غیرثابت (مثلاً utcnow پایتون) در ADD COLUMN مجاز نیست؛
+        # fallback: ستون nullable بدون default + backfill.
+        if engine.dialect.name == 'sqlite' and (
+                'non-constant default' in error_text or
+                'cannot add a column with non-constant default' in error_text):
+            ddl_nullable, _ = _column_ddl(column, engine.dialect, with_default=False)
+            sql_nullable = 'ALTER TABLE {} ADD COLUMN {}'.format(table_sql, ddl_nullable)
+            try:
+                with engine.begin() as conn:
+                    conn.execute(text(sql_nullable))
+                return 'added_nullable'
+            except Exception as retry_exc:
+                try:
+                    if _column_exists(engine, table.name, column.name):
+                        return 'exists'
+                except Exception:
+                    pass
+                raise UpdateError('افزودن ستون {}.{} شکست خورد: {}'.format(
+                    table.name, column.name, str(retry_exc)[:240])) from retry_exc
+        raise UpdateError('افزودن ستون {}.{} شکست خورد: {}'.format(
+            table.name, column.name, error_text[:240])) from exc
+
+
+def _backfill_column(engine, table, column):
+    """پرکردن NULLهای ستون تازه‌اضافه‌شده با default مدل — همیشه bind پارامتر."""
+    from sqlalchemy import text
+    value = _column_default_value(column)
+    if value is _NO_DEFAULT or value is None:
+        return 0
+    table_sql = _quote_table(table, engine.dialect)
+    col_sql = engine.dialect.identifier_preparer.quote(column.name)
+    with engine.begin() as conn:
+        result = conn.execute(text(
+            'UPDATE {} SET {} = :migration_default WHERE {} IS NULL'.format(
+                table_sql, col_sql, col_sql)),
+            {'migration_default': value})
+        return int(result.rowcount or 0)
+
+
+def _run_data_migrations(engine, progress_cb=None):
+    """اجرای مایگریشن‌های داده‌ای نسخه‌بندی‌شده از پوشهٔ ``migrations/``.
+
+    هر فایل ``NNNN_*.py`` باید تابع ``up(conn)`` داشته باشد که روی اتصالِ
+    داخل تراکنش اجرا می‌شود. نسخه‌های
+    اعمال‌شده در جدول ``schema_migrations`` ثبت می‌شوند و هر نسخه فقط یک بار
+    اجرا می‌شود (idempotent حتی با چند worker). شکست هر مایگریشن، کل
+    بروزرسانی را متوقف می‌کند تا دادهٔ سایت سالم بماند.
+    """
+    from sqlalchemy import text
+    applied_versions = []
+    try:
+        with engine.begin() as conn:
+            conn.execute(text(
+                'CREATE TABLE IF NOT EXISTS schema_migrations ('
+                'version VARCHAR(120) NOT NULL, '
+                'applied_at DATETIME NOT NULL, '
+                'PRIMARY KEY (version))'
+            ))
+        with engine.connect() as conn:
+            for row in conn.execute(text('SELECT version FROM schema_migrations')):
+                applied_versions.append(row[0])
+    except Exception as exc:
+        raise UpdateError('ساخت/خواندن جدول schema_migrations شکست خورد: {}'.format(
+            str(exc)[:240])) from exc
+
+    if not os.path.isdir(MIGRATIONS_DIR):
+        return []
+
+    ran = []
+    for name in sorted(os.listdir(MIGRATIONS_DIR)):
+        if not name.endswith('.py') or name.startswith('_'):
+            continue
+        match = re.match(r'^(\d{4})[_-]', name)
+        if not match:
+            continue
+        version = match.group(1)
+        if version in applied_versions:
+            continue
+        path = os.path.join(MIGRATIONS_DIR, name)
+        namespace = {}
+        try:
+            with open(path, encoding='utf-8') as f:
+                code = f.read()
+            exec(compile(code, path, 'exec'), namespace)
+            up = namespace.get('up')
+            if not callable(up):
+                continue
+            with engine.begin() as conn:
+                result = up(conn)
+                conn.execute(
+                    text('INSERT INTO schema_migrations (version, applied_at) '
+                         'VALUES (:v, :at)'),
+                    {'v': version, 'at': datetime.now(UTC).isoformat()})
+        except Exception as exc:
+            raise UpdateError('مایگریشن داده‌ای {} شکست خورد: {}'.format(
+                name, str(exc)[:240])) from exc
+        ran.append(name)
+        applied_versions.append(version)
+        if progress_cb:
+            try:
+                progress_cb(name)
+            except Exception:
+                pass
+    return ran
+
+
+def _migrate_db(engine=None, progress_cb=None):
     """همگام‌سازی idempotent ساختار دیتابیس با ``db.metadata``.
 
     ویژگی‌ها:
-      * جدول جدید: با ``create_all`` ساخته می‌شود.
+      * جدول جدید: با ``create_all`` ساخته می‌شود (هرگز DROP نمی‌شود).
       * ستون جدید: با نوع واقعی dialect اضافه و مقدار پیش‌فرض امن برای رکوردهای
-        قبلی backfill می‌شود.
+        قبلی backfill می‌شود؛ race بین workerها و محدودیت‌های SQLite
+        (default غیرثابت) مدیریت می‌شود.
       * index جدید: برای جدول‌های قدیمی نیز ساخته می‌شود.
-      * هیچ DROP/DELETE/UPDATE روی دادهٔ موجود انجام نمی‌شود؛ فقط NULL ستون
+      * مایگریشن‌های داده‌ای نسخه‌بندی‌شده (migrations/) بعد از ساختار اجرا
+        می‌شوند؛ هر نسخه فقط یک بار.
+      * هیچ DROP/DELETE روی دادهٔ موجود انجام نمی‌شود؛ فقط NULL ستون
         تازه‌اضافه‌شده با default مدل پر می‌شود.
       * خطا دیگر به شکل «موفق» پنهان نمی‌شود و exception به caller می‌رسد.
     """
@@ -1736,7 +2427,7 @@ def _migrate_db():
         db.session.remove()
     except Exception:
         pass
-    engine = db.engine
+    engine = engine or db.engine
     metadata = db.metadata
     try:
         before = set(inspect(engine).get_table_names())
@@ -1747,6 +2438,7 @@ def _migrate_db():
         added_columns = []
         backfilled = 0
         warnings = []
+        done = 0
         for table in metadata.sorted_tables:
             if table.name not in after:
                 continue
@@ -1754,36 +2446,32 @@ def _migrate_db():
             for column in table.columns:
                 if column.name in existing or column.primary_key:
                     continue
-                ddl, default_sql = _column_ddl(column, engine.dialect)
-                table_sql = _quote_table(table, engine.dialect)
-                sql = 'ALTER TABLE {} ADD COLUMN {}'.format(table_sql, ddl)
-                try:
-                    with engine.begin() as conn:
-                        conn.execute(text(sql))
-                except Exception as exc:
-                    raise UpdateError('افزودن ستون {}.{} شکست خورد: {}'.format(
-                        table.name, column.name, str(exc)[:240])) from exc
+                result = _safe_add_column(engine, table, column)
+                if result == 'exists':
+                    existing.add(column.name)
+                    continue
                 added_columns.append('{}.{}'.format(table.name, column.name))
-                # اگر dialect مقدار پیش‌فرض را برای Text نپذیرفت، مقدار bind شده را
-                # برای رکوردهای قبلی تکمیل می‌کنیم؛ هرگز رشته را وارد SQL نمی‌کنیم.
-                value = _column_default_value(column)
-                if value is not _NO_DEFAULT and value is not None:
-                    try:
-                        col_sql = engine.dialect.identifier_preparer.quote(column.name)
-                        with engine.begin() as conn:
-                            result = conn.execute(text(
-                                'UPDATE {} SET {} = :migration_default WHERE {} IS NULL'.format(
-                                    table_sql, col_sql, col_sql)),
-                                {'migration_default': value})
-                            if result.rowcount and result.rowcount > 0:
-                                backfilled += result.rowcount
-                    except Exception as exc:
-                        raise UpdateError('تکمیل دادهٔ ستون {}.{} شکست خورد: {}'.format(
-                            table.name, column.name, str(exc)[:240])) from exc
+                # اگر dialect مقدار پیش‌فرض را نپذیرفت (Text یا SQLite nullable
+                # fallback)، مقدار bind شده را برای رکوردهای قبلی تکمیل می‌کنیم؛
+                # هرگز رشته را وارد SQL نمی‌کنیم.
+                try:
+                    backfilled += _backfill_column(engine, table, column)
+                except Exception as exc:
+                    raise UpdateError('تکمیل دادهٔ ستون {}.{} شکست خورد: {}'.format(
+                        table.name, column.name, str(exc)[:240])) from exc
                 existing.add(column.name)
+                done += 1
+                if progress_cb and done % 5 == 0:
+                    try:
+                        progress_cb(done)
+                    except Exception:
+                        pass
 
         added_indexes, index_warnings = _migration_indexes(engine, metadata)
         warnings.extend(index_warnings)
+
+        # مایگریشن‌های داده‌ای نسخه‌بندی‌شده — بعد از ساختار، در تراکنش‌های جدا.
+        data_migrations = _run_data_migrations(engine, progress_cb=progress_cb)
         try:
             db.session.remove()
         except Exception:
@@ -1797,6 +2485,8 @@ def _migrate_db():
             report.append('{} مقدار داده تکمیل شد'.format(backfilled))
         if added_indexes:
             report.append('{} ایندکس جدید'.format(len(added_indexes)))
+        if data_migrations:
+            report.append('{} مایگریشن داده‌ای'.format(len(data_migrations)))
         if warnings:
             report.append('{} هشدار ایندکس'.format(len(warnings)))
         if not report:

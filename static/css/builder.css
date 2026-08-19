@@ -7,3 +7,4 @@
 .builder-site-header .pb-row[data-row="h_main"]{z-index:120!important}
 .builder-site-header .pb-row[data-row="h_nav"]{z-index:100!important}
 .dk-user{z-index:10}
+.dk-logo-img{height:42px;width:auto;border-radius:8px;object-fit:contain;flex-shrink:0}

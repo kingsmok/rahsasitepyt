@@ -39,11 +39,13 @@
       </select>
     </div><div class="form-group">
         <label>مدرس‌های کمکی (چند مدرس — Ctrl+click)</label>
-        <select class="form-control" name="co_teacher_ids" multiple size="3">
+        <select class="form-control" id="co-teacher-select" name="co_teacher_ids" multiple size="3">
           {% for t in teachers %}
           <option value="{{ t.id }}" {{ 'selected' if course and t.id in course.co_teacher_ids }}>{{ t.name }}</option>
           {% endfor %}
         </select>
+        <div id="co-teacher-shares" style="margin-top:8px"></div>
+        <small class="muted">درصد سهم هر مدرس کمکی از «سهم درآمد مدرس» دوره را می‌توانید زیر هر گزینه وارد کنید؛ باقی‌مانده به مدرس اصلی می‌رسد.</small>
       </div>
     <div class="form-group">
       <label for="f_price_1">قیمت (تومان)</label>
@@ -68,15 +70,31 @@
     <div class="form-group">
       <label>نوع برگزاری</label>
       {% set delivery = course.delivery_type if course else 'online' %}
-      <select class="form-control" name="delivery_type">
-        <option value="online" {{ 'selected' if delivery == 'online' }}>آنلاین</option>
-        <option value="offline" {{ 'selected' if delivery == 'offline' }}>حضوری / آفلاین</option>
-        <option value="hybrid" {{ 'selected' if delivery == 'hybrid' }}>ترکیبی آنلاین و حضوری</option>
+      <select class="form-control" name="delivery_type" id="delivery-type-select">
+        <option value="online" {{ 'selected' if delivery == 'online' }}>🌐 آنلاین — کلاس زنده/وبیناری</option>
+        <option value="inperson" {{ 'selected' if delivery == 'inperson' }}>🏫 حضوری — کلاس فیزیکی با حضور و غیاب</option>
+        <option value="offline" {{ 'selected' if delivery == 'offline' }}>📚 آفلاین — ویدیوهای ضبط‌شده</option>
+        <option value="hybrid" {{ 'selected' if delivery == 'hybrid' }}>🔀 ترکیبی — حضوری + آنلاین/آفلاین</option>
       </select>
     </div>
-    <div class="form-group">
-      <label>حداقل حضور لازم برای دوره حضوری (درصد)</label>
+    <div class="form-group" id="attendance-field" style="display:none">
+      <label>حداقل حضور لازم برای دوره حضوری/ترکیبی (درصد)</label>
       <input class="form-control" type="number" name="attendance_required_percent" value="{{ course.attendance_required_percent if course else 75 }}" min="0" max="100">
+    </div>
+    <div class="grid" style="grid-template-columns:1fr 1fr;gap:14px">
+      <div class="form-group">
+        <label>سهم درآمد مدرس از فروش این دوره (٪)</label>
+        <input class="form-control" type="number" name="revenue_percent"
+               value="{{ course.revenue_percent if course and course.revenue_percent is not none else (site.get('teacher_default_share', 50) if site else 50) }}"
+               min="0" max="100">
+        <small class="muted">درصدی از فروش دوره که به تیم تدریس (مدرس اصلی + کمکی‌ها) تعلق می‌گیرد. خالی = پیش‌فرض سایت.</small>
+      </div>
+      <div class="form-group">
+        <label>تعداد جلسات بازشونده به ازای هر قسط</label>
+        <input class="form-control" type="number" name="unlock_per_installment"
+               value="{{ course.unlock_per_installment if course else 0 }}" min="0" max="500">
+        <small class="muted">۰ = همه جلسات از ابتدا باز. برای خرید اقساطی، با هر قسط پرداخت‌شده این تعداد جلسه باز می‌شود.</small>
+      </div>
     </div>
     <div class="form-group">
       <label>مدت دسترسی (روز — 0 = نامحدود)</label>
@@ -123,6 +141,14 @@
 
   <div class="form-group">
     <label>تصویر دوره</label>
+    <div class="flex gap-2 wrap" style="align-items:center;margin-bottom:10px">
+      <img id="course-image-preview" src="{{ course.image_url if course else '/static/img/course-placeholder.webp' }}"
+           alt="" style="width:96px;height:60px;object-fit:cover;border-radius:10px;border:1px solid var(--border)">
+      <button type="button" class="mm-btn-lib"
+              onclick="MediaLibrary.open({target:'image-input', preview:'course-image-preview', filter:'image'})">
+        📁 انتخاب از کتابخانه رسانه
+      </button>
+    </div>
     <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:10px">
       {% for img in images %}
       <img class="img-picker" data-src="{{ img }}" src="/static/img/{{ img }}" alt=""
@@ -137,4 +163,45 @@
   <button class="btn btn-primary btn-lg" type="submit">💾 ذخیره دوره</button>
   {% if course %}<a class="btn btn-ghost btn-lg" href="{{ url_for('admin.course_lessons', cid=course.id) }}" style="margin-right:10px">بعد: مدیریت جلسات ←</a>{% endif %}
 </form>
+
+<script>
+(function () {
+  // نمایش فیلد حداقل حضور فقط برای حضوری/ترکیبی
+  var sel = document.getElementById('delivery-type-select');
+  var att = document.getElementById('attendance-field');
+  function syncAttendance() {
+    if (!sel || !att) return;
+    att.style.display = (sel.value === 'inperson' || sel.value === 'hybrid') ? 'block' : 'none';
+  }
+  if (sel) { sel.addEventListener('change', syncAttendance); syncAttendance(); }
+
+  // ورودی درصد سهم هر مدرس کمکی انتخاب‌شده
+  var coSelect = document.getElementById('co-teacher-select');
+  var sharesBox = document.getElementById('co-teacher-shares');
+  var existing = {};
+  {% if course %}
+  {% for link in course.co_teacher_links %}
+  existing[{{ link.teacher_id }}] = {{ link.share_percent if link.share_percent is not none else 'null' }};
+  {% endfor %}
+  {% endif %}
+  function renderShares() {
+    if (!coSelect || !sharesBox) return;
+    sharesBox.innerHTML = '';
+    Array.prototype.forEach.call(coSelect.options, function (opt) {
+      if (!opt.selected) return;
+      var row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:6px';
+      row.innerHTML = '<span style="font-size:12px;flex:1">' + opt.textContent + '</span>' +
+        '<input type="number" name="co_share_' + opt.value + '" min="0" max="100" ' +
+        'placeholder="٪ سهم" value="' + (existing[opt.value] !== undefined && existing[opt.value] !== null ? existing[opt.value] : '') + '" ' +
+        'style="width:90px;padding:6px 8px;border:1px solid var(--border);border-radius:8px;font-size:12px">';
+      sharesBox.appendChild(row);
+    });
+  }
+  if (coSelect) {
+    coSelect.addEventListener('change', renderShares);
+    renderShares();
+  }
+})();
+</script>
 {% endblock %}

@@ -54,7 +54,17 @@ def product_list():
 # ---------------------------------------------------------------- صفحه محصول
 @products_bp.route('/product/<slug>')
 def product_detail(slug):
-    p = Product.query.filter_by(slug=slug, is_active=True).first_or_404()
+    value = (slug or '').strip()
+    if not value:
+        abort(404)
+    p = Product.query.filter_by(slug=value, is_active=True).first()
+    if p is None and value.isdigit():
+        # لینک قدیمی با شناسهٔ عددی → ریدایرکت دائمی به آدرس کانونی
+        p = Product.query.filter_by(id=int(value), is_active=True).first()
+        if p is not None:
+            return redirect(url_for('products.product_detail', slug=p.slug), code=301)
+    if p is None:
+        abort(404)
     p.views = (p.views or 0) + 1
     db.session.commit()
     related = Product.query.filter(Product.category == p.category, Product.id != p.id,

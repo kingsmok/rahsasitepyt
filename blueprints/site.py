@@ -3,6 +3,7 @@
 from flask import Blueprint, render_template, request, abort, redirect, url_for, flash, g, session
 import re
 import json
+from datetime import datetime, timedelta
 from sqlalchemy import or_
 
 _FA_MAP = str.maketrans('0123456789', '۰۱۲۳۴۵۶۷۸۹')
@@ -156,11 +157,28 @@ def courses():
 
 
 # ---------------------------------------------------------------- جزئیات دوره
+def _find_course(slug):
+    """دورهٔ منتشرشده با slug یا شناسهٔ عددی (پشتیبانی از لینک‌های قدیمی)."""
+    value = (slug or '').strip()
+    if not value:
+        return None
+    course = Course.query.filter_by(slug=value, status='published').first()
+    if course is None and value.isdigit():
+        course = Course.query.filter_by(id=int(value), status='published').first()
+    return course
+
+
 @site_bp.route('/course/<slug>')
 def course_detail(slug):
+    course = _find_course(slug)
+    if course is None:
+        abort(404)
+    # لینک با شناسهٔ عددی (قدیمی/اشتراک‌گذاری‌شده) → ریدایرکت دائمی به آدرس کانونی
+    if str(slug).strip().isdigit() and str(slug).strip() != str(course.slug):
+        return redirect(url_for('site.course_detail', slug=course.slug), code=301)
     course = (Course.query.options(joinedload(Course.category), joinedload(Course.teacher),
                                    joinedload(Course.sections).joinedload(Section.lessons))
-              .filter_by(slug=slug, status='published').first_or_404())
+              .filter_by(id=course.id).first())
     course.views = (course.views or 0) + 1
     db.session.commit()
     enrolled = bool(g.user and any(e.course_id == course.id for e in g.user.enrollments))
@@ -188,83 +206,17 @@ def course_detail(slug):
         g.current_course = course
         g.page_settings = tp.settings()
         return render_template('builder/public.html', page=tp)
-    # ─────────────── بهینه‌سازی سئو (E-E-A-T + Helpful Content) ───────────────
-    site_name = g.settings.get('site_name', 'آکادمی آنلاین')
-    # کلمات کلیدی هم‌خانواده و LSI (بر اساس دسته + پایه)
-    _lsi = ['آموزش پایتون', 'دوره پایتون', 'برنامه‌نویسی پایتون', 'پایتون از صفر',
-            'پایتون پروژه محور', 'آموزش پایتون برای مبتدیان', 'پایتون پیشرفته',
-            'یادگیری ماشین با پایتون', 'وب اسکرپینگ با پایتون', 'استخدام برنامه‌نویس پایتون',
-            'گواهینامه پایتون', 'کتابخانه‌های پایتون']
+    # ─────────────── سئو و اسکیمای خودکار (شبیه Rank Math) + بازنویسی دستی ───────────────
+    from seo_service import course_seo, ensure_meta
+    base_url = request.host_url.rstrip('/')
+    # رکورد متا این مسیر همیشه در داشبورد سئو قابل ویرایش است (فقط اگر نباشد ساخته می‌شود)
+    ensure_meta('/course/' + course.slug)
+    auto = course_seo(course, base_url)
+    g.seo.update(auto)
+    # کلمات کلیدی LSI تکمیلی بر اساس دسته
     if course.category and course.category.name != 'برنامه‌نویسی':
-        _lsi = [course.category.name, course.title] + [k for k in _lsi if k not in ('آموزش پایتون', 'دوره پایتون')][:9]
-    g.seo['keywords'] = ', '.join(_lsi[:12])
-    # عنوان سئو — کوتاه، کلیک‌خور (< 60 کاراکتر)
-    g.seo['title'] = f"{course.title} | {site_name}"
-    if len(g.seo['title']) > 60:
-        g.seo['title'] = f"{course.title[:45].strip()} | {site_name}"
-    # توضیحات متا — ترغیب‌کننده با CTA (۱۳۰ تا ۱۶۰ کاراکتر)
-    disc = (course.discount_percent or 0)
-    _t = course.title or ''
-    _head = _t if _t.startswith('دوره') else f'دوره {_t}'
-    meta_parts = [
-        _head,
-        f"{course.lesson_count} جلسه و {course.duration_hours} ساعت محتوای ثبت‌شده",
-    ]
-    if course.students_count:
-        meta_parts.append(f"{course.students_count} دانشجوی ثبت‌نام‌شده")
-    meta_parts.append("گواهی پایان دوره با کد رهگیری")
-    try:
-        _refund_days = max(0, int(g.settings.get('refund_days') or 0))
-    except (TypeError, ValueError):
-        _refund_days = 0
-    if _refund_days:
-        meta_parts.append(f"{_refund_days} روز مهلت درخواست بازگشت وجه")
-    if disc:
-        meta_parts.append(f"همین حالا با {disc}٪ تخفیف ثبت‌نام کنید")
-    else:
-        meta_parts.append("همین حالا ثبت‌نام کنید")
-    g.seo['description'] = ('؛ '.join(meta_parts))[:158]
-    g.seo['og_image'] = course.image_url
-    # ─────────────── اسکیمای Course کامل (با E-E-A-T) ───────────────
-    schema = {
-        "@context": "https://schema.org",
-        "@type": "Course",
-        "name": course.title,
-        "description": (course.subtitle or course.description or '')[:300],
-        "image": (course.image_url if course.image_url.startswith('https://') else
-                  request.host_url.rstrip('/') + course.image_url),
-        "inLanguage": "fa",
-        "category": course.category.name if course.category else 'آموزش',
-        "provider": {"@type": "Organization", "name": site_name,
-                     "url": request.host_url.rstrip('/'),
-                     "logo": request.host_url.rstrip('/') + '/static/img/favicon.svg',
-                     "sameAs": request.host_url.rstrip('/')},
-        "offers": {"@type": "Offer", "price": str(course.final_price),
-                   "priceCurrency": "IRR", "availability": "https://schema.org/InStock",
-                   "url": request.url, "category": course.category.name if course.category else 'آموزش'},
-        "coursePrerequisites": (course.requirements or '').split('\n')[0].strip() or 'بدون پیش‌نیاز خاص',
-    }
-    if course.duration_hours:
-        schema["totalTime"] = f"PT{int(course.duration_hours)}H"
-    if course.lesson_count:
-        schema["numberOfLessons"] = course.lesson_count
-    if course.teacher:
-        schema["instructor"] = {"@type": "Person", "name": course.teacher.name,
-                                "jobTitle": "مدرس ارشد",
-                                "url": request.host_url.rstrip('/') + url_for('site.teacher_detail', uid=course.teacher.id)}
-        if course.teacher.bio:
-            schema["instructor"]["description"] = course.teacher.bio[:200]
-    if course.rating:
-        schema["aggregateRating"] = {"@type": "AggregateRating",
-                                     "ratingValue": str(course.rating),
-                                     "reviewCount": str(len(reviews)),
-                                     "bestRating": "5"}
-    schema["hasCourseInstance"] = {"@type": "CourseInstance",
-                                   "courseMode": "Online",
-                                   "courseWorkload": f"PT{int(course.duration_hours or 0)}H",
-                                   "inLanguage": "fa"}
-    g.seo['schema'] = schema
-    g.seo['og_type'] = 'product'
+        lsi = [course.category.name, course.title] + g.seo.get('keywords', '').split(', ')[:3]
+        g.seo['keywords'] = ', '.join(lsi)
     # مقالات مرتبط برای لینک‌سازی داخلی
     from models import BlogPost as _BlogPost
     blog_posts = _BlogPost.query.filter_by(published=True).order_by(_BlogPost.created_at.desc()).limit(3).all()
@@ -284,7 +236,9 @@ def add_review(slug):
     if not g.user:
         flash('برای ثبت نظر ابتدا وارد شوید.', 'error')
         return redirect(url_for('auth.login'))
-    course = Course.query.filter_by(slug=slug).first_or_404()
+    course = _find_course(slug)
+    if course is None:
+        abort(404)
     rating = request.form.get('rating', 5, type=int)
     from validators import clamp_field
     comment = clamp_field(request.form.get('comment'), 'comment')
@@ -480,17 +434,18 @@ def teachers():
 
 @site_bp.route('/teacher/<int:uid>')
 def teacher_detail(uid):
-    teacher = User.query.filter_by(id=uid, role='teacher', is_active=True).first_or_404()
+    # مدرسان می‌توانند نقش teacher یا admin داشته باشند (در فرم دوره هر دو
+    # قابل انتخاب‌اند)؛ فیلتر قبلی فقط role='teacher' بود و پروفایل مدرسانی
+    # که نقش admin داشتند را 404 می‌کرد.
+    teacher = User.query.filter(User.id == uid,
+                                User.role.in_(('teacher', 'admin')),
+                                User.is_active == True).first_or_404()
     courses = (Course.query.options(joinedload(Course.category))
                .filter_by(teacher_id=uid, status='published').all())
-    # متای پویا (سئو) — اولویت با SeoMeta اختصاصی است، در غیر این صورت پویا
-    from models import SeoMeta
-    meta = SeoMeta.query.filter_by(path=request.path).first()
-    if not meta or not meta.title:
-        g.seo['title'] = f"{teacher.name} — مدرس {g.settings.get('site_name', 'آکادمی آنلاین')}"
-    if not meta or not meta.description:
-        n_courses = str(len(courses)).translate(str.maketrans('0123456789', '۰۱۲۳۴۵۶۷۸۹'))
-        g.seo['description'] = f"صفحه مدرس {teacher.name} — آشنایی با سوابق، تخصص و دوره‌های آموزشی {n_courses} دوره در آکادمی آنلاین."
+    # ── سئو و اسکیمای خودکار Person (شبیه Rank Math) + بازنویسی دستی ──
+    from seo_service import teacher_seo, ensure_meta as _ensure_teacher_meta
+    _ensure_teacher_meta('/teacher/' + str(uid))
+    g.seo.update(teacher_seo(teacher, request.host_url.rstrip('/')))
     # قالب داینامیک: اگر «قالب صفحه مدرس» ساخته شده باشد
     from models import Page
     tp = Page.query.filter_by(ptype='teacher').first()
@@ -522,10 +477,23 @@ def blog_post(slug):
     g.current_post = post
     if request.method == 'POST':
         from validators import clamp_field
+        # ضد اسپم: honeypot خالی باشد (ربات‌ها پر می‌کنند) + محدودیت تعداد در هر IP
+        if (request.form.get('website') or '').strip():
+            return redirect(url_for('site.blog_post', slug=slug) + '#comments')
+        client_ip = request.headers.get('X-Forwarded-For', request.remote_addr or '').split(',')[0].strip()
+        throttle_key = 'blog_cm_{}'.format(client_ip)
+        recent = BlogComment.query.filter(
+            BlogComment.post_id == post.id,
+            BlogComment.created_at >= datetime.utcnow() - timedelta(minutes=10),
+            BlogComment.ip == client_ip).count()
+        if recent >= 5:
+            flash('تعداد دیدگاه‌ها زیاد است؛ چند دقیقه دیگر دوباره تلاش کنید.', 'error')
+            return redirect(url_for('site.blog_post', slug=slug) + '#comments')
         name = clamp_field(request.form.get('name'), 'name')
         comment = clamp_field(request.form.get('comment'), 'comment')
         if name and comment:
-            db.session.add(BlogComment(post_id=post.id, name=name, comment=comment))
+            db.session.add(BlogComment(post_id=post.id, name=name,
+                                       comment=comment, ip=client_ip[:60]))
             db.session.commit()
             flash('دیدگاه شما ثبت شد. ممنون! 🙏', 'success')
         else:
@@ -533,24 +501,10 @@ def blog_post(slug):
         return redirect(url_for('site.blog_post', slug=slug) + '#comments')
     post.views = (post.views or 0) + 1
     db.session.commit()
-    # schema.org مقاله
-    g.seo['schema'] = {
-        "@context": "https://schema.org",
-        "@type": "Article",
-        "headline": post.title,
-        "description": (post.excerpt or '')[:300],
-        "image": request.host_url.rstrip('/') + '/static/img/' + (post.image or 'hero.webp'),
-        "datePublished": post.created_at.strftime('%Y-%m-%d'),
-        "author": {"@type": "Person", "name": post.author.name if post.author else 'تیم آکادمی'},
-        "publisher": {"@type": "Organization", "name": g.settings.get('site_name', 'آکادمی آنلاین')},
-        "mainEntityOfPage": request.url,
-    }
-    g.seo['og_type'] = 'article'
-    if not g.seo['title']:
-        g.seo['title'] = f"{post.title} | {g.settings.get('site_name', 'آکادمی آنلاین')}"
-    if not g.seo['description']:
-        g.seo['description'] = (post.excerpt or '')[:160]
-    g.seo['og_image'] = post.image or 'hero.webp'
+    # ── سئو و اسکیمای خودکار Article (شبیه Rank Math) + بازنویسی دستی ──
+    from seo_service import blog_seo, ensure_meta as _ensure_blog_meta
+    _ensure_blog_meta('/blog/' + post.slug)
+    g.seo.update(blog_seo(post, request.host_url.rstrip('/')))
     # اگر «صفحه پست» با صفحه‌ساز ساخته شده باشد، به جای قالب عادی نمایش بده
     from models import Page
     tp = Page.query.filter_by(ptype='post').first()

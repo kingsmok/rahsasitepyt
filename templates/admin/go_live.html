@@ -12,15 +12,20 @@
       <h2 style="font-size:15px;margin-bottom:5px">{{ '✅ سایت در دسترس عموم است' if site_active else '🔒 سایت هنوز عمومی نشده است' }}</h2>
       <p class="text-3" style="margin:0">نصب تازه به‌صورت امن غیرفعال می‌ماند. مدیر می‌تواند همه صفحات را ببیند و پس از تکمیل موارد الزامی، سایت را منتشر کند.</p>
     </div>
-    <form method="post" style="margin:0">
+    <form method="post" style="margin:0;display:flex;flex-direction:column;gap:8px;align-items:flex-end">
       <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
       <input type="hidden" name="action" value="{{ 'deactivate' if site_active else 'activate' }}">
-      <button class="btn {{ 'btn-outline' if site_active else 'btn-primary' }}" type="submit" {{ 'disabled' if not site_active and not launch_ready }}>
+      <button class="btn {{ 'btn-outline' if site_active else 'btn-primary' }}" type="submit">
         {{ 'غیرفعال‌کردن انتشار' if site_active else 'فعال‌سازی و انتشار سایت' }}
       </button>
+      {% if not site_active and not launch_ready and is_super %}
+      <label style="font-size:11.5px;display:flex;align-items:center;gap:6px;cursor:pointer">
+        <input type="checkbox" name="force" value="1"> فعال‌سازی اجباری (با وجود هشدارهای ناقص)
+      </label>
+      {% endif %}
     </form>
   </div>
-  {% if not launch_ready and not site_active %}<small style="display:block;margin-top:10px;color:var(--warning)">برای فعال‌سازی، «برند و تماس»، «محتوا»، در صورت فروش «پرداخت واقعی» و در بسته تجاری «لایسنس معتبر» را تکمیل کنید.</small>{% endif %}
+  {% if not launch_ready and not site_active %}<small style="display:block;margin-top:10px;color:var(--warning)">برای فعال‌سازی، «برند و تماس»، «محتوا»، در صورت فروش «پرداخت واقعی» و در بسته تجاری «لایسنس معتبر» را تکمیل کنید. سوپر ادمین می‌تواند با تیک «فعال‌سازی اجباری» فوراً انتشار دهد.</small>{% endif %}
 </section>
 
 <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:20px">

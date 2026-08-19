@@ -26,7 +26,7 @@ import re as _re
 from validators import human_size, safe_int
 from validators import log_exc as _lexc
 from validators import safe_referrer
-from jdates import jdate_num, jtime
+from jdates import jdate_num, jtime, fa_num
 
 
 def _save_lesson_file(f):
@@ -240,8 +240,17 @@ def go_live():
         if action in ('activate', 'deactivate'):
             values = {row.key: row.value for row in Setting.query.all()}
             checks, launch_ready, _cc, _pc, _paid, _license = _readiness(values)
-            if action == 'activate' and not launch_ready:
-                flash('انتشار انجام نشد؛ موارد الزامی علامت‌خورده را کامل کنید.', 'error')
+            force = str(request.form.get('force') or '') == '1'
+            is_super = g.user.role == 'super_admin'
+            if action == 'activate' and not launch_ready and not (force and is_super):
+                missing = [label for key, label in
+                           (('public', 'برند و تماس'), ('content', 'محتوا'),
+                            ('payment', 'پرداخت'), ('license', 'لایسنس'))
+                           if key in checks and not checks[key]]
+                flash('انتشار انجام نشد؛ این موارد هنوز کامل نیست: ' +
+                      ('، '.join(missing) if missing else 'موارد الزامی') +
+                      '. (سوپر ادمین می‌تواند با گزینهٔ «فعال‌سازی اجباری» انتشار دهد.)',
+                      'error')
                 return redirect(url_for('admin.go_live'))
             row = db.session.get(Setting, 'site_active')
             value = '1' if action == 'activate' else '0'
@@ -253,9 +262,12 @@ def go_live():
             clear = getattr(current_app, 'clear_cache', None)
             if callable(clear):
                 clear()
-            flash('سایت برای عموم فعال شد. ✅' if value == '1' else
-                  'سایت از دسترس عموم خارج شد؛ مدیر همچنان پیش‌نمایش کامل دارد.',
-                  'success' if value == '1' else 'info')
+            if value == '1' and force and not launch_ready:
+                flash('سایت به‌صورت اجباری برای عموم فعال شد؛ موارد ناقص را در اولین فرصت تکمیل کنید. ⚠️', 'warning')
+            else:
+                flash('سایت برای عموم فعال شد. ✅' if value == '1' else
+                      'سایت از دسترس عموم خارج شد؛ مدیر همچنان پیش‌نمایش کامل دارد.',
+                      'success' if value == '1' else 'info')
             return redirect(url_for('admin.go_live'))
 
         for key in keys:
@@ -295,6 +307,7 @@ def go_live():
                            products_count=products_count,
                            launch_ready=launch_ready, paid_content=paid_content,
                            current_license=current_license,
+                           is_super=g.user.role == 'super_admin',
                            site_active=values.get('site_active', '1') == '1')
 
 
@@ -334,7 +347,8 @@ def _course_form(course):
         f = request.form
         if not course:
             course = Course()
-            course.slug = slugify(f.get('title', '')) + '-' + str(random.randint(100, 999))
+            from models import unique_slug_for as _usf
+            course.slug = _usf(Course, f.get('title', ''), fallback='course')
             db.session.add(course)
         course.title = f.get('title', '').strip()
         course.subtitle = f.get('subtitle', '').strip()
@@ -357,7 +371,8 @@ def _course_form(course):
         course.intro_video = _iv
         course.access_days = int(f.get('access_days') or 0)
         course.delivery_type = f.get('delivery_type', 'online')
-        if course.delivery_type not in ('online', 'offline', 'hybrid'):
+        from models import DELIVERY_TYPES
+        if course.delivery_type not in DELIVERY_TYPES:
             course.delivery_type = 'online'
         course.allow_download = bool(f.get('allow_download'))
         try:
@@ -365,6 +380,42 @@ def _course_form(course):
         except (TypeError, ValueError):
             course.attendance_required_percent = 75
         course.audience = f.get('audience', '').strip()
+        # سهم درآمد مدرس این دوره (٪) — خالی یعنی پیش‌فرض سایت
+        _rev_raw = f.get('revenue_percent', '').strip()
+        if _rev_raw == '':
+            course.revenue_percent = None
+        else:
+            try:
+                course.revenue_percent = max(0, min(100, int(_rev_raw)))
+            except (TypeError, ValueError):
+                course.revenue_percent = None
+        # تعداد جلسات بازشونده به ازای هر قسط (۰ = همه باز)
+        try:
+            course.unlock_per_installment = max(0, min(500, int(f.get('unlock_per_installment') or 0)))
+        except (TypeError, ValueError):
+            course.unlock_per_installment = 0
+        # مدرس‌های کمکی + درصد سهم هر کدام (باگ قبلی: انتخاب‌ها هرگز ذخیره نمی‌شد)
+        try:
+            from models import CourseTeacher as _CT
+            db.session.flush()  # دوره جدید id بگیرد تا لینک‌ها قابل حذف/ساخت باشند
+            _CT.query.filter_by(course_id=course.id).delete()
+            selected_ids = []
+            for raw in f.getlist('co_teacher_ids'):
+                for piece in raw.split(','):
+                    piece = piece.strip()
+                    if piece.isdigit() and int(piece) not in selected_ids:
+                        selected_ids.append(int(piece))
+            if course.teacher_id in selected_ids:
+                selected_ids.remove(course.teacher_id)
+            for tid in selected_ids:
+                share_raw = f.get('co_share_{}'.format(tid), '').strip()
+                share = None
+                if share_raw.isdigit():
+                    share = max(0, min(100, int(share_raw)))
+                db.session.add(_CT(course_id=course.id, teacher_id=tid,
+                                   share_percent=share))
+        except Exception:
+            _lexc('blueprints/admin_bp.py')
         if not course.title:
             flash('عنوان دوره الزامی است.', 'error')
         else:
@@ -390,6 +441,12 @@ def _course_form(course):
             except Exception:
                 _lexc('admin_bp.course_index')
             db.session.commit()
+            try:
+                from seo_service import ensure_meta
+                ensure_meta('/course/' + (course.slug or str(course.id)))
+                db.session.commit()
+            except Exception:
+                _lexc('blueprints/admin_bp.py')
             flash('دوره با موفقیت ذخیره شد.', 'success')
             return redirect(url_for('admin.course_lessons', cid=course.id))
     return render_template('admin/course_form.html', course=course, teachers=teachers,
@@ -714,7 +771,8 @@ def _blog_form(post):
         f = request.form
         if not post:
             post = BlogPost(author_id=g.user.id)
-            post.slug = slugify(f.get('title', '')) + '-' + str(random.randint(100, 999))
+            from models import unique_slug_for as _usfb
+            post.slug = _usfb(BlogPost, f.get('title', ''), fallback='post')
             db.session.add(post)
         post.title = f.get('title', '').strip()
         post.excerpt = f.get('excerpt', '').strip()
@@ -726,6 +784,12 @@ def _blog_form(post):
             flash('عنوان الزامی است.', 'error')
         else:
             db.session.commit()
+            try:
+                from seo_service import ensure_meta
+                ensure_meta('/blog/' + (post.slug or str(post.id)))
+                db.session.commit()
+            except Exception:
+                _lexc('blueprints/admin_bp.py')
             flash('مطلب ذخیره شد.', 'success')
             return redirect(url_for('admin.blog'))
     images = ['cover-python.webp', 'cover-flask.webp', 'cover-django.webp', 'cover-react.webp',
@@ -1987,12 +2051,42 @@ def user_add():
         else:
             u = User(name=name, email=email, phone=phone or None, role=role,
                      avatar_color=random.choice(['#2563eb', '#7c3aed', '#059669', '#dc2626', '#ea580c']))
+            # آواتار: آپلود مستقیم اولویت دارد؛ بعد مقدار انتخاب‌شده از کتابخانهٔ رسانه
+            avatar_file = request.files.get('avatar_file') if request.files else None
+            avatar_value = (request.form.get('avatar') or '').strip()
+            if avatar_file and avatar_file.filename:
+                from validators import (safe_filename, ALLOWED_IMAGE_EXT,
+                                        file_content_is_safe)
+                safe = safe_filename(avatar_file.filename or '', ALLOWED_IMAGE_EXT)
+                ext = os.path.splitext(safe or '')[1].lower()
+                if safe and file_content_is_safe(avatar_file.stream, ext):
+                    up = os.path.join(os.path.dirname(os.path.dirname(
+                        os.path.abspath(__file__))), 'static', 'img',
+                        'uploads', 'avatars')
+                    os.makedirs(up, exist_ok=True)
+                    fname = 'av_' + uuid.uuid4().hex[:10] + ext
+                    avatar_file.save(os.path.join(up, fname))
+                    u.avatar = fname
+                else:
+                    flash('فایل آواتار نامعتبر است و نادیده گرفته شد.', 'error')
+            elif avatar_value:
+                # مقدار کامل مسیر از کتابخانه رسانه (uploads/media/...) یا URL
+                from models import resolve_image_url
+                if resolve_image_url(avatar_value):
+                    u.avatar = avatar_value
             u.set_password(password)
             db.session.add(u)
             db.session.commit()
             from gamification import make_referral_code
             make_referral_code(u)
             db.session.commit()
+            if u.role in ('teacher', 'admin'):
+                try:
+                    from seo_service import ensure_meta
+                    ensure_meta('/teacher/' + str(u.id))
+                    db.session.commit()
+                except Exception:
+                    _lexc('blueprints/admin_bp.py')
             flash(f'کاربر «{name}» با نقش {role} ساخته شد. ✅', 'success')
             return redirect(url_for('admin.users'))
     return render_template('admin/user_add.html')
@@ -2035,6 +2129,38 @@ def installments():
         q = q.filter(Installment.status == status)
     items = q.order_by(Installment.due_date.asc()).all()
     return render_template('admin/installments.html', items=items, status=status)
+
+
+@admin_bp.route('/installments/<int:iid>/mark-paid', methods=['POST'])
+@admin_required
+def installment_mark_paid(iid):
+    """ثبت دستی پرداخت یک قسط — برای همگام‌سازی وصولی‌های اسنپ‌پی/دیجی‌پی
+    (که در پنل خود ارائه‌دهنده انجام می‌شود) و باز شدن جلسات بعدی دوره."""
+    from models import Installment as _I, Notification as _N
+    inst = db.get_or_404(_I, iid)
+    if inst.status == 'paid':
+        flash('این قسط قبلاً پرداخت شده است.', 'info')
+        return redirect(url_for('admin.installments'))
+    order = inst.order
+    inst.status = 'paid'
+    inst.paid_at = utcnow()
+    inst.ref_id = (inst.ref_id or '') + ' | ADMIN-MANUAL'
+    remaining = _I.query.filter_by(order_id=order.id).filter(
+        _I.status != 'paid').count()
+    _N.notify(order.user_id, 'قسط شما ثبت شد ✅',
+              'قسط {} از {} سفارش {} ثبت شد. جلسات بیشتری از دوره باز شد.'.format(
+                  fa_num(inst.number), fa_num(order.installment_count or 1), order.code),
+              '💳', url_for('student.my_courses'))
+    if remaining == 0:
+        order.status = 'paid'
+        order.paid_at = utcnow()
+        _N.notify(order.user_id, 'تکمیل پرداخت اقساطی 🎉',
+                  'همه قسط‌های سفارش {} پرداخت شد؛ همه جلسات دوره باز شد.'.format(order.code),
+                  '✅', url_for('student.my_courses'))
+    db.session.commit()
+    flash('قسط {}/{} به‌عنوان پرداخت‌شده ثبت شد؛ جلسات دوره طبق قفل اقساطی باز شد.'.format(
+        fa_num(inst.number), fa_num(order.installment_count or 1)), 'success')
+    return redirect(url_for('admin.installments'))
 
 
 @admin_bp.route('/users/<int:uid>/notify', methods=['POST'])
@@ -2668,6 +2794,7 @@ def super_settings():
                 'digipay_api_key', 'digipay_merchant', 'tarb_api_url', 'tarb_api_key', 'tarb_merchant',
                 'invoice_prefix', 'certificate_text', 'certificate_sign',
                 'watermark_enabled', 'bnpl_enabled', 'bnpl_max_installments', 'cashback_percent',
+                'teacher_default_share',
                 'loyalty_discount_percent', 'referral_bonus_percent', 'refund_days',
                 # پیامک و ایمیل
                 'sms_provider', 'sms_test_phone', 'sms_kavenegar_key', 'sms_kavenegar_sender',
@@ -2700,7 +2827,8 @@ def super_settings():
                         v = str(max(0, min(90, int(v or 0))))
                     except ValueError:
                         v = '0'
-                elif k in ('cashback_percent', 'loyalty_discount_percent', 'referral_bonus_percent'):
+                elif k in ('cashback_percent', 'loyalty_discount_percent',
+                            'referral_bonus_percent', 'teacher_default_share'):
                     try:
                         v = str(max(0, min(50, int(v or 0))))
                     except ValueError:
@@ -2744,10 +2872,13 @@ def super_settings():
                     lname = 'logo' + os.path.splitext(safe)[1].lower()
                     logo_f.save(os.path.join(up, lname))
                     st = db.session.get(Setting, 'custom_logo')
+                    # مسیر کانونی یکسان برای هر دو فرم تنظیمات (باگ قبلی:
+                    # این فرم «uploads/brand/...» ذخیره می‌کرد که لوگو را می‌شکست)
                     if st:
-                        st.value = 'uploads/brand/' + lname
+                        st.value = '/static/img/uploads/brand/' + lname
                     else:
-                        db.session.add(Setting(key='custom_logo', value='uploads/brand/' + lname))
+                        db.session.add(Setting(key='custom_logo',
+                                               value='/static/img/uploads/brand/' + lname))
             db.session.commit()
             flash('تنظیمات با موفقیت ذخیره شد ✅', 'success')
             return redirect(url_for('admin.super_settings', tab=request.form.get('tab', '')))
@@ -2867,8 +2998,12 @@ def _product_int(value, maximum=2_000_000_000):
         return 0
 
 
-def _save_product_image(file_storage):
-    """ذخیره امن تصویر محصول و برگرداندن مسیر نسبی static/img."""
+def _save_product_image(file_storage, uploader_id=None):
+    """ذخیره امن تصویر محصول + ثبت در کتابخانه رسانه مرکزی.
+
+    برگرداندن مسیر نسبی (مثل uploads/products/product-xxx.jpg)؛
+    اگر آپلود نامعتبر باشد None و خطا flash می‌شود.
+    """
     if not file_storage or not file_storage.filename:
         return None
     from validators import (ALLOWED_IMAGE_EXT, file_content_is_safe,
@@ -2882,7 +3017,26 @@ def _save_product_image(file_storage):
                              'static', 'img', 'uploads', 'products')
     os.makedirs(directory, exist_ok=True)
     filename = f'product-{uuid.uuid4().hex[:12]}{ext}'
-    file_storage.save(os.path.join(directory, filename))
+    fpath = os.path.join(directory, filename)
+    file_storage.save(fpath)
+    # ثبت در کتابخانه رسانه مرکزی — تصویر آپلودشده اینجا هم قابل استفاده است
+    try:
+        from models import Media
+        size = os.path.getsize(fpath)
+        width = height = None
+        try:
+            from PIL import Image as _Img
+            with _Img.open(fpath) as im:
+                width, height = im.size
+        except Exception:
+            pass
+        db.session.add(Media(filename=safe, path='uploads/products/' + filename,
+                             mime=file_storage.mimetype or '', size=size,
+                             width=width, height=height, kind='image',
+                             uploaded_by=uploader_id or (getattr(g, 'user', None) and g.user.id)))
+        db.session.flush()
+    except Exception:
+        _lexc('blueprints/admin_bp.py')
     return 'uploads/products/' + filename
 
 
@@ -2897,9 +3051,8 @@ def products_admin():
             flash('عنوان محصول الزامی است.', 'error')
         else:
             import re as _re2
-            slug = _re2.sub(r'[^\w\u0600-\u06FF-]+', '-', title).strip('-') or 'product'
-            while _P.query.filter_by(slug=slug).first():
-                slug += '-2'
+            from models import unique_slug_for
+            slug = unique_slug_for(_P, title, fallback='product')
             from validators import clamp_field
             image_file = request.files.get('image_file')
             uploaded_image = _save_product_image(image_file)

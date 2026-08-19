@@ -48,11 +48,18 @@
 
 <div class="card" style="padding:20px">
   <h3>⚡ بروزرسانی</h3>
+  <p class="text-2" style="font-size:12.5px;margin:6px 0">
+    نسخهٔ نصب‌شده: <b dir="ltr">{{ local_version or '—' }}</b>
+    {% if install_kind == 'zip' %}<span class="badge">نصب ZIP (بدون پوشهٔ .git)</span>
+    {% elif install_kind == 'git' %}<span class="badge">مخزن Git</span>{% endif %}
+  </p>
   <p class="text-3" style="font-size:12.5px;margin:6px 0 14px">
-    ابتدا می‌توانید نسخهٔ GitHub را بررسی کنید. سپس با اجرای دستی، آخرین commit دریافت می‌شود؛
-    کدها جایگزین، وابستگی‌های تغییرکرده نصب و دیتابیس با داده‌های قبلی مایگریت می‌شود.
+    ابتدا می‌توانید نسخهٔ GitHub را بررسی کنید. سپس با اجرای دستی، آخرین نسخه دریافت می‌شود؛
+    کدها جایگزین، وابستگی‌های تغییرکرده نصب و دیتابیس با داده‌های قبلی مایگریت می‌شود
+    (ساختار + مایگریشن‌های داده‌ای نسخه‌بندی‌شده) و در پایان سلامت سایت تست می‌شود.
     فایل‌های محلی (<code>.env</code>، آپلودها، بکاپ‌ها، <code>.htaccess</code>) دست‌نخورده می‌مانند.
-    اگر سایت از ZIP سی‌پنل نصب شده و پوشهٔ <code>.git</code> ندارد، سیستم خودش مخزن را می‌سازد یا آرشیو GitHub را دانلود می‌کند.
+    اگر سایت از ZIP سی‌پنل نصب شده و پوشهٔ <code>.git</code> ندارد، آرشیو GitHub مستقیماً
+    دانلود و جایگزین می‌شود (بدون نیاز به git) و نسخهٔ محلی از <code>version.txt</code> خوانده می‌شود.
   </p>
   <div id="upd-msg" class="msg" style="display:none"></div>
   <div id="upd-check" class="text-2" style="font-size:12.5px;margin-bottom:12px"></div>

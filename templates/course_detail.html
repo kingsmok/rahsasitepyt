@@ -63,7 +63,7 @@
     <div class="badges">
       {% if course.has_discount %}<span class="badge badge-danger">٪{{ fa(course.discount_percent) }} تخفیف ویژه</span>{% endif %}
       <span class="badge badge-white">{{ course.level }}</span>
-      <span class="badge badge-white">{{ {'online':'آنلاین','offline':'حضوری','hybrid':'ترکیبی'}.get(course.delivery_type or 'online', 'آنلاین') }}</span>
+      <span class="badge badge-white">{{ course.delivery_icon }} {{ course.delivery_label }}</span>
       {% if course.is_free() %}<span class="badge badge-success">رایگان</span>{% endif %}
     </div>
     <h1>{{ course.title }}</h1>
@@ -309,7 +309,7 @@
               <h4>این دوره شامل:</h4>
               <ul>
                 <li>{{ fa(course.lesson_count) }} جلسه ثبت‌شده</li>
-                <li>نوع برگزاری: {{ {'online':'آنلاین','offline':'حضوری','hybrid':'ترکیبی'}.get(course.delivery_type or 'online', 'آنلاین') }}</li>
+                <li>نوع برگزاری: {{ course.delivery_icon }} {{ course.delivery_label }}</li>
                 {% if course.access_days and course.access_days > 0 %}
                 <li>دسترسی {{ fa(course.access_days) }} روزه</li>
                 {% else %}

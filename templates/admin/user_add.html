@@ -3,7 +3,7 @@
 {% block acontent %}
 <div class="dash-head"><div><h1>➕ افزودن دستی کاربر</h1><p>ثبت‌نام توسط منشی/ادمین</p></div></div>
 <div class="card" style="padding:24px;max-width:560px">
-  <form method="post">
+  <form method="post" enctype="multipart/form-data">
     <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
     <div class="form-group"><label>نام و نام خانوادگی *</label><input class="form-control" name="name" required></div>
     <div class="grid" style="grid-template-columns:1fr 1fr;gap:12px">
@@ -25,6 +25,18 @@
           {% endif %}
         </select>
       </div>
+    </div>
+    <div class="form-group">
+      <label>تصویر پروفایل / آواتار</label>
+      <div class="flex gap-1" style="align-items:center">
+        <img id="user-avatar-preview" src="" alt="" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:1px solid var(--border);display:none">
+        <input class="form-control" type="file" name="avatar_file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" style="flex:1">
+      </div>
+      <input type="hidden" id="user-avatar-input" name="avatar" value="">
+      <button type="button" class="mm-btn-lib" style="margin-top:8px"
+              onclick="MediaLibrary.open({target:'user-avatar-input', preview:'user-avatar-preview', filter:'image'})">
+        📁 انتخاب از کتابخانه رسانه
+      </button>
     </div>
     <button class="btn btn-primary btn-lg" type="submit">💾 ساخت کاربر</button>
   </form>

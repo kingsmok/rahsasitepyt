@@ -151,6 +151,19 @@ def edit(mid):
         m.og_image = request.form.get('og_image', '').strip()
         m.og_title = request.form.get('og_title', '').strip()
         m.og_desc = request.form.get('og_desc', '').strip()
+        schema_raw = request.form.get('schema_json', '').strip()
+        if schema_raw:
+            import json as _json
+            try:
+                data = _json.loads(schema_raw)
+                if not isinstance(data, dict):
+                    raise ValueError('schema باید JSON آبجکت باشد')
+                m.schema_json = _json.dumps(data, ensure_ascii=False)
+            except (ValueError, TypeError) as exc:
+                flash('اسکیمای دستی JSON معتبر نیست و ذخیره نشد: ' + str(exc)[:120], 'error')
+                return redirect(url_for('seo_admin.edit', mid=m.id))
+        else:
+            m.schema_json = ''
         db.session.commit()
         flash('متا ذخیره شد ✅', 'success')
         return redirect(url_for('seo_admin.edit', mid=m.id))
@@ -298,6 +311,20 @@ def auto_generate():
         if not m.focus_keyword:
             words = [w for w in (p.title or '').split() if len(w) > 2][:2]
             m.focus_keyword = ' '.join(words)
+        updated += 1
+    # مدرس‌ها (صفحه پروفایل با اسکیمای Person)
+    for t in User.query.filter(User.role.in_(('teacher', 'admin')),
+                               User.is_active == True).all():
+        path = '/teacher/' + str(t.id)
+        m = SeoMeta.query.filter_by(path=path).first()
+        if not m:
+            m = SeoMeta(path=path)
+            db.session.add(m)
+            created += 1
+        if not m.title:
+            m.title = f'{t.name} | {sn}'
+        if not m.focus_keyword:
+            m.focus_keyword = (t.name or 'مدرس').strip()
         updated += 1
     db.session.commit()
     flash(f'متاها ساخته/تکمیل شد: {created} جدید، {updated} بررسی شد ✅', 'success')

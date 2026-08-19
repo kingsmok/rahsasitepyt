@@ -159,26 +159,48 @@ def contact_read(mid):
 
 @api_bp.route('/media/list')
 def media_list():
-    """لیست رسانه‌ها برای انتخابگر سراسری فایل (JSON)"""
+    """لیست رسانه‌ها برای انتخابگر سراسری فایل (JSON) — با صفحه‌بندی."""
     from models import Media
-    kind = request.args.get('kind', '')
+    kind = request.args.get('kind', '').strip()
     q = request.args.get('q', '').strip()
+    try:
+        page = max(1, int(request.args.get('page', 1)))
+    except (TypeError, ValueError):
+        page = 1
+    try:
+        per_page = max(1, min(120, int(request.args.get('per_page', 40))))
+    except (TypeError, ValueError):
+        per_page = 40
     query = Media.query
-    if kind:
+    if kind in ('image', 'video', 'audio', 'file'):
         query = query.filter_by(kind=kind)
     if q:
         query = query.filter(Media.filename.ilike(f'%{q}%'))
-    items = query.order_by(Media.id.desc()).limit(60).all()
-    return jsonify(ok=True, items=[{
+    total = query.count()
+    items = query.order_by(Media.id.desc()).offset(
+        (page - 1) * per_page).limit(per_page).all()
+    return jsonify(ok=True, total=total, page=page, per_page=per_page,
+                   has_more=page * per_page < total, items=[{
         'id': m.id, 'name': m.filename, 'url': m.url, 'kind': m.kind,
         'size': m.human_size, 'width': m.width, 'height': m.height,
         'created': jdate_num(m.created_at) if m.created_at else '',
     } for m in items])
 
 
+def _media_api_csrf_ok():
+    """CSRF مخصوص مسیرهای POST رسانه — این مسیرها از گارد سراسری exempt
+    هستند (زیر /api)، پس خودمان توکن سشن را چک می‌کنیم."""
+    import hmac as _hmac
+    token = (request.headers.get('X-CSRF-Token') or
+             (request.form or {}).get('_csrf_token') or '')
+    expected = session.get('_csrf_token') or ''
+    return bool(token) and bool(expected) and _hmac.compare_digest(
+        str(token), str(expected))
+
+
 @api_bp.route('/media/upload', methods=['POST'])
 def media_upload():
-    """آپلود فایل به کتابخانه مرکزی — فقط ادمین/مدرس (فقط از صفحه‌ساز استفاده می‌شود)
+    """آپلود فایل به کتابخانه مرکزی — فقط ادمین/مدرس (انتخابگر سراسری رسانه)
 
     نکته امنیتی: قبلاً هر کاربر واردشده (حتی دانشجوی معمولی) می‌توانست از این
     مسیر فایل عمومی (از جمله svg) آپلود کند و لینک آن زیر دامنهٔ خودمان در
@@ -189,6 +211,8 @@ def media_upload():
         return jsonify(ok=False, msg='ابتدا وارد شوید', login=True), 401
     if not (g.user.is_admin or g.user.is_teacher):
         return jsonify(ok=False, msg='دسترسی محدود به مدیر/مدرس'), 403
+    if not _media_api_csrf_ok():
+        return jsonify(ok=False, msg='توکن امنیتی (CSRF) نامعتبر است — صفحه را رفرش کنید.'), 400
     # سهمیه روزانه: حداکثر ۵۰ فایل در ۲۴ ساعت (ضد پر شدن دیسک)
     from models import Media as _M
     from datetime import datetime as _dt, timedelta as _td
@@ -196,47 +220,72 @@ def media_upload():
     _cnt = _M.query.filter(_M.uploaded_by == g.user.id, _M.created_at >= _since).count()
     if _cnt >= 50:
         return jsonify(ok=False, msg='سقف ۵۰ آپلود در روز — فردا دوباره تلاش کنید'), 429
-    f = request.files.get('file')
-    if not f or not f.filename:
+    files = request.files.getlist('files')
+    single = request.files.get('file')
+    if single and single.filename:
+        files = [single] + [f for f in files if f is not single]
+    files = [f for f in files if f and f.filename]
+    if not files:
         return jsonify(ok=False, msg='فایلی ارسال نشده'), 400
+    if len(files) > 20:
+        return jsonify(ok=False, msg='حداکثر ۲۰ فایل در هر بار'), 400
+
     from validators import safe_filename, file_content_is_safe, ALLOWED_MEDIA_EXT
-    # کتابخانه رسانه فقط محتوای «قابل‌نمایش» می‌پذیرد — هیچ فایل اجرایی/سند HTML.
-    # فایل میزبانی‌شده زیر دامنهٔ ما که قابل اجرا باشد = صفحهٔ فیشینگ/بدافزار از
-    # دید Google Safe Browsing و مسدود شدن کل دامنه با پیام «Dangerous site».
-    safe = safe_filename(f.filename or '', ALLOWED_MEDIA_EXT)
-    if not safe:
-        return jsonify(ok=False, msg='فرمت فایل مجاز نیست'), 400
-    import os as _os0
-    if not file_content_is_safe(f.stream, _os0.path.splitext(safe)[1].lower()):
-        return jsonify(ok=False, msg='فایل حاوی کد اجرایی است و پذیرفته نشد'), 400
     from models import Media
     import os as _os, uuid as _uuid
     up = _os.path.join(_os.path.dirname(_os.path.dirname(__file__)),
                        'static', 'uploads', 'media')
     _os.makedirs(up, exist_ok=True)
-    ext = _os.path.splitext(safe)[1].lower()
-    fname = 'm_' + _uuid.uuid4().hex[:10] + ext
-    fpath = _os.path.join(up, fname)
-    f.save(fpath)
-    size = _os.path.getsize(fpath)
-    kind = 'file'
-    if ext in ('.jpg', '.jpeg', '.png', '.webp', '.gif', '.avif'):
-        kind = 'image'
-    elif ext in ('.mp4', '.webm', '.mov'):
-        kind = 'video'
-    elif ext in ('.mp3', '.wav', '.ogg'):
-        kind = 'audio'
-    m = Media(filename=safe, path='uploads/media/' + fname, mime=f.mimetype or '',
-              size=size, kind=kind, uploaded_by=g.user.id)
-    db.session.add(m)
+    saved_items = []
+    errors = []
+    for f in files:
+        safe = safe_filename(f.filename or '', ALLOWED_MEDIA_EXT)
+        if not safe:
+            errors.append('{}: فرمت مجاز نیست'.format(f.filename or 'فایل'))
+            continue
+        if not file_content_is_safe(f.stream, _os.path.splitext(safe)[1].lower()):
+            errors.append('{}: محتوای اجرایی دارد و رد شد'.format(safe))
+            continue
+        ext = _os.path.splitext(safe)[1].lower()
+        fname = 'm_' + _uuid.uuid4().hex[:10] + ext
+        fpath = _os.path.join(up, fname)
+        f.save(fpath)
+        size = _os.path.getsize(fpath)
+        kind = 'file'
+        if ext in ('.jpg', '.jpeg', '.png', '.webp', '.gif', '.avif'):
+            kind = 'image'
+        elif ext in ('.mp4', '.webm', '.mov'):
+            kind = 'video'
+        elif ext in ('.mp3', '.wav', '.ogg'):
+            kind = 'audio'
+        width = height = None
+        if kind == 'image':
+            try:
+                from PIL import Image as _Img
+                with _Img.open(fpath) as im:
+                    width, height = im.size
+            except Exception:
+                pass
+        m = Media(filename=safe, path='uploads/media/' + fname,
+                  mime=f.mimetype or '', size=size, width=width, height=height,
+                  kind=kind, uploaded_by=g.user.id)
+        db.session.add(m)
+        saved_items.append(m)
     db.session.commit()
-    return jsonify(ok=True, item={'id': m.id, 'name': m.filename, 'url': m.url, 'kind': m.kind})
+    if not saved_items and errors:
+        return jsonify(ok=False, msg='؛ '.join(errors[:3])), 400
+    return jsonify(ok=True, items=[{
+        'id': m.id, 'name': m.filename, 'url': m.url, 'kind': m.kind,
+        'size': m.human_size, 'width': m.width, 'height': m.height,
+    } for m in saved_items], errors=errors[:5])
 
 
 @api_bp.route('/media/delete', methods=['POST'])
 def media_delete():
     """حذف رسانه از طریق API — ادمین یا مالک"""
     from models import Media
+    if not _media_api_csrf_ok():
+        return jsonify(ok=False, msg='توکن امنیتی (CSRF) نامعتبر است — صفحه را رفرش کنید.'), 400
     raw = (request.get_json(silent=True) or {}).get('id') if request.is_json else request.form.get('id')
     try:
         mid = int(raw or 0)

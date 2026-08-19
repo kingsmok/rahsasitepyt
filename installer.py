@@ -393,7 +393,10 @@ DEFAULT_SETTINGS = {
     'allow_phone_login': '1',
     'maintenance': '0',
     'bnpl_enabled': '0',
+    'bnpl_max_installments': '4',
     'cashback_percent': '0',
+    # درصد پیش‌فرض سهم مدرس از فروش هر دوره (قابل تغییر جداگانه در هر دوره)
+    'teacher_default_share': '50',
     'loyalty_discount_percent': '0',
     'referral_bonus_percent': '0',
     'refund_days': '0',

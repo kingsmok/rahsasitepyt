@@ -461,7 +461,8 @@ def icons_browser():
 @admin_required
 def update_page():
     """صفحه بروزرسانی — بررسی نسخه، اجرای دستی و تنظیم شاخهٔ Git."""
-    from updater import _display_repo, get_repo_url, get_update_branch
+    from updater import (_display_repo, _local_version_info, get_repo_url,
+                         get_update_branch)
     repo = get_repo_url()
     if not repo:
         import subprocess as _sp
@@ -472,9 +473,12 @@ def update_page():
                 repo = r.stdout.strip()
         except Exception:
             pass
+    local = _local_version_info()
     return render_template('admin/update.html',
                            repo_url=_display_repo(repo),
                            branch=get_update_branch(),
+                           local_version=local['label'],
+                           install_kind=local['kind'],
                            webhook_url=request.url_root.rstrip('/') +
                            url_for('admin.github_update_webhook'),
                            is_super=g.user.role in ('super_admin', 'admin'))
@@ -641,6 +645,7 @@ def github_update_webhook():
 def update_log():
     """گزارش آخرین بروزرسانی‌ها"""
     import os as _os
+    from updater import _local_version_info
     logf = _os.path.join(_os.path.dirname(_os.path.dirname(__file__)),
                          'instance', 'update_history.json')
     rows = []
@@ -649,8 +654,11 @@ def update_log():
             rows = json.load(f)
     except Exception:
         rows = []
+    local = _local_version_info()
     return render_template('admin/update.html', repo_url='', is_super=True,
-                           history=rows, view='log')
+                           history=rows, view='log',
+                           local_version=local['label'],
+                           install_kind=local['kind'])
 
 
 # ════════════════════════════════════════════════════════════

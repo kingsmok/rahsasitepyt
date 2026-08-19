@@ -1075,6 +1075,15 @@ def create_app():
             g.settings = _ttl_cache('all_settings', 60, _get_all_settings)
         except Exception:
             _lexc('app.py')
+        # URL نرمال‌شدهٔ لوگو — همهٔ حالت‌های تاریخی ذخیره‌شده در تنظیم
+        # (uploads/brand/x یا /static/img/...) را به URL سالم تبدیل می‌کند.
+        try:
+            from models import normalize_logo_url
+            g.settings['logo_url'] = normalize_logo_url(
+                g.settings.get('custom_logo', ''))
+        except Exception:
+            _lexc('app.py')
+            g.settings['logo_url'] = ''
 
         # مهاجرت ایمن نصب‌های قدیمی: داده‌های شناخته‌شدهٔ seed حذف نمی‌شوند تا
         # سابقه و روابط دیتابیس آسیب نبیند، اما از دید عموم غیرفعال/پیش‌نویس
@@ -1744,9 +1753,25 @@ def create_app():
                     license_state=getattr(g, 'license_state', None),
                     clarity_script=_clarity, crisp_script=_crisp,
                     bc_admin_menu=lambda: __import__('permissions', fromlist=['menu_for']).menu_for(_u),
+                    bc_admin_groups=lambda: __import__('permissions', fromlist=['menu_groups_for']).menu_groups_for(_u),
+                    group_has_active=_group_has_active,
                     seo=getattr(g, 'seo', dict(title='', description='', keywords='',
                                                canonical='', noindex=False, og_image='',
                                                og_type='website', schema=None)))
+
+    def _group_has_active(group, request):
+        """آیا دسته‌ای از منوی ادمین شامل صفحهٔ فعلی است؟ (باز بودن خودکار گروه)"""
+        current = request.endpoint or ''
+        for ep, _label in (group.get('items') or []):
+            if current == ep:
+                return True
+            if ep and '.' in ep:
+                prefix = ep.split('.')[0] + '.'
+                second = ep.split('.')[1]
+                if current.startswith(prefix) and ('.' not in current[len(prefix):] or
+                                                   current[len(prefix):].split('.')[0] == second):
+                    return True
+        return False
 
     # ---------- سلامت سرویس (برای مانیتورینگ؛ بدون افشای جزئیات) ----------
     @app.route('/health')

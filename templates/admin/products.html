@@ -14,7 +14,8 @@
     <input class="form-control" name="sku" placeholder="شناسه محصول" dir="ltr">
     <input class="form-control" name="stock" type="number" min="0" placeholder="موجودی" value="0">
     <input class="form-control" name="image_file" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" aria-label="تصویر محصول">
-    <input class="form-control" name="image" placeholder="یا آدرس HTTPS تصویر">
+    <input class="form-control" id="new-product-image" name="image" placeholder="یا آدرس HTTPS تصویر">
+    <button type="button" class="mm-btn-lib" onclick="MediaLibrary.open({target:'new-product-image', filter:'image'})">📁 کتابخانه</button>
     <button class="btn btn-primary" type="submit">💾 ساخت</button>
   </form>
   <small class="text-3" style="font-size:11px;margin-top:6px;display:block">جزئیات کامل (ابعاد/وزن/جنس/ویژگی‌ها) را بعد از ساخت در ویرایش پر کنید.</small>

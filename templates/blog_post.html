@@ -19,7 +19,7 @@
         <span class="text-3" style="font-size:12.5px">⏱ {{ fa(post.read_time) }} دقیقه مطالعه</span>
         <span class="text-3" style="font-size:12.5px">👁 {{ fa(post.views) }} بازدید</span>
       </div>
-      <img src="/static/img/{{ post.image }}" alt="{{ post.title }}" style="border-radius:18px;margin-bottom:26px;width:100%;aspect-ratio:16/8;object-fit:cover">
+      <img src="{{ post.image_url }}" alt="{{ post.title }}" style="border-radius:18px;margin-bottom:26px;width:100%;aspect-ratio:16/8;object-fit:cover">
       <div class="post-body">
         {% for para in post.body.split('\n') %}
           {% if para.strip() %}<p>{{ para.strip() }}</p>{% endif %}
@@ -43,8 +43,8 @@
 
     <!-- دیدگاه‌ها -->
     <div class="mt-5" id="comments">
-      <h2 class="mb-3" style="font-size:20px">💬 دیدگاه‌ها ({{ fa(post.comments|selectattr('is_approved')|list|length) }})</h2>
-      {% set approved = post.comments|selectattr('is_approved')|list %}
+      <h2 class="mb-3" style="font-size:20px">💬 دیدگاه‌ها ({{ fa(post.approved_comments|length) }})</h2>
+      {% set approved = post.approved_comments %}
       {% if approved %}
       <div style="display:flex;flex-direction:column;gap:14px;margin-bottom:26px">
         {% for c in approved %}
@@ -68,6 +68,9 @@
         <h3 style="font-size:16px;margin-bottom:14px">✍️ دیدگاه خود را بنویسید</h3>
         <form method="post" action="{{ url_for('site.blog_post', slug=post.slug) }}#comments">
           <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+          <!-- honeypot ضد اسپم — برای انسان نامرئی -->
+          <input type="text" name="website" value="" tabindex="-1" autocomplete="off"
+                 style="position:absolute;left:-9999px" aria-hidden="true">
           <div class="form-group">
             <label for="cm_name">نام شما *</label>
             <input id="cm_name" class="form-control" name="name" required placeholder="نام شما">
@@ -87,7 +90,7 @@
       <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:18px">
         {% for r in recent %}
         <a class="card card-hover post-card" href="{{ url_for('site.blog_post', slug=r.slug) }}">
-          <div class="thumb"><img src="/static/img/{{ r.image }}" alt=""></div>
+          <div class="thumb"><img src="{{ r.image_url }}" alt=""></div>
           <div class="body"><h3 style="font-size:14px">{{ r.title }}</h3></div>
         </a>
         {% endfor %}

@@ -51,9 +51,15 @@
     <div class="form-group">
       <label>لوگوی سایت (آپلود)</label>
       <div class="flex gap-1" style="align-items:center">
-        {% if site.custom_logo %}<img src="{{ site.custom_logo }}" alt="لوگو" style="width:44px;height:44px;object-fit:contain;border:1px solid var(--border);border-radius:10px">{% endif %}
+        {% if site.get('logo_url') %}<img src="{{ site.get('logo_url') }}" alt="لوگو" style="width:44px;height:44px;object-fit:contain;border:1px solid var(--border);border-radius:10px">{% endif %}
         <input class="form-control" type="file" name="custom_logo_file" accept="image/*" style="flex:1">
       </div>
+      <button type="button" class="mm-btn-lib" style="margin-top:8px"
+              onclick="MediaLibrary.open({target:'custom_logo', filter:'image'})">
+        📁 انتخاب از کتابخانه رسانه
+      </button>
+      <input type="hidden" id="custom_logo" name="custom_logo" value="{{ site.get('custom_logo','') }}">
+      <p class="form-hint">لوگو در هدر و فوتر سایت نمایش داده می‌شود؛ مسیرهای قدیمی به‌صورت خودکار اصلاح می‌شوند.</p>
     </div>
   </div>
   <div class="grid" style="grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">

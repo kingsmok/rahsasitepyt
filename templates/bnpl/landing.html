@@ -111,6 +111,13 @@
 
         <div class="bnpl-fee" id="bnpl-fee">مبلغ و کارمزد نهایی را در صفحه سرویس اقساطی بررسی و سپس تایید کنید.</div>
 
+        {% set unlock_note = order.unlock_notice() %}
+        {% if unlock_note %}
+        <div class="bnpl-fee" style="border-color:var(--primary);background:var(--primary-soft)">
+          🔓 {{ unlock_note }}
+        </div>
+        {% endif %}
+
         <button class="btn btn-primary btn-lg bnpl-cta" type="submit">🚀 شروع خرید اقساطی — پرداخت قسط اول</button>
       </form>
 

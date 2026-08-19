@@ -619,7 +619,7 @@
 
 {% elif t == 'logo' %}
   <a class="dk-logo" href="/">
-    {% if bc_site().get('custom_logo') %}<img src="{{ bc_site().get('custom_logo') }}" alt="{{ d.text or 'لوگو' }}" style="height:44px;width:auto">{% else %}<span class="dk-logo-ic">{{ d.icon or '🎓' }}</span>{% endif %}
+    {% if bc_site().get('logo_url') %}<img src="{{ bc_site().get('logo_url') }}" alt="{{ d.text or 'لوگو' }}" style="height:44px;width:auto">{% else %}<span class="dk-logo-ic">{{ d.icon or '🎓' }}</span>{% endif %}
     <span><b>{{ d.text or 'آکادمی آنلاین' }}</b><small>{{ d.sub or '' }}</small></span>
   </a>
 

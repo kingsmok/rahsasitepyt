@@ -11,7 +11,7 @@
 </div>
 <div class="card" style="padding:20px">
   <div class="table-wrap"><table class="table">
-    <thead><tr><th>سفارش</th><th>کاربر</th><th>قسط</th><th>مبلغ</th><th>سررسید</th><th>وضعیت</th></tr></thead>
+    <thead><tr><th>سفارش</th><th>کاربر</th><th>قسط</th><th>مبلغ</th><th>سررسید</th><th>وضعیت</th><th>عملیات</th></tr></thead>
     <tbody>
       {% for it in items %}
       <tr>
@@ -23,9 +23,18 @@
         <td>{% if it.status == 'paid' %}<span class="badge badge-success">✅ پرداخت شده</span>
           {% elif it.status == 'overdue' %}<span class="badge badge-danger">⚠️ گذشته</span>
           {% else %}<span class="badge badge-accent">در انتظار</span>{% endif %}</td>
+        <td>
+          {% if it.status != 'paid' %}
+          <form method="post" action="{{ url_for('admin.installment_mark_paid', iid=it.id) }}"
+                onsubmit="return confirm('قسط {{ fa(it.number) }} از سفارش {{ it.order.code if it.order else it.order_id }} را پرداخت‌شده ثبت کنیم؟ جلسات بعدی دوره باز می‌شود.')">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+            <button class="btn btn-sm btn-ghost" type="submit" title="ثبت وصول از پنل اسنپ‌پی/دیجی‌پی">💳 ثبت پرداخت</button>
+          </form>
+          {% else %}<span class="text-3" style="font-size:11px">—</span>{% endif %}
+        </td>
       </tr>
       {% else %}
-      <tr><td colspan="6" class="text-center text-3">هنوز برنامه اقساطی برای سفارشی ثبت نشده است.</td></tr>
+      <tr><td colspan="7" class="text-center text-3">هنوز برنامه اقساطی برای سفارشی ثبت نشده است.</td></tr>
       {% endfor %}
     </tbody>
   </table></div>

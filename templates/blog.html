@@ -21,7 +21,7 @@
     <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:24px">
       {% for p in posts %}
       <article class="card card-hover post-card">
-        <a class="thumb" href="{{ url_for('site.blog_post', slug=p.slug) }}"><img src="/static/img/{{ p.image }}" alt="{{ p.title }}" loading="lazy"></a>
+        <a class="thumb" href="{{ url_for('site.blog_post', slug=p.slug) }}"><img src="{{ p.image_url }}" alt="{{ p.title }}" loading="lazy"></a>
         <div class="body">
           <div class="p-meta"><span class="badge badge-primary">{{ p.category }}</span><span>{{ p.created_at|jdate }}</span><span>⏱ {{ fa(p.read_time) }} دقیقه</span></div>
           <h2 style="font-size:17px;line-height:1.6"><a href="{{ url_for('site.blog_post', slug=p.slug) }}">{{ p.title }}</a></h2>

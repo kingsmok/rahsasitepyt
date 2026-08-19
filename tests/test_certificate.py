@@ -105,7 +105,7 @@ def test_offline_course_can_be_completed_by_teacher(app, client):
     from models import Enrollment, Course, User, db
     with app.app_context():
         course = Course.query.filter_by(slug='test-course').first()
-        course.delivery_type = 'offline'
+        course.delivery_type = 'inperson'
         student = User.query.filter_by(email='demo@test.ir').first()
         enrollment = Enrollment(user_id=student.id, course_id=course.id)
         db.session.add(enrollment)
@@ -127,7 +127,7 @@ def test_teacher_attendance_flow(app, client):
     from models import Enrollment, Course, User, CourseMeeting, AttendanceRecord, db
     with app.app_context():
         course = Course.query.filter_by(slug='test-course').first()
-        course.delivery_type = 'offline'
+        course.delivery_type = 'inperson'
         student = User.query.filter_by(email='demo@test.ir').first()
         enrollment = Enrollment(user_id=student.id, course_id=course.id)
         db.session.add(enrollment)

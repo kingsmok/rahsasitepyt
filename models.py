@@ -17,18 +17,16 @@ from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 
 # ═══════════════════════════════════════════════════════════════════════════
-# خط‌مشی هش‌گذاری رمز عبور (بخش هش‌گذاری)
+# خط‌مشی هش‌گذاری رمز عبور (درخواست صاحب سایت — قابلیت ویرایش مستقیم در DB)
 # ───────────────────────────────────────────────────────────────────────────
-# ۱) رمزهای جدید و تغییر رمزها → همیشه با الگوریتم قوی ورک‌زگ ذخیره می‌شوند
-#    (scrypt؛ در پایتون‌های قدیمی‌تر pbkdf2:sha256) — غیرقابل شکستن با روش‌های معمول
-# ۲) پذیرش MD5 قدیمی در production پیش‌فرض غیرفعال است. فقط برای مهاجرت موقت
-#    می‌توان ALLOW_LEGACY_MD5=1 گذاشت؛ ورود موفق همان لحظه هش را قوی می‌کند.
-# ۳) بعد از پایان مهاجرت، متغیر بالا باید دوباره حذف/صفر شود.
-# ⚠️ چرا رمزهای جدید را مستقیم MD5 نمی‌کنیم؟ MD5 برای رمز عبور در چند ثانیه
-#    با جدول‌های رنگین‌کمانی شکسته می‌شود؛ حتی هش‌های قویِ ورک‌زگ هم روی
-#    هاست‌های معمولی فقط چند ده میلی‌ثانیه زمان می‌برند (تأثیری در سرعت ورود ندارد).
+# ۱) رمزهای جدید → قالب استاندارد ``md5:<hex32>`` ذخیره می‌شوند؛ مدیر می‌تواند
+#    مستقیم در phpMyAdmin بنویسد: ``md5:` + MD5('password')`` یا حتی MD5 خام
+#    ۳۲ کاراکتری (در اولین ورود موفق خودکار نرمال می‌شود).
+# ۲) حساب‌های قدیمی با هش قوی ورک‌زگ همچنان بدون تغییر رمز وارد می‌شوند و
+#    در همان ورود به قالب MD5 تبدیل می‌شوند (مهاجرت خودکار، بدون قطعی).
+# ۳) متغیر قدیمی ALLOW_LEGACY_MD5 دیگر گیت نیست؛ MD5 خام همیشه پذیرفته می‌شود.
 # ═══════════════════════════════════════════════════════════════════════════
-LEGACY_MD5 = os.environ.get('ALLOW_LEGACY_MD5', '0') == '1'
+LEGACY_MD5 = os.environ.get('ALLOW_LEGACY_MD5', '1') == '1'  # سازگاری backward؛ دیگر گیت نیست
 
 import hashlib as _hashlib
 import re as _re
@@ -185,35 +183,54 @@ class User(db.Model):
         return self.session_token
 
     def set_password(self, p):
-        # همیشه هش قوی — هرگز MD5 خام برای رمزهای جدید
-        self.password_hash = generate_password_hash(p)
+        """رمز با MD5 (درخواست صاحب سایت برای ویرایش مستقیم در دیتابیس).
+
+        قالب ذخیره: ``md5:<hex32>`` — با phpMyAdmin هم می‌توان نوشت:
+        ``md5:` + MD5('yourpassword')`` یا فقط MD5 خام ۳۲ کاراکتری
+        (در ورود بعدی خودکار به قالب استاندارد نرمال می‌شود).
+        """
+        self.password_hash = 'md5:' + _md5_hex(p)
 
     def check_password(self, p):
-        """بررسی رمز عبور:
-        ۱) هش قوی استاندارد (scrypt/pbkdf2)
-        ۲) هش قدیمی MD5 خام — فقط با اجازهٔ LEGACY_MD5؛ در صورت درستی،
-           بلافاصله به هش قوی ارتقا می‌یابد (خودکار و بی‌سروصدا)"""
+        """بررسی رمز عبور — پشتیبانی کامل از هر سه قالب تاریخی:
+        ۱) ``md5:<hex>`` — قالب استاندارد جدید (قابل ویرایش مستقیم در DB)
+        ۲) MD5 خام ۳۲ کاراکتری — مثل UPDATE ... SET password_hash = MD5('...')
+        ۳) هش قوی قدیمی ورک‌زگ — برای حساب‌های ساخته‌شده قبل از این تغییر
+
+        ورود موفق با قالب‌های ۲ یا ۳، رمز را به قالب استاندارد ``md5:``
+        نرمال می‌کند تا بعداً مستقیم در دیتابیس قابل تغییر باشد.
+        """
         if not self.password_hash:
             return False
-        # ۱) حالت استاندارد ورک‌زگ (شامل md5$salt$hash و sha1$salt$hash قدیمی فلاسک)
-        try:
-            if check_password_hash(self.password_hash, p):
+        stored = (self.password_hash or '').strip()
+        # ۱) قالب استاندارد جدید
+        if stored.startswith('md5:'):
+            hex_part = stored[4:].strip().lower()
+            if _MD5_RE.match(hex_part):
+                return hex_part == _md5_hex(p)
+            return False
+        # ۲) MD5 خام (تغییر مستقیم در phpMyAdmin)
+        if _MD5_RE.match(stored.lower()):
+            if stored.lower() == _md5_hex(p):
+                self._normalize_hash(p)
                 return True
-        except ValueError:
-            pass  # قالب ناشناخته → بررسی حالت خام MD5 در ادامه
-        # ۲) هش خام MD5 (مثل UPDATE ... SET password_hash = MD5('...') در phpMyAdmin)
-        if LEGACY_MD5:
-            _h = (self.password_hash or '').strip().lower()
-            if _MD5_RE.match(_h):
-                if _h == _md5_hex(p):
-                    self._upgrade_hash(p)
-                    return True
+            return False
+        # ۳) هش قوی قدیمی ورک‌زگ (حساب‌های پیش از مهاجرت به MD5)
+        try:
+            if check_password_hash(stored, p):
+                self._normalize_hash(p)
+                return True
+        except (ValueError, TypeError):
+            pass
         return False
 
-    def _upgrade_hash(self, p):
-        """ارتقای خودکار هش قدیمی MD5 به هش قوی — در همان ورود موفق"""
+    def _normalize_hash(self, p):
+        """نرمال‌سازی هش قدیمی به قالب ``md5:`` در همان ورود موفق.
+
+        شکست این گام هرگز جلوی ورود موفق را نمی‌گیرد (فقط commit بعدی است).
+        """
         try:
-            self.set_password(p)
+            self.password_hash = 'md5:' + _md5_hex(p)
             db.session.add(self)
             db.session.commit()
         except Exception:
@@ -237,9 +254,12 @@ class User(db.Model):
 
     @property
     def avatar_url(self):
-        if self.avatar:
-            return '/static/img/uploads/avatars/' + self.avatar
-        return None
+        """آواتار کاربر — فایل آپلودی، کتابخانه رسانه یا URL خارجی؛
+        در صورت نامعتبربودن None (UI از حروف ابتدایی نام استفاده می‌کند)."""
+        if not self.avatar:
+            return None
+        url = resolve_image_url(self.avatar, '')
+        return url or None
 
     @property
     def masked_national_code(self):
@@ -305,10 +325,12 @@ class Course(db.Model):
     seeded_students = db.Column(db.Integer, default=0)
     intro_video = db.Column(db.String(500), default='')   # ویدئوی معرفی (یوتیوب/آپارات/مستقیم)
     access_days = db.Column(db.Integer, default=0)        # مدت دسترسی به دوره (روز) — 0 = نامحدود
-    delivery_type = db.Column(db.String(20), default='online')  # online | offline | hybrid
+    delivery_type = db.Column(db.String(20), default='online')  # inperson | online | offline | hybrid
     allow_download = db.Column(db.Boolean, default=False)       # دانلود پیوست‌های درس
     attendance_required_percent = db.Column(db.Integer, default=75)  # حداقل حضور دوره حضوری
     audience = db.Column(db.String(300), default='')      # مناسب برای چه افرادی
+    revenue_percent = db.Column(db.Integer, nullable=True)  # درصد درآمد مدرس از فروش دوره (None = پیش‌فرض سایت)
+    unlock_per_installment = db.Column(db.Integer, default=0)  # تعداد جلسات بازشونده به ازای هر قسط (۰ = همه باز)
     created_at = db.Column(db.DateTime, default=utcnow)
 
     teacher = db.relationship('User', backref='courses_taught')
@@ -326,17 +348,9 @@ class Course(db.Model):
 
     @property
     def image_url(self):
-        """تصویر واقعی دوره یا placeholder خنثی؛ هرگز کاور دوره دیگری را جعل نمی‌کند."""
-        import os as _os
-        value = (self.image or '').strip()
-        if value.startswith('https://'):
-            return value
-        name = value[len('/static/img/'):] if value.startswith('/static/img/') else value.lstrip('/')
-        if name and '..' not in name and '\\' not in name:
-            path = _os.path.join(_os.path.dirname(__file__), 'static', 'img', name)
-            if _os.path.isfile(path):
-                return '/static/img/' + name
-        return '/static/img/course-placeholder.webp'
+        """تصویر واقعی دوره (کتابخانه رسانه/آپلود/URL) یا placeholder خنثی؛
+        هرگز کاور دوره دیگری را جعل نمی‌کند."""
+        return resolve_image_url(self.image, '/static/img/course-placeholder.webp')
 
     @property
     def final_price(self):
@@ -401,6 +415,53 @@ class Course(db.Model):
 
     def is_free(self):
         return self.final_price == 0
+
+    # ── انواع برگزاری دوره: ۴ نوع مجزا ──
+    @property
+    def delivery_label(self):
+        return DELIVERY_TYPE_LABELS.get(self.delivery_type or 'online', 'آنلاین')
+
+    @property
+    def delivery_icon(self):
+        return {'inperson': '🏫', 'online': '🌐', 'offline': '📚', 'hybrid': '🔀'} \
+            .get(self.delivery_type or 'online', '📚')
+
+    @property
+    def is_attendance_based(self):
+        """حضور و غیاب فقط برای دوره حضوری و ترکیبی معنا دارد."""
+        return (self.delivery_type or 'online') in ('inperson', 'hybrid')
+
+    def teacher_percent(self):
+        """درصد درآمد مدرس این دوره — مقدار دوره یا پیش‌فرض سایت (۵۰٪)."""
+        if self.revenue_percent is not None:
+            return max(0, min(100, int(self.revenue_percent)))
+        try:
+            from models import Setting as _S
+            st = _S.query.filter_by(key='teacher_default_share').first()
+            if st and str(st.value or '').isdigit():
+                return max(0, min(100, int(st.value)))
+        except Exception:
+            pass
+        return 50
+
+    def teacher_share_amount(self, teacher_id, sold):
+        """سهم تومانی یک مدرس از مبلغ فروش قطعی دوره.
+
+        * مدرس اصلی: باقی‌ماندهٔ استخر بعد از کسر سهم مدرس‌های کمکی.
+        * مدرس کمکی: share_percent خودش از استخر درصدی دوره.
+        """
+        sold = int(sold or 0)
+        pool = round(sold * self.teacher_percent() / 100)
+        co_shares = {link.teacher_id: max(0, min(100, int(link.share_percent or 0)))
+                     for link in self.co_teacher_links
+                     if link.share_percent is not None}
+        if teacher_id == self.teacher_id:
+            used = sum(round(pool * pct / 100) for pct in co_shares.values())
+            return max(0, pool - used)
+        pct = co_shares.get(teacher_id)
+        if pct:
+            return round(pool * pct / 100)
+        return 0
 
 
 class Section(db.Model):
@@ -510,6 +571,23 @@ class Order(db.Model):
                 'failed': 'ناموفق', 'canceled': 'لغو شده',
                 'pending_verify': 'در انتظار تایید فیش'}.get(self.status, self.status)
 
+    def unlock_notice(self):
+        """توضیح قفل اقساطی برای صفحه اقساط/تسویه — اگر سفارش شامل دوره‌ای
+        با `unlock_per_installment` است، تعداد جلسات بازشونده به ازای هر قسط
+        را نشان می‌دهد؛ در غیر این صورت '' برمی‌گردد."""
+        per = 0
+        for item in self.items:
+            if item.course_id and item.course and item.course.unlock_per_installment:
+                per = int(item.course.unlock_per_installment)
+                break
+        if per <= 0 or not (self.installment_count and self.installment_count > 1):
+            return ''
+        _fa_digits = str.maketrans('0123456789', '۰۱۲۳۴۵۶۷۸۹')
+        per_fa = str(per).translate(_fa_digits)
+        return ('این خرید اقساطی است: بعد از پرداخت قسط اول {} جلسهٔ اول دوره باز '
+                'می‌شود و با پرداخت هر قسط بعدی {} جلسهٔ دیگر باز می‌شود.').format(
+                    per_fa, per_fa)
+
 
 class PaymentProof(db.Model):
     """فیش واریزی کارت‌به‌کارت — ثبت و تایید توسط ادمین"""
@@ -583,6 +661,7 @@ class Enrollment(db.Model):
     updated_at = db.Column(db.DateTime, default=utcnow, onupdate=utcnow)  # آخرین فعالیت (یادآور ادامه یادگیری)
     user = db.relationship('User', backref='enrollments')
     course = db.relationship('Course', backref='enrollments')
+    order = db.relationship('Order', foreign_keys=[order_id])
 
     def progress_list(self):
         try:
@@ -607,6 +686,53 @@ class Enrollment(db.Model):
     @property
     def is_completed(self):
         return bool(self.completed_at) or self.percent >= 100
+
+    # ── قفل اقساطی (دسته ۴): فقط N جلسه به ازای هر قسط پرداخت‌شده ──
+    def installment_paid_count(self):
+        """تعداد قسط‌هایی که «پرداخت قطعی» ثبت شده (۰ اگر سفارش نبود).
+
+        قسط اول در همان لحظهٔ تسویه پرداخت می‌شود؛ بقیه با ثبت وصول از
+        پنل سرویس اقساطی (اسنپ‌پی/دیجی‌پی) یا دکمهٔ ادمین «paid» می‌شوند.
+        """
+        if not self.order_id:
+            return 0
+        try:
+            from models import Installment as _I
+            return _I.query.filter_by(order_id=self.order_id).filter(
+                _I.status == 'paid').count()
+        except Exception:
+            return 0
+
+    def unlocked_lesson_limit(self):
+        """حداکثر تعداد جلسات باز برای خرید اقساطی؛ ۰ = همه باز.
+
+        فقط وقتی محدودیت دارد که دوره `unlock_per_installment` تعیین کرده
+        باشد و هنوز قسط پرداخت‌نشده‌ای باقی مانده باشد. قسط اول هنگام تسویه
+        پرداخت شده است؛ با هر قسط بعدی N جلسهٔ دیگر باز می‌شود.
+        """
+        course = self.course
+        per = int(course.unlock_per_installment or 0) if course else 0
+        if per <= 0:
+            return 0
+        try:
+            insts = sorted(self.order.installments, key=lambda i: i.number) \
+                if self.order else []
+        except Exception:
+            insts = []
+        if not insts:
+            return 0
+        # قسط اول هنگام تسویه پرداخت شده است؛ اگر همهٔ قسط‌های بعدی هم ثبت
+        # شده باشند، سفارش عملاً کامل است و قفل برداشته می‌شود.
+        if len(insts) == 1 or all(i.status == 'paid' for i in insts[1:]):
+            return 0
+        paid = self.installment_paid_count()
+        # قسط اول در زمان تسویه پرداخت شده؛ مگر اینکه جداگانه ثبت شده باشد
+        first_recorded = insts[0].status == 'paid'
+        if paid <= 0:
+            paid = 1
+        elif not first_recorded:
+            paid += 1
+        return paid * per
 
 
 class CourseMeeting(db.Model):
@@ -683,9 +809,164 @@ class BlogPost(db.Model):
     author = db.relationship('User')
 
     @property
+    def image_url(self):
+        """تصویر مطلب — کتابخانه رسانه، مسیر محلی یا URL خارجی با fallback امن."""
+        return resolve_image_url(self.image, '/static/img/course-placeholder.webp')
+
+    @property
+    def approved_comments(self):
+        """دیدگاه‌های تأییدشده (جدیدترین اول) — NULL در دیتابیس‌های قدیمی
+        هم تأییدشده محسوب می‌شود تا دیدگاه‌های قبلی ناپدید نشوند."""
+        return [c for c in self.comments if c.is_approved != False]
+
+    @property
     def read_time(self):
         words = len((self.body or '').split())
         return max(1, round(words / 220))
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# ابزارهای اسلاگ — تولید و تعمیر URL دوره/محصول/وبلاگ (ضد 404)
+# ═══════════════════════════════════════════════════════════════════════════
+def make_slug(text, fallback='item'):
+    """اسلاگ کانونی از عنوان — پشتیبانی فارسی/عربی/انگلیسی.
+
+    قوانین: حروف/اعداد (فارسی، عربی، لاتین) و خط تیره نگه داشته می‌شوند؛
+    بقیه علامت‌ها به «-» تبدیل و تکرارها جمع می‌شوند. خروجی خالی هرگز
+    تولید نمی‌شود (fallback برمی‌گردد) تا لینک‌های 404 ساخته نشوند.
+    """
+    import re as _re
+    text = str(text or '').strip()
+    if not text:
+        return fallback
+    slug = _re.sub(r'[^\w\u0600-\u06FF\-]+', '-', text.replace(' ', '-'))
+    slug = _re.sub(r'-{2,}', '-', slug).strip('-')
+    if not slug or set(slug) == {'-'}:
+        return fallback
+    return slug[:220] or fallback
+
+
+def unique_slug_for(model_class, title, exclude_id=None, fallback='item'):
+    """اسلاگ یکتا برای رکورد جدید/ویرایش — با پسوند عددی هنگام برخورد.
+
+    ``model_class`` باید کلاس مدل دارای ستون ``slug`` باشد (Course/Product/BlogPost).
+    """
+    base = make_slug(title, fallback)
+    candidate = base
+    n = 2
+    while n <= 9999:  # دفاعی — هرگز حلقه بی‌نهایت نشود
+        row = model_class.query.filter_by(slug=candidate).first()
+        if row is None or (exclude_id is not None and getattr(row, 'id', None) == exclude_id):
+            return candidate
+        candidate = '{}-{}'.format(base[:216], n)
+        n += 1
+    return '{}-{}'.format(base[:200], os.urandom(3).hex())
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# انواع برگزاری دوره — ۴ نوع مجزا (دسته ۴: LMS)
+# ═══════════════════════════════════════════════════════════════════════════
+DELIVERY_TYPE_LABELS = {
+    'inperson': 'حضوری',
+    'online': 'آنلاین',
+    'offline': 'آفلاین',
+    'hybrid': 'ترکیبی',
+}
+# مقادیر معتبر برای فرم/اعتبارسنجی (ترتیب نمایش)
+DELIVERY_TYPES = ('online', 'inperson', 'offline', 'hybrid')
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# ابزارهای مرکزی تصویر — مسیرهای محلی/کتابخانه/URL خارجی
+# ═══════════════════════════════════════════════════════════════════════════
+def resolve_image_url(value, fallback=''):
+    """تبدیل مقدار «تصویر» مدل‌ها به URL معتبر با fallback امن.
+
+    پشتیبانی از همهٔ حالت‌های تاریخی و جدید:
+      * URL خارجی (http/https) و data: → همان مقدار (بدون بررسی فایل)
+      * ``/static/...`` یا ``static/...`` → همان مسیر static
+      * ``uploads/media/...`` → کتابخانهٔ رسانه (``/static/uploads/media/...``)
+      * ``uploads/products|avatars|brand/...`` → ``/static/img/uploads/...``
+      * نام ساده (مثل cover-python.webp) → ``/static/img/...``
+
+    برای مسیرهای محلی وجود واقعی فایل چک می‌شود؛ اگر نباشد fallback
+    برمی‌گردد تا رابط کاربری هرگز با تصویر شکسته دیده نشود.
+    """
+    import os as _os
+    value = (value or '').strip()
+    if not value:
+        return fallback
+    if value.startswith(('http://', 'https://', 'data:')):
+        return value
+    # مسیرهایی که مستقیماً زیر static هستند (خروجی کتابخانهٔ رسانه)
+    for prefix in ('/static/', 'static/'):
+        if value.startswith(prefix):
+            name = value[len(prefix):].lstrip('/')
+            if '..' in name or '\\' in name:
+                return fallback
+            path = _os.path.join(_os.path.dirname(__file__), 'static', name)
+            if _os.path.isfile(path):
+                return '/static/' + name
+            return fallback
+    name = value.lstrip('/')
+    if not name or '..' in name or '\\' in name:
+        return fallback
+    # کتابخانهٔ رسانهٔ مرکزی: uploads/media/x.jpg زیر static/uploads
+    if name.startswith('uploads/media/'):
+        path = _os.path.join(_os.path.dirname(__file__), 'static', name)
+        if _os.path.isfile(path):
+            return '/static/' + name
+        return fallback
+    # مسیرهای قدیمی محصولات/آواتار/برند: زیر static/img
+    if name.startswith('uploads/'):
+        path = _os.path.join(_os.path.dirname(__file__), 'static', 'img', name)
+        if _os.path.isfile(path):
+            return '/static/img/' + name
+        return fallback
+    # نام ساده یا مسیر زیر static/img (دوره‌ها/وبلاگ قدیمی)
+    path = _os.path.join(_os.path.dirname(__file__), 'static', 'img', name)
+    if _os.path.isfile(path):
+        return '/static/img/' + name
+    # آواتارهای قدیمی فقط با نام فایل (av_...) در پوشهٔ مخصوص آواتارها
+    if name.startswith('av_'):
+        path = _os.path.join(_os.path.dirname(__file__), 'static', 'img',
+                             'uploads', 'avatars', name)
+        if _os.path.isfile(path):
+            return '/static/img/uploads/avatars/' + name
+    return fallback
+
+
+def normalize_logo_url(value):
+    """URL سالم برای لوگوی سایت از تنظیم ``custom_logo``.
+
+    حالت‌های تاریخی مختلف ذخیره‌شده (``uploads/brand/x``،
+    ``/static/img/uploads/brand/x`` یا URL کامل) را به یک URL معتبر
+    تبدیل می‌کند؛ اگر فایل/مقدار نامعتبر بود '' برمی‌گردد تا UI به
+    لوگوی پیش‌فرض fallback کند.
+    """
+    import os as _os
+    value = (value or '').strip()
+    if not value:
+        return ''
+    if value.startswith(('http://', 'https://')):
+        return value
+    for prefix in ('/static/', 'static/'):
+        if value.startswith(prefix):
+            name = value[len(prefix):].lstrip('/')
+            break
+    else:
+        name = value.lstrip('/')
+    if not name or '..' in name or '\\' in name:
+        return ''
+    # مسیرهای تاریخی uploads/brand → static/img/uploads/brand
+    if name.startswith('uploads/') and not name.startswith('uploads/media/'):
+        path = _os.path.join(_os.path.dirname(__file__), 'static', 'img', name)
+    else:
+        path = _os.path.join(_os.path.dirname(__file__), 'static', name)
+    if _os.path.isfile(path):
+        rel = _os.path.relpath(path, _os.path.join(_os.path.dirname(__file__), 'static'))
+        return '/static/' + rel.replace('\\', '/')
+    return ''
 
 
 class SeoMeta(db.Model):
@@ -703,6 +984,8 @@ class SeoMeta(db.Model):
     og_image = db.Column(db.String(300))
     og_title = db.Column(db.String(200))
     og_desc = db.Column(db.String(400))
+    # بازنویسی دستی کل اسکیما (JSON-LD) — خالی = اسکیمای خودکار
+    schema_json = db.Column(db.Text)
     # امتیاز سئو (محاسبه‌شده)
     score = db.Column(db.Integer, default=0)           # 0-100
     score_grade = db.Column(db.String(10), default='') # great|good|bad
@@ -741,9 +1024,13 @@ class BlogComment(db.Model):
     post_id = db.Column(db.Integer, db.ForeignKey('blog_posts.id'), nullable=False)
     name = db.Column(db.String(120), nullable=False)
     comment = db.Column(db.Text, nullable=False)
-    is_approved = db.Column(db.Boolean, default=True)
+    is_approved = db.Column(db.Boolean, default=True, nullable=True)
+    ip = db.Column(db.String(60), default='')          # برای ضد اسپم (بدون نمایش عمومی)
     created_at = db.Column(db.DateTime, default=utcnow)
-    post = db.relationship('BlogPost', backref='comments')
+    post = db.relationship(
+        'BlogPost',
+        backref=db.backref('comments',
+                           order_by='BlogComment.created_at.desc()'))
 
 
 class NewsletterEmail(db.Model):
@@ -1283,6 +1570,7 @@ class CourseTeacher(db.Model):
     course_id = db.Column(db.Integer, db.ForeignKey('courses.id'), nullable=False)
     teacher_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     role_name = db.Column(db.String(100), default='مدرس')
+    share_percent = db.Column(db.Integer, nullable=True)  # سهم این مدرس از استخر درصد دوره (None = بدون سهم)
 
 
 class TicketReply(db.Model):
@@ -1465,17 +1753,9 @@ class Product(db.Model):
 
     @property
     def image_url(self):
-        """آدرس تصویر با fallback؛ فایل حذف‌شده یا مسیر ناسالم UI را نمی‌شکند."""
-        import os as _os
-        value = (self.image or '').strip()
-        if value.startswith('https://'):
-            return value
-        name = value[len('/static/img/'):] if value.startswith('/static/img/') else value.lstrip('/')
-        if name and '..' not in name and '\\' not in name:
-            path = _os.path.join(_os.path.dirname(__file__), 'static', 'img', name)
-            if _os.path.isfile(path):
-                return '/static/img/' + name
-        return '/static/img/product-placeholder.webp'
+        """آدرس تصویر با fallback؛ فایل حذف‌شده، مسیر ناسالم یا URL خارجی
+        (http/https) هرگز UI را نمی‌شکند."""
+        return resolve_image_url(self.image, '/static/img/product-placeholder.webp')
 
     @property
     def final_price(self):

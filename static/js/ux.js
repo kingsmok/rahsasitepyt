@@ -32,11 +32,11 @@
     });
   }
 
-  /* جستجوی سریع در منوی طولانی مدیریت */
+  /* جستجوی سریع در منوی طولانی مدیریت (ساختار گروهی جدید) */
   var menuSearch = qs('[data-admin-menu-search]');
   if (menuSearch && adminSidebar) {
     var links = qsa('[data-admin-link]', adminSidebar);
-    var groups = qsa('[data-admin-group]', adminSidebar);
+    var groupHeads = qsa('[data-admin-group-head]', adminSidebar);
     var noResult = qs('[data-admin-no-result]', adminSidebar);
     menuSearch.addEventListener('input', function () {
       var query = menuSearch.value.trim().toLocaleLowerCase('fa-IR');
@@ -46,15 +46,16 @@
         link.hidden = !show;
         if (show) visible += 1;
       });
-      groups.forEach(function (group) {
-        if (!query) { group.hidden = false; return; }
-        var next = group.nextElementSibling;
+      groupHeads.forEach(function (head) {
+        var body = head.nextElementSibling;
         var hasVisible = false;
-        while (next && !next.hasAttribute('data-admin-group')) {
-          if (next.hasAttribute('data-admin-link') && !next.hidden) { hasVisible = true; break; }
-          next = next.nextElementSibling;
+        if (body && body.hasAttribute('data-admin-group-body')) {
+          qsa('[data-admin-link]', body).forEach(function (l) {
+            if (!l.hidden) hasVisible = true;
+          });
+          body.classList.toggle('is-collapsed', !hasVisible);
         }
-        group.hidden = !hasVisible;
+        head.hidden = !hasVisible;
       });
       if (noResult) noResult.hidden = visible !== 0;
     });
@@ -65,6 +66,17 @@
       }
     });
   }
+
+  /* دسته‌های جمع‌شونده منوی مدیریت */
+  qsa('[data-admin-group-toggle]', adminSidebar).forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var head = btn.closest('[data-admin-group-head]');
+      var body = head ? head.nextElementSibling : null;
+      if (!body || !body.hasAttribute('data-admin-group-body')) return;
+      var collapsed = body.classList.toggle('is-collapsed');
+      btn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+    });
+  });
 
   /* ---------- منوهای حساب دانشجو و مدرس ---------- */
   qsa('[data-panel-nav-toggle]').forEach(function (button) {

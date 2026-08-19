@@ -64,7 +64,7 @@
     "@type": "EducationalOrganization",
     "name": "{{ site.site_name or 'آکادمی آنلاین' }}",
     "url": "{{ request.host_url.rstrip('/') }}",
-    "logo": "{{ request.host_url.rstrip('/') }}/static/img/favicon.svg",
+    "logo": "{{ request.host_url.rstrip('/') }}{{ site.get('logo_url') or '/static/img/favicon.svg' }}",
     "description": "{{ seo.description or site.site_desc or '' }}",
     {% if site.email %}"email": "{{ site.email }}",{% endif %}
     {% if site.phone %}"telephone": "{{ site.phone }}",{% endif %}
@@ -206,7 +206,8 @@
 <nav class="mobile-menu" id="mobile-menu" role="navigation" aria-label="منوی موبایل">
   <div class="mm-head">
     <a class="logo" href="{{ url_for('site.index') }}">
-      <span class="logo-ic">🎓</span>
+      {% if site.get('logo_url') %}<img src="{{ site.get('logo_url') }}" alt="لوگو" style="height:34px;width:auto">
+      {% else %}<span class="logo-ic">🎓</span>{% endif %}
       <span>{{ site.site_name or 'آکادمی آنلاین' }}</span>
     </a>
     <button class="icon-btn" data-close-mm aria-label="بستن">{{ icon('x', 16) }}</button>
@@ -267,6 +268,7 @@
 <script src="/static/js/ux.js?v={{ asset_v() }}"></script>
 <script src="/static/js/jalali.js?v={{ asset_v() }}"></script>
 <script src="/static/js/form-feedback.js?v={{ asset_v() }}"></script>
+<script src="/static/js/media_library.js?v={{ asset_v() }}"></script>
 {% block scripts %}{% endblock %}
 <!-- Crisp Chat — پشتیبانی آنلاین (فعال فقط با CRISP_WEBSITE_ID) -->
 {{ crisp_script|safe }}

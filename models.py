@@ -984,6 +984,8 @@ class SeoMeta(db.Model):
     og_image = db.Column(db.String(300))
     og_title = db.Column(db.String(200))
     og_desc = db.Column(db.String(400))
+    # بازنویسی دستی کل اسکیما (JSON-LD) — خالی = اسکیمای خودکار
+    schema_json = db.Column(db.Text)
     # امتیاز سئو (محاسبه‌شده)
     score = db.Column(db.Integer, default=0)           # 0-100
     score_grade = db.Column(db.String(10), default='') # great|good|bad

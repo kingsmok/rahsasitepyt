@@ -441,6 +441,12 @@ def _course_form(course):
             except Exception:
                 _lexc('admin_bp.course_index')
             db.session.commit()
+            try:
+                from seo_service import ensure_meta
+                ensure_meta('/course/' + (course.slug or str(course.id)))
+                db.session.commit()
+            except Exception:
+                _lexc('blueprints/admin_bp.py')
             flash('دوره با موفقیت ذخیره شد.', 'success')
             return redirect(url_for('admin.course_lessons', cid=course.id))
     return render_template('admin/course_form.html', course=course, teachers=teachers,
@@ -778,6 +784,12 @@ def _blog_form(post):
             flash('عنوان الزامی است.', 'error')
         else:
             db.session.commit()
+            try:
+                from seo_service import ensure_meta
+                ensure_meta('/blog/' + (post.slug or str(post.id)))
+                db.session.commit()
+            except Exception:
+                _lexc('blueprints/admin_bp.py')
             flash('مطلب ذخیره شد.', 'success')
             return redirect(url_for('admin.blog'))
     images = ['cover-python.webp', 'cover-flask.webp', 'cover-django.webp', 'cover-react.webp',
@@ -2068,6 +2080,13 @@ def user_add():
             from gamification import make_referral_code
             make_referral_code(u)
             db.session.commit()
+            if u.role in ('teacher', 'admin'):
+                try:
+                    from seo_service import ensure_meta
+                    ensure_meta('/teacher/' + str(u.id))
+                    db.session.commit()
+                except Exception:
+                    _lexc('blueprints/admin_bp.py')
             flash(f'کاربر «{name}» با نقش {role} ساخته شد. ✅', 'success')
             return redirect(url_for('admin.users'))
     return render_template('admin/user_add.html')

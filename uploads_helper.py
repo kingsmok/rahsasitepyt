@@ -22,10 +22,14 @@ _PROTECTED_DIRS = (
 
 
 def ensure_upload_guards():
-    """نصب/ترمیم خودکار .htaccess محافظ در پوشه‌های آپلود عمومی.
+    """ساخت خودکار .htaccess محافظ در پوشه‌های آپلود عمومی — فقط وقتی وجود ندارد.
 
     هنگام استارت اپ اجرا می‌شود تا نصب‌های قدیمی (که این فایل را ندارند)
     هم به‌صورت خودکار امن شوند — بدون نیاز به کار دستی مدیر سایت.
+
+    ⚠️ فایل .htaccess موجود هرگز بازنویسی نمی‌شود: تنظیمات دستیِ صاحب سایت
+    روی هاست (یا فایل سفارشی که خودش گذاشته) همیشه حفظ می‌شود؛ هم‌چنین
+    بروزرسانی نرم‌افزار هیچ‌وقت این فایل را لمس نمی‌کند.
     """
     try:
         if not os.path.exists(_HTACCESS_SRC):
@@ -38,11 +42,9 @@ def ensure_upload_guards():
         try:
             os.makedirs(d, exist_ok=True)
             target = os.path.join(d, '.htaccess')
-            # فقط وقتی بنویس که وجود ندارد یا محتوایش قدیمی است
+            # فقط وقتی بنویس که وجود ندارد؛ موجود = متعلق به صاحب سایت.
             if os.path.exists(target):
-                with open(target, 'r', encoding='utf-8') as f:
-                    if f.read() == content:
-                        continue
+                continue
             with open(target, 'w', encoding='utf-8') as f:
                 f.write(content)
         except OSError:

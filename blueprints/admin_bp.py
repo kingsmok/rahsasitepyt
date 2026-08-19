@@ -240,8 +240,17 @@ def go_live():
         if action in ('activate', 'deactivate'):
             values = {row.key: row.value for row in Setting.query.all()}
             checks, launch_ready, _cc, _pc, _paid, _license = _readiness(values)
-            if action == 'activate' and not launch_ready:
-                flash('انتشار انجام نشد؛ موارد الزامی علامت‌خورده را کامل کنید.', 'error')
+            force = str(request.form.get('force') or '') == '1'
+            is_super = g.user.role == 'super_admin'
+            if action == 'activate' and not launch_ready and not (force and is_super):
+                missing = [label for key, label in
+                           (('public', 'برند و تماس'), ('content', 'محتوا'),
+                            ('payment', 'پرداخت'), ('license', 'لایسنس'))
+                           if key in checks and not checks[key]]
+                flash('انتشار انجام نشد؛ این موارد هنوز کامل نیست: ' +
+                      ('، '.join(missing) if missing else 'موارد الزامی') +
+                      '. (سوپر ادمین می‌تواند با گزینهٔ «فعال‌سازی اجباری» انتشار دهد.)',
+                      'error')
                 return redirect(url_for('admin.go_live'))
             row = db.session.get(Setting, 'site_active')
             value = '1' if action == 'activate' else '0'
@@ -253,9 +262,12 @@ def go_live():
             clear = getattr(current_app, 'clear_cache', None)
             if callable(clear):
                 clear()
-            flash('سایت برای عموم فعال شد. ✅' if value == '1' else
-                  'سایت از دسترس عموم خارج شد؛ مدیر همچنان پیش‌نمایش کامل دارد.',
-                  'success' if value == '1' else 'info')
+            if value == '1' and force and not launch_ready:
+                flash('سایت به‌صورت اجباری برای عموم فعال شد؛ موارد ناقص را در اولین فرصت تکمیل کنید. ⚠️', 'warning')
+            else:
+                flash('سایت برای عموم فعال شد. ✅' if value == '1' else
+                      'سایت از دسترس عموم خارج شد؛ مدیر همچنان پیش‌نمایش کامل دارد.',
+                      'success' if value == '1' else 'info')
             return redirect(url_for('admin.go_live'))
 
         for key in keys:
@@ -295,6 +307,7 @@ def go_live():
                            products_count=products_count,
                            launch_ready=launch_ready, paid_content=paid_content,
                            current_license=current_license,
+                           is_super=g.user.role == 'super_admin',
                            site_active=values.get('site_active', '1') == '1')
 
 
@@ -334,7 +347,8 @@ def _course_form(course):
         f = request.form
         if not course:
             course = Course()
-            course.slug = slugify(f.get('title', '')) + '-' + str(random.randint(100, 999))
+            from models import unique_slug_for as _usf
+            course.slug = _usf(Course, f.get('title', ''), fallback='course')
             db.session.add(course)
         course.title = f.get('title', '').strip()
         course.subtitle = f.get('subtitle', '').strip()
@@ -714,7 +728,8 @@ def _blog_form(post):
         f = request.form
         if not post:
             post = BlogPost(author_id=g.user.id)
-            post.slug = slugify(f.get('title', '')) + '-' + str(random.randint(100, 999))
+            from models import unique_slug_for as _usfb
+            post.slug = _usfb(BlogPost, f.get('title', ''), fallback='post')
             db.session.add(post)
         post.title = f.get('title', '').strip()
         post.excerpt = f.get('excerpt', '').strip()
@@ -2946,9 +2961,8 @@ def products_admin():
             flash('عنوان محصول الزامی است.', 'error')
         else:
             import re as _re2
-            slug = _re2.sub(r'[^\w\u0600-\u06FF-]+', '-', title).strip('-') or 'product'
-            while _P.query.filter_by(slug=slug).first():
-                slug += '-2'
+            from models import unique_slug_for
+            slug = unique_slug_for(_P, title, fallback='product')
             from validators import clamp_field
             image_file = request.files.get('image_file')
             uploaded_image = _save_product_image(image_file)

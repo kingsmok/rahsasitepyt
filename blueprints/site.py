@@ -3,6 +3,7 @@
 from flask import Blueprint, render_template, request, abort, redirect, url_for, flash, g, session
 import re
 import json
+from datetime import datetime, timedelta
 from sqlalchemy import or_
 
 _FA_MAP = str.maketrans('0123456789', '۰۱۲۳۴۵۶۷۸۹')
@@ -156,11 +157,28 @@ def courses():
 
 
 # ---------------------------------------------------------------- جزئیات دوره
+def _find_course(slug):
+    """دورهٔ منتشرشده با slug یا شناسهٔ عددی (پشتیبانی از لینک‌های قدیمی)."""
+    value = (slug or '').strip()
+    if not value:
+        return None
+    course = Course.query.filter_by(slug=value, status='published').first()
+    if course is None and value.isdigit():
+        course = Course.query.filter_by(id=int(value), status='published').first()
+    return course
+
+
 @site_bp.route('/course/<slug>')
 def course_detail(slug):
+    course = _find_course(slug)
+    if course is None:
+        abort(404)
+    # لینک با شناسهٔ عددی (قدیمی/اشتراک‌گذاری‌شده) → ریدایرکت دائمی به آدرس کانونی
+    if str(slug).strip().isdigit() and str(slug).strip() != str(course.slug):
+        return redirect(url_for('site.course_detail', slug=course.slug), code=301)
     course = (Course.query.options(joinedload(Course.category), joinedload(Course.teacher),
                                    joinedload(Course.sections).joinedload(Section.lessons))
-              .filter_by(slug=slug, status='published').first_or_404())
+              .filter_by(id=course.id).first())
     course.views = (course.views or 0) + 1
     db.session.commit()
     enrolled = bool(g.user and any(e.course_id == course.id for e in g.user.enrollments))
@@ -284,7 +302,9 @@ def add_review(slug):
     if not g.user:
         flash('برای ثبت نظر ابتدا وارد شوید.', 'error')
         return redirect(url_for('auth.login'))
-    course = Course.query.filter_by(slug=slug).first_or_404()
+    course = _find_course(slug)
+    if course is None:
+        abort(404)
     rating = request.form.get('rating', 5, type=int)
     from validators import clamp_field
     comment = clamp_field(request.form.get('comment'), 'comment')
@@ -480,7 +500,12 @@ def teachers():
 
 @site_bp.route('/teacher/<int:uid>')
 def teacher_detail(uid):
-    teacher = User.query.filter_by(id=uid, role='teacher', is_active=True).first_or_404()
+    # مدرسان می‌توانند نقش teacher یا admin داشته باشند (در فرم دوره هر دو
+    # قابل انتخاب‌اند)؛ فیلتر قبلی فقط role='teacher' بود و پروفایل مدرسانی
+    # که نقش admin داشتند را 404 می‌کرد.
+    teacher = User.query.filter(User.id == uid,
+                                User.role.in_(('teacher', 'admin')),
+                                User.is_active == True).first_or_404()
     courses = (Course.query.options(joinedload(Course.category))
                .filter_by(teacher_id=uid, status='published').all())
     # متای پویا (سئو) — اولویت با SeoMeta اختصاصی است، در غیر این صورت پویا
@@ -522,10 +547,23 @@ def blog_post(slug):
     g.current_post = post
     if request.method == 'POST':
         from validators import clamp_field
+        # ضد اسپم: honeypot خالی باشد (ربات‌ها پر می‌کنند) + محدودیت تعداد در هر IP
+        if (request.form.get('website') or '').strip():
+            return redirect(url_for('site.blog_post', slug=slug) + '#comments')
+        client_ip = request.headers.get('X-Forwarded-For', request.remote_addr or '').split(',')[0].strip()
+        throttle_key = 'blog_cm_{}'.format(client_ip)
+        recent = BlogComment.query.filter(
+            BlogComment.post_id == post.id,
+            BlogComment.created_at >= datetime.utcnow() - timedelta(minutes=10),
+            BlogComment.ip == client_ip).count()
+        if recent >= 5:
+            flash('تعداد دیدگاه‌ها زیاد است؛ چند دقیقه دیگر دوباره تلاش کنید.', 'error')
+            return redirect(url_for('site.blog_post', slug=slug) + '#comments')
         name = clamp_field(request.form.get('name'), 'name')
         comment = clamp_field(request.form.get('comment'), 'comment')
         if name and comment:
-            db.session.add(BlogComment(post_id=post.id, name=name, comment=comment))
+            db.session.add(BlogComment(post_id=post.id, name=name,
+                                       comment=comment, ip=client_ip[:60]))
             db.session.commit()
             flash('دیدگاه شما ثبت شد. ممنون! 🙏', 'success')
         else:

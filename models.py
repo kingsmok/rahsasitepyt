@@ -17,18 +17,16 @@ from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 
 # ═══════════════════════════════════════════════════════════════════════════
-# خط‌مشی هش‌گذاری رمز عبور (بخش هش‌گذاری)
+# خط‌مشی هش‌گذاری رمز عبور (درخواست صاحب سایت — قابلیت ویرایش مستقیم در DB)
 # ───────────────────────────────────────────────────────────────────────────
-# ۱) رمزهای جدید و تغییر رمزها → همیشه با الگوریتم قوی ورک‌زگ ذخیره می‌شوند
-#    (scrypt؛ در پایتون‌های قدیمی‌تر pbkdf2:sha256) — غیرقابل شکستن با روش‌های معمول
-# ۲) پذیرش MD5 قدیمی در production پیش‌فرض غیرفعال است. فقط برای مهاجرت موقت
-#    می‌توان ALLOW_LEGACY_MD5=1 گذاشت؛ ورود موفق همان لحظه هش را قوی می‌کند.
-# ۳) بعد از پایان مهاجرت، متغیر بالا باید دوباره حذف/صفر شود.
-# ⚠️ چرا رمزهای جدید را مستقیم MD5 نمی‌کنیم؟ MD5 برای رمز عبور در چند ثانیه
-#    با جدول‌های رنگین‌کمانی شکسته می‌شود؛ حتی هش‌های قویِ ورک‌زگ هم روی
-#    هاست‌های معمولی فقط چند ده میلی‌ثانیه زمان می‌برند (تأثیری در سرعت ورود ندارد).
+# ۱) رمزهای جدید → قالب استاندارد ``md5:<hex32>`` ذخیره می‌شوند؛ مدیر می‌تواند
+#    مستقیم در phpMyAdmin بنویسد: ``md5:` + MD5('password')`` یا حتی MD5 خام
+#    ۳۲ کاراکتری (در اولین ورود موفق خودکار نرمال می‌شود).
+# ۲) حساب‌های قدیمی با هش قوی ورک‌زگ همچنان بدون تغییر رمز وارد می‌شوند و
+#    در همان ورود به قالب MD5 تبدیل می‌شوند (مهاجرت خودکار، بدون قطعی).
+# ۳) متغیر قدیمی ALLOW_LEGACY_MD5 دیگر گیت نیست؛ MD5 خام همیشه پذیرفته می‌شود.
 # ═══════════════════════════════════════════════════════════════════════════
-LEGACY_MD5 = os.environ.get('ALLOW_LEGACY_MD5', '0') == '1'
+LEGACY_MD5 = os.environ.get('ALLOW_LEGACY_MD5', '1') == '1'  # سازگاری backward؛ دیگر گیت نیست
 
 import hashlib as _hashlib
 import re as _re
@@ -185,35 +183,54 @@ class User(db.Model):
         return self.session_token
 
     def set_password(self, p):
-        # همیشه هش قوی — هرگز MD5 خام برای رمزهای جدید
-        self.password_hash = generate_password_hash(p)
+        """رمز با MD5 (درخواست صاحب سایت برای ویرایش مستقیم در دیتابیس).
+
+        قالب ذخیره: ``md5:<hex32>`` — با phpMyAdmin هم می‌توان نوشت:
+        ``md5:` + MD5('yourpassword')`` یا فقط MD5 خام ۳۲ کاراکتری
+        (در ورود بعدی خودکار به قالب استاندارد نرمال می‌شود).
+        """
+        self.password_hash = 'md5:' + _md5_hex(p)
 
     def check_password(self, p):
-        """بررسی رمز عبور:
-        ۱) هش قوی استاندارد (scrypt/pbkdf2)
-        ۲) هش قدیمی MD5 خام — فقط با اجازهٔ LEGACY_MD5؛ در صورت درستی،
-           بلافاصله به هش قوی ارتقا می‌یابد (خودکار و بی‌سروصدا)"""
+        """بررسی رمز عبور — پشتیبانی کامل از هر سه قالب تاریخی:
+        ۱) ``md5:<hex>`` — قالب استاندارد جدید (قابل ویرایش مستقیم در DB)
+        ۲) MD5 خام ۳۲ کاراکتری — مثل UPDATE ... SET password_hash = MD5('...')
+        ۳) هش قوی قدیمی ورک‌زگ — برای حساب‌های ساخته‌شده قبل از این تغییر
+
+        ورود موفق با قالب‌های ۲ یا ۳، رمز را به قالب استاندارد ``md5:``
+        نرمال می‌کند تا بعداً مستقیم در دیتابیس قابل تغییر باشد.
+        """
         if not self.password_hash:
             return False
-        # ۱) حالت استاندارد ورک‌زگ (شامل md5$salt$hash و sha1$salt$hash قدیمی فلاسک)
-        try:
-            if check_password_hash(self.password_hash, p):
+        stored = (self.password_hash or '').strip()
+        # ۱) قالب استاندارد جدید
+        if stored.startswith('md5:'):
+            hex_part = stored[4:].strip().lower()
+            if _MD5_RE.match(hex_part):
+                return hex_part == _md5_hex(p)
+            return False
+        # ۲) MD5 خام (تغییر مستقیم در phpMyAdmin)
+        if _MD5_RE.match(stored.lower()):
+            if stored.lower() == _md5_hex(p):
+                self._normalize_hash(p)
                 return True
-        except ValueError:
-            pass  # قالب ناشناخته → بررسی حالت خام MD5 در ادامه
-        # ۲) هش خام MD5 (مثل UPDATE ... SET password_hash = MD5('...') در phpMyAdmin)
-        if LEGACY_MD5:
-            _h = (self.password_hash or '').strip().lower()
-            if _MD5_RE.match(_h):
-                if _h == _md5_hex(p):
-                    self._upgrade_hash(p)
-                    return True
+            return False
+        # ۳) هش قوی قدیمی ورک‌زگ (حساب‌های پیش از مهاجرت به MD5)
+        try:
+            if check_password_hash(stored, p):
+                self._normalize_hash(p)
+                return True
+        except (ValueError, TypeError):
+            pass
         return False
 
-    def _upgrade_hash(self, p):
-        """ارتقای خودکار هش قدیمی MD5 به هش قوی — در همان ورود موفق"""
+    def _normalize_hash(self, p):
+        """نرمال‌سازی هش قدیمی به قالب ``md5:`` در همان ورود موفق.
+
+        شکست این گام هرگز جلوی ورود موفق را نمی‌گیرد (فقط commit بعدی است).
+        """
         try:
-            self.set_password(p)
+            self.password_hash = 'md5:' + _md5_hex(p)
             db.session.add(self)
             db.session.commit()
         except Exception:
@@ -683,7 +700,53 @@ class BlogPost(db.Model):
         return resolve_image_url(self.image, '/static/img/course-placeholder.webp')
 
     @property
-    def read_time(self):        return max(1, round(words / 220))
+    def approved_comments(self):
+        """دیدگاه‌های تأییدشده (جدیدترین اول) — NULL در دیتابیس‌های قدیمی
+        هم تأییدشده محسوب می‌شود تا دیدگاه‌های قبلی ناپدید نشوند."""
+        return [c for c in self.comments if c.is_approved != False]
+
+    @property
+    def read_time(self):
+        words = len((self.body or '').split())
+        return max(1, round(words / 220))
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# ابزارهای اسلاگ — تولید و تعمیر URL دوره/محصول/وبلاگ (ضد 404)
+# ═══════════════════════════════════════════════════════════════════════════
+def make_slug(text, fallback='item'):
+    """اسلاگ کانونی از عنوان — پشتیبانی فارسی/عربی/انگلیسی.
+
+    قوانین: حروف/اعداد (فارسی، عربی، لاتین) و خط تیره نگه داشته می‌شوند؛
+    بقیه علامت‌ها به «-» تبدیل و تکرارها جمع می‌شوند. خروجی خالی هرگز
+    تولید نمی‌شود (fallback برمی‌گردد) تا لینک‌های 404 ساخته نشوند.
+    """
+    import re as _re
+    text = str(text or '').strip()
+    if not text:
+        return fallback
+    slug = _re.sub(r'[^\w\u0600-\u06FF\-]+', '-', text.replace(' ', '-'))
+    slug = _re.sub(r'-{2,}', '-', slug).strip('-')
+    if not slug or set(slug) == {'-'}:
+        return fallback
+    return slug[:220] or fallback
+
+
+def unique_slug_for(model_class, title, exclude_id=None, fallback='item'):
+    """اسلاگ یکتا برای رکورد جدید/ویرایش — با پسوند عددی هنگام برخورد.
+
+    ``model_class`` باید کلاس مدل دارای ستون ``slug`` باشد (Course/Product/BlogPost).
+    """
+    base = make_slug(title, fallback)
+    candidate = base
+    n = 2
+    while n <= 9999:  # دفاعی — هرگز حلقه بی‌نهایت نشود
+        row = model_class.query.filter_by(slug=candidate).first()
+        if row is None or (exclude_id is not None and getattr(row, 'id', None) == exclude_id):
+            return candidate
+        candidate = '{}-{}'.format(base[:216], n)
+        n += 1
+    return '{}-{}'.format(base[:200], os.urandom(3).hex())
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -832,9 +895,13 @@ class BlogComment(db.Model):
     post_id = db.Column(db.Integer, db.ForeignKey('blog_posts.id'), nullable=False)
     name = db.Column(db.String(120), nullable=False)
     comment = db.Column(db.Text, nullable=False)
-    is_approved = db.Column(db.Boolean, default=True)
+    is_approved = db.Column(db.Boolean, default=True, nullable=True)
+    ip = db.Column(db.String(60), default='')          # برای ضد اسپم (بدون نمایش عمومی)
     created_at = db.Column(db.DateTime, default=utcnow)
-    post = db.relationship('BlogPost', backref='comments')
+    post = db.relationship(
+        'BlogPost',
+        backref=db.backref('comments',
+                           order_by='BlogComment.created_at.desc()'))
 
 
 class NewsletterEmail(db.Model):

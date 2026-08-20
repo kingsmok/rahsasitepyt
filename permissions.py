@@ -374,7 +374,6 @@ _ADMIN_GROUPS = [
         ('admin.messengers', 'پیام‌رسان‌ها'),
     ]},
     {'label': 'گزارش‌ها', 'icon': '📊', 'items': [
-        ('admin.reports_index', 'فهرست گزارش‌ها'),
         ('admin.reports_export', 'خروجی اکسل'),
         ('admin.report_revenue_courses', 'درآمد هر دوره'),
         ('admin.report_teachers', 'درآمد مدرس‌ها'),

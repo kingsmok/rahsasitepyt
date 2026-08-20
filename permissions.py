@@ -322,7 +322,6 @@ _ADMIN_GROUPS = [
         ('market.admin_marketplace', 'مارکت‌پلیس‌ها'),
     ]},
     {'label': 'محتوا و آموزش', 'icon': '📚', 'items': [
-        ('admin.courses', 'دورٚ', 'items': [
         ('admin.courses', 'دوره‌ها'),
         ('admin.blog', 'وبلاگ'),
         ('admin.categories', 'دسته‌بندی‌ها'),
@@ -447,4 +446,3 @@ def menu_groups_for(user):
             groups.append({'label': group['label'], 'icon': group['icon'],
                            'items': items})
     return groups
-return groups

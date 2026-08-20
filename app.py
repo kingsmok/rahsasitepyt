@@ -1719,7 +1719,13 @@ def create_app():
         from captcha import current_captcha
         from markupsafe import Markup, escape
         def captcha_box():
-            text = escape(current_captcha())
+            # ⚠️ نکته: escape() یک شیء Markup برمی‌گرداند. اگر آن را با
+            # «رشتهٔ ساده + Markup» جمع کنیم، پایتون __radd__ مارک‌آپ را صدا
+            # می‌زند و *کل HTML سمت چپ* escape می‌شود؛ نتیجه این بود که کاربر
+            # به‌جای فرم، کد خام «<div class=...>» را روی صفحه می‌دید.
+            # راه‌حل: متن را به str معمولی تبدیل کن، کل قالب را بساز و فقط
+            # یک بار در انتها Markup کن.
+            text = str(escape(current_captcha()))
             return Markup(
                 '<div class="form-group">'
                 '<label for="cap_inp">🧮 سوال امنیتی: <b>' + text + '</b></label>'

@@ -481,7 +481,7 @@ def card2card(code):
                 if ext not in ('.jpg', '.jpeg', '.png', '.webp', '.pdf'):
                     flash('فرمت فیش مجاز نیست (jpg/png/pdf).', 'error')
                     return redirect(url_for('shop.card2card', code=code))
-                from uploads_helper import file_content_is_safe
+                from validators import file_content_is_safe
                 if not file_content_is_safe(f.stream, ext):
                     flash('محتوای فایل ارسالی نامعتبر یا ناامن است.', 'error')
                     return redirect(url_for('shop.card2card', code=code))

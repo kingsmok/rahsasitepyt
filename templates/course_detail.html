@@ -22,7 +22,7 @@
   "name": "معرفی دوره {{ course.title }}",
   "description": "{{ (course.subtitle or course.description or '')[:250] }}",
   "thumbnailUrl": "{{ course.image_url if course.image_url.startswith('https://') else request.host_url.rstrip('/') ~ course.image_url }}",
-  "uploadDate": "{{ (course.updated_at or course.created_at).strftime('%Y-%m-%d') }}",
+  "uploadDate": "{{ course.created_at.strftime('%Y-%m-%d') if course.created_at else '' }}",
   "contentUrl": "{{ request.host_url.rstrip('/') ~ course.intro_video if course.intro_video.startswith('/') else course.intro_video }}",
   "embedUrl": "{{ course.intro_video.replace('watch?v=', 'embed/') if 'youtube' in course.intro_video else course.intro_video }}",
   "publisher": {"@type": "Organization", "name": "{{ site.site_name or 'آکادمی آنلاین' }}"},
@@ -94,8 +94,10 @@
         <div class="course-tabs">
           <button class="active" data-tab="tab-overview">📋 معرفی دوره</button>
           <button data-tab="tab-curriculum">📚 سرفصل‌ها ({{ fa(course.lesson_count) }} جلسه)</button>
-          {% if course.quizzes or course.assignments %}
-          <button data-tab="tab-quizzes">📝 آزمون‌ها ({{ fa(course.quizzes|length) }})</button>
+          {% set pub_quizzes = course.quizzes|selectattr('is_published')|list %}
+          {% set pub_assignments = course.assignments|selectattr('is_published')|list %}
+          {% if pub_quizzes or pub_assignments %}
+          <button data-tab="tab-quizzes">📝 آزمون‌ها ({{ fa(pub_quizzes|length) }})</button>
           {% endif %}
           <button data-tab="tab-reviews">💬 نظرات ({{ fa(course.review_count) }})</button>
           <button data-tab="tab-teacher">👨‍🏫 مدرس</button>
@@ -155,18 +157,18 @@
           {% endif %}
         </div>
 
-        {% if course.quizzes or course.assignments %}
+        {% if pub_quizzes or pub_assignments %}
         <div class="tab-pane" id="tab-quizzes" style="display:none">
           <div class="panel">
             <h3><span class="ic">📝</span> آزمون‌ها و تمرین‌های دوره</h3>
             <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px">
-              {% for qz in course.quizzes %}
+              {% for qz in pub_quizzes %}
               {% if can_access_coursework %}<a class="card card-hover" style="padding:14px;text-decoration:none" href="{{ url_for('features.quiz_view', qid=qz.id) }}">{% else %}<div class="card" style="padding:14px;opacity:.78" aria-label="پس از ثبت‌نام در دسترس است">{% endif %}
                 <strong style="font-size:13px">📝 {{ qz.title }}</strong>
                 <small class="text-3" style="display:block">{{ fa(qz.questions|length) }} سوال{% if not can_access_coursework %} · 🔒 ویژه دانشجویان دوره{% endif %}</small>
               {% if can_access_coursework %}</a>{% else %}</div>{% endif %}
               {% endfor %}
-              {% for asg in course.assignments %}
+              {% for asg in pub_assignments %}
               {% if can_access_coursework %}<a class="card card-hover" style="padding:14px;text-decoration:none" href="{{ url_for('features.assignment_view', aid=asg.id) }}">{% else %}<div class="card" style="padding:14px;opacity:.78" aria-label="پس از ثبت‌نام در دسترس است">{% endif %}
                 <strong style="font-size:13px">📌 {{ asg.title }}</strong>
                 <small class="text-3" style="display:block">تمرین دوره{% if not can_access_coursework %} · 🔒 ویژه دانشجویان دوره{% endif %}</small>

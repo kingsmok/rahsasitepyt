@@ -15,7 +15,7 @@
       <div class="flex gap-1">
         <span class="text-3" style="font-size:12px">{{ m.created_at|jdatetime }}</span>
         {% if not m.is_read %}
-        <button class="btn btn-ghost btn-sm" onclick="fetch('/api/contact/read/{{ m.id }}',{method:'POST'});this.remove()">✓ خوانده شد</button>
+        <button class="btn btn-ghost btn-sm" onclick="fetch('/api/contact/read/{{ m.id }}',{method:'POST',headers:{'X-CSRF-Token':(window.csrfToken?window.csrfToken():'')}});this.remove()">✓ خوانده شد</button>
         {% endif %}
       </div>
     </div>

@@ -944,7 +944,7 @@ def _is_conn_lost(exc):
 
 
 def _create_tables_resilient(eng, max_tries=4, max_tables=None,
-                             progress_cb=None):
+                             progress_cb=None, convert_charset=True):
     """ساخت جدول‌ها به‌صورت idempotent و قابل‌ادامه.
 
     ``max_tables`` تعداد جدول‌هایی است که در همین درخواست ساخته می‌شوند. با

@@ -67,7 +67,9 @@ def test_public_theme_picker_is_removed_from_all_base_pages(client, app):
 
 def test_public_theme_api_is_removed(client):
     """مسیر قدیمی نباید امکان ذخیره تم شخصی یا کوکی رنگ ایجاد کند."""
-    response = client.post('/api/theme', json={'theme': 'theme-08'})
+    from conftest import csrf_headers
+    response = client.post('/api/theme', json={'theme': 'theme-08'},
+                           headers=csrf_headers(client))
     assert response.status_code == 404
     assert 'lms_theme=' not in response.headers.get('Set-Cookie', '')
 

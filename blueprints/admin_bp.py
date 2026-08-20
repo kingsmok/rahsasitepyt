@@ -861,6 +861,18 @@ def reviews():
     if request.method == 'POST':
         action = request.form.get('action')
         rid = safe_int(request.form.get('rid'))
+        if action in ('approve_blog', 'delete_blog'):
+            bc = db.session.get(BlogComment, rid)
+            if bc:
+                if action == 'approve_blog':
+                    bc.is_approved = True
+                    db.session.commit()
+                    flash('دیدگاه وبلاگ تایید شد.', 'success')
+                else:
+                    db.session.delete(bc)
+                    db.session.commit()
+                    flash('دیدگاه وبلاگ حذف شد.', 'info')
+            return redirect(url_for('admin.reviews'))
         rv = db.session.get(Review, rid)
         if rv:
             if action == 'approve':
@@ -873,7 +885,9 @@ def reviews():
                 flash('نظر حذف شد.', 'info')
         return redirect(url_for('admin.reviews'))
     all_reviews = Review.query.order_by(Review.created_at.desc()).all()
-    return render_template('admin/reviews.html', reviews=all_reviews)
+    blog_comments = BlogComment.query.order_by(BlogComment.created_at.desc()).limit(80).all()
+    return render_template('admin/reviews.html', reviews=all_reviews,
+                           blog_comments=blog_comments)
 
 
 # ---------------------------------------------------------------- گالری طراحی‌ها (پیش‌نمایش + انتخاب اصلی)
@@ -995,7 +1009,7 @@ def tickets():
                 from models import Notification
                 Notification.notify(t.user_id, 'پاسخ تیکت شما ثبت شد',
                                     reply_text[:100], '🎫',
-                                    url_for('student.tickets'))
+                                    url_for('student.ticket_view', tid=t.id))
                 try:
                     from email_service import send_ticket_reply
                     tu = db.session.get(User, t.user_id)
@@ -1130,6 +1144,7 @@ def quiz_new():
             q = Quiz(course_id=cid, title=title,
                      description=request.form.get('description', '').strip(),
                      passing_score=passing, is_placement=is_placement,
+                     is_published=bool(request.form.get('is_published')),
                      time_limit=request.form.get('time_limit', 0, type=int))
             db.session.add(q)
             db.session.commit()
@@ -1150,11 +1165,25 @@ def quiz_edit(qid):
         q.passing_score = request.form.get('passing_score', 50, type=int)
         q.time_limit = request.form.get('time_limit', 0, type=int)
         q.course_id = request.form.get('course_id', q.course_id, type=int)
+        q.is_placement = bool(request.form.get('is_placement'))
+        q.is_published = bool(request.form.get('is_published'))
         _save_questions(q, request.form.get('questions_raw', ''))
         db.session.commit()
         flash('آزمون به‌روزرسانی شد.', 'success')
         return redirect(url_for('admin.quizzes'))
-    return render_template('admin/quiz_form.html', quiz=q, courses=courses)
+    return render_template('admin/quiz_form.html', quiz=q, courses=courses,
+                           raw=_questions_raw(q))
+
+
+def _questions_raw(q):
+    """بازسازی متن سوالات برای فرم ویرایش — بدون این، textarea خالی است و
+    ذخیرهٔ ویرایش همه سوالات را پاک می‌کند."""
+    lines = []
+    for qq in (q.questions if q else []):
+        choices = '،'.join(qq.choices_list())
+        expl = (qq.explanation or '').strip()
+        lines.append('%s | %s | %s | %s' % (qq.text, choices, qq.correct_index, expl))
+    return '\n'.join(lines)
 
 
 def _save_questions(q, raw):
@@ -1218,11 +1247,34 @@ def assignment_new():
         else:
             db.session.add(Assignment(course_id=cid, title=title,
                                       description=request.form.get('description', '').strip(),
-                                      max_score=request.form.get('max_score', 100, type=int)))
+                                      max_score=request.form.get('max_score', 100, type=int),
+                                      is_published=bool(request.form.get('is_published'))))
             db.session.commit()
             flash('تمرین ساخته شد.', 'success')
             return redirect(url_for('admin.assignments'))
     return render_template('admin/assignment_form.html', item=None, courses=courses)
+
+
+@admin_bp.route('/assignments/<int:aid>/edit', methods=['GET', 'POST'])
+@admin_required
+def assignment_edit(aid):
+    a = db.get_or_404(Assignment, aid)
+    courses = Course.query.order_by(Course.title).all()
+    if request.method == 'POST':
+        title = request.form.get('title', '').strip()
+        cid = request.form.get('course_id', type=int)
+        if not title or not cid:
+            flash('عنوان و دوره الزامی است.', 'error')
+        else:
+            a.title = title
+            a.course_id = cid
+            a.description = request.form.get('description', '').strip()
+            a.max_score = request.form.get('max_score', 100, type=int)
+            a.is_published = bool(request.form.get('is_published'))
+            db.session.commit()
+            flash('تمرین به‌روزرسانی شد.', 'success')
+            return redirect(url_for('admin.assignments'))
+    return render_template('admin/assignment_form.html', item=a, courses=courses)
 
 
 @admin_bp.route('/assignments/<int:aid>/delete', methods=['POST'])
@@ -1526,83 +1578,14 @@ def optimizer():
     """بهینه‌ساز تصویر — غیرفعال؛ فشرده‌سازی خودکار هنگام آپلود."""
     flash('بهینه‌ساز دستی غیرفعال است. تصاویر هنگام آپلود به‌صورت خودکار فشرده می‌شوند.', 'info')
     return redirect(url_for('admin.media_library'))
-    """legacy optimizer — kept unreachable"""
-    from PIL import Image
-    import os
-    items = []
-    fmt = request.form.get('fmt', 'webp') if request.method == 'POST' else 'webp'
-    quality = safe_int(request.form.get('quality'), 80, 20, 95) if request.method == 'POST' else 80
-    maxw = safe_int(request.form.get('maxw'), 0, 0, 8000) if request.method == 'POST' else 0
-    out_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                           'static', 'uploads', 'opt')
-    os.makedirs(out_dir, exist_ok=True)
-    if request.method == 'POST' and request.files.getlist('images'):
-        for fobj in request.files.getlist('images'):
-            if not fobj.filename:
-                continue
-            ext = os.path.splitext(fobj.filename)[1].lower()
-            if ext not in ('.jpg', '.jpeg', '.png', '.webp'):
-                continue
-            try:
-                im = Image.open(fobj.stream).convert('RGB')
-                old_size = len(fobj.read()) if False else im.size
-                fobj.stream.seek(0)
-                if maxw and im.width > maxw:
-                    h = round(im.height * maxw / im.width)
-                    im = im.resize((maxw, h), Image.LANCZOS)
-                base = os.path.splitext(os.path.basename(fobj.filename))[0]
-                fname = f'{base}-opt.{fmt}'
-                im.save(os.path.join(out_dir, fname), fmt.upper() if fmt == 'jpeg' else 'WEBP',
-                        quality=quality, optimize=True)
-                new_size = os.path.getsize(os.path.join(out_dir, fname))
-                raw = Image.open(fobj.stream) if False else None
-                fobj.stream.seek(0)
-                import io
-                raw_bytes = fobj.stream.read()
-                items.append(dict(fname=fname, name=os.path.basename(fobj.filename),
-                                  old_kb=round(len(raw_bytes)/1024), new_kb=round(new_size/1024),
-                                  pct=round((1 - new_size/max(len(raw_bytes),1))*100)))
-            except Exception as e:
-                flash(f'خطا در {fobj.filename}: {str(e)[:80]}', 'error')
-    # آمار پوشه img
-    import glob
-    img_files = glob.glob(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                                       'static', 'img', '*.*'))
-    img_files = [f for f in img_files if f.lower().endswith(('.png', '.jpg', '.jpeg', '.webp'))]
-    total = sum(os.path.getsize(f) for f in img_files)
-    return render_template('admin/optimizer.html', items=items, fmt=fmt,
-                           quality=quality, maxw=maxw,
-                           img_count=len(img_files), total_mb=round(total/1024/1024, 1))
 
 
-@admin_bp.route('/optimizer/bulk', methods=['POST'])
+@admin_bp.route('/optimizer/bulk', methods=['GET', 'POST'])
 @admin_required
 def optimizer_bulk():
-    """بهینه‌سازی همه تصاویر پوشه static/img به WebP"""
-    from PIL import Image
-    import glob, os
-    base = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'static', 'img')
-    out_dir = os.path.join(base, 'optimized')
-    os.makedirs(out_dir, exist_ok=True)
-    lines = []
-    done = 0
-    for f in glob.glob(os.path.join(base, '*.*')):
-        if not f.lower().endswith(('.png', '.jpg', '.jpeg')):
-            continue
-        try:
-            im = Image.open(f).convert('RGB')
-            name = os.path.splitext(os.path.basename(f))[0]
-            out = os.path.join(out_dir, name + '.webp')
-            im.save(out, 'WEBP', quality=80, method=6)
-            old = os.path.getsize(f); new = os.path.getsize(out)
-            lines.append(f'✅ {os.path.basename(f)}: {round(old/1024)}KB → {round(new/1024)}KB (−{round((1-new/old)*100)}٪)')
-            done += 1
-        except Exception as e:
-            lines.append(f'❌ {os.path.basename(f)}: {str(e)[:60]}')
-    lines.insert(0, f'بهینه‌سازی {done} فایل انجام شد. خروجی‌ها در static/img/optimized/')
-    flash(f'{done} تصویر بهینه شد. ✅', 'success')
-    return render_template('admin/optimizer.html', items=[], fmt='webp', quality=80,
-                           maxw=0, img_count=0, total_mb=0, bulk=lines)
+    """بهینه‌ساز دستی غیرفعال است — فشرده‌سازی هنگام آپلود انجام می‌شود."""
+    flash('بهینه‌ساز دستی غیرفعال است. تصاویر هنگام آپلود به‌صورت خودکار فشرده می‌شوند.', 'info')
+    return redirect(url_for('admin.media_library'))
 
 
 

@@ -231,7 +231,11 @@ def create_app():
 
     # مهاجرت افزایشی کوچک برای نوع برگزاری دوره و اطلاعات ارسال سفارش. ستون‌ها
     # باید پیش از اولین SELECT روی نصب‌های قدیمی اضافه شوند.
+    # روی MySQL نصب‌شده همان پرچم SCHEMA_SYNC_ON_BOOT این ALTERها را هم
+    # رد می‌کند تا بوت با ده‌ها inspect روی هاست اشتراکی هنگ نکند.
     try:
+        if _skip_boot_ddl:
+            raise _SkipBootDDL()
         with app.app_context():
             from sqlalchemy import inspect as _inspect, text as _text
             inspector = _inspect(db.engine)
@@ -259,6 +263,18 @@ def create_app():
             _add_columns('forum_posts', {
                 'is_approved': 'BOOLEAN DEFAULT 1',
             })
+            # ستون‌های انتشار آزمون/تمرین و تایید دیدگاه وبلاگ روی نصب‌های
+            # قدیمی باید قبل از اولین SELECT اضافه شوند وگرنه کوئری‌های
+            # is_published / is_approved خطای ۵۰۰ می‌دهند.
+            _add_columns('quizzes', {
+                'is_published': 'BOOLEAN DEFAULT 1',
+            })
+            _add_columns('assignments', {
+                'is_published': 'BOOLEAN DEFAULT 1',
+            })
+            _add_columns('blog_comments', {
+                'is_approved': 'BOOLEAN DEFAULT 1',
+            })
             _add_columns('order_items', {
                 'quantity': 'INTEGER DEFAULT 1',
             })
@@ -277,6 +293,8 @@ def create_app():
                 'fulfillment_status': "VARCHAR(30) DEFAULT 'not_required'",
             })
             db.session.commit()
+    except _SkipBootDDL:
+        pass
     except Exception as _schema_patch_err:
         db.session.rollback()
         app.logger.warning('additive schema patch skipped: %s', _schema_patch_err)
@@ -1024,22 +1042,32 @@ def create_app():
         if '_csrf_token' not in session:
             session['_csrf_token'] = _secrets.token_hex(16)
         g.csrf_token = session['_csrf_token']
-        # بررسی POST های حساس (بدون API که JSON دارد؛ نصب‌کننده هم گارد خودش را دارد)
-        if request.method == 'POST' and not request.path.startswith('/api') and \
-                not request.path.startswith('/builder/api') and \
-                not request.path.startswith('/install') and \
-                not request.path.startswith('/pay/verify/') and \
-                request.path != '/admin/update/webhook':
+        # POSTهای حساس: همه مسیرها به‌جز نصب، بازگشت درگاه، و وب‌هوک‌های
+        # بیرونی (باسلام / به‌روزرسانی). مسیرهای /api و /builder/api هم توکن
+        # هدر X-CSRF-Token می‌خواهند — وگرنه سبد، علاقه‌مندی و رسانه با CSRF
+        # جعل‌پذیر می‌ماند.
+        path = request.path or ''
+        _csrf_exempt = (
+            path.startswith('/install') or
+            path.startswith('/pay/verify/') or
+            path == '/admin/update/webhook' or
+            path.startswith('/api/marketplace/')
+        )
+        if request.method == 'POST' and not _csrf_exempt:
             # Flask-Admin فرم‌هایش را با نام فیلد `csrf_token` ارسال می‌کند؛
             # پنل اصلی ما از `_csrf_token` استفاده می‌کند. هر دو باید با توکن
             # سشن یکسان مقایسه شوند تا هر دو پنل در برابر CSRF محافظت بمانند.
             token = (request.form.get('_csrf_token') or request.form.get('csrf_token') or
                      request.headers.get('X-CSRF-Token'))
             expected = session.get('_csrf_token') or ''
-            if not token:
-                abort(400, description='توکن امنیتی (CSRF) ارسال نشده است. لطفاً صفحه را رفرش کنید و دوباره تلاش کنید.')
-            if not expected or not hmac.compare_digest(str(token), str(expected)):
-                abort(400, description='توکن امنیتی (CSRF) نامعتبر یا منقضی شده است. لطفاً صفحه را رفرش کنید.')
+            if not token or not expected or not hmac.compare_digest(str(token), str(expected)):
+                msg = ('توکن امنیتی (CSRF) ارسال نشده یا نامعتبر است. '
+                       'لطفاً صفحه را رفرش کنید و دوباره تلاش کنید.')
+                if path.startswith(('/api/', '/builder/api/')) or \
+                        request.accept_mimetypes.best == 'application/json':
+                    from flask import jsonify as _csrf_json
+                    return _csrf_json(ok=False, msg=msg), 400
+                abort(400, description=msg)
 
     # ---------- GET روی مسیرهای POST-only → ریدایرکت به جای 405 ----------
     @app.errorhandler(400)
@@ -1793,12 +1821,15 @@ def create_app():
                     bc_admin_menu=lambda: __import__('permissions', fromlist=['menu_for']).menu_for(_u),
                     bc_admin_groups=lambda: __import__('permissions', fromlist=['menu_groups_for']).menu_groups_for(_u),
                     group_has_active=_group_has_active,
+                    admin_badge_tickets=_admin_badge_tickets(_u),
+                    admin_badge_orders=_admin_badge_orders(_u),
+                    admin_badge_forum=_admin_badge_forum(_u),
                     seo=getattr(g, 'seo', dict(title='', description='', keywords='',
                                                canonical='', noindex=False, og_image='',
                                                og_type='website', schema=None)))
 
     def _admin_badge_tickets(user):
-        if not user or not getattr(user, 'is_admin', False) and getattr(user, 'role', '') != 'support':
+        if not user or not (getattr(user, 'is_admin', False) or getattr(user, 'role', '') == 'support'):
             return 0
         try:
             return Ticket.query.filter(Ticket.status.in_(['open', 'answered'])).count()
@@ -1814,7 +1845,7 @@ def create_app():
             return 0
 
     def _admin_badge_forum(user):
-        if not user or not getattr(user, 'is_admin', False) and getattr(user, 'role', '') != 'support':
+        if not user or not (getattr(user, 'is_admin', False) or getattr(user, 'role', '') == 'support'):
             return 0
         try:
             from models import ForumTopic as _FT

@@ -3,7 +3,7 @@
 import re
 import sqlite3
 
-from conftest import login
+from conftest import csrf_headers, login
 from models import db, Order, Enrollment
 from jdates import jdate, jalali_to_gregorian, jdatetime
 
@@ -17,7 +17,8 @@ def _csrf(client, path):
 
 def test_cart_add(client):
     login(client, 'demo@test.ir', 'demo123')
-    r = client.post('/api/cart/add', json={'course_id': 1})
+    r = client.post('/api/cart/add', json={'course_id': 1},
+                    headers=csrf_headers(client))
     assert r.get_json()['ok'] is True
 
 
@@ -39,7 +40,7 @@ def test_full_purchase_flow(client, app):
     _enable_sandbox(app)
     login(client, 'demo@test.ir', 'demo123')
     # سبد
-    client.post('/api/cart/add', json={'course_id': 1})
+    client.post('/api/cart/add', json={'course_id': 1}, headers=csrf_headers(client))
     # سفارش
     tok = _csrf(client, '/checkout')
     r = client.post('/checkout', data={

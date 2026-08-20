@@ -209,7 +209,8 @@ def learn(course_id):
     checkpoint_quiz = None
     try:
         if len(done) >= 5 and len(done) % 5 == 0:
-            checkpoint_quiz = _Quiz.query.filter_by(course_id=course.id, is_placement=False).first()
+            checkpoint_quiz = _Quiz.query.filter_by(
+                course_id=course.id, is_placement=False, is_published=True).first()
     except Exception:
         _lexc('blueprints/student.py')
     video_src = current.video_src
@@ -348,13 +349,17 @@ def certificate(course_id):
     code = certificate_code(course.slug, g.user.email, enrollment.id)
     try:
         from models import Notification
-        Notification.notify(g.user.id, 'گواهینامه شما صادر شد 🏅',
-                            f'گواهی دوره «{course.title}» آماده دانلود است.',
-                            '🏅', url_for('student.certificate', course_id=course_id))
-        from email_service import send_certificate_email
-        if g.user.email:
-            send_certificate_email(g.user, course, code, g.settings)
-        db.session.commit()
+        already = Notification.query.filter_by(
+            user_id=g.user.id, title='گواهینامه شما صادر شد 🏅',
+            link=url_for('student.certificate', course_id=course_id)).first()
+        if not already:
+            Notification.notify(g.user.id, 'گواهینامه شما صادر شد 🏅',
+                                f'گواهی دوره «{course.title}» آماده دانلود است.',
+                                '🏅', url_for('student.certificate', course_id=course_id))
+            from email_service import send_certificate_email
+            if g.user.email:
+                send_certificate_email(g.user, course, code, g.settings)
+            db.session.commit()
     except Exception:
         _lexc('blueprints/student.py')
     return render_template('certificate.html', course=course, enrollment=enrollment, code=code)

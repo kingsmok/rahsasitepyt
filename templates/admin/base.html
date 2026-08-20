@@ -31,6 +31,13 @@
         {% for ep, label in group['items'] %}
         <a href="{{ url_for(ep) }}" data-admin-link class="as-link {{ 'active' if request.endpoint == ep or (request.endpoint and ep and request.endpoint.startswith(ep.split('.')[0] + '.') and ep.split('.')[1] == request.endpoint.split('.')[1]) }}">
           <span class="as-link-label">{{ label }}</span>
+          {% if ep == 'admin.tickets' and admin_badge_tickets %}
+          <span class="as-badge">{{ admin_badge_tickets }}</span>
+          {% elif ep == 'admin.orders' and admin_badge_orders %}
+          <span class="as-badge">{{ admin_badge_orders }}</span>
+          {% elif ep == 'admin.forum_moderate' and admin_badge_forum %}
+          <span class="as-badge">{{ admin_badge_forum }}</span>
+          {% endif %}
         </a>
         {% endfor %}
       </div>

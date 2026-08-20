@@ -61,7 +61,7 @@ btn.addEventListener('click',function(){
   if(!prompt){alert('موضوع را بنویسید');return;}
   btn.disabled=true;btn.textContent='…در حال تولید';
   statusEl.textContent='این کار ممکن است ۲۰ تا ۴۰ ثانیه طول بکشد';
-  fetch('/api/ai-writer',{method:'POST',headers:{'Content-Type':'application/json'},
+  fetch('/api/ai-writer',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':(window.csrfToken?window.csrfToken():'')},
     body:JSON.stringify({prompt:prompt,mode:mode})})
     .then(function(r){return r.json()})
     .then(function(d){

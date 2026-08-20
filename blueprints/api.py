@@ -114,6 +114,8 @@ def favorite_toggle():
 @api_bp.route('/form', methods=['POST'])
 def submit_form():
     from models import ContactMessage, NewsletterEmail
+    if not _media_api_csrf_ok():
+        return jsonify(ok=False, msg='توکن امنیتی (CSRF) نامعتبر است — صفحه را رفرش کنید.'), 400
     data = request.get_json(force=True) if request.is_json else request.form
     fields = data.get('fields') or []
     if isinstance(fields, str):
@@ -165,6 +167,10 @@ def contact_read(mid):
 @api_bp.route('/media/list')
 def media_list():
     """لیست رسانه‌ها برای انتخابگر سراسری فایل (JSON) — با صفحه‌بندی."""
+    if not g.user:
+        return jsonify(ok=False, msg='ابتدا وارد شوید', login=True), 401
+    if not (g.user.is_admin or g.user.is_teacher):
+        return jsonify(ok=False, msg='دسترسی محدود به مدیر/مدرس'), 403
     from models import Media
     kind = request.args.get('kind', '').strip()
     q = request.args.get('q', '').strip()

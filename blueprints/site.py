@@ -555,10 +555,23 @@ def blog_post(slug):
         name = clamp_field(request.form.get('name'), 'name')
         comment = clamp_field(request.form.get('comment'), 'comment')
         if name and comment:
+            from content_filter import moderate_text
+            ok_c, comment, reason = moderate_text(comment, 2000)
+            if not ok_c:
+                flash(reason or 'متن دیدگاه مجاز نیست.', 'error')
+                return redirect(url_for('site.blog_post', slug=slug) + '#comments')
             db.session.add(BlogComment(post_id=post.id, name=name,
-                                       comment=comment, ip=client_ip[:60]))
+                                       comment=comment, ip=client_ip[:60],
+                                       is_approved=False))
+            try:
+                from models import Notification
+                Notification.notify_staff('دیدگاه وبلاگ در انتظار تایید',
+                                          f'{name}: {post.title}',
+                                          '💬', '/admin/reviews')
+            except Exception:
+                _lexc('blueprints/site.py')
             db.session.commit()
-            flash('دیدگاه شما ثبت شد. ممنون! 🙏', 'success')
+            flash('دیدگاه شما ثبت شد و پس از تایید مدیر نمایش داده می‌شود.', 'success')
         else:
             flash('نام و متن دیدگاه الزامی است.', 'error')
         return redirect(url_for('site.blog_post', slug=slug) + '#comments')

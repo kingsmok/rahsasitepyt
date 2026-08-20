@@ -76,7 +76,13 @@ def compress_image_file(fpath, max_side=1600, quality=82):
         from PIL import Image, ImageOps
         with Image.open(fpath) as im:
             im = ImageOps.exif_transpose(im)
-            if im.mode not in ('RGB', 'L'):
+            if ext in ('.jpg', '.jpeg'):
+                if im.mode not in ('RGB', 'L'):
+                    im = im.convert('RGB')
+            elif ext == '.png':
+                if im.mode not in ('RGB', 'L', 'RGBA', 'LA', 'P'):
+                    im = im.convert('RGBA')
+            elif im.mode not in ('RGB', 'L', 'RGBA'):
                 im = im.convert('RGB')
             w, h = im.size
             if max(w, h) > max_side:

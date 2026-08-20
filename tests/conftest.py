@@ -52,6 +52,17 @@ def client(app):
     return app.test_client()
 
 
+def csrf_headers(client):
+    """هدر X-CSRF-Token از سشن تست — برای POSTهای JSON زیر /api."""
+    with client.session_transaction() as sess:
+        tok = sess.get('_csrf_token')
+    if not tok:
+        client.get('/')
+        with client.session_transaction() as sess:
+            tok = sess.get('_csrf_token')
+    return {'X-CSRF-Token': tok or ''}
+
+
 def login(client, email, password):
     """لاگین کمکی — توکن CSRF را از فرم می‌گیرد"""
     import re

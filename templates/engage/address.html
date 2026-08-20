@@ -79,7 +79,7 @@
     if(!prov.value){note.textContent='لطفاً استان را انتخاب کنید.';return;}
     var query=[prov.value,city.value,document.getElementById('address').value,'ایران'].filter(Boolean).join('، ');
     document.getElementById('address-map').src='https://maps.google.com/maps?q='+encodeURIComponent(query)+'&output=embed';
-    fetch('/api/address/shipping-estimate',{method:'POST',headers:{'Content-Type':'application/json'},
+    fetch('/api/address/shipping-estimate',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':(window.csrfToken?window.csrfToken():'')},
       credentials:'same-origin',
       body:JSON.stringify({province:prov.value,city:city.value})})
       .then(function(r){return r.json()})

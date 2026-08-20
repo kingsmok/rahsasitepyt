@@ -250,7 +250,7 @@ _ADMIN_MENU = [
     ('sep', '⚙️ فنی'),
     ('admin.media_library', '📁 کتابخانه رسانه'),
     ('admin.sms_settings', '📱 پیامک'), ('admin.messengers', '📨 پیام‌رسان‌ها'),
-    ('admin.optimizer', '🖼 بهینه‌ساز'), ('admin.backup_list', '🗄 بکاپ‌ها'),
+    ('admin.backup_list', '🗄 بکاپ‌ها'),
     ('admin.icons_browser', '🎨 آیکون‌ها'), ('admin.update_page', '🔄 بروزرسانی'),
     ('admin.install_manager', '🛠 مدیریت نصب و اتصالات'),
 ]
@@ -322,6 +322,7 @@ _ADMIN_GROUPS = [
         ('market.admin_marketplace', 'مارکت‌پلیس‌ها'),
     ]},
     {'label': 'محتوا و آموزش', 'icon': '📚', 'items': [
+        ('admin.courses', 'دورٚ', 'items': [
         ('admin.courses', 'دوره‌ها'),
         ('admin.blog', 'وبلاگ'),
         ('admin.categories', 'دسته‌بندی‌ها'),
@@ -357,7 +358,6 @@ _ADMIN_GROUPS = [
         ('admin.designs', 'طراحی‌های سایت'),
         ('admin.media_library', 'کتابخانه رسانه'),
         ('admin.icons_browser', 'آیکون‌ها'),
-        ('admin.optimizer', 'بهینه‌ساز تصویر'),
     ]},
     {'label': 'سئو و بازاریابی', 'icon': '📈', 'items': [
         ('seo_admin.dashboard', 'داشبورد سئو'),
@@ -447,3 +447,4 @@ def menu_groups_for(user):
             groups.append({'label': group['label'], 'icon': group['icon'],
                            'items': items})
     return groups
+return groups

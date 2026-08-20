@@ -1038,7 +1038,7 @@ class BlogComment(db.Model):
     post_id = db.Column(db.Integer, db.ForeignKey('blog_posts.id'), nullable=False)
     name = db.Column(db.String(120), nullable=False)
     comment = db.Column(db.Text, nullable=False)
-    is_approved = db.Column(db.Boolean, default=True, nullable=True)
+    is_approved = db.Column(db.Boolean, default=False, nullable=True)
     ip = db.Column(db.String(60), default='')          # برای ضد اسپم (بدون نمایش عمومی)
     created_at = db.Column(db.DateTime, default=utcnow)
     post = db.relationship(

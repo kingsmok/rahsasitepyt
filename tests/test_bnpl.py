@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """تست پنل اقساطی (BNPL) — اسنپ‌پی / ترب / دیجی‌پی."""
 import re
-from conftest import login
+from conftest import csrf_headers, login
 
 
 def _csrf(client, path):
@@ -57,7 +57,7 @@ def test_build_installments_persists(monkeypatch, app):
 # ---------------------------------------------------------------
 def test_checkout_with_installment_goes_to_bnpl(client, app):
     login(client, 'demo@test.ir', 'demo123')
-    client.post('/api/cart/add', json={'course_id': 1})
+    client.post('/api/cart/add', json={'course_id': 1}, headers=csrf_headers(client))
     tok = _csrf(client, '/checkout')
     r = client.post('/checkout', data={'_csrf_token': tok, 'action': 'create_order',
                                        'installment_count': '4'}, follow_redirects=False)
@@ -68,7 +68,7 @@ def test_checkout_with_installment_goes_to_bnpl(client, app):
 
 def test_bnpl_page_shows_three_providers(client, app):
     login(client, 'demo@test.ir', 'demo123')
-    client.post('/api/cart/add', json={'course_id': 1})
+    client.post('/api/cart/add', json={'course_id': 1}, headers=csrf_headers(client))
     tok = _csrf(client, '/checkout')
     r = client.post('/checkout', data={'_csrf_token': tok, 'action': 'create_order',
                                        'installment_count': '3'}, follow_redirects=False)
@@ -82,7 +82,7 @@ def test_bnpl_page_shows_three_providers(client, app):
 
 def test_bnpl_start_sets_gateway_and_installments(client, app):
     login(client, 'demo@test.ir', 'demo123')
-    client.post('/api/cart/add', json={'course_id': 1})
+    client.post('/api/cart/add', json={'course_id': 1}, headers=csrf_headers(client))
     tok = _csrf(client, '/checkout')
     r = client.post('/checkout', data={'_csrf_token': tok, 'action': 'create_order',
                                        'installment_count': '3'}, follow_redirects=False)
@@ -110,7 +110,7 @@ def test_bnpl_start_sets_gateway_and_installments(client, app):
 
 def test_bnpl_start_rejects_invalid_gateway(client, app):
     login(client, 'demo@test.ir', 'demo123')
-    client.post('/api/cart/add', json={'course_id': 1})
+    client.post('/api/cart/add', json={'course_id': 1}, headers=csrf_headers(client))
     tok = _csrf(client, '/checkout')
     r = client.post('/checkout', data={'_csrf_token': tok, 'action': 'create_order',
                                        'installment_count': '2'}, follow_redirects=False)
@@ -132,7 +132,7 @@ def test_bnpl_start_rejects_invalid_gateway(client, app):
 def test_gateway_page_preselects_installment_provider(client, app, monkeypatch):
     """پس از شروع از پنل اقساطی، درگاه اقساطی در صفحهٔ پرداخت از پیش انتخاب شده باشد."""
     login(client, 'demo@test.ir', 'demo123')
-    client.post('/api/cart/add', json={'course_id': 1})
+    client.post('/api/cart/add', json={'course_id': 1}, headers=csrf_headers(client))
     tok = _csrf(client, '/checkout')
     r = client.post('/checkout', data={'_csrf_token': tok, 'action': 'create_order',
                                        'installment_count': '4'}, follow_redirects=False)
@@ -190,7 +190,7 @@ def test_bnpl_full_snapppay_flow(client, app, monkeypatch):
         db.session.commit()
 
     login(client, 'demo@test.ir', 'demo123')
-    client.post('/api/cart/add', json={'course_id': 1})
+    client.post('/api/cart/add', json={'course_id': 1}, headers=csrf_headers(client))
     tok = _csrf(client, '/checkout')
     r = client.post('/checkout', data={'_csrf_token': tok, 'action': 'create_order',
                                        'installment_count': '4'}, follow_redirects=False)

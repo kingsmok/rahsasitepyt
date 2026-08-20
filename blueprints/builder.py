@@ -1341,6 +1341,16 @@ def _admin_required():
     return None
 
 
+def _builder_csrf_ok():
+    """POSTهای JSON صفحه‌ساز از CSRF سراسری معاف‌اند؛ اینجا توکن سشن چک می‌شود."""
+    import hmac
+    from flask import session
+    token = (request.headers.get('X-CSRF-Token') or
+             request.form.get('_csrf_token') or '')
+    expected = session.get('_csrf_token') or ''
+    return bool(token) and bool(expected) and hmac.compare_digest(str(token), str(expected))
+
+
 @builder_bp.route('/builder')
 def index():
     r = _admin_required()
@@ -1509,6 +1519,8 @@ def api_render():
     r = _admin_required()
     if r:
         return jsonify(ok=False, msg='دسترسی غیرمجاز'), 403
+    if not _builder_csrf_ok():
+        return jsonify(ok=False, msg='توکن امنیتی نامعتبر است'), 400
     data = request.get_json(force=True)
     edit = bool(data.get('edit'))
     rows = _sanitize_rows(data.get('rows', []))
@@ -1547,6 +1559,8 @@ def api_save():
     r = _admin_required()
     if r:
         return jsonify(ok=False, msg='دسترسی غیرمجاز'), 403
+    if not _builder_csrf_ok():
+        return jsonify(ok=False, msg='توکن امنیتی نامعتبر است'), 400
     data = request.get_json(force=True)
     # محدودیت سایز منطقی صفحه — ضد DoS با JSON عظیم
     if len(json.dumps(data, ensure_ascii=False)) > 500_000:
@@ -1597,6 +1611,8 @@ def api_restore(rev_id):
     r = _admin_required()
     if r:
         return jsonify(ok=False), 403
+    if not _builder_csrf_ok():
+        return jsonify(ok=False, msg='توکن امنیتی نامعتبر است'), 400
     from models import PageRevision
     rev = db.get_or_404(PageRevision, rev_id)
     page = rev.page
@@ -1616,6 +1632,8 @@ def api_section_template():
     r = _admin_required()
     if r:
         return jsonify(ok=False), 403
+    if not _builder_csrf_ok():
+        return jsonify(ok=False, msg='توکن امنیتی نامعتبر است'), 400
     data = request.get_json(silent=True) or {}
     name = (data.get('name') or '').strip()[:80]
     row = data.get('row')
@@ -1634,6 +1652,8 @@ def api_page_template():
     r = _admin_required()
     if r:
         return jsonify(ok=False), 403
+    if not _builder_csrf_ok():
+        return jsonify(ok=False, msg='توکن امنیتی نامعتبر است'), 400
     data = request.get_json(silent=True) or {}
     name = (data.get('name') or '').strip()[:80]
     rows = data.get('rows')
@@ -1654,6 +1674,8 @@ def api_upload():
     r = _admin_required()
     if r:
         return jsonify(ok=False), 403
+    if not _builder_csrf_ok():
+        return jsonify(ok=False, msg='توکن امنیتی نامعتبر است'), 400
     f = request.files.get('file')
     if not f:
         return jsonify(ok=False), 400
@@ -1669,5 +1691,11 @@ def api_upload():
     os.makedirs(up_dir, exist_ok=True)
     ext = os.path.splitext(safe)[1].lower()
     name = 'up_' + uuid.uuid4().hex[:10] + ext
-    f.save(os.path.join(up_dir, name))
+    dest = os.path.join(up_dir, name)
+    f.save(dest)
+    try:
+        from uploads_helper import compress_image_file
+        compress_image_file(dest)
+    except Exception:
+        pass
     return jsonify(ok=True, file=name)

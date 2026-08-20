@@ -8,6 +8,7 @@
 import re
 import gateways
 import pytest
+from conftest import csrf_headers
 
 
 class _FakeResp:
@@ -48,7 +49,7 @@ def test_real_zarinpal_full_flow(client, app, real_gateway_settings, monkeypatch
     login(client, 'demo@test.ir', 'demo123')
 
     # سبد + سفارش
-    client.post('/api/cart/add', json={'course_id': 1})
+    client.post('/api/cart/add', json={'course_id': 1}, headers=csrf_headers(client))
     tok = _csrf(client, '/checkout')
     r = client.post('/checkout', data={'_csrf_token': tok, 'action': 'create_order',
                                        'installment_count': '0'}, follow_redirects=False)
@@ -150,7 +151,7 @@ def test_real_gateway_not_offered_when_sandbox_off(client, app, real_gateway_set
     """با sandbox خاموش، درگاه آزمایشی نباید در لیست نمایش داده شود و انتخابش رد شود."""
     login = __import__('conftest', fromlist=['login']).login
     login(client, 'demo@test.ir', 'demo123')
-    client.post('/api/cart/add', json={'course_id': 1})
+    client.post('/api/cart/add', json={'course_id': 1}, headers=csrf_headers(client))
     tok = _csrf(client, '/checkout')
     r = client.post('/checkout', data={'_csrf_token': tok, 'action': 'create_order',
                                        'installment_count': '0'}, follow_redirects=False)

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """تست فروشگاه محصولات — فهرست، جزئیات، سبد، سفارش."""
 import re
-from conftest import login
+from conftest import csrf_headers, login
 from models import db, Product, Order
 
 
@@ -56,7 +56,8 @@ def test_add_product_to_cart(client, app):
     login(client, 'demo@test.ir', 'demo123')
     with app.app_context():
         p = Product.query.filter_by(slug='mug-test').first()
-    r = client.post('/api/product-cart/add', json={'product_id': p.id})
+    r = client.post('/api/product-cart/add', json={'product_id': p.id},
+                    headers=csrf_headers(client))
     assert r.status_code == 200
     assert r.get_json().get('ok') is True
 
@@ -64,9 +65,11 @@ def test_add_product_to_cart(client, app):
 def test_add_product_cart_invalid(client, app):
     _make_products(app)
     login(client, 'demo@test.ir', 'demo123')
-    r = client.post('/api/product-cart/add', json={'product_id': 99999})
+    r = client.post('/api/product-cart/add', json={'product_id': 99999},
+                    headers=csrf_headers(client))
     assert r.status_code in (400, 404)
-    assert client.post('/api/product-cart/add', json={'product_id': 'bad'}).status_code == 400
+    assert client.post('/api/product-cart/add', json={'product_id': 'bad'},
+                       headers=csrf_headers(client)).status_code == 400
 
 
 def test_cart_items(client, app):
@@ -74,11 +77,13 @@ def test_cart_items(client, app):
     login(client, 'demo@test.ir', 'demo123')
     with app.app_context():
         p = Product.query.filter_by(slug='mug-test').first()
-    client.post('/api/product-cart/add', json={'product_id': p.id})
+    client.post('/api/product-cart/add', json={'product_id': p.id},
+                headers=csrf_headers(client))
     r = client.get('/api/cart/items')
     assert r.status_code == 200
     assert r.get_json()['items'][0]['quantity'] == 1
-    update = client.post('/api/product-cart/quantity', json={'product_id': p.id, 'quantity': 3})
+    update = client.post('/api/product-cart/quantity', json={'product_id': p.id, 'quantity': 3},
+                         headers=csrf_headers(client))
     assert update.status_code == 200
     assert client.get('/api/cart/items').get_json()['items'][0]['quantity'] == 3
 
@@ -88,8 +93,10 @@ def test_physical_order_requires_and_stores_shipping_address(client, app):
     login(client, 'demo@test.ir', 'demo123')
     with app.app_context():
         product = Product.query.filter_by(slug='mug-test').first()
-    client.post('/api/product-cart/add', json={'product_id': product.id})
-    client.post('/api/product-cart/quantity', json={'product_id': product.id, 'quantity': 2})
+    client.post('/api/product-cart/add', json={'product_id': product.id},
+                headers=csrf_headers(client))
+    client.post('/api/product-cart/quantity', json={'product_id': product.id, 'quantity': 2},
+                headers=csrf_headers(client))
     token = _csrf(client, '/checkout')
     missing = client.post('/checkout', data={
         '_csrf_token': token, 'action': 'create_order'

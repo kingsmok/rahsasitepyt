@@ -44,6 +44,18 @@ def test_video_id_extraction():
     assert aparat_hash('https://www.aparat.com/v/abc12345') == 'abc12345'
     assert aparat_hash('https://www.aparat.com/video/abc12345') == 'abc12345'
     assert detect_video('https://www.youtube.com/watch?v=ScMzIvxBSi4')[0] == 'youtube'
+    assert detect_video('https://www.youtube.com/shorts/ScMzIvxBSi4')[0] == 'youtube'
+    assert detect_video('https://m.youtube.com/watch?v=ScMzIvxBSi4')[0] == 'youtube'
+    assert detect_video('https://www.aparat.com/v/abc12345')[0] == 'aparat'
+    assert detect_video('/static/video/lesson.mp4')[0] == 'direct'
+
+
+def test_create_tables_resilient_accepts_convert_charset():
+    import inspect
+    from installer import _create_tables_resilient
+    params = inspect.signature(_create_tables_resilient).parameters
+    assert 'convert_charset' in params
+    assert params['convert_charset'].default is True
 
 
 def test_safe_filename():

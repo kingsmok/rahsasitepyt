@@ -164,11 +164,13 @@
     </div>
     {% endif %}
     <!-- آزمون‌ها و تمرین‌های دوره -->
-    {% if course.quizzes or course.assignments %}
+    {% set pub_quizzes = course.quizzes|selectattr('is_published')|list %}
+    {% set pub_assignments = course.assignments|selectattr('is_published')|list %}
+    {% if pub_quizzes or pub_assignments %}
     <div class="mt-4">
       <h2 style="font-size:17px;margin-bottom:12px">📝 آزمون‌ها و تمرین‌های این دوره</h2>
       <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px">
-        {% for qz in course.quizzes %}
+        {% for qz in pub_quizzes %}
         <a class="card card-hover" style="padding:16px;display:flex;align-items:center;gap:12px;text-decoration:none" href="{{ url_for('features.quiz_view', qid=qz.id) }}">
           <span style="font-size:24px">📝</span>
           <div style="flex:1;min-width:0">
@@ -178,7 +180,7 @@
           <span class="btn btn-ghost btn-sm">شروع</span>
         </a>
         {% endfor %}
-        {% for asg in course.assignments %}
+        {% for asg in pub_assignments %}
         <a class="card card-hover" style="padding:16px;display:flex;align-items:center;gap:12px;text-decoration:none" href="{{ url_for('features.assignment_view', aid=asg.id) }}">
           <span style="font-size:24px">📌</span>
           <div style="flex:1;min-width:0">

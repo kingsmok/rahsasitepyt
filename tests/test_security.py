@@ -2,13 +2,20 @@
 """تست‌های امنیتی — CSRF، آپلود، XSS، IDOR"""
 import io
 import re
-from conftest import login
+from conftest import csrf_headers, login
 
 
 def test_csrf_rejects_missing_token(client):
     """POST بدون توکن CSRF → 400"""
     r = client.post('/contact', data={'name': 'x', 'message': 'y'})
     assert r.status_code == 400
+
+
+def test_api_cart_requires_csrf(client):
+    """POST سبد زیر /api بدون توکن باید 400 بدهد (نه موفق)."""
+    r = client.post('/api/cart/add', json={'course_id': 1})
+    assert r.status_code == 400
+    assert r.get_json()['ok'] is False
 
 
 def test_csrf_accepts_valid_token(client):
@@ -26,7 +33,7 @@ def test_upload_rejects_dangerous_ext(client):
     login(client, 't@test.ir', 'teacher123')
     r = client.post('/api/media/upload', data={
         'file': (io.BytesIO(b'<?php echo 1;'), 'shell.php')
-    }, content_type='multipart/form-data')
+    }, headers=csrf_headers(client), content_type='multipart/form-data')
     assert r.status_code == 400
 
 
@@ -35,7 +42,7 @@ def test_upload_rejects_svg_dangerous_content(client):
     login(client, 't@test.ir', 'teacher123')
     r = client.post('/api/media/upload', data={
         'file': (io.BytesIO(b'<svg onload="alert(1)"></svg>'), 'x.svg')
-    }, content_type='multipart/form-data')
+    }, headers=csrf_headers(client), content_type='multipart/form-data')
     assert r.status_code == 400
 
 
@@ -46,7 +53,7 @@ def test_media_upload_forbidden_for_student(client):
     login(client, 'demo@test.ir', 'demo123')
     r = client.post('/api/media/upload', data={
         'file': (io.BytesIO(b'fake image bytes'), 'pic.png')
-    }, content_type='multipart/form-data')
+    }, headers=csrf_headers(client), content_type='multipart/form-data')
     assert r.status_code == 403
 
 
@@ -58,8 +65,8 @@ def test_upload_rejects_non_image_in_builder(client):
     from app import create_app
     r = client.post('/api/media/upload', data={
         'file': (io.BytesIO(b'MZ fake exe'), 'evil.exe')
-    }, content_type='multipart/form-data')
-    assert r.status_code in (400, 401)
+    }, headers=csrf_headers(client), content_type='multipart/form-data')
+    assert r.status_code in (400, 401, 403)
 
 
 def test_xss_escaped_in_comment(client):

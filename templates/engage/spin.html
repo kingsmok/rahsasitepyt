@@ -80,7 +80,7 @@
     var spins=5+Math.floor(Math.random()*4);
     var deg=spins*360+Math.floor(Math.random()*360);
     wheel.style.transform='rotate('+deg+'deg)';
-    fetch('/api/spin',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})
+    fetch('/api/spin',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':(window.csrfToken?window.csrfToken():'')},body:'{}'})
       .then(function(r){return r.json()})
       .then(function(d){
         setTimeout(function(){

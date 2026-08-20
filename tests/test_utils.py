@@ -174,3 +174,12 @@ def test_messenger_unknown_platform():
     from messengers import send_message
     ok, msg = send_message('not-a-platform', 'x', {})
     assert ok is False
+
+
+def test_sanitize_bot_token_from_botfather_paste():
+    from messengers import sanitize_bot_token, sanitize_chat_id
+    tok = '123456789:AAHxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
+    pasted = 'Use this token to access the HTTP API:\n' + tok + '\nKeep it secret'
+    assert sanitize_bot_token(pasted) == tok
+    assert sanitize_chat_id('کانال من @my_channel لطفاً') == '@my_channel'
+    assert sanitize_chat_id('id=-1001234567890') == '-1001234567890'

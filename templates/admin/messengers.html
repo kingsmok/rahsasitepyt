@@ -40,10 +40,10 @@
         <span class="msg-status {{ 'on' if tok else 'off' }}">{{ '🔗 متصل' if tok else '⛔ خاموش' }}</span>
       </div>
       <div class="form-group"><label>توکن ربات</label>
-        <input class="form-control" dir="ltr" name="{{ m.token_key }}" value="{{ tok }}" placeholder="123456:ABC-...">
+        <input class="form-control" dir="ltr" name="{{ m.token_key }}" value="{{ tok }}" placeholder="توکن ربات را از BotFather پیست کنید" autocomplete="off" data-paste-token>
       </div>
       <div class="form-group"><label>آیدی کانال/چت</label>
-        <input class="form-control" dir="ltr" name="{{ m.chat_key }}" value="{{ site.get(m.chat_key) or '' }}" placeholder="@channel یا 123456789">
+        <input class="form-control" dir="ltr" name="{{ m.chat_key }}" value="{{ site.get(m.chat_key) or '' }}" placeholder="@channel یا شناسه عددی را پیست کنید" autocomplete="off" data-paste-chat>
       </div>
       <button class="btn btn-ghost btn-sm" formaction="{{ url_for('admin.messenger_test', mid=m.id) }}">🔌 تست اتصال</button>
     </div>
@@ -77,4 +77,20 @@
   {% endfor %}
 </div>
 {% endif %}
+<script>
+document.querySelectorAll('[data-paste-token]').forEach(function (el) {
+  el.addEventListener('paste', function (e) {
+    var t = (e.clipboardData || window.clipboardData).getData('text') || '';
+    var m = t.match(/(\d{5,}:[A-Za-z0-9_-]{20,})/);
+    if (m) { e.preventDefault(); el.value = m[1]; }
+  });
+});
+document.querySelectorAll('[data-paste-chat]').forEach(function (el) {
+  el.addEventListener('paste', function (e) {
+    var t = (e.clipboardData || window.clipboardData).getData('text') || '';
+    var m = t.match(/(@[A-Za-z0-9_]{4,}|-?\d{5,})/);
+    if (m) { e.preventDefault(); el.value = m[1]; }
+  });
+});
+</script>
 {% endblock %}

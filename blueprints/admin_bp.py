@@ -1432,6 +1432,12 @@ def messengers():
             keys += [m['token_key'], m['chat_key']]
         for k in keys:
             v = request.form.get(k, '').strip()
+            if k.endswith('_token'):
+                from messengers import sanitize_bot_token
+                v = sanitize_bot_token(v)
+            elif k.endswith('_chat'):
+                from messengers import sanitize_chat_id
+                v = sanitize_chat_id(v)
             st = db.session.get(Setting, k)
             if st:
                 st.value = v
@@ -1463,6 +1469,12 @@ def messenger_test(mid):
     for m in MESSENGERS:
         for k in (m['token_key'], m['chat_key']):
             v = request.form.get(k, '').strip()
+            if k.endswith('_token'):
+                from messengers import sanitize_bot_token
+                v = sanitize_bot_token(v)
+            elif k.endswith('_chat'):
+                from messengers import sanitize_chat_id
+                v = sanitize_chat_id(v)
             st = db.session.get(Setting, k)
             if st:
                 st.value = v
@@ -2878,6 +2890,7 @@ def super_settings():
                 # عمومی و برند
                 'site_name', 'site_desc', 'phone', 'email', 'address', 'support_hours',
                 'about_text', 'contact_intro', 'custom_logo', 'brand_color', 'brand_color2',
+                'custom_font_url',
                 'telegram', 'instagram', 'whatsapp', 'bale', 'eitaa', 'rubika', 'soroush',
                 'aparat', 'twitter', 'linkedin', 'youtube', 'github',
                 # سئو
@@ -2923,6 +2936,10 @@ def super_settings():
                 # پرداخت ساختگی در نسخهٔ نهایی قابل فعال‌سازی نیست.
                 if k == 'sandbox_mode':
                     v = '0'
+                elif k == 'custom_font_url':
+                    if not (v.startswith('/static/fonts/') and v.endswith('.woff2')
+                            and '..' not in v and ' ' not in v and len(v) < 180):
+                        v = ''
                 elif k == 'refund_days':
                     try:
                         v = str(max(0, min(90, int(v or 0))))

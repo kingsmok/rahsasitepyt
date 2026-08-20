@@ -57,7 +57,12 @@
   <link rel="stylesheet" href="/static/css/builder.css?v={{ asset_v() }}">
   <link id="theme-css" rel="stylesheet" href="/static/css/themes/{{ theme }}.css?v={{ asset_v() }}">
   {% set _brand1 = site.brand_color|css_color %}{% set _brand2 = site.brand_color2|css_color %}
-  {% if _brand1 %}<style>:root{--primary:{{ _brand1 }};--primary-2:{{ _brand2 or _brand1 }};--primary-soft:color-mix(in srgb, {{ _brand1 }} 14%, #ffffff);--grad-brand:linear-gradient(135deg,{{ _brand1 }},{{ _brand2 or _brand1 }});--theme-color:{{ _brand1 }}}</style>{% endif %}
+  {% if _brand1 %}<style>:root{--primary:{{ _brand1 }};--primary-2:{{ _brand2 or _brand1 }};--primary-soft:{{ _brand1 }}24;--grad-brand:linear-gradient(135deg,{{ _brand1 }},{{ _brand2 or _brand1 }});--theme-color:{{ _brand1 }}}@supports (color:color-mix(in srgb, red, white)){:root{--primary-soft:color-mix(in srgb, {{ _brand1 }} 14%, #ffffff)}}</style>{% endif %}
+  {% set _font = site.get('custom_font_url') or '' %}
+  {% if _font.startswith('/static/fonts/') and _font.endswith('.woff2') %}
+  <link rel="preload" href="{{ _font }}" as="font" type="font/woff2" crossorigin>
+  <style>@font-face{font-family:'SiteFont';src:url('{{ _font }}') format('woff2-variations');font-weight:100 900;font-display:swap}:root{--font:'SiteFont','Vazirmatn',Tahoma,'Segoe UI',sans-serif}</style>
+  {% endif %}
   {% set _eff_cont = (eff_container or site.get('kit_container') or '')|css_int(720, 1800) %}
   {% set _eff_rad = (eff_radius or site.get('kit_radius') or '')|css_int(0, 40) %}
   {% if _eff_cont != '' %}<style>:root{--container:{{ _eff_cont }}px}</style>{% endif %}

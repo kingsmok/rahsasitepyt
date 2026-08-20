@@ -1934,6 +1934,13 @@ def create_app():
                                err_msg='مشکلی در سرور رخ داده است. لطفاً کمی بعد تلاش کنید.',
                                err_code=500), 500
 
+    @app.errorhandler(503)
+    def service_unavailable(e):
+        return render_template('errors/standalone_error.html',
+                               err_title='سرویس موقتاً در دسترس نیست',
+                               err_msg='سایت در حال به‌روزرسانی یا تعمیر است. چند دقیقه دیگر دوباره تلاش کنید.',
+                               err_code=503), 503
+
     def render_error(title, msg, code):
         from flask import render_template
         return render_template('errors/error.html', err_title=title, err_msg=msg,

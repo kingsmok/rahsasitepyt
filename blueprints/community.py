@@ -35,7 +35,8 @@ def forum():
     post_counts = {}
     if tids:
         pc = db.session.query(ForumPost.topic_id, _f.count(ForumPost.id)) \
-            .filter(ForumPost.topic_id.in_(tids)).group_by(ForumPost.topic_id).all()
+            .filter(ForumPost.topic_id.in_(tids), ForumPost.is_approved == True) \
+            .group_by(ForumPost.topic_id).all()
         post_counts = dict(pc)
     courses = Course.query.filter_by(status='published').all()
     g.seo['title'] = 'انجمن گفتگو — آکادمی آنلاین'

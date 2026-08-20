@@ -26,6 +26,30 @@ MESSENGERS = [
 MSG_MAP = {m['id']: m for m in MESSENGERS}
 
 
+def sanitize_bot_token(raw):
+    """استخراج توکن از متن پیست‌شدهٔ BotFather."""
+    import re
+    raw = (raw or '').strip()
+    if not raw:
+        return ''
+    m = re.search(r'(\d{5,}:[A-Za-z0-9_-]{20,})', raw)
+    if m:
+        return m.group(1)
+    return raw.split()[0][:200]
+
+
+def sanitize_chat_id(raw):
+    """استخراج @channel یا شناسه عددی از متن پیست‌شده."""
+    import re
+    raw = (raw or '').strip()
+    if not raw:
+        return ''
+    m = re.search(r'(@[A-Za-z0-9_]{4,}|-?\d{5,})', raw)
+    if m:
+        return m.group(1)
+    return raw.split()[0][:80]
+
+
 def _settings_of(settings):
     """برگرداندن دیکشنری plain از Setting ها"""
     return dict(settings) if isinstance(settings, dict) else {s.key: s.value for s in settings}

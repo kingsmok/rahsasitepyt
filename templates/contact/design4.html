@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% from 'contact/_shared.html' import contact_methods, contact_form with context %}
+{% from 'contact/_shared.html' import contact_methods, contact_form, contact_intro with context %}
 {% block title %}{{ seo.title or "تماس با ما" }}{% endblock %}
 {% block content %}
 <section class="section" style="padding-top:44px">
@@ -11,6 +11,11 @@
         {% if site.address %}<a class="btn btn-outline btn-block mt-2" href="https://maps.google.com/?q={{ site.address|urlencode }}" target="_blank" rel="noopener">باز کردن نشانی در نقشه</a>{% endif %}
       </div>
       <div class="card" style="padding:30px"><h2 style="font-size:18px;margin-bottom:18px">ارسال پیام</h2>{{ contact_form() }}</div>
+    </div>
+  </div>
+</section>
+{% endblock %}
+>
     </div>
   </div>
 </section>

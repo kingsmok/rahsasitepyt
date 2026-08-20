@@ -13,7 +13,7 @@ software or revealing things like your passwords...» مسدود کند:
 """
 import io
 
-from conftest import login
+from conftest import csrf_headers, login
 
 
 # ─────────────────────────────────────────────────────────
@@ -138,7 +138,7 @@ def test_media_upload_rejects_html_file(client):
     login(client, 't@test.ir', 'teacher123')
     r = client.post('/api/media/upload', data={
         'file': (io.BytesIO(b'<html>phishing</html>'), 'login.html')
-    }, content_type='multipart/form-data')
+    }, headers=csrf_headers(client), content_type='multipart/form-data')
     assert r.status_code == 400
 
 
@@ -147,7 +147,7 @@ def test_media_upload_rejects_zip(client):
     login(client, 't@test.ir', 'teacher123')
     r = client.post('/api/media/upload', data={
         'file': (io.BytesIO(b'PK\x03\x04'), 'setup.zip')
-    }, content_type='multipart/form-data')
+    }, headers=csrf_headers(client), content_type='multipart/form-data')
     assert r.status_code == 400
 
 

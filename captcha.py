@@ -24,12 +24,18 @@ def current_captcha():
     return gen_captcha()[0]
 
 
+_FA_TO_EN = str.maketrans('۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩', '01234567890123456789')
+
+
 def verify_captcha():
     """بررسی پاسخ کپچا — در صورت درستی، حذف از session"""
-    ans = (request.form.get('captcha') or '').strip()
-    correct = session.pop('captcha', '')
+    ans = (request.form.get('captcha') or '').strip().translate(_FA_TO_EN)
+    correct = str(session.get('captcha') or '').strip()
+    if not correct or ans != correct:
+        return False
+    session.pop('captcha', None)
     session.pop('captcha_text', None)
-    return bool(correct) and ans == correct
+    return True
 
 
 def verify_honeypot():

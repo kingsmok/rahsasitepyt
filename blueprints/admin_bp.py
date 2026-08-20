@@ -345,12 +345,18 @@ def _course_form(course):
               'cover-android.webp', 'cover-wordpress.svg', 'cover-english.svg', 'cover-security.svg']
     if request.method == 'POST':
         f = request.form
-        if not course:
+        was_new = course is None
+        if was_new:
             course = Course()
-            from models import unique_slug_for as _usf
-            course.slug = _usf(Course, f.get('title', ''), fallback='course')
-            db.session.add(course)
         course.title = f.get('title', '').strip()
+        from models import unique_slug_for as _usf
+        _slug_src = (f.get('slug') or '').strip() or course.title
+        if _slug_src:
+            course.slug = _usf(Course, _slug_src, exclude_id=getattr(course, 'id', None), fallback='course')
+        elif not getattr(course, 'slug', None):
+            course.slug = _usf(Course, course.title or 'course', exclude_id=getattr(course, 'id', None), fallback='course')
+        if was_new:
+            db.session.add(course)
         course.subtitle = f.get('subtitle', '').strip()
         course.description = f.get('description', '').strip()
         course.category_id = int(f.get('category_id') or 0) or None
@@ -360,7 +366,7 @@ def _course_form(course):
         course.level = f.get('level', 'مقدماتی')
         course.duration_hours = int(f.get('duration_hours') or 0)
         course.image = f.get('image') or 'course-placeholder.webp'
-        course.status = f.get('status', 'draft')
+        course.status = f.get('status', 'published') or 'published'
         course.featured = bool(f.get('featured'))
         course.what_you_learn = f.get('what_you_learn', '').strip()
         course.requirements = f.get('requirements', '').strip()
@@ -447,7 +453,11 @@ def _course_form(course):
                 db.session.commit()
             except Exception:
                 _lexc('blueprints/admin_bp.py')
-            flash('دوره با موفقیت ذخیره شد.', 'success')
+            if course.status == 'published' and course.slug:
+                flash('دوره ذخیره شد. آدرس عمومی: /course/' + course.slug +
+                      '  —  اگر ۴۰۴ دیدید از /c/' + str(course.id) + ' استفاده کنید.', 'success')
+            else:
+                flash('دوره به‌صورت پیش‌نویس ذخیره شد و تا انتشار در سایت ۴۰۴ می‌دهد. از همین فرم وضعیت را «منتشر شده» کنید.', 'info')
             return redirect(url_for('admin.course_lessons', cid=course.id))
     return render_template('admin/course_form.html', course=course, teachers=teachers,
                            categories=categories, images=images)
@@ -528,9 +538,18 @@ def course_lessons(cid):
                                             '🎬', url_for('student.learn', course_id=course.id))
                 except Exception:
                     _lexc('blueprints/admin_bp.py')
+                _vurl = request.form.get('video_url', '').strip()
+                _vtype = request.form.get('video_type', 'direct')
+                try:
+                    from validators import detect_video
+                    _kind, _ = detect_video(_vurl)
+                    if _kind != 'none':
+                        _vtype = _kind
+                except Exception:
+                    _lexc('admin_bp.lesson_detect')
                 db.session.add(Lesson(section_id=sec.id, title=title,
-                                      video_type=request.form.get('video_type', 'direct'),
-                                      video_url=request.form.get('video_url', '').strip(),
+                                      video_type=_vtype,
+                                      video_url=_vurl,
                                       file_url=fl['url'] if fl else None,
                                       file_name=fl['name'] if fl else None,
                                       file_size=fl['size'] if fl else None,
@@ -545,8 +564,15 @@ def course_lessons(cid):
             les = db.session.get(Lesson, safe_int(request.form.get('lid')))
             if les:
                 les.title = request.form.get('title', '').strip() or les.title
-                les.video_type = request.form.get('video_type', les.video_type)
                 les.video_url = request.form.get('video_url', '').strip()
+                les.video_type = request.form.get('video_type', les.video_type)
+                try:
+                    from validators import detect_video
+                    _kind, _ = detect_video(les.video_url)
+                    if _kind != 'none':
+                        les.video_type = _kind
+                except Exception:
+                    _lexc('admin_bp.lesson_edit_detect')
                 les.duration = request.form.get('duration') or les.duration
                 les.release_days = request.form.get('release_days', 0, type=int)
                 les.is_free = bool(request.form.get('is_free'))
@@ -835,6 +861,18 @@ def reviews():
     if request.method == 'POST':
         action = request.form.get('action')
         rid = safe_int(request.form.get('rid'))
+        if action in ('approve_blog', 'delete_blog'):
+            bc = db.session.get(BlogComment, rid)
+            if bc:
+                if action == 'approve_blog':
+                    bc.is_approved = True
+                    db.session.commit()
+                    flash('دیدگاه وبلاگ تایید شد.', 'success')
+                else:
+                    db.session.delete(bc)
+                    db.session.commit()
+                    flash('دیدگاه وبلاگ حذف شد.', 'info')
+            return redirect(url_for('admin.reviews'))
         rv = db.session.get(Review, rid)
         if rv:
             if action == 'approve':
@@ -847,7 +885,9 @@ def reviews():
                 flash('نظر حذف شد.', 'info')
         return redirect(url_for('admin.reviews'))
     all_reviews = Review.query.order_by(Review.created_at.desc()).all()
-    return render_template('admin/reviews.html', reviews=all_reviews)
+    blog_comments = BlogComment.query.order_by(BlogComment.created_at.desc()).limit(80).all()
+    return render_template('admin/reviews.html', reviews=all_reviews,
+                           blog_comments=blog_comments)
 
 
 # ---------------------------------------------------------------- گالری طراحی‌ها (پیش‌نمایش + انتخاب اصلی)
@@ -969,7 +1009,7 @@ def tickets():
                 from models import Notification
                 Notification.notify(t.user_id, 'پاسخ تیکت شما ثبت شد',
                                     reply_text[:100], '🎫',
-                                    url_for('student.tickets'))
+                                    url_for('student.ticket_view', tid=t.id))
                 try:
                     from email_service import send_ticket_reply
                     tu = db.session.get(User, t.user_id)
@@ -1104,6 +1144,7 @@ def quiz_new():
             q = Quiz(course_id=cid, title=title,
                      description=request.form.get('description', '').strip(),
                      passing_score=passing, is_placement=is_placement,
+                     is_published=bool(request.form.get('is_published')),
                      time_limit=request.form.get('time_limit', 0, type=int))
             db.session.add(q)
             db.session.commit()
@@ -1124,11 +1165,25 @@ def quiz_edit(qid):
         q.passing_score = request.form.get('passing_score', 50, type=int)
         q.time_limit = request.form.get('time_limit', 0, type=int)
         q.course_id = request.form.get('course_id', q.course_id, type=int)
+        q.is_placement = bool(request.form.get('is_placement'))
+        q.is_published = bool(request.form.get('is_published'))
         _save_questions(q, request.form.get('questions_raw', ''))
         db.session.commit()
         flash('آزمون به‌روزرسانی شد.', 'success')
         return redirect(url_for('admin.quizzes'))
-    return render_template('admin/quiz_form.html', quiz=q, courses=courses)
+    return render_template('admin/quiz_form.html', quiz=q, courses=courses,
+                           raw=_questions_raw(q))
+
+
+def _questions_raw(q):
+    """بازسازی متن سوالات برای فرم ویرایش — بدون این، textarea خالی است و
+    ذخیرهٔ ویرایش همه سوالات را پاک می‌کند."""
+    lines = []
+    for qq in (q.questions if q else []):
+        choices = '،'.join(qq.choices_list())
+        expl = (qq.explanation or '').strip()
+        lines.append('%s | %s | %s | %s' % (qq.text, choices, qq.correct_index, expl))
+    return '\n'.join(lines)
 
 
 def _save_questions(q, raw):
@@ -1192,11 +1247,34 @@ def assignment_new():
         else:
             db.session.add(Assignment(course_id=cid, title=title,
                                       description=request.form.get('description', '').strip(),
-                                      max_score=request.form.get('max_score', 100, type=int)))
+                                      max_score=request.form.get('max_score', 100, type=int),
+                                      is_published=bool(request.form.get('is_published'))))
             db.session.commit()
             flash('تمرین ساخته شد.', 'success')
             return redirect(url_for('admin.assignments'))
     return render_template('admin/assignment_form.html', item=None, courses=courses)
+
+
+@admin_bp.route('/assignments/<int:aid>/edit', methods=['GET', 'POST'])
+@admin_required
+def assignment_edit(aid):
+    a = db.get_or_404(Assignment, aid)
+    courses = Course.query.order_by(Course.title).all()
+    if request.method == 'POST':
+        title = request.form.get('title', '').strip()
+        cid = request.form.get('course_id', type=int)
+        if not title or not cid:
+            flash('عنوان و دوره الزامی است.', 'error')
+        else:
+            a.title = title
+            a.course_id = cid
+            a.description = request.form.get('description', '').strip()
+            a.max_score = request.form.get('max_score', 100, type=int)
+            a.is_published = bool(request.form.get('is_published'))
+            db.session.commit()
+            flash('تمرین به‌روزرسانی شد.', 'success')
+            return redirect(url_for('admin.assignments'))
+    return render_template('admin/assignment_form.html', item=a, courses=courses)
 
 
 @admin_bp.route('/assignments/<int:aid>/delete', methods=['POST'])
@@ -1407,6 +1485,12 @@ def messengers():
             keys += [m['token_key'], m['chat_key']]
         for k in keys:
             v = request.form.get(k, '').strip()
+            if k.endswith('_token'):
+                from messengers import sanitize_bot_token
+                v = sanitize_bot_token(v)
+            elif k.endswith('_chat'):
+                from messengers import sanitize_chat_id
+                v = sanitize_chat_id(v)
             st = db.session.get(Setting, k)
             if st:
                 st.value = v
@@ -1438,6 +1522,12 @@ def messenger_test(mid):
     for m in MESSENGERS:
         for k in (m['token_key'], m['chat_key']):
             v = request.form.get(k, '').strip()
+            if k.endswith('_token'):
+                from messengers import sanitize_bot_token
+                v = sanitize_bot_token(v)
+            elif k.endswith('_chat'):
+                from messengers import sanitize_chat_id
+                v = sanitize_chat_id(v)
             st = db.session.get(Setting, k)
             if st:
                 st.value = v
@@ -1485,83 +1575,17 @@ def sms_settings():
 @admin_bp.route('/optimizer', methods=['GET', 'POST'])
 @admin_required
 def optimizer():
-    """بهینه‌ساز تصویر — آپلود/تبدیل به WebP یا JPEG"""
-    from PIL import Image
-    import os
-    items = []
-    fmt = request.form.get('fmt', 'webp') if request.method == 'POST' else 'webp'
-    quality = safe_int(request.form.get('quality'), 80, 20, 95) if request.method == 'POST' else 80
-    maxw = safe_int(request.form.get('maxw'), 0, 0, 8000) if request.method == 'POST' else 0
-    out_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                           'static', 'uploads', 'opt')
-    os.makedirs(out_dir, exist_ok=True)
-    if request.method == 'POST' and request.files.getlist('images'):
-        for fobj in request.files.getlist('images'):
-            if not fobj.filename:
-                continue
-            ext = os.path.splitext(fobj.filename)[1].lower()
-            if ext not in ('.jpg', '.jpeg', '.png', '.webp'):
-                continue
-            try:
-                im = Image.open(fobj.stream).convert('RGB')
-                old_size = len(fobj.read()) if False else im.size
-                fobj.stream.seek(0)
-                if maxw and im.width > maxw:
-                    h = round(im.height * maxw / im.width)
-                    im = im.resize((maxw, h), Image.LANCZOS)
-                base = os.path.splitext(os.path.basename(fobj.filename))[0]
-                fname = f'{base}-opt.{fmt}'
-                im.save(os.path.join(out_dir, fname), fmt.upper() if fmt == 'jpeg' else 'WEBP',
-                        quality=quality, optimize=True)
-                new_size = os.path.getsize(os.path.join(out_dir, fname))
-                raw = Image.open(fobj.stream) if False else None
-                fobj.stream.seek(0)
-                import io
-                raw_bytes = fobj.stream.read()
-                items.append(dict(fname=fname, name=os.path.basename(fobj.filename),
-                                  old_kb=round(len(raw_bytes)/1024), new_kb=round(new_size/1024),
-                                  pct=round((1 - new_size/max(len(raw_bytes),1))*100)))
-            except Exception as e:
-                flash(f'خطا در {fobj.filename}: {str(e)[:80]}', 'error')
-    # آمار پوشه img
-    import glob
-    img_files = glob.glob(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                                       'static', 'img', '*.*'))
-    img_files = [f for f in img_files if f.lower().endswith(('.png', '.jpg', '.jpeg', '.webp'))]
-    total = sum(os.path.getsize(f) for f in img_files)
-    return render_template('admin/optimizer.html', items=items, fmt=fmt,
-                           quality=quality, maxw=maxw,
-                           img_count=len(img_files), total_mb=round(total/1024/1024, 1))
+    """بهینه‌ساز تصویر — غیرفعال؛ فشرده‌سازی خودکار هنگام آپلود."""
+    flash('بهینه‌ساز دستی غیرفعال است. تصاویر هنگام آپلود به‌صورت خودکار فشرده می‌شوند.', 'info')
+    return redirect(url_for('admin.media_library'))
 
 
-@admin_bp.route('/optimizer/bulk', methods=['POST'])
+@admin_bp.route('/optimizer/bulk', methods=['GET', 'POST'])
 @admin_required
 def optimizer_bulk():
-    """بهینه‌سازی همه تصاویر پوشه static/img به WebP"""
-    from PIL import Image
-    import glob, os
-    base = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'static', 'img')
-    out_dir = os.path.join(base, 'optimized')
-    os.makedirs(out_dir, exist_ok=True)
-    lines = []
-    done = 0
-    for f in glob.glob(os.path.join(base, '*.*')):
-        if not f.lower().endswith(('.png', '.jpg', '.jpeg')):
-            continue
-        try:
-            im = Image.open(f).convert('RGB')
-            name = os.path.splitext(os.path.basename(f))[0]
-            out = os.path.join(out_dir, name + '.webp')
-            im.save(out, 'WEBP', quality=80, method=6)
-            old = os.path.getsize(f); new = os.path.getsize(out)
-            lines.append(f'✅ {os.path.basename(f)}: {round(old/1024)}KB → {round(new/1024)}KB (−{round((1-new/old)*100)}٪)')
-            done += 1
-        except Exception as e:
-            lines.append(f'❌ {os.path.basename(f)}: {str(e)[:60]}')
-    lines.insert(0, f'بهینه‌سازی {done} فایل انجام شد. خروجی‌ها در static/img/optimized/')
-    flash(f'{done} تصویر بهینه شد. ✅', 'success')
-    return render_template('admin/optimizer.html', items=[], fmt='webp', quality=80,
-                           maxw=0, img_count=0, total_mb=0, bulk=lines)
+    """بهینه‌ساز دستی غیرفعال است — فشرده‌سازی هنگام آپلود انجام می‌شود."""
+    flash('بهینه‌ساز دستی غیرفعال است. تصاویر هنگام آپلود به‌صورت خودکار فشرده می‌شوند.', 'info')
+    return redirect(url_for('admin.media_library'))
 
 
 
@@ -2376,8 +2400,29 @@ def live_session_delete(sid):
 @admin_bp.route('/forum-moderate')
 @admin_required
 def forum_moderate():
-    topics = ForumTopic.query.order_by(ForumTopic.created_at.desc()).all()
-    return render_template('admin/forum_moderate.html', topics=topics)
+    topics = ForumTopic.query.order_by(ForumTopic.is_approved.asc(), ForumTopic.created_at.desc()).all()
+    pending_posts = ForumPost.query.filter_by(is_approved=False).order_by(ForumPost.created_at.desc()).limit(80).all()
+    return render_template('admin/forum_moderate.html', topics=topics, pending_posts=pending_posts)
+
+
+@admin_bp.route('/forum/<int:tid>/approve', methods=['POST'])
+@admin_required
+def forum_topic_approve(tid):
+    tpc = db.get_or_404(ForumTopic, tid)
+    tpc.is_approved = not tpc.is_approved
+    db.session.commit()
+    flash('وضعیت تایید تاپیک تغییر کرد.', 'success')
+    return redirect(url_for('admin.forum_moderate'))
+
+
+@admin_bp.route('/forum/post/<int:pid>/approve', methods=['POST'])
+@admin_required
+def forum_post_approve(pid):
+    post = db.get_or_404(ForumPost, pid)
+    post.is_approved = not post.is_approved
+    db.session.commit()
+    flash('وضعیت تایید پاسخ تغییر کرد.', 'success')
+    return redirect(url_for('admin.forum_moderate'))
 
 
 @admin_bp.route('/forum/<int:tid>/delete', methods=['POST'])
@@ -2828,7 +2873,8 @@ def super_settings():
             keys = [
                 # عمومی و برند
                 'site_name', 'site_desc', 'phone', 'email', 'address', 'support_hours',
-                'about_text', 'custom_logo', 'brand_color', 'brand_color2',
+                'about_text', 'contact_intro', 'custom_logo', 'brand_color', 'brand_color2',
+                'custom_font_url',
                 'telegram', 'instagram', 'whatsapp', 'bale', 'eitaa', 'rubika', 'soroush',
                 'aparat', 'twitter', 'linkedin', 'youtube', 'github',
                 # سئو
@@ -2844,6 +2890,7 @@ def super_settings():
                 'snapp_client_id', 'snapp_client_secret', 'snapp_merchant',
                 'digipay_api_key', 'digipay_merchant', 'tarb_api_url', 'tarb_api_key', 'tarb_merchant',
                 'invoice_prefix', 'certificate_text', 'certificate_sign',
+                'certificate_logo', 'certificate_stamp', 'certificate_sign_image',
                 'watermark_enabled', 'bnpl_enabled', 'bnpl_max_installments', 'cashback_percent',
                 'teacher_default_share',
                 'loyalty_discount_percent', 'referral_bonus_percent', 'refund_days',
@@ -2873,13 +2920,22 @@ def super_settings():
                 # پرداخت ساختگی در نسخهٔ نهایی قابل فعال‌سازی نیست.
                 if k == 'sandbox_mode':
                     v = '0'
+                elif k == 'custom_font_url':
+                    if not (v.startswith('/static/fonts/') and v.endswith('.woff2')
+                            and '..' not in v and ' ' not in v and len(v) < 180):
+                        v = ''
                 elif k == 'refund_days':
                     try:
                         v = str(max(0, min(90, int(v or 0))))
                     except ValueError:
                         v = '0'
+                elif k == 'teacher_default_share':
+                    try:
+                        v = str(max(0, min(100, int(v or 0))))
+                    except ValueError:
+                        v = '50'
                 elif k in ('cashback_percent', 'loyalty_discount_percent',
-                            'referral_bonus_percent', 'teacher_default_share'):
+                            'referral_bonus_percent'):
                     try:
                         v = str(max(0, min(50, int(v or 0))))
                     except ValueError:
@@ -2930,6 +2986,33 @@ def super_settings():
                     else:
                         db.session.add(Setting(key='custom_logo',
                                                value='/static/img/uploads/brand/' + lname))
+            brand_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                                     'static', 'img', 'uploads', 'brand')
+            os.makedirs(brand_dir, exist_ok=True)
+            from validators import (safe_filename as _sf, ALLOWED_IMAGE_EXT_TRUSTED as _exts,
+                                    file_content_is_safe as _safe)
+            for file_field, setting_key, stem in (
+                ('certificate_logo_file', 'certificate_logo', 'cert-logo'),
+                ('certificate_stamp_file', 'certificate_stamp', 'cert-stamp'),
+                ('certificate_sign_file', 'certificate_sign_image', 'cert-sign'),
+            ):
+                ff = request.files.get(file_field)
+                if not ff or not ff.filename:
+                    continue
+                safe = _sf(ff.filename or '', _exts)
+                if safe and not _safe(ff.stream, os.path.splitext(safe)[1].lower()):
+                    flash('فایل گواهینامه حاوی کد اجرایی است و پذیرفته نشد.', 'error')
+                    safe = None
+                if not safe:
+                    continue
+                fname = stem + os.path.splitext(safe)[1].lower()
+                ff.save(os.path.join(brand_dir, fname))
+                url = '/static/img/uploads/brand/' + fname
+                st = db.session.get(Setting, setting_key)
+                if st:
+                    st.value = url
+                else:
+                    db.session.add(Setting(key=setting_key, value=url))
             db.session.commit()
             flash('تنظیمات با موفقیت ذخیره شد ✅', 'success')
             return redirect(url_for('admin.super_settings', tab=request.form.get('tab', '')))
@@ -3070,6 +3153,13 @@ def _save_product_image(file_storage, uploader_id=None):
     filename = f'product-{uuid.uuid4().hex[:12]}{ext}'
     fpath = os.path.join(directory, filename)
     file_storage.save(fpath)
+    try:
+        from uploads_helper import compress_image_file
+        compressed = compress_image_file(fpath)
+        if compressed:
+            width, height, size = compressed
+    except Exception:
+        _lexc('blueprints/admin_bp.py')
     # ثبت در کتابخانه رسانه مرکزی — تصویر آپلودشده اینجا هم قابل استفاده است
     try:
         from models import Media
@@ -3129,7 +3219,14 @@ def products_admin():
             )
             db.session.add(_p)
             db.session.commit()
-            flash('محصول ساخته شد. 🛍', 'success')
+            try:
+                from seo_service import ensure_meta
+                ensure_meta('/product/' + _p.slug)
+                db.session.commit()
+            except Exception:
+                _lexc('blueprints/admin_bp.py')
+            flash('محصول ساخته شد. آدرس عمومی: /product/' + slug +
+                  '  —  اگر ۴۰۴ دیدید از /p/' + str(_p.id) + ' استفاده کنید.', 'success')
         return redirect(url_for('admin.products_admin'))
     items = _P.query.order_by(_P.created_at.desc()).all()
     return render_template('admin/products.html', items=items)
@@ -3161,6 +3258,12 @@ def product_admin_edit(pid):
         p.featured = bool(request.form.get('featured'))
         p.is_active = bool(request.form.get('is_active'))
         db.session.commit()
+        try:
+            from seo_service import ensure_meta
+            ensure_meta('/product/' + p.slug)
+            db.session.commit()
+        except Exception:
+            _lexc('blueprints/admin_bp.py')
         flash('محصول به‌روزرسانی شد. ✏️', 'success')
         return redirect(url_for('admin.products_admin'))
     return render_template('admin/product_form.html', p=p)
@@ -3176,7 +3279,92 @@ def product_admin_delete(pid):
     flash('محصول حذف شد.', 'info')
     return redirect(url_for('admin.products_admin'))
 
+@admin_bp.route('/system/restart', methods=['POST'])
+@admin_required
+def system_restart():
+    """ری‌استارت اپ روی هاست (Passenger/cPanel: tmp/restart.txt)."""
+    import os as _os
+    base = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+    written = []
+    for rel in ('tmp/restart.txt', 'tmp/restart', 'instance/restart.txt'):
+        path = _os.path.join(base, rel)
+        try:
+            _os.makedirs(_os.path.dirname(path), exist_ok=True)
+            with open(path, 'a', encoding='utf-8') as fh:
+                fh.write(str(utcnow()) + '\n')
+            written.append(rel)
+        except OSError:
+            continue
+    if written:
+        flash('درخواست ری‌استارت ثبت شد (' + '، '.join(written) + '). اگر صفحه قدیمی ماند، در سی‌پنل Restart بزنید.', 'success')
+    else:
+        flash('نتوانستیم فایل ری‌استارت را بنویسیم. از پنل هاست Restart کنید.', 'error')
+    return redirect(url_for('admin.update_page'))
+
+
+@admin_bp.route('/faq', methods=['GET', 'POST'])
+@admin_required
+def faq_manage():
+    """CMS سوالات متداول."""
+    import json as _json
+    row = db.session.get(Setting, 'faq_items')
+    items = []
+    if row and row.value:
+        try:
+            items = _json.loads(row.value)
+        except Exception:
+            items = []
+    if not isinstance(items, list):
+        items = []
+    if request.method == 'POST':
+        action = request.form.get('action')
+        if action == 'add':
+            q = (request.form.get('q') or '').strip()
+            a = (request.form.get('a') or '').strip()
+            icon = (request.form.get('icon') or '❓').strip()[:8]
+            if q and a:
+                items.append({'q': q[:300], 'a': a[:2000], 'icon': icon})
+        elif action == 'delete':
+            try:
+                idx = int(request.form.get('idx') or -1)
+                if 0 <= idx < len(items):
+                    items.pop(idx)
+            except (TypeError, ValueError):
+                pass
+        payload = _json.dumps(items, ensure_ascii=False)
+        if row:
+            row.value = payload
+        else:
+            db.session.add(Setting(key='faq_items', value=payload))
+        db.session.commit()
+        flash('سوالات متداول ذخیره شد.', 'success')
+        return redirect(url_for('admin.faq_manage'))
+    return render_template('admin/faq.html', items=items)
+
+
 # بارگذاری بخش‌های تکمیلی (گزارش‌ها، رسانه، داستان موفقیت، اعلان‌ها، مشاوره‌ها)
 # این import صرفاً برای اجرای decoratorهای @admin_bp.route در admin_extra است
 # (star-import نمی‌کنیم تا namespace admin_bp آلودهٔ متغیرهای محلی admin_extra نشود)
+
+@admin_bp.route('/pages-content', methods=['GET', 'POST'])
+@admin_required
+def pages_content():
+    """ویرایش متن درباره ما و مقدمه تماس — مثل FAQ."""
+    keys = ('about_text', 'contact_intro')
+    if request.method == 'POST':
+        for key in keys:
+            value = (request.form.get(key) or '').strip()[:8000]
+            row = db.session.get(Setting, key)
+            if row:
+                row.value = value
+            else:
+                db.session.add(Setting(key=key, value=value))
+        db.session.commit()
+        flash('متن صفحات درباره ما و تماس ذخیره شد.', 'success')
+        return redirect(url_for('admin.pages_content'))
+    vals = {k: ((db.session.get(Setting, k).value if db.session.get(Setting, k) else '') or '')
+            for k in keys}
+    return render_template('admin/pages_content.html', vals=vals)
+
+
 import blueprints.admin_extra  # noqa: F401  (side-effect: رجیستر routeها)

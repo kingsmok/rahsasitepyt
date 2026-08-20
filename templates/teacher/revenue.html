@@ -33,11 +33,29 @@
     <form method="post" action="{{ url_for('teacher.payout_request') }}" class="flex gap-1">
       <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
       <input class="form-control" name="amount" type="number" min="50000" max="{{ available }}" placeholder="مبلغ (حداقل ۵۰,۰۰۰)" style="max-width:180px" required>
-      <input class="form-control" name="account" placeholder="شماره شبا یا کارت (IR...)" dir="ltr" style="flex:1" required>
+      <input class="form-control" name="account" placeholder="شماره شبا یا کارت (IR...)" dir="ltr" style="flex:1" value="{{ last_account or '' }}" required>
       <button class="btn btn-primary btn-sm">📤 ثبت درخواست</button>
     </form>
     <p class="text-3" style="font-size:11.5px;margin-top:8px">پس از تایید، مبلغ به حساب شما واریز و اعلان می‌شود.</p>
     {% endif %}
   </div>
 </div>
+{% if history %}
+<div class="card" style="padding:22px;margin-top:16px">
+  <h3 style="font-size:15px;margin-bottom:10px">تاریخچه تسویه (مانده صفر می‌شود، سوابق می‌ماند)</h3>
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>مبلغ</th><th>حساب</th><th>وضعیت</th><th>تاریخ</th></tr></thead>
+    <tbody>
+      {% for h in history %}
+      <tr>
+        <td>{{ fa('{:,.0f}'.format(h.amount)) }}</td>
+        <td dir="ltr">{{ h.account or '—' }}</td>
+        <td>{{ 'پرداخت‌شده' if h.status=='paid' else ('در انتظار' if h.status=='pending' else 'رد شده') }}</td>
+        <td>{{ h.created_at|jdatetime }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+</div>
+{% endif %}
 {% endblock %}

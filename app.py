@@ -120,9 +120,15 @@ def create_app():
     app.config['PERMANENT_SESSION_LIFETIME'] = 60 * 60 * 24 * 30  # ۳۰ روز
     app.config['SESSION_COOKIE_HTTPONLY'] = True
     app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-    # کوکی فقط روی HTTPS — در production اجباری
-    app.config['SESSION_COOKIE_SECURE'] = os.environ.get('SESSION_COOKIE_SECURE', '0') == '1' or \
-        os.environ.get('FLASK_ENV') == 'production' or os.environ.get('APP_ENV') == 'production'
+    # کوکی Secure فقط وقتی صریحاً خواسته شود. نصب‌کننده FLASK_ENV=production
+    # می‌نویسد؛ اگر به‌خاطر آن Secure اجباری شود، روی HTTP (سی‌پنل بدون SSL
+    # یا پروکسی بدون TRUST_PROXY) مرورگر کوکی سشن را نمی‌فرستد → CSRF،
+    # ورود، کپچا و آپلود رسانه همه شکست می‌خورند.
+    _secure_cookie = os.environ.get('SESSION_COOKIE_SECURE', '').strip().lower()
+    app.config['SESSION_COOKIE_SECURE'] = _secure_cookie in ('1', 'true', 'yes', 'on')
+    if os.environ.get('TRUST_PROXY') == '1':
+        from werkzeug.middleware.proxy_fix import ProxyFix
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
     # محدودیت حجم بدنه/آپلود: ۵۰ مگابایت
     app.config['MAX_CONTENT_LENGTH'] = int(os.environ.get('MAX_CONTENT_LENGTH', 50 * 1024 * 1024))
     # دیتابیس: SQLite محلی (پیش‌فرض) یا MySQL با DATABASE_URL
@@ -225,7 +231,11 @@ def create_app():
 
     # مهاجرت افزایشی کوچک برای نوع برگزاری دوره و اطلاعات ارسال سفارش. ستون‌ها
     # باید پیش از اولین SELECT روی نصب‌های قدیمی اضافه شوند.
+    # روی MySQL نصب‌شده همان پرچم SCHEMA_SYNC_ON_BOOT این ALTERها را هم
+    # رد می‌کند تا بوت با ده‌ها inspect روی هاست اشتراکی هنگ نکند.
     try:
+        if _skip_boot_ddl:
+            raise _SkipBootDDL()
         with app.app_context():
             from sqlalchemy import inspect as _inspect, text as _text
             inspector = _inspect(db.engine)
@@ -247,6 +257,24 @@ def create_app():
                 'allow_download': 'BOOLEAN DEFAULT 0',
                 'attendance_required_percent': 'INTEGER DEFAULT 75',
             })
+            _add_columns('forum_topics', {
+                'is_approved': 'BOOLEAN DEFAULT 1',
+            })
+            _add_columns('forum_posts', {
+                'is_approved': 'BOOLEAN DEFAULT 1',
+            })
+            # ستون‌های انتشار آزمون/تمرین و تایید دیدگاه وبلاگ روی نصب‌های
+            # قدیمی باید قبل از اولین SELECT اضافه شوند وگرنه کوئری‌های
+            # is_published / is_approved خطای ۵۰۰ می‌دهند.
+            _add_columns('quizzes', {
+                'is_published': 'BOOLEAN DEFAULT 1',
+            })
+            _add_columns('assignments', {
+                'is_published': 'BOOLEAN DEFAULT 1',
+            })
+            _add_columns('blog_comments', {
+                'is_approved': 'BOOLEAN DEFAULT 1',
+            })
             _add_columns('order_items', {
                 'quantity': 'INTEGER DEFAULT 1',
             })
@@ -265,6 +293,8 @@ def create_app():
                 'fulfillment_status': "VARCHAR(30) DEFAULT 'not_required'",
             })
             db.session.commit()
+    except _SkipBootDDL:
+        pass
     except Exception as _schema_patch_err:
         db.session.rollback()
         app.logger.warning('additive schema patch skipped: %s', _schema_patch_err)
@@ -871,7 +901,7 @@ def create_app():
             "frame-ancestors 'self'; "
             "object-src 'none'; "
             "manifest-src 'self'; "
-            "media-src 'self' data: blob:;"
+            "media-src 'self' data: blob: https:;"
         )
         # این directive فقط برای پاسخ HTTPS معتبر است. روی سرور توسعهٔ HTTP،
         # مرورگر در غیر این صورت منابع same-origin را به HTTPS ارتقا می‌دهد و
@@ -888,13 +918,14 @@ def create_app():
             # انتساب سختگیرانه مرورگر برای فرم‌ها
             if request.path.startswith('/admin'):
                 resp.headers['X-Required-Security-Headers'] = 'CSP, X-Frame-Options, X-Content-Type-Options'
-        # فشرده‌سازی gzip برای HTML، CSS و JS
+        # فشرده‌سازی gzip — فقط با ENABLE_GZIP=1 (nginx مضاعف → ۵۰۳)
         import gzip as _gzip
         _ct = resp.content_type or ''
+        _gzip_on = os.environ.get('ENABLE_GZIP', '0').strip().lower() in ('1', 'true', 'yes', 'on')
         _compressible = _ct.startswith('text/html') or _ct.startswith('text/css') or \
                         _ct.startswith('application/javascript') or _ct.startswith('text/javascript') or \
                         _ct.startswith('application/json')
-        if (resp.status_code == 200 and _compressible):
+        if (_gzip_on and resp.status_code == 200 and _compressible):
             try:
                 _data = resp.get_data()
             except RuntimeError:
@@ -911,13 +942,15 @@ def create_app():
                         resp.headers['Content-Length'] = str(len(compressed))
         # کش خصوصی کوتاه‌مدت برای صفحات عمومی مهمان (فقط مرورگر همان کاربر)
         # — سرعت بازدیدهای تکراری بدون خطر لو رفتن سشن/توکن بین کاربران
+        # ⚠️ startswith('/') همه مسیرها را شامل می‌شد و Cache-Control
+        # no-store صفحات فرم/ادمین را با max-age بازنویسی می‌کرد (کپچا کهنه).
+        _html_ok_cache = request.path == '/' or request.path.startswith((
+            '/course/', '/courses', '/blog', '/about', '/terms', '/privacy',
+            '/teachers', '/bundles', '/success-stories', '/learning-paths',
+        ))
         if (resp.status_code == 200 and _ct.startswith('text/html') and
                 request.method == 'GET' and not getattr(g, 'user', None) and
-                request.path.startswith(('/course/', '/courses', '/blog', '/about', '/faq',
-                                         '/contact', '/terms', '/privacy', '/teachers', '/',
-                                         '/bundles', '/success-stories', '/learning-paths',
-                                         '/teachers', '/faq'))):
-            # صفحه اصلی و لیست‌ها: کش ۳۰۰ ثانیه (همان کاربر) — سرعت بازدید تکراری
+                _html_ok_cache):
             _age = 300 if request.path == '/' else 120
             resp.headers['Cache-Control'] = f'private, max-age={_age}'
         return resp
@@ -1009,22 +1042,32 @@ def create_app():
         if '_csrf_token' not in session:
             session['_csrf_token'] = _secrets.token_hex(16)
         g.csrf_token = session['_csrf_token']
-        # بررسی POST های حساس (بدون API که JSON دارد؛ نصب‌کننده هم گارد خودش را دارد)
-        if request.method == 'POST' and not request.path.startswith('/api') and \
-                not request.path.startswith('/builder/api') and \
-                not request.path.startswith('/install') and \
-                not request.path.startswith('/pay/verify/') and \
-                request.path != '/admin/update/webhook':
+        # POSTهای حساس: همه مسیرها به‌جز نصب، بازگشت درگاه، و وب‌هوک‌های
+        # بیرونی (باسلام / به‌روزرسانی). مسیرهای /api و /builder/api هم توکن
+        # هدر X-CSRF-Token می‌خواهند — وگرنه سبد، علاقه‌مندی و رسانه با CSRF
+        # جعل‌پذیر می‌ماند.
+        path = request.path or ''
+        _csrf_exempt = (
+            path.startswith('/install') or
+            path.startswith('/pay/verify/') or
+            path == '/admin/update/webhook' or
+            path.startswith('/api/marketplace/')
+        )
+        if request.method == 'POST' and not _csrf_exempt:
             # Flask-Admin فرم‌هایش را با نام فیلد `csrf_token` ارسال می‌کند؛
             # پنل اصلی ما از `_csrf_token` استفاده می‌کند. هر دو باید با توکن
             # سشن یکسان مقایسه شوند تا هر دو پنل در برابر CSRF محافظت بمانند.
             token = (request.form.get('_csrf_token') or request.form.get('csrf_token') or
                      request.headers.get('X-CSRF-Token'))
             expected = session.get('_csrf_token') or ''
-            if not token:
-                abort(400, description='توکن امنیتی (CSRF) ارسال نشده است. لطفاً صفحه را رفرش کنید و دوباره تلاش کنید.')
-            if not expected or not hmac.compare_digest(str(token), str(expected)):
-                abort(400, description='توکن امنیتی (CSRF) نامعتبر یا منقضی شده است. لطفاً صفحه را رفرش کنید.')
+            if not token or not expected or not hmac.compare_digest(str(token), str(expected)):
+                msg = ('توکن امنیتی (CSRF) ارسال نشده یا نامعتبر است. '
+                       'لطفاً صفحه را رفرش کنید و دوباره تلاش کنید.')
+                if path.startswith(('/api/', '/builder/api/')) or \
+                        request.accept_mimetypes.best == 'application/json':
+                    from flask import jsonify as _csrf_json
+                    return _csrf_json(ok=False, msg=msg), 400
+                abort(400, description=msg)
 
     # ---------- GET روی مسیرهای POST-only → ریدایرکت به جای 405 ----------
     @app.errorhandler(400)
@@ -1516,7 +1559,7 @@ def create_app():
     # کلید شامل توکن CSRF سشن است تا محتوای شخصی‌سازی‌شده بین کاربران لو نرود.
     # (باید بعد از load_globals ثبت شود تا g.user و سشن آماده باشند)
     _html_cache = {}
-    _HTML_PUBLIC = ('/', '/course/', '/courses', '/blog', '/about', '/faq', '/contact',
+    _HTML_PUBLIC = ('/', '/course/', '/courses', '/blog', '/about',
                     '/terms', '/privacy', '/teachers', '/bundles', '/success-stories',
                     '/learning-paths', '/talent-test', '/products', '/product/',
                     '/search', '/sitemap.xml', '/robots.txt', '/feed')
@@ -1529,7 +1572,8 @@ def create_app():
             for _x in ('/admin', '/builder', '/install', '/license', '/api', '/static',
                        '/uploads', '/auth', '/dashboard', '/teacher-panel', '/student',
                        '/community', '/exam', '/wallet', '/pay', '/cart', '/checkout',
-                       '/newsletter', '/feedback', '/form/'):
+                       '/newsletter', '/feedback', '/form/', '/contact', '/consultation',
+                       '/become-teacher'):
                 if p.startswith(_x):
                     return None
             # عضو '/' فقط خود صفحه خانه است؛ startswith('/') تمام مسیرها را
@@ -1777,9 +1821,37 @@ def create_app():
                     bc_admin_menu=lambda: __import__('permissions', fromlist=['menu_for']).menu_for(_u),
                     bc_admin_groups=lambda: __import__('permissions', fromlist=['menu_groups_for']).menu_groups_for(_u),
                     group_has_active=_group_has_active,
+                    admin_badge_tickets=_admin_badge_tickets(_u),
+                    admin_badge_orders=_admin_badge_orders(_u),
+                    admin_badge_forum=_admin_badge_forum(_u),
                     seo=getattr(g, 'seo', dict(title='', description='', keywords='',
                                                canonical='', noindex=False, og_image='',
                                                og_type='website', schema=None)))
+
+    def _admin_badge_tickets(user):
+        if not user or not (getattr(user, 'is_admin', False) or getattr(user, 'role', '') == 'support'):
+            return 0
+        try:
+            return Ticket.query.filter(Ticket.status.in_(['open', 'answered'])).count()
+        except Exception:
+            return 0
+
+    def _admin_badge_orders(user):
+        if not user or not getattr(user, 'is_admin', False):
+            return 0
+        try:
+            return Order.query.filter_by(status='pending').count()
+        except Exception:
+            return 0
+
+    def _admin_badge_forum(user):
+        if not user or not (getattr(user, 'is_admin', False) or getattr(user, 'role', '') == 'support'):
+            return 0
+        try:
+            from models import ForumTopic as _FT
+            return _FT.query.filter_by(is_approved=False).count()
+        except Exception:
+            return 0
 
     def _group_has_active(group, request):
         """آیا دسته‌ای از منوی ادمین شامل صفحهٔ فعلی است؟ (باز بودن خودکار گروه)"""
@@ -1796,6 +1868,20 @@ def create_app():
         return False
 
     # ---------- سلامت سرویس (برای مانیتورینگ؛ بدون افشای جزئیات) ----------
+    @app.route('/favicon.ico')
+    def favicon_ico():
+        """مرورگرها /favicon.ico می‌خواهند؛ لوگو یا SVG پیش‌فرض."""
+        from flask import send_from_directory, redirect as _redir
+        logo = ''
+        try:
+            logo = (getattr(g, 'settings', {}) or {}).get('logo_url') or ''
+        except Exception:
+            logo = ''
+        if logo and logo.startswith('/'):
+            return _redir(logo, 302)
+        static_img = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'img')
+        return send_from_directory(static_img, 'favicon.svg', mimetype='image/svg+xml')
+
     @app.route('/health')
     def health():
         from flask import jsonify
@@ -1887,6 +1973,13 @@ def create_app():
                                err_title='خطای سرور',
                                err_msg='مشکلی در سرور رخ داده است. لطفاً کمی بعد تلاش کنید.',
                                err_code=500), 500
+
+    @app.errorhandler(503)
+    def service_unavailable(e):
+        return render_template('errors/standalone_error.html',
+                               err_title='سرویس موقتاً در دسترس نیست',
+                               err_msg='سایت در حال به‌روزرسانی یا تعمیر است. چند دقیقه دیگر دوباره تلاش کنید.',
+                               err_code=503), 503
 
     def render_error(title, msg, code):
         from flask import render_template

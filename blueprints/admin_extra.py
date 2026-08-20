@@ -184,6 +184,13 @@ def media_library():
             fname = 'm_' + uuid.uuid4().hex[:10] + ext
             fpath = _os.path.join(up, fname)
             f.save(fpath)
+            try:
+                from uploads_helper import compress_image_file
+                compressed = compress_image_file(fpath)
+                if compressed:
+                    width, height, size = compressed
+            except Exception:
+                _lexc('blueprints/admin_bp.py')
             size = _os.path.getsize(fpath)
             mime = f.mimetype or ''
             kind = 'file'
@@ -773,7 +780,10 @@ def install_attach_db():
     if err:
         return jsonify(ok=False, msg=err), 400
     url = build_db_url('mysql', host, port, name, user, password)
-    ok, msg = attach_existing_database(url, copy_from_sqlite=copy_sqlite)
+    try:
+        ok, msg = attach_existing_database(url, copy_from_sqlite=copy_sqlite)
+    except Exception as exc:
+        return jsonify(ok=False, msg='خطا هنگام وصل دیتابیس: ' + str(exc)[:240]), 500
     return jsonify(ok=ok, msg=msg), (200 if ok else 400)
 
 

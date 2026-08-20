@@ -5,7 +5,12 @@
 <div class="certificate-page">
   <div class="certificate">
     <div class="c-top">
-      <div class="c-logo"><span class="ic">🎓</span>{{ site.site_name or 'آکادمی آنلاین' }}</div>
+      <div class="c-logo">
+        {% if site.logo_url or site.certificate_logo %}
+        <img src="{{ site.certificate_logo or site.logo_url }}" alt="" style="height:48px;max-width:160px;object-fit:contain">
+        {% else %}<span class="ic">🎓</span>{% endif %}
+        {{ site.site_name or 'آکادمی آنلاین' }}
+      </div>
       <div class="c-code">کد: <span dir="ltr">{{ code }}</span></div>
     </div>
     <div class="c-body">
@@ -18,8 +23,13 @@
       <div class="c-meta">تاریخ صدور: {{ enrollment.completed_at|jdate if enrollment.completed_at else utcnow()|jdate }} — میانگین امتیاز دوره: ⭐ {{ fa(course.rating) if course.rating else '—' }} از ۵</div>
     </div>
     <div class="c-foot">
-      <div class="sign"><div class="line"></div>مدیر آکادمی</div>
-      <div class="seal">تایید<br>آکادمی</div>
+      <div class="sign">
+        {% if site.certificate_sign_image %}<img src="{{ site.certificate_sign_image }}" alt="" style="height:42px;max-width:140px;object-fit:contain;display:block;margin:0 auto 4px">{% endif %}
+        <div class="line"></div>{{ site.certificate_sign or 'مدیر آکادمی' }}
+      </div>
+      <div class="seal">
+        {% if site.certificate_stamp %}<img src="{{ site.certificate_stamp }}" alt="مهر" style="height:72px;width:72px;object-fit:contain">{% else %}تایید<br>آکادمی{% endif %}
+      </div>
       <div class="sign"><div class="line"></div>مدرس دوره<br>{{ course.teacher.name if course.teacher else '—' }}</div>
     </div>
   </div>

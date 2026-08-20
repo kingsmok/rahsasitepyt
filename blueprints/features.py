@@ -68,9 +68,18 @@ def _need_enrollment(quiz):
     return True
 
 
+def _published_or_404(item):
+    if getattr(item, 'is_published', True):
+        return
+    if g.user and getattr(g.user, 'is_admin', False):
+        return
+    abort(404)
+
+
 @features_bp.route('/quiz/<int:qid>')
 def quiz_view(qid):
     quiz = db.get_or_404(Quiz, qid)
+    _published_or_404(quiz)
     if not _need_enrollment(quiz):
         return redirect(url_for('auth.login') if not g.user else url_for('site.course_detail', slug=quiz.course.slug))
     best = None
@@ -87,6 +96,7 @@ def quiz_view(qid):
 @features_bp.route('/quiz/<int:qid>/start')
 def quiz_start(qid):
     quiz = db.get_or_404(Quiz, qid)
+    _published_or_404(quiz)
     if not _need_enrollment(quiz):
         return redirect(url_for('auth.login') if not g.user else url_for('features.quiz_view', qid=qid))
     if not quiz.questions:
@@ -99,6 +109,7 @@ def quiz_start(qid):
 @features_bp.route('/quiz/<int:qid>/submit', methods=['POST'])
 def quiz_submit(qid):
     quiz = db.get_or_404(Quiz, qid)
+    _published_or_404(quiz)
     if not _need_enrollment(quiz):
         return redirect(url_for('auth.login') if not g.user else url_for('features.quiz_view', qid=qid))
     total = len(quiz.questions)
@@ -155,6 +166,7 @@ def quiz_submit(qid):
 @features_bp.route('/assignment/<int:aid>', methods=['GET', 'POST'])
 def assignment_view(aid):
     asg = db.get_or_404(Assignment, aid)
+    _published_or_404(asg)
     _r = _enrolled_or_403(asg.course_id)
     if _r is not None and not isinstance(_r, Enrollment):
         return _r
@@ -364,10 +376,23 @@ def support_chat():
 def chat_send():
     if not g.user:
         return jsonify(ok=False), 401
+    import hmac as _hmac
+    token = (request.headers.get('X-CSRF-Token') or
+             request.form.get('_csrf_token') or '')
+    expected = session.get('_csrf_token') or ''
+    if not token or not expected or not _hmac.compare_digest(str(token), str(expected)):
+        return jsonify(ok=False, msg='توکن امنیتی نامعتبر است'), 400
     body = (((request.get_json(silent=True) or {}).get('body') if request.is_json else request.form.get('body', '')) or '').strip()
     if not body:
         return jsonify(ok=False, msg='پیام خالی است'), 400
     db.session.add(ChatMessage(user_id=g.user.id, body=body[:1000]))
+    try:
+        from models import Notification
+        Notification.notify_staff('پیام چت پشتیبانی',
+                                  f'{g.user.name}: {body[:80]}',
+                                  '💬', url_for('admin.chat_user', uid=g.user.id))
+    except Exception:
+        pass
     db.session.commit()
     return jsonify(ok=True)
 
@@ -766,7 +791,7 @@ def placement():
 
 @features_bp.route('/placement/result', methods=['POST'])
 def placement_result():
-    quiz = Quiz.query.filter_by(is_placement=True).first()
+    quiz = Quiz.query.filter_by(is_placement=True, is_published=True).first()
     if not quiz:
         return redirect(url_for('site.index'))
     total = len(quiz.questions)

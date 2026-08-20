@@ -37,6 +37,9 @@
     <div class="form-check mb-2">
       <label><input type="checkbox" name="is_placement" {{ 'checked' if quiz and quiz.is_placement }}> آزمون تعیین سطح سراسری</label>
     </div>
+    <div class="form-check mb-2">
+      <label><input type="checkbox" name="is_published" {{ 'checked' if not quiz or quiz.is_published }}> منتشر شود (در غیر این صورت برای دانشجو ۴۰۴ است)</label>
+    </div>
 
     <div class="form-group">
       <label>سوالات — هر خط یک سوال با این فرمت:</label>

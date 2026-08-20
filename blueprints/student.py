@@ -10,7 +10,7 @@ except ImportError:  # پایتون < 3.11 (هاست‌های اشتراکی)
 from flask import (Blueprint, render_template, request, redirect, url_for, flash,
                    g, abort, session, current_app, send_from_directory)
 from models import (utcnow, db, User, Course, Enrollment, Favorite, Order, Ticket, ActivityLog, StudyDay)
-from validators import youtube_id, aparat_hash, is_valid_phone, is_valid_national_code
+from validators import youtube_id, aparat_hash, vimeo_id, detect_video, is_valid_phone, is_valid_national_code
 from validators import log_exc as _lexc
 from jdates import fa_num
 
@@ -151,8 +151,22 @@ def learn(course_id):
     if current is None:
         return render_template('dashboard/learn_empty.html', course=course,
                                enrollment=enrollment, done=done)
+    # نوع ذخیره‌شده ممکن است اشتباه باشد (مثلاً «مستقیم» برای لینک یوتیوب).
+    _kind, _vid = detect_video(current.video_url)
+    if _kind in ('youtube', 'aparat', 'vimeo', 'direct', 'none'):
+        current.video_type = _kind
     yt_id = youtube_id(current.video_url) if current.video_type == 'youtube' else None
     ap_hash = aparat_hash(current.video_url) if current.video_type == 'aparat' else None
+    vm_id = vimeo_id(current.video_url) if current.video_type == 'vimeo' else None
+    if not yt_id and _kind == 'youtube':
+        yt_id = _vid
+        current.video_type = 'youtube'
+    if not ap_hash and _kind == 'aparat':
+        ap_hash = _vid
+        current.video_type = 'aparat'
+    if not vm_id and _kind == 'vimeo':
+        vm_id = _vid
+        current.video_type = 'vimeo'
     # دسترسی تدریجی: جلسات قفل تا تاریخ باز شدن
     from datetime import timedelta as _td
     locked = {}
@@ -195,7 +209,8 @@ def learn(course_id):
     checkpoint_quiz = None
     try:
         if len(done) >= 5 and len(done) % 5 == 0:
-            checkpoint_quiz = _Quiz.query.filter_by(course_id=course.id, is_placement=False).first()
+            checkpoint_quiz = _Quiz.query.filter_by(
+                course_id=course.id, is_placement=False, is_published=True).first()
     except Exception:
         _lexc('blueprints/student.py')
     video_src = current.video_src
@@ -209,7 +224,7 @@ def learn(course_id):
                                    token=_stream_token(g.user.id, current.id, 'hd'))
     return render_template('dashboard/learn.html', course=course, enrollment=enrollment,
                            lessons=lessons, current=current, done=done,
-                           yt_id=yt_id, ap_hash=ap_hash, locked=locked,
+                           yt_id=yt_id, ap_hash=ap_hash, vm_id=vm_id, locked=locked,
                            video_src=video_src, video_hd_src=video_hd_src,
                            checkpoint_quiz=checkpoint_quiz)
 
@@ -334,13 +349,17 @@ def certificate(course_id):
     code = certificate_code(course.slug, g.user.email, enrollment.id)
     try:
         from models import Notification
-        Notification.notify(g.user.id, 'گواهینامه شما صادر شد 🏅',
-                            f'گواهی دوره «{course.title}» آماده دانلود است.',
-                            '🏅', url_for('student.certificate', course_id=course_id))
-        from email_service import send_certificate_email
-        if g.user.email:
-            send_certificate_email(g.user, course, code, g.settings)
-        db.session.commit()
+        already = Notification.query.filter_by(
+            user_id=g.user.id, title='گواهینامه شما صادر شد 🏅',
+            link=url_for('student.certificate', course_id=course_id)).first()
+        if not already:
+            Notification.notify(g.user.id, 'گواهینامه شما صادر شد 🏅',
+                                f'گواهی دوره «{course.title}» آماده دانلود است.',
+                                '🏅', url_for('student.certificate', course_id=course_id))
+            from email_service import send_certificate_email
+            if g.user.email:
+                send_certificate_email(g.user, course, code, g.settings)
+            db.session.commit()
     except Exception:
         _lexc('blueprints/student.py')
     return render_template('certificate.html', course=course, enrollment=enrollment, code=code)
@@ -413,8 +432,14 @@ def tickets():
     r = _login_required()
     if r:
         return r
+    from models import TicketReply
     tickets = Ticket.query.filter_by(user_id=g.user.id).order_by(Ticket.created_at.desc()).all()
-    return render_template('dashboard/tickets.html', tickets=tickets)
+    replies = {}
+    if tickets:
+        ids = [x.id for x in tickets]
+        for r in TicketReply.query.filter(TicketReply.ticket_id.in_(ids)).order_by(TicketReply.created_at.asc()).all():
+            replies.setdefault(r.ticket_id, []).append(r)
+    return render_template('dashboard/tickets.html', tickets=tickets, replies=replies)
 
 
 @student_bp.route('/dashboard/tickets/new', methods=['GET', 'POST'])
@@ -429,11 +454,49 @@ def ticket_new():
         if len(subject) < 3 or not body:
             flash('موضوع و متن تیکت را کامل وارد کنید.', 'error')
         else:
-            db.session.add(Ticket(user_id=g.user.id, subject=subject, body=body))
+            tk = Ticket(user_id=g.user.id, subject=subject, body=body)
+            db.session.add(tk)
+            db.session.flush()
+            from models import Notification, TicketReply
+            db.session.add(TicketReply(ticket_id=tk.id, user_id=g.user.id, body=body, is_admin=False))
+            try:
+                Notification.notify_staff('تیکت جدید 🎫',
+                                         f'{g.user.name}: {subject}',
+                                         '🎫', '/admin/tickets')
+            except Exception:
+                _lexc('blueprints/student.py')
             db.session.commit()
             flash('تیکت شما ثبت شد. پاسخ در اسرع وقت ارسال می‌شود.', 'success')
             return redirect(url_for('student.tickets'))
     return render_template('dashboard/ticket_new.html')
+
+
+@student_bp.route('/dashboard/tickets/<int:tid>', methods=['GET', 'POST'])
+def ticket_view(tid):
+    r = _login_required()
+    if r:
+        return r
+    from models import TicketReply, Notification
+    tkt = Ticket.query.filter_by(id=tid, user_id=g.user.id).first_or_404()
+    if request.method == 'POST':
+        body = (request.form.get('body') or '').strip()
+        if not body:
+            flash('متن پیام را وارد کنید.', 'error')
+        else:
+            db.session.add(TicketReply(ticket_id=tkt.id, user_id=g.user.id, body=body, is_admin=False))
+            if tkt.status == 'answered':
+                tkt.status = 'open'
+            try:
+                Notification.notify_staff('پاسخ دانشجو به تیکت',
+                                         f'{g.user.name}: {tkt.subject}',
+                                         '🎫', '/admin/tickets/' + str(tkt.id))
+            except Exception:
+                _lexc('blueprints/student.py')
+            db.session.commit()
+            flash('پیام شما ارسال شد.', 'success')
+            return redirect(url_for('student.ticket_view', tid=tid))
+    replies = TicketReply.query.filter_by(ticket_id=tid).order_by(TicketReply.created_at.asc()).all()
+    return render_template('dashboard/ticket_view.html', t=tkt, replies=replies)
 
 
 # ---------------------------------------------------------------- پروفایل
@@ -450,6 +513,10 @@ def profile():
         color = request.form.get('avatar_color', '#2563eb')
         password = request.form.get('password', '')
         err = None
+        if g.user.phone:
+            phone = g.user.phone
+        if g.user.national_code:
+            nc = g.user.national_code
         if len(name) < 3:
             err = 'نام و نام خانوادگی را کامل وارد کنید.'
         elif not is_valid_phone(phone):
@@ -466,6 +533,11 @@ def profile():
             flash(err, 'error')
             return redirect(url_for('student.profile'))
         g.user.name = name
+        # موبایل و کد ملی پس از ثبت قفل می‌شوند (اختیاری بودن حفظ می‌شود)
+        if g.user.phone:
+            phone = g.user.phone
+        if g.user.national_code:
+            nc = g.user.national_code
         g.user.phone = phone
         g.user.national_code = nc or None
         g.user.bio = bio
@@ -495,7 +567,13 @@ def profile():
                 safe = None
             if safe:
                 fname = f'av_{g.user.id}_{uuid.uuid4().hex[:6]}{os.path.splitext(safe)[1].lower()}'
-                f.save(os.path.join(up, fname))
+                dest = os.path.join(up, fname)
+                f.save(dest)
+                try:
+                    from uploads_helper import compress_image_file
+                    compress_image_file(dest)
+                except Exception:
+                    _lexc('blueprints/student.py')
                 # حذف آواتار قبلی (جلوگیری از زباله دیسک)
                 if g.user.avatar and g.user.avatar.startswith('av_'):
                     try:

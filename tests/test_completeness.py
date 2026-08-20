@@ -3,7 +3,7 @@
 import os
 import re
 import uuid
-from conftest import login
+from conftest import csrf_headers, login
 from models import db, User, Course, Category, Enrollment, Order, OrderItem, \
     Bundle, BlogPost
 
@@ -118,7 +118,8 @@ def test_cart_renders_media_library_course_cover(client, app):
             db.session.commit()
         client.get('/auth/logout')
         # افزودن دوره به سبد (API)
-        r = client.post('/api/cart/add', json={'course_id': 1})
+        r = client.post('/api/cart/add', json={'course_id': 1},
+                        headers=csrf_headers(client))
         assert r.status_code == 200
         html = client.get('/cart').get_data(as_text=True)
         assert '/static/uploads/media/' + name in html

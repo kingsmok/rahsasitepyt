@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
-{% from 'contact/_shared.html' import contact_methods, contact_form with context %}
+{% from 'contact/_shared.html' import contact_methods, contact_form, contact_intro with context %}
 {% block title %}{{ seo.title or "تماس با ما" }}{% endblock %}
 {% block content %}
-<section style="background:var(--hero-bg);color:#fff;padding:62px 0;text-align:center"><div class="container"><div style="font-size:42px" aria-hidden="true">📬</div><h1 style="font-size:34px;margin:10px 0">تماس با {{ site.site_name or 'مجموعه' }}</h1><p style="color:rgba(255,255,255,.82)">راه تماس یا فرم پیام را انتخاب کنید.</p></div></section>
+<section style="background:var(--hero-bg);color:#fff;padding:62px 0;text-align:center"><div class="container"><div style="font-size:42px" aria-hidden="true">📬</div><h1 style="font-size:34px;margin:10px 0">تماس با {{ site.site_name or 'مجموعه' }}</h1>{{ contact_intro() }}{% if not site.contact_intro %}<p style="color:rgba(255,255,255,.82)">راه تماس یا فرم پیام را انتخاب کنید.</p>{% endif %}</div></section>
 <section class="section" style="padding-top:38px"><div class="container" style="max-width:940px">{{ contact_methods(true) }}<div class="card" style="padding:34px;margin-top:22px"><h2 style="font-size:18px;margin-bottom:18px">فرم تماس</h2>{{ contact_form() }}</div></div></section>
 {% endblock %}

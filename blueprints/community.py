@@ -21,6 +21,13 @@ def forum():
     query = ForumTopic.query
     if course_id:
         query = query.filter_by(course_id=course_id)
+    # مهمان/دانشجو فقط تاپیک‌های تاییدشده؛ نویسنده خودش و ادمین همه را می‌بینند
+    if not (g.user and (g.user.is_admin or getattr(g.user, 'role', '') == 'support')):
+        if g.user:
+            query = query.filter(db.or_(ForumTopic.is_approved == True,
+                                        ForumTopic.user_id == g.user.id))
+        else:
+            query = query.filter_by(is_approved=True)
     topics = query.order_by(ForumTopic.is_pinned.desc(), ForumTopic.created_at.desc()).all()
     # تعداد پاسخ هر تاپیک — یک کوئری تجمیعی (بدون N+1)
     from sqlalchemy import func as _f
@@ -28,7 +35,8 @@ def forum():
     post_counts = {}
     if tids:
         pc = db.session.query(ForumPost.topic_id, _f.count(ForumPost.id)) \
-            .filter(ForumPost.topic_id.in_(tids)).group_by(ForumPost.topic_id).all()
+            .filter(ForumPost.topic_id.in_(tids), ForumPost.is_approved == True) \
+            .group_by(ForumPost.topic_id).all()
         post_counts = dict(pc)
     courses = Course.query.filter_by(status='published').all()
     g.seo['title'] = 'انجمن گفتگو — آکادمی آنلاین'
@@ -58,13 +66,24 @@ def topic_new():
         if _recent >= 3:
             flash('محدودیت ساخت تاپیک (۳ تاپیک در ساعت).', 'error')
             return redirect(url_for('community.forum'))
+        from content_filter import moderate_text
+        from models import Notification
+        ok_t, title, reason = moderate_text(title, 120)
+        ok_b, body, reason_b = moderate_text(body, 5000)
+        if not ok_t or not ok_b:
+            flash(reason or reason_b or 'متن تاپیک مجاز نیست.', 'error')
+            return redirect(url_for('community.forum'))
         db.session.add(ForumTopic(user_id=g.user.id, title=title, body=body,
-                                  course_id=cid or None))
-        # امتیاز فقط برای تاپیک‌های جدید (نه اسپم)
-        if _recent == 0:
-            award_points(g.user, 5, 'ساخت تاپیک انجمن')
+                                  course_id=cid or None, is_approved=False))
+        try:
+            Notification.notify_staff('تاپیک انجمن در انتظار تایید',
+                                      f'{g.user.name}: {title}',
+                                      '💬', '/admin/forum-moderate')
+        except Exception:
+            pass
+        # امتیاز فقط پس از تایید مدیر
         db.session.commit()
-        flash('تاپیک شما منتشر شد. 🎉', 'success')
+        flash('تاپیک شما ثبت شد و پس از تایید مدیر نمایش داده می‌شود.', 'success')
     return redirect(url_for('community.forum'))
 
 
@@ -93,6 +112,9 @@ def topic_poll_create(tid):
 @community_bp.route('/topic/<int:tid>', methods=['GET', 'POST'])
 def topic_view(tid):
     topic = db.get_or_404(ForumTopic, tid)
+    staff = g.user and (g.user.is_admin or getattr(g.user, 'role', '') == 'support')
+    if not topic.is_approved and not staff and not (g.user and g.user.id == topic.user_id):
+        abort(404)
     topic.views = (topic.views or 0) + 1
     db.session.commit()
     # ثبت رای نظرسنجی (قبل از پردازش پاسخ)
@@ -116,10 +138,22 @@ def topic_view(tid):
             flash('پاسخ بیش از حد طولانی است.', 'error')
         else:
             from gamification import award_points
-            db.session.add(ForumPost(topic_id=tid, user_id=g.user.id, body=body))
-            award_points(g.user, 2, 'پاسخ در انجمن')
+            from content_filter import moderate_text
+            from models import Notification
+            ok_p, body, reason = moderate_text(body, 5000)
+            if not ok_p:
+                flash(reason or 'متن پاسخ مجاز نیست.', 'error')
+                return redirect(url_for('community.topic_view', tid=tid))
+            db.session.add(ForumPost(topic_id=tid, user_id=g.user.id, body=body,
+                                     is_approved=False))
+            try:
+                Notification.notify_staff('پاسخ انجمن در انتظار تایید',
+                                          f'{g.user.name}: {topic.title}',
+                                          '💬', '/admin/forum-moderate')
+            except Exception:
+                pass
             db.session.commit()
-            flash('پاسخ شما ثبت شد. ✅', 'success')
+            flash('پاسخ شما ثبت شد و پس از تایید نمایش داده می‌شود.', 'success')
         return redirect(url_for('community.topic_view', tid=tid))
     return render_template('community/topic.html', topic=topic)
 

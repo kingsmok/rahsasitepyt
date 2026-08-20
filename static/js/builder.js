@@ -55,6 +55,15 @@ var dirty = false, renderTimer = null, sel = null, clipboard = null;
 var currentDev = 'desktop', panelTab = 'content', armedType = null;
 var pendingScroll = 0;
 
+function csrfTok() {
+  var m = document.querySelector('meta[name="csrf-token"]');
+  return m ? m.getAttribute('content') : '';
+}
+function apiHeaders(h) {
+  h = h || {};
+  h['X-CSRF-Token'] = csrfTok();
+  return h;
+}
 function uid(p) { return (p || 'w') + '_' + Math.random().toString(36).slice(2, 9); }
 function esc(s) {
   return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -243,7 +252,7 @@ function render(silent) {
   if (!silent && sel) { /* پنل باز بماند */ }
   return fetch('/builder/api/render', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: apiHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({ rows: data.rows, settings: data.settings, edit: true })
   }).then(function (r) { return r.json(); }).then(function (res) {
     if (!res.ok) { toast('خطا در رندر صفحه', 'err'); return; }
@@ -500,7 +509,7 @@ function saveRowTemplate(f) {
   var name = prompt('نام این قالب سکشن:', 'سکشن ' + (f.row.id || ''));
   if (!name) return;
   fetch('/builder/api/section-template', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    method: 'POST', headers: apiHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({ name: name, row: f.row })
   }).then(function (r) { return r.json(); }).then(function (d2) {
     if (d2.ok) { toast('⭐ سکشن به کتابخانه اضافه شد', 'ok'); } else { toast(d2.msg || 'خطا', 'err'); }
@@ -1480,7 +1489,7 @@ function uploadImage(cb) {
   inp.onchange = function () {
     var fd = new FormData();
     fd.append('file', inp.files[0]);
-    fetch('/builder/api/upload', { method: 'POST', body: fd })
+    fetch('/builder/api/upload', { method: 'POST', headers: apiHeaders(), body: fd })
       .then(function (r) { return r.json(); })
       .then(function (res) {
         if (res.ok) { toast('تصویر آپلود شد ✅', 'ok'); cb(res.file); }
@@ -1510,7 +1519,7 @@ function openMediaPicker(cb) {
   fileInput.addEventListener('change', function () {
     var fd = new FormData();
     fd.append('file', fileInput.files[0]);
-    fetch('/api/media/upload', { method: 'POST', body: fd })
+    fetch('/api/media/upload', { method: 'POST', headers: apiHeaders(), body: fd })
       .then(function (r) { return r.json(); })
       .then(function (res) {
         if (res.ok) {
@@ -1597,7 +1606,7 @@ function save() {
   saveBtn.textContent = '…در حال ذخیره';
   return fetch('/builder/api/save', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: apiHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({
       slug: window.PB_PAGE.slug,
       settings: data.settings,
@@ -1626,7 +1635,7 @@ function savePageTemplate() {
   var name = prompt('نام این قالب صفحه:', data.settings && data.settings.template_name ? data.settings.template_name : '');
   if (name === null) return;
   fetch('/builder/api/page-template', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    method: 'POST', headers: apiHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({ name: name || '', rows: data.rows, settings: data.settings })
   }).then(function (r) { return r.json(); }).then(function (d) {
     if (d.ok) { toast('📦 صفحه به عنوان قالب ذخیره شد', 'ok'); }

@@ -8,7 +8,7 @@
 <div class="card" style="padding:22px">
   <div class="table-wrap">
     <table class="table">
-      <thead><tr><th>عنوان</th><th>دوره</th><th>سوالات</th><th>قبولی</th><th>تعیین سطح</th><th>عملیات</th></tr></thead>
+      <thead><tr><th>عنوان</th><th>دوره</th><th>سوالات</th><th>قبولی</th><th>تعیین سطح</th><th>انتشار</th><th>عملیات</th></tr></thead>
       <tbody>
         {% for q in quizzes %}
         <tr>
@@ -17,6 +17,7 @@
           <td>{{ fa(q.questions|length) }}</td>
           <td>{{ fa(q.passing_score) }}٪</td>
           <td>{{ '✅' if q.is_placement else '—' }}</td>
+          <td>{{ 'منتشر' if q.is_published else 'پیش‌نویس' }}</td>
           <td style="white-space:nowrap">
             <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.quiz_edit', qid=q.id) }}">✏️ ویرایش</a>
             <form method="post" action="{{ url_for('admin.quiz_delete', qid=q.id) }}" style="display:inline">
@@ -26,7 +27,7 @@
           </td>
         </tr>
         {% else %}
-        <tr><td colspan="6" class="text-center text-3">آزمونی ساخته نشده است.</td></tr>
+        <tr><td colspan="7" class="text-center text-3">آزمونی ساخته نشده است.</td></tr>
         {% endfor %}
       </tbody>
     </table>

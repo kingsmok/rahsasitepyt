@@ -6,7 +6,7 @@ import re
 
 from PIL import Image
 
-from conftest import login
+from conftest import csrf_headers, login
 from models import Assignment, Course, Enrollment, Product, Quiz, db
 from test_admin_panel import _login_admin_2fa, _make_admin
 
@@ -139,7 +139,7 @@ def test_address_map_and_shipping_use_real_configured_values(client, app):
     assert 'Map.ir' not in page.text
     estimate = client.post('/api/address/shipping-estimate', json={
         'province': 'تهران', 'city': 'تهران',
-    })
+    }, headers=csrf_headers(client))
     assert estimate.status_code == 200
     assert estimate.get_json()['price'] == 85000
     assert estimate.get_json()['note'] == 'ارسال با پست پیشتاز در روزهای کاری'
@@ -149,7 +149,8 @@ def test_builder_library_rejects_empty_template_and_uses_instance(client, app):
     import json
     _make_admin(app)
     _login_admin_2fa(client, app, 'admint@test.ir', 'admin123')
-    invalid = client.post('/builder/api/page-template', json={})
+    invalid = client.post('/builder/api/page-template', json={},
+                          headers=csrf_headers(client))
     assert invalid.status_code == 400
     root_file = os.path.join(app.root_path, 'page_library.json')
     assert not os.path.exists(root_file)
@@ -158,7 +159,7 @@ def test_builder_library_rejects_empty_template_and_uses_instance(client, app):
         'name': 'قالب تست تجاری',
         'rows': [{'id': 'row-1', 'settings': {}, 'cols': [[]]}],
         'settings': {'seo_title': 'تست'},
-    })
+    }, headers=csrf_headers(client))
     assert valid.status_code == 200 and valid.get_json()['ok'] is True
     library_file = os.path.join(app.instance_path, 'libraries', 'page_library.json')
     assert os.path.isfile(library_file)

@@ -46,6 +46,15 @@ def _managed_courses():
     return Course.query.filter(Course.id.in_(ids)).order_by(Course.created_at.desc()).all()
 
 
+def _course_sold(course_id):
+    """جمع مبلغ فروش قطعی یک دوره (قیمت × تعداد)."""
+    return db.session.query(func.coalesce(
+            func.sum(OrderItem.price * func.coalesce(OrderItem.quantity, 1)), 0)) \
+        .join(Order, Order.id == OrderItem.order_id) \
+        .filter(OrderItem.course_id == course_id, Order.status == 'paid') \
+        .scalar() or 0
+
+
 @teacher_bp.route('/')
 def dashboard():
     r = _teacher_required()
@@ -58,7 +67,8 @@ def dashboard():
     # فقط تراکنش قطعی؛ سفارش pending/failed نباید درآمد استاد را بالا ببرد.
     revenue = 0
     if course_ids:
-        revenue = db.session.query(func.coalesce(func.sum(OrderItem.price), 0)) \
+        revenue = db.session.query(func.coalesce(
+                func.sum(OrderItem.price * func.coalesce(OrderItem.quantity, 1)), 0)) \
             .join(Order, Order.id == OrderItem.order_id) \
             .filter(OrderItem.course_id.in_(course_ids), Order.status == 'paid') \
             .scalar() or 0
@@ -79,11 +89,7 @@ def dashboard():
     # سهم واقعی این مدرس — طبق درصد تعیین‌شده برای هر دوره (نه ۵۰٪ ثابت)
     share = 0
     for course in courses:
-        sold = db.session.query(func.coalesce(func.sum(OrderItem.price), 0)) \
-            .join(Order, Order.id == OrderItem.order_id) \
-            .filter(OrderItem.course_id == course.id, Order.status == 'paid') \
-            .scalar() or 0
-        share += course.teacher_share_amount(g.user.id, sold)
+        share += course.teacher_share_amount(g.user.id, _course_sold(course.id))
     g.seo['title'] = 'داشبورد استاد — آکادمی آنلاین'
     return render_template('teacher/dashboard.html', courses=courses,
                            total_students=total_students, revenue=revenue,
@@ -356,10 +362,7 @@ def revenue():
     total = 0
     share = 0
     for course in courses:
-        sold = db.session.query(func.coalesce(func.sum(OrderItem.price), 0)) \
-            .join(Order, Order.id == OrderItem.order_id) \
-            .filter(OrderItem.course_id == course.id, Order.status == 'paid') \
-            .scalar() or 0
+        sold = _course_sold(course.id)
         count = Enrollment.query.filter_by(course_id=course.id).count()
         # سهم این مدرس طبق درصد همان دوره (مدرس اصلی = باقی‌مانده پس از کسر کمکی‌ها)
         course_share = course.teacher_share_amount(g.user.id, sold)
@@ -372,9 +375,13 @@ def revenue():
     paid_out = db.session.query(func.coalesce(func.sum(PayoutRequest.amount), 0)) \
         .filter_by(teacher_id=g.user.id, status='paid').scalar() or 0
     available = max(0, share - int(paid_out or 0) - (pending.amount if pending else 0))
+    history = PayoutRequest.query.filter_by(teacher_id=g.user.id) \
+        .order_by(PayoutRequest.created_at.desc()).all()
+    last_account = next((h.account for h in history if h.account), '')
     return render_template('teacher/revenue.html', rows=rows,
                            total=total, share=share, pending=pending,
-                           paid_out=paid_out, available=available)
+                           paid_out=paid_out, available=available, history=history,
+                           last_account=last_account)
 
 
 @teacher_bp.route('/payout/request', methods=['POST'])
@@ -389,11 +396,7 @@ def payout_request():
     # سهم قابل تسویه = مجموع سهم این مدرس از هر دوره طبق درصد همان دوره
     available = 0
     for course in _managed_courses():
-        sold = db.session.query(func.coalesce(func.sum(OrderItem.price), 0)) \
-            .join(Order, Order.id == OrderItem.order_id) \
-            .filter(OrderItem.course_id == course.id, Order.status == 'paid') \
-            .scalar() or 0
-        available += course.teacher_share_amount(g.user.id, sold)
+        available += course.teacher_share_amount(g.user.id, _course_sold(course.id))
     paid_out = db.session.query(func.coalesce(func.sum(PayoutRequest.amount), 0)) \
         .filter_by(teacher_id=g.user.id, status='paid').scalar() or 0
     pending_out = db.session.query(func.coalesce(func.sum(PayoutRequest.amount), 0)) \
@@ -409,6 +412,12 @@ def payout_request():
         flash('درخواست تسویه قبلی هنوز در انتظار بررسی است.', 'info')
     else:
         db.session.add(PayoutRequest(teacher_id=g.user.id, amount=amount, account=account))
+        try:
+            Notification.notify_staff('درخواست تسویه مدرس',
+                                      f'{g.user.name} — {amount:,} تومان',
+                                      '💰', url_for('admin.payouts'))
+        except Exception:
+            pass
         db.session.commit()
         flash('درخواست تسویه ثبت شد و برای بررسی ارسال گردید. 💰', 'success')
     return redirect(url_for('teacher.revenue'))

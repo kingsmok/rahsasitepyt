@@ -285,6 +285,10 @@ def write_env_file(db_url, secret_key):
     lines['FLASK_ENV'] = 'production'
     lines['APP_ENV'] = 'production'
     lines['ENABLE_DEMO_FEATURES'] = '0'
+    # پیش‌فرض: کوکی سشن روی HTTP هم کار کند (سی‌پنل). برای HTTPS سخت‌گیرانه
+    # SESSION_COOKIE_SECURE=1 را دستی در .env بگذارید.
+    if not (lines.get('SESSION_COOKIE_SECURE') or '').strip():
+        lines['SESSION_COOKIE_SECURE'] = '0'
     # کلید مالک سرور برای تعمیر اضطراری وقتی جدول کاربران قابل خواندن نیست.
     # مقدار موجود هرگز چرخانده نمی‌شود تا در بحران قابل استفاده بماند.
     repair_token = (lines.get('INSTALL_REPAIR_TOKEN') or '').strip()
@@ -320,6 +324,7 @@ def write_env_file(db_url, secret_key):
         'LICENSE_PUBLIC_KEY_FILE', 'LICENSE_PUBLIC_KEY', 'LICENSE_FILE',
         'DATABASE_URL', 'LOG_DIR', 'REDIS_URL',
         'GIT_REPO_URL', 'GIT_BRANCH', 'GITHUB_WEBHOOK_SECRET',
+        'SESSION_COOKIE_SECURE', 'ENABLE_GZIP', 'TRUST_PROXY',
         'UPDATE_INSTALL_DEPENDENCIES', 'UPDATE_TOUCH_RESTART',
         'GIT_FETCH_TIMEOUT', 'DB_MIGRATION_TIMEOUT', 'PIP_INSTALL_TIMEOUT',
         'PIP_DEFAULT_TIMEOUT', 'PIP_RETRIES', 'PIP_INDEX_URL',
@@ -401,7 +406,7 @@ DEFAULT_SETTINGS = {
     # درصد پیش‌فرض سهم مدرس از فروش هر دوره (قابل تغییر جداگانه در هر دوره)
     'teacher_default_share': '50',
     'loyalty_discount_percent': '0',
-    'referral_bonus_percent': '0',
+    'referral_bonus_percent': '5',
     'refund_days': '0',
     'shipping_flat_rate': '0',
     'shipping_note': 'هزینه و زمان ارسال پس از بررسی سفارش اعلام می‌شود.',
@@ -824,6 +829,13 @@ def copy_sqlite_into(db_url):
 
 def attach_existing_database(db_url, copy_from_sqlite=False):
     """وصل کردن دیتابیس موجود: داده پاک نمی‌شود؛ فقط .env و جدول‌های جاافتاده."""
+    try:
+        return _attach_existing_database(db_url, copy_from_sqlite=copy_from_sqlite)
+    except Exception as exc:
+        return False, 'خطا هنگام وصل دیتابیس موجود: ' + _friendly_db_error(exc, db_url or '')
+
+
+def _attach_existing_database(db_url, copy_from_sqlite=False):
     url = resolve_url(db_url)
     if str(url).startswith('mysql'):
         try:
@@ -854,7 +866,9 @@ def attach_existing_database(db_url, copy_from_sqlite=False):
 
     try:
         eng = _open_engine(db_url)
-        _create_tables_resilient(eng)
+        # روی دیتابیس پر، CONVERT TO utf8mb4 همه جدول‌ها را قفل و درخواست را
+        # تایم‌اوت می‌کند (۵۰۰/۵۰۳ نصب «SQL آماده»). فقط جدول جاافتاده بساز.
+        _create_tables_resilient(eng, convert_charset=False)
         eng.dispose()
     except Exception as exc:
         return False, 'ساخت جدول‌های جاافتاده شکست خورد: ' + str(exc)[:220]
@@ -930,7 +944,7 @@ def _is_conn_lost(exc):
 
 
 def _create_tables_resilient(eng, max_tries=4, max_tables=None,
-                             progress_cb=None):
+                             progress_cb=None, convert_charset=True):
     """ساخت جدول‌ها به‌صورت idempotent و قابل‌ادامه.
 
     ``max_tables`` تعداد جدول‌هایی است که در همین درخواست ساخته می‌شوند. با
@@ -962,8 +976,8 @@ def _create_tables_resilient(eng, max_tries=4, max_tables=None,
     table_names = {table.name for table in tables}
     existing = set(_insp(eng).get_table_names())
 
-    # تبدیل جدول‌های موجود از قبل به utf8mb4
-    if eng.dialect.name == 'mysql':
+    # تبدیل جدول‌های موجود از قبل به utf8mb4 — روی attach دیتابیس پر انجام نشود.
+    if convert_charset and eng.dialect.name == 'mysql':
         for t_name in existing.intersection(table_names):
             try:
                 with eng.begin() as conn:

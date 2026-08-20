@@ -167,17 +167,50 @@ def courses():
 
 # ---------------------------------------------------------------- جزئیات دوره
 def _find_course(slug):
-    """دورهٔ منتشرشده با slug یا شناسهٔ عددی (پشتیبانی از لینک‌های قدیمی)."""
-    value = (slug or '').strip()
+    """دوره با slug یا شناسهٔ عددی. پیش‌نویس فقط برای مدیر/مدرس همان دوره."""
+    from urllib.parse import unquote
+    from models import make_slug
+    value = unquote(unquote(slug or '')).strip().strip('/')
     if not value:
         return None
-    course = Course.query.filter_by(slug=value, status='published').first()
+    value = value.replace('+', '-').replace(' ', '-')
+    candidates = []
+    for cand in (value, make_slug(value, fallback='')):
+        if cand and cand not in candidates:
+            candidates.append(cand)
+    course = None
+    for cand in candidates:
+        course = Course.query.filter_by(slug=cand).first()
+        if course:
+            break
     if course is None and value.isdigit():
-        course = Course.query.filter_by(id=int(value), status='published').first()
-    return course
+        course = Course.query.filter_by(id=int(value)).first()
+    if course is None:
+        return None
+    if course.status == 'published':
+        return course
+    user = getattr(g, 'user', None)
+    if user and (getattr(user, 'is_admin', False) or course.teacher_id == user.id):
+        return course
+    return None
 
 
-@site_bp.route('/course/<slug>')
+@site_bp.route('/c/<int:cid>')
+def course_by_id(cid):
+    """آدرس پایدار با شناسه — ضد 404 اسلاگ فارسی روی برخی هاست‌ها."""
+    course = db.session.get(Course, cid)
+    if course is None:
+        abort(404)
+    if course.status != 'published':
+        user = getattr(g, 'user', None)
+        if not (user and (getattr(user, 'is_admin', False) or course.teacher_id == user.id)):
+            abort(404)
+    if course.slug:
+        return redirect(url_for('site.course_detail', slug=course.slug), code=301)
+    abort(404)
+
+
+@site_bp.route('/course/<path:slug>')
 def course_detail(slug):
     course = _find_course(slug)
     if course is None:
@@ -234,10 +267,17 @@ def course_detail(slug):
         en = next((e for e in g.user.enrollments if e.course_id == course.id), None)
         if en:
             done_ids = set(en.progress_list())
+    intro_kind, intro_id = 'none', ''
+    try:
+        from validators import detect_video
+        intro_kind, intro_id = detect_video(course.intro_video or '')
+    except Exception:
+        _lexc('blueprints/site.py')
     return render_template('course_detail.html', course=course, related=related,
                            reviews=reviews, enrolled=enrolled, is_fav=is_fav,
                            can_access_coursework=can_access_coursework,
-                           done_ids=done_ids, blog_posts=blog_posts)
+                           done_ids=done_ids, blog_posts=blog_posts,
+                           intro_kind=intro_kind, intro_id=intro_id)
 
 
 @site_bp.route('/course/<slug>/review', methods=['POST'])
@@ -258,14 +298,28 @@ def add_review(slug):
         flash('فقط دانشجویان دوره می‌توانند نظر ثبت کنند.', 'error')
         return redirect(url_for('site.course_detail', slug=slug))
     existing = Review.query.filter_by(course_id=course.id, user_id=g.user.id).first()
+    from content_filter import moderate_text
+    from models import Notification
+    ok_c, comment, reason = moderate_text(comment, 2000)
+    if not ok_c:
+        flash(reason or 'متن نظر مجاز نیست.', 'error')
+        return redirect(url_for('site.course_detail', slug=slug) + '#reviews')
     if existing:
         existing.rating = max(1, min(5, rating))
         existing.comment = comment
+        existing.is_approved = False
     else:
         db.session.add(Review(course_id=course.id, user_id=g.user.id,
-                              rating=max(1, min(5, rating)), comment=comment))
+                              rating=max(1, min(5, rating)), comment=comment,
+                              is_approved=False))
+    try:
+        Notification.notify_staff('نظر دوره در انتظار تایید',
+                                  f'{g.user.name}: {course.title}',
+                                  '⭐', '/admin/reviews')
+    except Exception:
+        _lexc('blueprints/site.py')
     db.session.commit()
-    flash('نظر شما با موفقیت ثبت شد. ممنون از بازخوردتان!', 'success')
+    flash('نظر شما ثبت شد و پس از تایید مدیر نمایش داده می‌شود.', 'success')
     return redirect(url_for('site.course_detail', slug=slug) + '#reviews')
 
 
@@ -501,10 +555,23 @@ def blog_post(slug):
         name = clamp_field(request.form.get('name'), 'name')
         comment = clamp_field(request.form.get('comment'), 'comment')
         if name and comment:
+            from content_filter import moderate_text
+            ok_c, comment, reason = moderate_text(comment, 2000)
+            if not ok_c:
+                flash(reason or 'متن دیدگاه مجاز نیست.', 'error')
+                return redirect(url_for('site.blog_post', slug=slug) + '#comments')
             db.session.add(BlogComment(post_id=post.id, name=name,
-                                       comment=comment, ip=client_ip[:60]))
+                                       comment=comment, ip=client_ip[:60],
+                                       is_approved=False))
+            try:
+                from models import Notification
+                Notification.notify_staff('دیدگاه وبلاگ در انتظار تایید',
+                                          f'{name}: {post.title}',
+                                          '💬', '/admin/reviews')
+            except Exception:
+                _lexc('blueprints/site.py')
             db.session.commit()
-            flash('دیدگاه شما ثبت شد. ممنون! 🙏', 'success')
+            flash('دیدگاه شما ثبت شد و پس از تایید مدیر نمایش داده می‌شود.', 'success')
         else:
             flash('نام و متن دیدگاه الزامی است.', 'error')
         return redirect(url_for('site.blog_post', slug=slug) + '#comments')
@@ -566,7 +633,18 @@ def about():
 
 @site_bp.route('/faq')
 def faq():
-    return render_template('faq.html')
+    import json as _json
+    items = []
+    raw = (g.settings or {}).get('faq_items') or ''
+    if raw:
+        try:
+            items = _json.loads(raw)
+        except Exception:
+            items = []
+    if not isinstance(items, list):
+        items = []
+    items = [x for x in items if isinstance(x, dict) and (x.get('q') or x.get('a'))]
+    return render_template('faq.html', faq_items=items)
 
 
 @site_bp.route('/learning-paths')
@@ -747,6 +825,12 @@ def contact():
             flash('نام و متن پیام الزامی است.', 'error')
         else:
             db.session.add(ContactMessage(name=name, email=email, subject=subject, message=message))
+            try:
+                from models import Notification
+                Notification.notify_staff('پیام تماس جدید', f'{name}: {subject or "بدون موضوع"}',
+                                          '✉️', '/admin/messages')
+            except Exception:
+                _lexc('blueprints/site.py')
             db.session.commit()
             flash('پیام شما با موفقیت ارسال شد. به زودی پاسخ می‌دهیم.', 'success')
             return redirect(url_for('site.contact'))

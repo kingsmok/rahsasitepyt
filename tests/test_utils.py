@@ -35,12 +35,27 @@ def test_mask_nc():
 
 
 def test_video_id_extraction():
-    from validators import youtube_id, vimeo_id, aparat_hash
+    from validators import youtube_id, vimeo_id, aparat_hash, detect_video
     assert youtube_id('https://www.youtube.com/watch?v=ScMzIvxBSi4') == 'ScMzIvxBSi4'
     assert youtube_id('https://youtu.be/ScMzIvxBSi4') == 'ScMzIvxBSi4'
+    assert youtube_id('https://www.youtube.com/embed/ScMzIvxBSi4') == 'ScMzIvxBSi4'
     assert youtube_id('https://player.vimeo.com/video/123456') is None
     assert vimeo_id('https://vimeo.com/123456') == '123456'
     assert aparat_hash('https://www.aparat.com/v/abc12345') == 'abc12345'
+    assert aparat_hash('https://www.aparat.com/video/abc12345') == 'abc12345'
+    assert detect_video('https://www.youtube.com/watch?v=ScMzIvxBSi4')[0] == 'youtube'
+    assert detect_video('https://www.youtube.com/shorts/ScMzIvxBSi4')[0] == 'youtube'
+    assert detect_video('https://m.youtube.com/watch?v=ScMzIvxBSi4')[0] == 'youtube'
+    assert detect_video('https://www.aparat.com/v/abc12345')[0] == 'aparat'
+    assert detect_video('/static/video/lesson.mp4')[0] == 'direct'
+
+
+def test_create_tables_resilient_accepts_convert_charset():
+    import inspect
+    from installer import _create_tables_resilient
+    params = inspect.signature(_create_tables_resilient).parameters
+    assert 'convert_charset' in params
+    assert params['convert_charset'].default is True
 
 
 def test_safe_filename():
@@ -174,3 +189,12 @@ def test_messenger_unknown_platform():
     from messengers import send_message
     ok, msg = send_message('not-a-platform', 'x', {})
     assert ok is False
+
+
+def test_sanitize_bot_token_from_botfather_paste():
+    from messengers import sanitize_bot_token, sanitize_chat_id
+    tok = '123456789:AAHxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
+    pasted = 'Use this token to access the HTTP API:\n' + tok + '\nKeep it secret'
+    assert sanitize_bot_token(pasted) == tok
+    assert sanitize_chat_id('کانال من @my_channel لطفاً') == '@my_channel'
+    assert sanitize_chat_id('id=-1001234567890') == '-1001234567890'

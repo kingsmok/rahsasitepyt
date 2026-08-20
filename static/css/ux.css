@@ -66,6 +66,7 @@ input[type="checkbox"],input[type="radio"],input[type="color"]{min-height:0}
 .as-link{min-height:42px;padding:9px 11px}
 .as-link-icon{width:23px;text-align:center;flex:0 0 23px}
 .as-link-label{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.as-badge{margin-right:auto;min-width:18px;height:18px;padding:0 6px;border-radius:99px;background:#f59e0b;color:#111;font-size:11px;font-weight:800;display:inline-flex;align-items:center;justify-content:center}
 .as-no-result{font-size:12px;color:#94a3b8;text-align:center;padding:24px 10px}
 .as-footer-links{border-top:1px solid rgba(255,255,255,.1);margin-top:9px;padding-top:9px}
 .admin-toolbar{min-height:68px;position:sticky;top:0;z-index:200;display:flex;align-items:center;gap:14px;padding:9px 26px;background:color-mix(in srgb,var(--card) 92%,transparent);border-bottom:1px solid var(--border);backdrop-filter:blur(14px)}

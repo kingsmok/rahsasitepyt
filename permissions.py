@@ -33,7 +33,7 @@ _map('manage_settings',
      'admin.install_test_xampp', 'admin.install_connect_xampp',
      'admin.install_test_git', 'admin.install_inspect_db',
      'admin.install_attach_db', 'admin.install_use_sqlite',
-     'admin.install_migrate_db', 'admin.icons_browser')
+     'admin.install_migrate_db', 'admin.icons_browser', 'admin.system_restart')
 _map('view_users', 'admin.users', 'admin.user_profile')
 _map(('edit_users', 'register_students'), 'admin.user_add')
 _map('edit_users', 'admin.user_role', 'admin.user_toggle',
@@ -64,7 +64,8 @@ _map(('manage_builder', 'manage_pages'),
      'admin.form_toggle', 'admin.menus', 'admin.menu_new', 'admin.menu_edit',
      'admin.menu_toggle', 'admin.menu_delete', 'admin.designs',
      'admin.design_variant_preview', 'admin.design_variant_json',
-     'admin.media_library', 'admin.media_delete')
+     'admin.media_library', 'admin.media_delete',
+     'admin.faq_manage', 'admin.pages_content')
 _map('view_orders', 'admin.orders', 'admin.order_detail', 'admin.installments')
 _map('approve_payments', 'admin.order_fulfillment', 'admin.proofs',
      'admin.proof_verify')
@@ -82,7 +83,7 @@ _map(('contact_users', 'reply_tickets'), 'admin.chat', 'admin.chat_user',
 _map(('view_consultations', 'track_leads'), 'admin.consultations', 'admin.messages')
 _map('view_daily_classes', 'admin.live_sessions', 'admin.live_session_delete')
 _map('reply_tickets', 'admin.forum_moderate', 'admin.forum_topic_delete',
-     'admin.forum_topic_pin')
+     'admin.forum_topic_pin', 'admin.forum_topic_approve', 'admin.forum_post_approve')
 _map(('view_reports', 'view_user_courses'), 'admin.behavior_report')
 _map('view_reports',
      'admin.activity', 'admin.reports_index', 'admin.reports_export',
@@ -214,7 +215,8 @@ _ADMIN_MENU = [
     ('admin.categories', '🗂 دسته‌بندی‌ها'),
     ('admin.success_stories', '🌟 داستان موفقیت'),
     ('sep', '🧩 صفحات و طراحی'),
-    ('admin.pages', '📄 صفحات'), ('builder.index', '🧩 صفحه‌ساز'),
+    ('admin.pages', '📄 صفحات'), ('admin.pages_content', '📄 درباره و تماس'),
+    ('admin.faq_manage', '❓ سوالات متداول'), ('builder.index', '🧩 صفحه‌ساز'),
     ('admin.forms', '🛠 فرم‌ساز'), ('admin.menus', '🧭 منوساز'),
     ('admin.designs', '🖼 طراحی‌های سایت'),
     ('sep', '💳 فروش و مالی'),
@@ -248,7 +250,7 @@ _ADMIN_MENU = [
     ('sep', '⚙️ فنی'),
     ('admin.media_library', '📁 کتابخانه رسانه'),
     ('admin.sms_settings', '📱 پیامک'), ('admin.messengers', '📨 پیام‌رسان‌ها'),
-    ('admin.optimizer', '🖼 بهینه‌ساز'), ('admin.backup_list', '🗄 بکاپ‌ها'),
+    ('admin.backup_list', '🗄 بکاپ‌ها'),
     ('admin.icons_browser', '🎨 آیکون‌ها'), ('admin.update_page', '🔄 بروزرسانی'),
     ('admin.install_manager', '🛠 مدیریت نصب و اتصالات'),
 ]
@@ -320,6 +322,7 @@ _ADMIN_GROUPS = [
         ('market.admin_marketplace', 'مارکت‌پلیس‌ها'),
     ]},
     {'label': 'محتوا و آموزش', 'icon': '📚', 'items': [
+        ('admin.courses', 'دورٚ', 'items': [
         ('admin.courses', 'دوره‌ها'),
         ('admin.blog', 'وبلاگ'),
         ('admin.categories', 'دسته‌بندی‌ها'),
@@ -347,13 +350,14 @@ _ADMIN_GROUPS = [
     ]},
     {'label': 'طراحی و صفحات', 'icon': '🧩', 'items': [
         ('admin.pages', 'صفحات'),
+        ('admin.faq_manage', 'سوالات متداول'),
+        ('admin.pages_content', 'درباره و تماس'),
         ('builder.index', 'صفحه‌ساز'),
         ('admin.forms', 'فرم‌ساز'),
         ('admin.menus', 'منوساز'),
         ('admin.designs', 'طراحی‌های سایت'),
         ('admin.media_library', 'کتابخانه رسانه'),
         ('admin.icons_browser', 'آیکون‌ها'),
-        ('admin.optimizer', 'بهینه‌ساز تصویر'),
     ]},
     {'label': 'سئو و بازاریابی', 'icon': '📈', 'items': [
         ('seo_admin.dashboard', 'داشبورد سئو'),
@@ -443,3 +447,4 @@ def menu_groups_for(user):
             groups.append({'label': group['label'], 'icon': group['icon'],
                            'items': items})
     return groups
+return groups

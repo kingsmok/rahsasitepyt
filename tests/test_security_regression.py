@@ -14,6 +14,7 @@
 """
 import re
 
+from conftest import csrf_headers
 from email_service import _esc
 from blueprints.auth import _safe_next
 
@@ -72,13 +73,15 @@ def test_brand_css_settings_cannot_inject_style_or_external_url(app, client):
 # ---------------------------------------------------------------
 def test_cart_add_rejects_non_numeric(client):
     """cart_add با شناسه غیرعددی → 400 (قبلاً 500 می‌داد)"""
-    r = client.post('/api/cart/add', json={'course_id': 'abc'})
+    r = client.post('/api/cart/add', json={'course_id': 'abc'},
+                    headers=csrf_headers(client))
     assert r.status_code == 400
 
 
 def test_cart_add_rejects_unknown_course(client):
     """cart_add با شناسه ناموجود → 404"""
-    r = client.post('/api/cart/add', json={'course_id': 99999})
+    r = client.post('/api/cart/add', json={'course_id': 99999},
+                    headers=csrf_headers(client))
     assert r.status_code == 404
 
 

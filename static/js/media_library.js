@@ -38,7 +38,11 @@
 
   function csrfToken() {
     var t = document.getElementById('global-csrf-token');
-    return t ? t.value : '';
+    if (t && t.value) return t.value;
+    var m = document.querySelector('meta[name="csrf-token"]');
+    if (m && m.getAttribute('content')) return m.getAttribute('content');
+    var h = document.querySelector('input[name="_csrf_token"]');
+    return h ? h.value : '';
   }
 
   function toast(msg, ok) {
@@ -172,6 +176,8 @@
     if (!files.length) return;
     var form = new FormData();
     files.forEach(function (f) { form.append('files', f, f.name); });
+    var csrf = csrfToken();
+    if (csrf) form.append('_csrf_token', csrf);
     var bar = document.getElementById('mm-progress');
     if (bar) {
       bar.style.display = 'block';

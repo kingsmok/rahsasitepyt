@@ -8,6 +8,12 @@
 </div>
 {%- endmacro %}
 
+{% macro contact_intro() -%}
+{% if site.contact_intro %}
+<p class="text-2" style="white-space:pre-line;margin-bottom:16px">{{ site.contact_intro }}</p>
+{% endif %}
+{%- endmacro %}
+
 {% macro contact_form() -%}
 <form method="post" class="contact-form">
   <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">

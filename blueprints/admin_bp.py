@@ -346,6 +346,7 @@ def _course_form(course):
     if request.method == 'POST':
         f = request.form
         was_new = course is None
+        _old_path_c = ('/course/' + course.slug) if (course and course.slug) else None
         if was_new:
             course = Course()
         course.title = f.get('title', '').strip()
@@ -448,8 +449,11 @@ def _course_form(course):
                 _lexc('admin_bp.course_index')
             db.session.commit()
             try:
-                from seo_service import ensure_meta
-                ensure_meta('/course/' + (course.slug or str(course.id)))
+                from seo_service import ensure_meta, save_seo_from_form
+                _p_c = '/course/' + (course.slug or str(course.id))
+                ensure_meta(_p_c)
+                db.session.commit()
+                save_seo_from_form(_p_c, f, old_path=_old_path_c)
                 db.session.commit()
             except Exception:
                 _lexc('blueprints/admin_bp.py')
@@ -459,8 +463,12 @@ def _course_form(course):
             else:
                 flash('دوره به‌صورت پیش‌نویس ذخیره شد و تا انتشار در سایت ۴۰۴ می‌دهد. از همین فرم وضعیت را «منتشر شده» کنید.', 'info')
             return redirect(url_for('admin.course_lessons', cid=course.id))
+    _seo_c = None
+    if course and course.slug:
+        from seo_service import get_seo_for
+        _seo_c = get_seo_for('/course/' + course.slug)
     return render_template('admin/course_form.html', course=course, teachers=teachers,
-                           categories=categories, images=images)
+                           categories=categories, images=images, seo=_seo_c)
 
 
 @admin_bp.route('/courses/<int:cid>/delete', methods=['POST'])
@@ -830,7 +838,19 @@ def _blog_form(post):
             from models import unique_slug_for as _usfb
             post.slug = _usfb(BlogPost, f.get('title', ''), fallback='post')
             db.session.add(post)
+        _old_title_b = post.title
+        _old_path_b = '/blog/' + post.slug if post.slug else None
         post.title = f.get('title', '').strip()
+        # همگام‌سازی اسلاگ در ویرایش — جلوگیری از ۴۰۴ بعد از تغییر عنوان
+        from models import unique_slug_for as _usf2, slug_matches_title as _smt2
+        _slug_in_b = (f.get('slug') or '').strip()
+        if _slug_in_b:
+            post.slug = _usf2(BlogPost, _slug_in_b, exclude_id=post.id, fallback='post')
+        elif not post.slug:
+            post.slug = _usf2(BlogPost, post.title, exclude_id=post.id, fallback='post')
+        elif _old_title_b and _old_title_b != post.title \
+                and _smt2(post.slug, _old_title_b, 'post'):
+            post.slug = _usf2(BlogPost, post.title, exclude_id=post.id, fallback='post')
         post.excerpt = f.get('excerpt', '').strip()
         post.body = f.get('body', '').strip()
         post.category = f.get('category', 'آموزش').strip()
@@ -841,9 +861,11 @@ def _blog_form(post):
         else:
             db.session.commit()
             try:
-                from seo_service import ensure_meta
-                ensure_meta('/blog/' + (post.slug or str(post.id)))
+                from seo_service import ensure_meta, save_seo_from_form
+                _p_b = '/blog/' + (post.slug or str(post.id))
+                ensure_meta(_p_b)
                 db.session.commit()
+                save_seo_from_form(_p_b, f, old_path=_old_path_b)
             except Exception:
                 _lexc('blueprints/admin_bp.py')
             flash('مطلب ذخیره شد.', 'success')
@@ -851,7 +873,11 @@ def _blog_form(post):
     images = ['cover-python.webp', 'cover-flask.webp', 'cover-django.webp', 'cover-react.webp',
               'cover-ml.webp', 'cover-uiux.webp', 'cover-excel.webp', 'cover-marketing.webp',
               'cover-android.webp', 'cover-wordpress.svg', 'cover-english.svg', 'cover-security.svg']
-    return render_template('admin/blog_form.html', post=post, images=images)
+    _seo_b = None
+    if post and post.slug:
+        from seo_service import get_seo_for
+        _seo_b = get_seo_for('/blog/' + post.slug)
+    return render_template('admin/blog_form.html', post=post, images=images, seo=_seo_b)
 
 
 # ---------------------------------------------------------------- نظرات دوره‌ها
@@ -2788,7 +2814,7 @@ def settings():
                 'brand_color', 'brand_color2', 'custom_logo',
                 'certificate_text', 'certificate_sign', 'invoice_prefix',
                 'base_url', 'smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'smtp_from', 'smtp_tls',
-                'whatsapp', 'bale', 'eitaa', 'rubika', 'soroush', 'aparat', 'twitter', 'linkedin', 'youtube', 'github',
+                'whatsapp', 'bale', 'eitaa', 'rubika', 'soroush', 'shad', 'aparat', 'twitter', 'linkedin', 'youtube', 'github',
                 'support_hours', 'about_text', 'zarinpal_merchant', 'sandbox_mode',
                 'kit_container', 'kit_radius', 'watermark_enabled',
                 'maintenance', 'allow_register', 'allow_phone_login',
@@ -2875,7 +2901,7 @@ def super_settings():
                 'site_name', 'site_desc', 'phone', 'email', 'address', 'support_hours',
                 'about_text', 'contact_intro', 'custom_logo', 'brand_color', 'brand_color2',
                 'custom_font_url',
-                'telegram', 'instagram', 'whatsapp', 'bale', 'eitaa', 'rubika', 'soroush',
+                'telegram', 'instagram', 'whatsapp', 'bale', 'eitaa', 'rubika', 'soroush', 'shad',
                 'aparat', 'twitter', 'linkedin', 'youtube', 'github',
                 # سئو
                 'seo_title', 'seo_desc', 'seo_keywords', 'seo_author', 'seo_og_image',
@@ -3195,7 +3221,8 @@ def products_admin():
         else:
             import re as _re2
             from models import unique_slug_for
-            slug = unique_slug_for(_P, title, fallback='product')
+            _slug_req = (request.form.get('slug') or '').strip()
+            slug = unique_slug_for(_P, _slug_req or title, fallback='product')
             from validators import clamp_field
             image_file = request.files.get('image_file')
             uploaded_image = _save_product_image(image_file)
@@ -3225,6 +3252,9 @@ def products_admin():
                 from seo_service import ensure_meta
                 ensure_meta('/product/' + _p.slug)
                 db.session.commit()
+                from seo_service import save_seo_from_form as _ssf
+                _ssf('/product/' + _p.slug, request.form)
+                db.session.commit()
             except Exception:
                 _lexc('blueprints/admin_bp.py')
             flash('محصول ساخته شد. آدرس عمومی: /product/' + slug +
@@ -3245,7 +3275,19 @@ def product_admin_edit(pid):
         uploaded_image = _save_product_image(image_file)
         if image_file and image_file.filename and not uploaded_image:
             return redirect(url_for('admin.product_admin_edit', pid=p.id))
+        _old_title = p.title
+        _old_path_p = '/product/' + p.slug if p.slug else None
         p.title = clamp_field(request.form.get('title'), 'title') or p.title
+        # اسلاگ: اگر خالی است بساز؛ اگر مدیر دستی واردش کرده همان را یکتا کن؛
+        # اگر عنوان عوض شده ولی اسلاگ هنوز از عنوان قبلی است، همگام کن.
+        from models import unique_slug_for as _usf, slug_matches_title as _smt
+        _slug_in = (request.form.get('slug') or '').strip()
+        if _slug_in:
+            p.slug = _usf(_P, _slug_in, exclude_id=p.id, fallback='product')
+        elif not p.slug:
+            p.slug = _usf(_P, p.title, exclude_id=p.id, fallback='product')
+        elif _old_title != p.title and _smt(p.slug, _old_title, 'product'):
+            p.slug = _usf(_P, p.title, exclude_id=p.id, fallback='product')
         p.description = clamp_field(request.form.get('description'), 'default')
         p.price = _product_int(request.form.get('price'))
         p.discount_price = _product_int(request.form.get('discount_price'))
@@ -3261,14 +3303,20 @@ def product_admin_edit(pid):
         p.is_active = bool(request.form.get('is_active'))
         db.session.commit()
         try:
-            from seo_service import ensure_meta
+            from seo_service import ensure_meta, save_seo_from_form
             ensure_meta('/product/' + p.slug)
             db.session.commit()
+            save_seo_from_form('/product/' + p.slug, request.form,
+                               old_path=_old_path_p)
         except Exception:
             _lexc('blueprints/admin_bp.py')
         flash('محصول به‌روزرسانی شد. ✏️', 'success')
         return redirect(url_for('admin.products_admin'))
-    return render_template('admin/product_form.html', p=p)
+    _seo_p = None
+    if p and p.slug:
+        from seo_service import get_seo_for
+        _seo_p = get_seo_for('/product/' + p.slug)
+    return render_template('admin/product_form.html', p=p, seo=_seo_p)
 
 
 @admin_bp.route('/products/<int:pid>/delete', methods=['POST'])

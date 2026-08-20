@@ -19,6 +19,9 @@
         <td>
           <div class="actions-cell">
             <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.blog_edit', pid=p.id) }}">✏️</a>
+            <a class="btn btn-ghost btn-sm" target="_blank" rel="noopener"
+               title="{% if p.published %}مشاهده صفحه عمومی{% else %}پیش‌نمایش پیش‌نویس (فقط مدیر){% endif %}"
+               href="{{ url_for('site.blog_post', slug=p.slug or p.id) }}">🔗</a>
             <form method="post" onsubmit="return confirm('حذف شود؟')">
 <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
               <input type="hidden" name="action" value="delete">

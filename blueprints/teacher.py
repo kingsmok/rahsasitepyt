@@ -374,7 +374,10 @@ def revenue():
     pending = PayoutRequest.query.filter_by(teacher_id=g.user.id, status='pending').first()
     paid_out = db.session.query(func.coalesce(func.sum(PayoutRequest.amount), 0)) \
         .filter_by(teacher_id=g.user.id, status='paid').scalar() or 0
-    available = max(0, share - int(paid_out or 0) - (pending.amount if pending else 0))
+    # مجموع همهٔ درخواست‌های در انتظار (نه فقط اولی) — همسان با payout_request
+    pending_out = db.session.query(func.coalesce(func.sum(PayoutRequest.amount), 0)) \
+        .filter_by(teacher_id=g.user.id, status='pending').scalar() or 0
+    available = max(0, share - int(paid_out or 0) - int(pending_out or 0))
     history = PayoutRequest.query.filter_by(teacher_id=g.user.id) \
         .order_by(PayoutRequest.created_at.desc()).all()
     last_account = next((h.account for h in history if h.account), '')

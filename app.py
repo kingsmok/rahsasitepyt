@@ -372,6 +372,33 @@ def create_app():
         except Exception:
             return '1'
     app.jinja_env.globals['asset_v'] = _asset_v
+
+    # ── انتخاب خودکار نسخهٔ فشرده (.min) برای CSS/JS ──
+    # اگر scripts/build_assets.py اجرا شده باشد و نسخهٔ .min تازه‌تر از فایل
+    # اصلی باشد، همان سرو می‌شود؛ در غیر این صورت فایل اصلی. این‌طور توسعه‌دهنده
+    # می‌تواند فایل اصلی را ویرایش کند بدون آنکه نسخهٔ کهنهٔ .min نمایش داده شود.
+    _STATIC_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static')
+
+    def _asset(path):
+        """آدرس فایل استاتیک با نسخهٔ فشرده در صورت موجود بودن + پارامتر کش."""
+        rel = (path or '').lstrip('/')
+        if rel.startswith('static/'):
+            rel = rel[len('static/'):]
+        name, ext = os.path.splitext(rel)
+        chosen = rel
+        if ext in ('.css', '.js') and not name.endswith('.min'):
+            mini = name + '.min' + ext
+            try:
+                full_src = os.path.join(_STATIC_ROOT, rel)
+                full_min = os.path.join(_STATIC_ROOT, mini)
+                if (os.path.exists(full_min) and
+                        os.path.getmtime(full_min) >= os.path.getmtime(full_src)):
+                    chosen = mini
+            except OSError:
+                pass
+        return '/static/{}?v={}'.format(chosen, _asset_v())
+
+    app.jinja_env.globals['asset'] = _asset
     app.jinja_env.globals['utcnow'] = utcnow
     app.jinja_env.globals.update(THEMES=THEMES, fa=fa, money=money,
                                  PERSIAN_THEMES=_PERSIAN_THEMES)

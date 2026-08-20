@@ -1,7 +1,7 @@
 {% extends 'admin/base.html' %}
 {% block atitle %}پیش‌نمایش واریانت — {{ variant.title }}{% endblock %}
 {% block acontent %}
-<link rel="stylesheet" href="/static/css/design_variants.css?v={{ asset_v() }}">
+<link rel="stylesheet" href="{{ asset('css/design_variants.css') }}">
 <style>
   .dp-section{margin-bottom:34px}
   .dp-label{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;padding:8px 14px;background:var(--bg-2);border-radius:12px;font-size:13px;font-weight:800}

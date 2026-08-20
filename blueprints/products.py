@@ -61,6 +61,8 @@ def product_by_id(pid):
         user = getattr(g, 'user', None)
         if not (user and getattr(user, 'is_admin', False)):
             abort(404)
+    from models import ensure_slug
+    ensure_slug(p, fallback='product')
     if p.slug:
         return redirect(url_for('products.product_detail', slug=p.slug), code=301)
     abort(404)
@@ -71,25 +73,18 @@ def product_detail(slug):
     value = (slug or '').strip()
     if not value:
         abort(404)
-    from urllib.parse import unquote
-    from models import make_slug
-    value = unquote(unquote(value)).strip().strip('/')
-    value = value.replace('+', '-').replace(' ', '-')
-    p = Product.query.filter_by(slug=value).first()
-    if p is None:
-        alt = make_slug(value, fallback='')
-        if alt and alt != value:
-            p = Product.query.filter_by(slug=alt).first()
-    if p is None and value.isdigit():
-        p = Product.query.filter_by(id=int(value)).first()
-        if p is not None and p.is_active:
-            return redirect(url_for('products.product_detail', slug=p.slug), code=301)
+    from models import find_by_slug_or_id, ensure_slug
+    p = find_by_slug_or_id(Product, value, fallback='product')
     if p is None:
         abort(404)
     if not p.is_active:
         user = getattr(g, 'user', None)
         if not (user and getattr(user, 'is_admin', False)):
             abort(404)
+    # اسلاگ خالی (نصب‌های قدیمی) ترمیم و به آدرس درست منتقل شود
+    ensure_slug(p, fallback='product')
+    if p.slug and value != p.slug:
+        return redirect(url_for('products.product_detail', slug=p.slug), code=301)
     p.views = (p.views or 0) + 1
     db.session.commit()
     related = Product.query.filter(Product.category == p.category, Product.id != p.id,

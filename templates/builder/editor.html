@@ -7,10 +7,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>🧩 صفحه‌ساز — {{ page.title }} — {{ site.site_name or 'آکادمی آنلاین' }}</title>
 <link rel="icon" href="{{ site.get('logo_url') or '/static/img/favicon.svg' }}">
-<link rel="stylesheet" href="/static/css/base.css?v={{ asset_v() }}">
+<link rel="stylesheet" href="{{ asset('css/base.css') }}">
 <link rel="stylesheet" href="/static/css/themes/{{ theme }}.css?v={{ asset_v() }}">
-<link rel="stylesheet" href="/static/css/builder.css?v={{ asset_v() }}">
-<link rel="stylesheet" href="/static/css/editor.css?v={{ asset_v() }}">
+<link rel="stylesheet" href="{{ asset('css/builder.css') }}">
+<link rel="stylesheet" href="{{ asset('css/editor.css') }}">
 {% set _brand1 = site.brand_color|css_color %}{% set _brand2 = site.brand_color2|css_color %}
 {% if _brand1 %}<style>:root{--primary:{{ _brand1 }};--primary-2:{{ _brand2 or _brand1 }};--grad-brand:linear-gradient(135deg,{{ _brand1 }},{{ _brand2 or _brand1 }})}</style>{% endif %}
 <meta name="csrf-token" content="{{ csrf_token }}">
@@ -158,6 +158,6 @@ window.PB_PREVIEW_URL = {{ ('/' if page.ptype in ['home', 'header', 'footer', 'f
 
 <div id="pb-toasts"></div>
 
-<script src="/static/js/builder.js?v={{ asset_v() }}"></script>
+<script src="{{ asset('js/builder.js') }}"></script>
 </body>
 </html>

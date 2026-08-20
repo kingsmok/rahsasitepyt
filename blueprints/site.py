@@ -535,8 +535,19 @@ def blog():
 
 @site_bp.route('/blog/<slug>', methods=['GET', 'POST'])
 def blog_post(slug):
-    from models import BlogComment
-    post = BlogPost.query.filter_by(slug=slug, published=True).first_or_404()
+    from models import BlogComment, find_by_slug_or_id
+    post = find_by_slug_or_id(BlogPost, slug, fallback='post')
+    if post is None:
+        abort(404)
+    # پیش‌نویس فقط برای مدیر و نویسندهٔ همان مطلب قابل مشاهده است
+    if not post.published:
+        _u = getattr(g, 'user', None)
+        _own = _u and getattr(post, 'author_id', None) == getattr(_u, 'id', None)
+        if not (_u and (getattr(_u, 'is_admin', False) or _own)):
+            abort(404)
+    # اگر آدرس واردشده با اسلاگ رسمی فرق دارد، به آدرس درست منتقل شود (SEO)
+    if post.slug and slug != post.slug:
+        return redirect(url_for('site.blog_post', slug=post.slug), code=301)
     g.current_post = post
     if request.method == 'POST':
         from validators import clamp_field

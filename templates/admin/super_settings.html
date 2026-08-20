@@ -86,8 +86,8 @@
 <div class="ss-card">
   <h3>🌐 شبکه‌های اجتماعی</h3>
   <div class="ss-grid">
-    {% for k, label, ph in [('telegram','تلگرام','academy_ir'),('instagram','اینستاگرام','academy.ir'),('whatsapp','واتساپ','98910001234'),('bale','بله','academy_ir'),('eitaa','ایتا','academy_ir'),('rubika','روبیکا','academy_ir'),('soroush','سروش','academy_ir'),('aparat','آپارات','academy_ir'),('twitter','ایکس','academy_ir'),('linkedin','لینکدین','academy-ir'),('youtube','یوتیوب','academy'),('github','گیت‌هاب','academy')] %}
-    <div class="ss-field"><label>{{ label }}</label><input name="{{ k }}" value="{{ vals.get(k,'') }}" placeholder="{{ ph }}"></div>
+    {% for k, label, ph in [('telegram','تلگرام','academy_ir'),('instagram','اینستاگرام','academy.ir'),('whatsapp','واتساپ','98910001234'),('bale','بله','academy_ir'),('eitaa','ایتا','academy_ir'),('rubika','روبیکا','academy_ir'),('soroush','سروش','academy_ir'),('shad','شاد','academy_ir'),('aparat','آپارات','academy_ir'),('twitter','ایکس','academy_ir'),('linkedin','لینکدین','academy-ir'),('youtube','یوتیوب','academy'),('github','گیت‌هاب','academy')] %}
+    <div class="ss-field"><label>{{ social_icon(k, 18) }} {{ label }}</label><input name="{{ k }}" value="{{ vals.get(k,'') }}" placeholder="{{ ph }}" dir="ltr"></div>
     {% endfor %}
   </div>
 </div>

@@ -48,3 +48,9 @@ static/uploads/*
 !static/uploads/lessons/
 static/img/uploads/*
 !static/img/uploads/.htaccess
+
+# ── دارایی‌های تولیدشده (با scripts/build_assets.py ساخته می‌شوند) ──
+# در به‌روزرسانی خودکار بازتولید می‌شوند؛ نبودشان مشکلی ایجاد نمی‌کند چون
+# asset() به فایل اصلی برمی‌گردد.
+static/css/*.min.css
+static/js/*.min.js

@@ -21,6 +21,9 @@ MESSENGERS = [
     dict(id='rubika', name='روبیکا', fa='روبیکا', icon='/static/img/social/rubika.svg',
          color='#2563eb', token_key='msg_rubika_token', chat_key='msg_rubika_chat',
          base='https://messapi.rubika.ir'),
+    dict(id='shad', name='شاد', fa='شاد', icon='/static/img/social/shad.svg',
+         color='#e11d48', token_key='msg_shad_token', chat_key='msg_shad_chat',
+         base='https://api.shad.ir'),
 ]
 
 MSG_MAP = {m['id']: m for m in MESSENGERS}
@@ -67,7 +70,7 @@ def send_message(platform, text, settings, link=None):
         return False, f'توکن ربات {m["fa"]} ثبت نشده'
     full = text + (f'\n🔗 {link}' if link else '')
     try:
-        if platform in ('telegram', 'bale', 'eitaa', 'soroush'):
+        if platform in ('telegram', 'bale', 'eitaa', 'soroush', 'shad'):
             base = m['base']
             url = f'{base}/bot{token}/sendMessage'
             if platform == 'eitaa':
@@ -118,7 +121,7 @@ def test_platform(platform, settings):
     if not token:
         return False, 'توکن ثبت نشده'
     try:
-        if platform in ('telegram', 'bale', 'soroush'):
+        if platform in ('telegram', 'bale', 'soroush', 'shad'):
             r = http_request("get", f"{m['base']}/bot{token}/getMe", timeout=12)
             data = r.json()
             if data.get('ok'):

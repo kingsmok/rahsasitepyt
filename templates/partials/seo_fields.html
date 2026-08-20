@@ -1,0 +1,89 @@
+{#
+  پنل سئوی مشترک — در فرم دوره / مقاله / محصول include می‌شود.
+  ورودی: seo (شیء SeoMeta یا None)
+  همهٔ فیلدها با پیشوند seo_ ارسال می‌شوند و در بک‌اند با save_seo_from_form ذخیره می‌شوند.
+#}
+<details class="seo-panel" {% if seo and (seo.title or seo.description or seo.focus_keyword) %}open{% endif %}>
+  <summary class="seo-panel__head">
+    <span class="seo-panel__icon">🔍</span>
+    <strong>تنظیمات سئو (اختیاری)</strong>
+    <span class="seo-panel__hint">عنوان، توضیحات، کلمه کلیدی و اشتراک‌گذاری</span>
+  </summary>
+  <div class="seo-panel__body">
+
+    <div class="form-group">
+      <label for="seo_title">عنوان سئو (Title Tag)</label>
+      <input id="seo_title" class="form-control" name="seo_title" maxlength="200"
+             data-seo-count="60" value="{{ seo.title if seo else '' }}"
+             placeholder="خالی بگذارید تا از عنوان مطلب ساخته شود">
+      <small class="text-muted">طول پیشنهادی: تا ۶۰ نویسه — <span class="seo-count">۰</span></small>
+    </div>
+
+    <div class="form-group">
+      <label for="seo_description">توضیحات متا (Meta Description)</label>
+      <textarea id="seo_description" class="form-control" name="seo_description" rows="2"
+                maxlength="400" data-seo-count="158"
+                placeholder="خلاصه‌ای جذاب که در نتایج گوگل نمایش داده می‌شود">{{ seo.description if seo else '' }}</textarea>
+      <small class="text-muted">طول پیشنهادی: تا ۱۵۸ نویسه — <span class="seo-count">۰</span></small>
+    </div>
+
+    <div class="seo-panel__row">
+      <div class="form-group">
+        <label for="seo_focus_keyword">کلمه کلیدی اصلی</label>
+        <input id="seo_focus_keyword" class="form-control" name="seo_focus_keyword"
+               maxlength="100" value="{{ seo.focus_keyword if seo else '' }}">
+      </div>
+      <div class="form-group">
+        <label for="seo_keywords">کلمات کلیدی (با ویرگول جدا کنید)</label>
+        <input id="seo_keywords" class="form-control" name="seo_keywords"
+               maxlength="300" value="{{ seo.keywords if seo else '' }}">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="seo_canonical">آدرس کانونیکال</label>
+      <input id="seo_canonical" class="form-control" name="seo_canonical" dir="ltr"
+             maxlength="300" value="{{ seo.canonical if seo else '' }}"
+             placeholder="خالی = آدرس همین صفحه">
+    </div>
+
+    <div class="seo-panel__row">
+      <label class="seo-check">
+        <input type="checkbox" name="seo_noindex" {% if seo and seo.noindex %}checked{% endif %}>
+        <span>ایندکس نشود (noindex)</span>
+      </label>
+      <label class="seo-check">
+        <input type="checkbox" name="seo_nofollow" {% if seo and seo.nofollow %}checked{% endif %}>
+        <span>لینک‌ها دنبال نشوند (nofollow)</span>
+      </label>
+    </div>
+
+    <fieldset class="seo-panel__og">
+      <legend>اشتراک‌گذاری در شبکه‌های اجتماعی</legend>
+      <div class="form-group">
+        <label for="seo_og_title">عنوان اشتراک‌گذاری</label>
+        <input id="seo_og_title" class="form-control" name="seo_og_title" maxlength="200"
+               value="{{ seo.og_title if seo else '' }}" placeholder="خالی = عنوان سئو">
+      </div>
+      <div class="form-group">
+        <label for="seo_og_desc">توضیح اشتراک‌گذاری</label>
+        <textarea id="seo_og_desc" class="form-control" name="seo_og_desc" rows="2"
+                  maxlength="400" placeholder="خالی = توضیحات متا">{{ seo.og_desc if seo else '' }}</textarea>
+      </div>
+      <div class="form-group">
+        <label for="seo_og_image">تصویر اشتراک‌گذاری</label>
+        <input id="seo_og_image" class="form-control" name="seo_og_image" dir="ltr"
+               maxlength="300" value="{{ seo.og_image if seo else '' }}"
+               placeholder="خالی = تصویر شاخص مطلب">
+      </div>
+    </fieldset>
+
+    <div class="seo-preview" aria-label="پیش‌نمایش نتیجه گوگل">
+      <div class="seo-preview__label">پیش‌نمایش در گوگل</div>
+      <div class="seo-preview__title" data-seo-preview="title">عنوان مطلب</div>
+      <div class="seo-preview__url" data-seo-preview="url">{{ request.host_url }}…</div>
+      <div class="seo-preview__desc" data-seo-preview="desc">توضیحات متا اینجا نمایش داده می‌شود.</div>
+    </div>
+  </div>
+</details>
+<script src="{{ asset('js/seo-fields.js') }}" defer></script>

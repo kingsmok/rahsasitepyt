@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="زیبال">
+<defs><linearGradient id="gzibal" x1="0" y1="0" x2="1" y2="1">
+<stop offset="0" stop-color="#1b9af7"/><stop offset="1" stop-color="#0f6fb5"/></linearGradient></defs>
+<rect width="64" height="64" rx="14" fill="url(#gzibal)"/>
+<path d="M0 44c14 6 30 8 64 2v18H0z" fill="#fff" opacity=".10"/>
+<text x="32" y="38" font-family="Vazirmatn,Tahoma,sans-serif" font-size="13"
+      font-weight="700" fill="#fff" text-anchor="middle" direction="rtl">زیبال</text>
+</svg>

@@ -877,6 +877,70 @@ def unique_slug_for(model_class, title, exclude_id=None, fallback='item'):
     return '{}-{}'.format(base[:200], os.urandom(3).hex())
 
 
+def ensure_slug(row, fallback='item', title_attr='title'):
+    """اگر رکورد اسلاگ نداشته باشد، از عنوانش یکی بساز و ذخیره کن (ضد ۴۰۴).
+
+    نصب‌های قدیمی و رکوردهایی که با اسلاگ خالی ذخیره شده‌اند، لینکشان به ۴۰۴
+    می‌خورد. این تابع idempotent است: اگر اسلاگ سالم باشد دست نمی‌زند.
+    """
+    if getattr(row, 'slug', None):
+        return row.slug
+    title = getattr(row, title_attr, '') or ''
+    row.slug = unique_slug_for(type(row), title,
+                               exclude_id=getattr(row, 'id', None),
+                               fallback=fallback)
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+    return row.slug
+
+
+def slug_matches_title(slug, title, fallback='item'):
+    """آیا اسلاگ فعلی از همین عنوان ساخته شده؟ (پسوند یکتاسازی -۲ نادیده)
+
+    برای تشخیص «اسلاگ خودکار» از «اسلاگ دستی مدیر» هنگام ویرایش عنوان.
+    """
+    if not slug:
+        return True
+    base = make_slug(title or '', fallback)
+    if slug == base:
+        return True
+    m = _re.match(r"^(.*)-(\d{1,4})$", slug)
+    return bool(m and m.group(1) == base[:216])
+
+
+def find_by_slug_or_id(model_class, value, fallback='item'):
+    """یافتن رکورد با اسلاگ (فارسی/انکودشده) یا شناسهٔ عددی.
+
+    مرورگر اسلاگ فارسی را percent-encode می‌فرستد و بعضی پراکسی‌ها آن را دوبار
+    انکود می‌کنند؛ هر دو حالت باز می‌شوند. اگر رکورد اسلاگ نداشته باشد نیز با
+    شناسهٔ عددی پیدا و اسلاگش ترمیم می‌شود — دیگر هیچ آیتم ساخته‌شده ۴۰۴ نمی‌دهد.
+    """
+    from urllib.parse import unquote
+    raw = (value or '').strip()
+    if not raw:
+        return None
+    raw = unquote(unquote(raw)).strip().strip('/')
+    raw = raw.replace('+', '-').replace(' ', '-')
+    if not raw:
+        return None
+    candidates = [raw]
+    alt = make_slug(raw, fallback='')
+    if alt and alt not in candidates:
+        candidates.append(alt)
+    for cand in candidates:
+        row = model_class.query.filter_by(slug=cand).first()
+        if row is not None:
+            return row
+    if raw.isdigit():
+        row = model_class.query.filter_by(id=int(raw)).first()
+        if row is not None:
+            ensure_slug(row, fallback=fallback)
+            return row
+    return None
+
+
 # ═══════════════════════════════════════════════════════════════════════════
 # انواع برگزاری دوره — ۴ نوع مجزا (دسته ۴: LMS)
 # ═══════════════════════════════════════════════════════════════════════════

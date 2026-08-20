@@ -608,13 +608,29 @@ def categories():
         action = request.form.get('action')
         if action == 'add':
             name = request.form.get('name', '').strip()
-            if name and not Category.query.filter_by(name=name).first():
-                db.session.add(Category(name=name, slug=slugify(name), icon=request.form.get('icon', '📚'),
-                                        color=request.form.get('color', '#2563eb'),
-                                        description=request.form.get('description', ''),
-                                        sort=safe_int(request.form.get('sort'))))
-                db.session.commit()
-                flash('دسته‌بندی اضافه شد.', 'success')
+            if not name:
+                flash('نام دسته‌بندی را وارد کنید.', 'error')
+            elif Category.query.filter_by(name=name).first():
+                flash('دسته‌بندی با همین نام از قبل وجود دارد.', 'error')
+            else:
+                # اسلاگ باید یکتا باشد: دو نام متفاوت («برنامه‌نویسی وب» و
+                # «برنامه نویسی وب») می‌توانند به یک اسلاگ برسند. بدون این،
+                # درج دوم با IntegrityError کل صفحه را با خطای ۵۰۰ می‌شکست.
+                from models import unique_slug_for
+                db.session.add(Category(
+                    name=name,
+                    slug=unique_slug_for(Category, name, fallback='category'),
+                    icon=request.form.get('icon', '📚'),
+                    color=request.form.get('color', '#2563eb'),
+                    description=request.form.get('description', ''),
+                    sort=safe_int(request.form.get('sort'))))
+                try:
+                    db.session.commit()
+                    flash('دسته‌بندی اضافه شد.', 'success')
+                except Exception:
+                    db.session.rollback()
+                    _lexc('admin_bp.py')
+                    flash('ثبت دسته‌بندی ناموفق بود؛ دوباره تلاش کنید.', 'error')
         elif action == 'delete':
             c = db.session.get(Category, safe_int(request.form.get('cid')))
             if c:
@@ -1375,10 +1391,15 @@ def bundle_new():
     courses = Course.query.filter_by(status='published').all()
     if request.method == 'POST':
         title = request.form.get('title', '').strip()
-        slug = slugify(request.form.get('slug', '').strip() or title)
         if not title:
             flash('عنوان الزامی است.', 'error')
         else:
+            # اسلاگ یکتا؛ در غیر این صورت دومین باندل با همین عنوان با
+            # IntegrityError صفحه را با خطای ۵۰۰ می‌شکست.
+            from models import unique_slug_for
+            slug = unique_slug_for(
+                Bundle, request.form.get('slug', '').strip() or title,
+                fallback='bundle')
             b = Bundle(title=title, slug=slug,
                        description=request.form.get('description', '').strip(),
                        price=request.form.get('price', 0, type=int),

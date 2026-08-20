@@ -1,18 +1,19 @@
 {% extends 'base.html' %}
 {% block title %}{{ seo.title or "سوالات متداول" }}{% endblock %}
 {% block head %}
+{% if faq_items %}
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@type": "FAQPage",
   "mainEntity": [
-    {"@type": "Question", "name": "چگونه می‌توانم دوره بخرم؟", "acceptedAnswer": {"@type": "Answer", "text": "دوره را به سبد خرید اضافه کنید و پرداخت را از یکی از روش‌های فعال تکمیل کنید. دسترسی پس از تایید قطعی پرداخت فعال می‌شود."}},
-    {"@type": "Question", "name": "دسترسی به دوره‌ها چگونه است؟", "acceptedAnswer": {"@type": "Answer", "text": "دوره‌های خریداری‌شده از بخش دوره‌های من در حساب کاربری در دسترس هستند."}},
-    {"@type": "Question", "name": "گواهی پایان دوره چگونه دریافت می‌شود؟", "acceptedAnswer": {"@type": "Answer", "text": "پس از تکمیل جلسات، گواهی پایان دوره با کد رهگیری در حساب کاربری فعال و از صفحه استعلام قابل بررسی می‌شود."}}{% if site.get('refund_days', '0')|int > 0 %},
-    {"@type": "Question", "name": "مهلت درخواست بازگشت وجه چقدر است؟", "acceptedAnswer": {"@type": "Answer", "text": "مهلت ثبت درخواست {{ site.get('refund_days', '0')|int }} روز پس از خرید است و شرایط درخواست مطابق قوانین سایت بررسی می‌شود."}}{% endif %}
+    {% for it in faq_items %}
+    {"@type": "Question", "name": {{ it.q|tojson }}, "acceptedAnswer": {"@type": "Answer", "text": {{ it.a|tojson }}}}{% if not loop.last %},{% endif %}
+    {% endfor %}
   ]
 }
 </script>
+{% endif %}
 {% endblock %}
 
 {% block content %}
@@ -24,6 +25,14 @@
       <p>اگر پاسخ سوال‌تان را پیدا نکردید، از فرم تماس یا تیکت پشتیبانی استفاده کنید.</p>
     </div>
     <div data-acc-group>
+      {% if faq_items %}
+      {% for it in faq_items %}
+      <div class="faq-item {{ 'open' if loop.first }}">
+        <button class="fq-q" type="button"><span class="ic">{{ it.icon or '❓' }}</span> {{ it.q }}<span class="arrow">▼</span></button>
+        <div class="fq-a">{{ it.a }}</div>
+      </div>
+      {% endfor %}
+      {% else %}
       <div class="faq-item open">
         <button class="fq-q" type="button"><span class="ic">💳</span> چگونه می‌توانم دوره بخرم؟<span class="arrow">▼</span></button>
         <div class="fq-a">دوره موردنظر را به سبد خرید اضافه کنید و از صفحه تسویه حساب ادامه دهید. فقط روش‌های پرداخت فعال و تکمیل‌شده نمایش داده می‌شوند و دسترسی پس از تایید قطعی پرداخت فعال خواهد شد.</div>
@@ -37,21 +46,8 @@
         <div class="fq-a">پس از تکمیل جلسات دوره، گواهی پایان دوره با کد رهگیری منحصربه‌فرد در بخش «دوره‌های من» فعال می‌شود و از صفحه استعلام سایت قابل بررسی است.</div>
       </div>
       <div class="faq-item">
-        <button class="fq-q" type="button"><span class="ic">🎟</span> کد تخفیف چیست و چگونه استفاده کنم؟<span class="arrow">▼</span></button>
-        <div class="fq-a">اگر کد تخفیف فعالی از مجموعه دریافت کرده‌اید، آن را در صفحه تسویه حساب وارد کنید. اعتبار و شرایط هر کد همان‌جا بررسی می‌شود.</div>
-      </div>
-      <div class="faq-item">
         <button class="fq-q" type="button"><span class="ic">💬</span> اگر سوالی داشته باشم چه کنم؟<span class="arrow">▼</span></button>
         <div class="fq-a">از بخش «تیکت‌های پشتیبانی» در داشبورد پیام خود را ثبت کنید و وضعیت پاسخ را همان‌جا پیگیری کنید.</div>
-      </div>
-      <div class="faq-item">
-        <button class="fq-q" type="button"><span class="ic">💻</span> دوره‌ها روی موبایل هم قابل استفاده‌اند؟<span class="arrow">▼</span></button>
-        <div class="fq-a">بله، رابط سایت برای موبایل، تبلت و دسکتاپ طراحی شده است. کیفیت پخش ویدیو به اتصال اینترنت و فرمت فایل دوره بستگی دارد.</div>
-      </div>
-      {% if site.get('refund_days', '0')|int > 0 %}
-      <div class="faq-item">
-        <button class="fq-q" type="button"><span class="ic">↩️</span> مهلت درخواست بازگشت وجه چقدر است؟<span class="arrow">▼</span></button>
-        <div class="fq-a">درخواست خود را حداکثر تا {{ fa(site.get('refund_days', '0')) }} روز پس از خرید از طریق تیکت ثبت کنید. جزئیات و شرایط بررسی در <a href="{{ url_for('site.terms') }}#refund">قوانین بازگشت وجه</a> آمده است.</div>
       </div>
       {% endif %}
     </div>

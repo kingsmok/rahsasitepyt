@@ -11,6 +11,8 @@
   {% if seo.noindex %}<meta name="googlebot" content="noindex">{% endif %}
   <meta name="author" content="{{ site.seo_author or site.site_name or 'آکادمی آنلاین' }}">
   <meta name="generator" content="Academy LMS — Flask">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <input type="hidden" id="global-csrf-token" value="{{ csrf_token }}">
   <meta name="theme-color" content="{{ g.theme_color or ('#f2640c' if theme == 'theme-22' else ('#0e9488' if theme == 'theme-21' else '#2563eb')) }}">
 
   <!-- Open Graph -->

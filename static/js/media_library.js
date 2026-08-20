@@ -38,7 +38,11 @@
 
   function csrfToken() {
     var t = document.getElementById('global-csrf-token');
-    return t ? t.value : '';
+    if (t && t.value) return t.value;
+    var m = document.querySelector('meta[name="csrf-token"]');
+    if (m && m.getAttribute('content')) return m.getAttribute('content');
+    var h = document.querySelector('input[name="_csrf_token"]');
+    return h ? h.value : '';
   }
 
   function toast(msg, ok) {

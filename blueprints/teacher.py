@@ -372,9 +372,11 @@ def revenue():
     paid_out = db.session.query(func.coalesce(func.sum(PayoutRequest.amount), 0)) \
         .filter_by(teacher_id=g.user.id, status='paid').scalar() or 0
     available = max(0, share - int(paid_out or 0) - (pending.amount if pending else 0))
+    history = PayoutRequest.query.filter_by(teacher_id=g.user.id) \
+        .order_by(PayoutRequest.created_at.desc()).all()
     return render_template('teacher/revenue.html', rows=rows,
                            total=total, share=share, pending=pending,
-                           paid_out=paid_out, available=available)
+                           paid_out=paid_out, available=available, history=history)
 
 
 @teacher_bp.route('/payout/request', methods=['POST'])

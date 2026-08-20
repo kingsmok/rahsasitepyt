@@ -69,8 +69,13 @@ def product_detail(slug):
     db.session.commit()
     related = Product.query.filter(Product.category == p.category, Product.id != p.id,
                                    Product.is_active == True).limit(4).all()
-    g.seo['title'] = f"{p.title} — فروشگاه آکادمی آنلاین"
-    g.seo['description'] = (p.description or '')[:160]
+    try:
+        from seo_service import product_seo, ensure_meta
+        ensure_meta('/product/' + p.slug)
+        g.seo.update(product_seo(p, request.host_url.rstrip('/')))
+    except Exception:
+        g.seo['title'] = f"{p.title} — فروشگاه آکادمی آنلاین"
+        g.seo['description'] = (p.description or '')[:160]
     return render_template('products/detail.html', p=p, related=related)
 
 

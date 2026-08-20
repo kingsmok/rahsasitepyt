@@ -258,14 +258,28 @@ def add_review(slug):
         flash('فقط دانشجویان دوره می‌توانند نظر ثبت کنند.', 'error')
         return redirect(url_for('site.course_detail', slug=slug))
     existing = Review.query.filter_by(course_id=course.id, user_id=g.user.id).first()
+    from content_filter import moderate_text
+    from models import Notification
+    ok_c, comment, reason = moderate_text(comment, 2000)
+    if not ok_c:
+        flash(reason or 'متن نظر مجاز نیست.', 'error')
+        return redirect(url_for('site.course_detail', slug=slug) + '#reviews')
     if existing:
         existing.rating = max(1, min(5, rating))
         existing.comment = comment
+        existing.is_approved = False
     else:
         db.session.add(Review(course_id=course.id, user_id=g.user.id,
-                              rating=max(1, min(5, rating)), comment=comment))
+                              rating=max(1, min(5, rating)), comment=comment,
+                              is_approved=False))
+    try:
+        Notification.notify_staff('نظر دوره در انتظار تایید',
+                                  f'{g.user.name}: {course.title}',
+                                  '⭐', '/admin/reviews')
+    except Exception:
+        _lexc('blueprints/site.py')
     db.session.commit()
-    flash('نظر شما با موفقیت ثبت شد. ممنون از بازخوردتان!', 'success')
+    flash('نظر شما ثبت شد و پس از تایید مدیر نمایش داده می‌شود.', 'success')
     return redirect(url_for('site.course_detail', slug=slug) + '#reviews')
 
 
@@ -566,7 +580,18 @@ def about():
 
 @site_bp.route('/faq')
 def faq():
-    return render_template('faq.html')
+    import json as _json
+    items = []
+    raw = (g.settings or {}).get('faq_items') or ''
+    if raw:
+        try:
+            items = _json.loads(raw)
+        except Exception:
+            items = []
+    if not isinstance(items, list):
+        items = []
+    items = [x for x in items if isinstance(x, dict) and (x.get('q') or x.get('a'))]
+    return render_template('faq.html', faq_items=items)
 
 
 @site_bp.route('/learning-paths')

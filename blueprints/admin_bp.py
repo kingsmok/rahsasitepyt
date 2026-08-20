@@ -345,12 +345,18 @@ def _course_form(course):
               'cover-android.webp', 'cover-wordpress.svg', 'cover-english.svg', 'cover-security.svg']
     if request.method == 'POST':
         f = request.form
-        if not course:
+        was_new = course is None
+        if was_new:
             course = Course()
-            from models import unique_slug_for as _usf
-            course.slug = _usf(Course, f.get('title', ''), fallback='course')
-            db.session.add(course)
         course.title = f.get('title', '').strip()
+        from models import unique_slug_for as _usf
+        _slug_src = (f.get('slug') or '').strip() or course.title
+        if _slug_src:
+            course.slug = _usf(Course, _slug_src, exclude_id=getattr(course, 'id', None), fallback='course')
+        elif not getattr(course, 'slug', None):
+            course.slug = _usf(Course, course.title or 'course', exclude_id=getattr(course, 'id', None), fallback='course')
+        if was_new:
+            db.session.add(course)
         course.subtitle = f.get('subtitle', '').strip()
         course.description = f.get('description', '').strip()
         course.category_id = int(f.get('category_id') or 0) or None
@@ -1485,7 +1491,10 @@ def sms_settings():
 @admin_bp.route('/optimizer', methods=['GET', 'POST'])
 @admin_required
 def optimizer():
-    """بهینه‌ساز تصویر — آپلود/تبدیل به WebP یا JPEG"""
+    """بهینه‌ساز تصویر — غیرفعال؛ فشرده‌سازی خودکار هنگام آپلود."""
+    flash('بهینه‌ساز دستی غیرفعال است. تصاویر هنگام آپلود به‌صورت خودکار فشرده می‌شوند.', 'info')
+    return redirect(url_for('admin.media_library'))
+    """legacy optimizer — kept unreachable"""
     from PIL import Image
     import os
     items = []
@@ -2376,8 +2385,29 @@ def live_session_delete(sid):
 @admin_bp.route('/forum-moderate')
 @admin_required
 def forum_moderate():
-    topics = ForumTopic.query.order_by(ForumTopic.created_at.desc()).all()
-    return render_template('admin/forum_moderate.html', topics=topics)
+    topics = ForumTopic.query.order_by(ForumTopic.is_approved.asc(), ForumTopic.created_at.desc()).all()
+    pending_posts = ForumPost.query.filter_by(is_approved=False).order_by(ForumPost.created_at.desc()).limit(80).all()
+    return render_template('admin/forum_moderate.html', topics=topics, pending_posts=pending_posts)
+
+
+@admin_bp.route('/forum/<int:tid>/approve', methods=['POST'])
+@admin_required
+def forum_topic_approve(tid):
+    tpc = db.get_or_404(ForumTopic, tid)
+    tpc.is_approved = not tpc.is_approved
+    db.session.commit()
+    flash('وضعیت تایید تاپیک تغییر کرد.', 'success')
+    return redirect(url_for('admin.forum_moderate'))
+
+
+@admin_bp.route('/forum/post/<int:pid>/approve', methods=['POST'])
+@admin_required
+def forum_post_approve(pid):
+    post = db.get_or_404(ForumPost, pid)
+    post.is_approved = not post.is_approved
+    db.session.commit()
+    flash('وضعیت تایید پاسخ تغییر کرد.', 'success')
+    return redirect(url_for('admin.forum_moderate'))
 
 
 @admin_bp.route('/forum/<int:tid>/delete', methods=['POST'])
@@ -2844,6 +2874,7 @@ def super_settings():
                 'snapp_client_id', 'snapp_client_secret', 'snapp_merchant',
                 'digipay_api_key', 'digipay_merchant', 'tarb_api_url', 'tarb_api_key', 'tarb_merchant',
                 'invoice_prefix', 'certificate_text', 'certificate_sign',
+                'certificate_logo', 'certificate_stamp', 'certificate_sign_image',
                 'watermark_enabled', 'bnpl_enabled', 'bnpl_max_installments', 'cashback_percent',
                 'teacher_default_share',
                 'loyalty_discount_percent', 'referral_bonus_percent', 'refund_days',
@@ -3070,6 +3101,13 @@ def _save_product_image(file_storage, uploader_id=None):
     filename = f'product-{uuid.uuid4().hex[:12]}{ext}'
     fpath = os.path.join(directory, filename)
     file_storage.save(fpath)
+    try:
+        from uploads_helper import compress_image_file
+        compressed = compress_image_file(fpath)
+        if compressed:
+            width, height, size = compressed
+    except Exception:
+        _lexc('blueprints/admin_bp.py')
     # ثبت در کتابخانه رسانه مرکزی — تصویر آپلودشده اینجا هم قابل استفاده است
     try:
         from models import Media
@@ -3129,6 +3167,12 @@ def products_admin():
             )
             db.session.add(_p)
             db.session.commit()
+            try:
+                from seo_service import ensure_meta
+                ensure_meta('/product/' + _p.slug)
+                db.session.commit()
+            except Exception:
+                _lexc('blueprints/admin_bp.py')
             flash('محصول ساخته شد. 🛍', 'success')
         return redirect(url_for('admin.products_admin'))
     items = _P.query.order_by(_P.created_at.desc()).all()
@@ -3161,6 +3205,12 @@ def product_admin_edit(pid):
         p.featured = bool(request.form.get('featured'))
         p.is_active = bool(request.form.get('is_active'))
         db.session.commit()
+        try:
+            from seo_service import ensure_meta
+            ensure_meta('/product/' + p.slug)
+            db.session.commit()
+        except Exception:
+            _lexc('blueprints/admin_bp.py')
         flash('محصول به‌روزرسانی شد. ✏️', 'success')
         return redirect(url_for('admin.products_admin'))
     return render_template('admin/product_form.html', p=p)
@@ -3175,6 +3225,69 @@ def product_admin_delete(pid):
     db.session.commit()
     flash('محصول حذف شد.', 'info')
     return redirect(url_for('admin.products_admin'))
+
+@admin_bp.route('/system/restart', methods=['POST'])
+@admin_required
+def system_restart():
+    """ری‌استارت اپ روی هاست (Passenger/cPanel: tmp/restart.txt)."""
+    import os as _os
+    base = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+    written = []
+    for rel in ('tmp/restart.txt', 'tmp/restart', 'instance/restart.txt'):
+        path = _os.path.join(base, rel)
+        try:
+            _os.makedirs(_os.path.dirname(path), exist_ok=True)
+            with open(path, 'a', encoding='utf-8') as fh:
+                fh.write(str(utcnow()) + '\n')
+            written.append(rel)
+        except OSError:
+            continue
+    if written:
+        flash('درخواست ری‌استارت ثبت شد (' + '، '.join(written) + '). اگر صفحه قدیمی ماند، در سی‌پنل Restart بزنید.', 'success')
+    else:
+        flash('نتوانستیم فایل ری‌استارت را بنویسیم. از پنل هاست Restart کنید.', 'error')
+    return redirect(url_for('admin.update_page'))
+
+
+@admin_bp.route('/faq', methods=['GET', 'POST'])
+@admin_required
+def faq_manage():
+    """CMS سوالات متداول."""
+    import json as _json
+    row = db.session.get(Setting, 'faq_items')
+    items = []
+    if row and row.value:
+        try:
+            items = _json.loads(row.value)
+        except Exception:
+            items = []
+    if not isinstance(items, list):
+        items = []
+    if request.method == 'POST':
+        action = request.form.get('action')
+        if action == 'add':
+            q = (request.form.get('q') or '').strip()
+            a = (request.form.get('a') or '').strip()
+            icon = (request.form.get('icon') or '❓').strip()[:8]
+            if q and a:
+                items.append({'q': q[:300], 'a': a[:2000], 'icon': icon})
+        elif action == 'delete':
+            try:
+                idx = int(request.form.get('idx') or -1)
+                if 0 <= idx < len(items):
+                    items.pop(idx)
+            except (TypeError, ValueError):
+                pass
+        payload = _json.dumps(items, ensure_ascii=False)
+        if row:
+            row.value = payload
+        else:
+            db.session.add(Setting(key='faq_items', value=payload))
+        db.session.commit()
+        flash('سوالات متداول ذخیره شد.', 'success')
+        return redirect(url_for('admin.faq_manage'))
+    return render_template('admin/faq.html', items=items)
+
 
 # بارگذاری بخش‌های تکمیلی (گزارش‌ها، رسانه، داستان موفقیت، اعلان‌ها، مشاوره‌ها)
 # این import صرفاً برای اجرای decoratorهای @admin_bp.route در admin_extra است

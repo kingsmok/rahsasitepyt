@@ -61,3 +61,36 @@ def uploads_dir(folder):
 def uploads_url(folder, filename):
     """URL عمومی برای فایل آپلودی خصوصی — از route محافظت‌شده /uploads سرو می‌شود"""
     return f'/uploads/{folder}/{filename}'
+
+
+def compress_image_file(fpath, max_side=1600, quality=82):
+    """فشرده‌سازی خودکار تصویر آپلودشده (بدون UI بهینه‌ساز).
+
+    JPEG/PNG/WebP را درجا کوچک می‌کند. SVG و GIF متحرک دست نخورده می‌مانند.
+    خروجی: (width, height, size) یا None.
+    """
+    ext = os.path.splitext(fpath or '')[1].lower()
+    if ext not in ('.jpg', '.jpeg', '.png', '.webp'):
+        return None
+    try:
+        from PIL import Image, ImageOps
+        with Image.open(fpath) as im:
+            im = ImageOps.exif_transpose(im)
+            if im.mode not in ('RGB', 'L'):
+                im = im.convert('RGB')
+            w, h = im.size
+            if max(w, h) > max_side:
+                im.thumbnail((max_side, max_side), Image.LANCZOS)
+                w, h = im.size
+            save_kw = {'optimize': True}
+            if ext in ('.jpg', '.jpeg'):
+                save_kw.update(quality=quality, progressive=True)
+                im.save(fpath, 'JPEG', **save_kw)
+            elif ext == '.png':
+                im.save(fpath, 'PNG', optimize=True)
+            else:
+                save_kw.update(quality=quality, method=6)
+                im.save(fpath, 'WEBP', **save_kw)
+        return w, h, os.path.getsize(fpath)
+    except Exception:
+        return None

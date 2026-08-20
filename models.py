@@ -520,7 +520,7 @@ class Review(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     rating = db.Column(db.Integer, default=5)
     comment = db.Column(db.Text)
-    is_approved = db.Column(db.Boolean, default=True)
+    is_approved = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=utcnow)
     user = db.relationship('User')
     # نظرات پیشرفته (مشابه دیجی‌کالا) — ستون‌ها با ALTER به دیتابیس موجود اضافه شده‌اند
@@ -1224,7 +1224,7 @@ class LessonQuestion(db.Model):
     created_at = db.Column(db.DateTime, default=utcnow)
     answered_at = db.Column(db.DateTime)
     user = db.relationship('User')
-    lesson = db.relationship('Lesson')
+    lesson = db.relationship('Lesson', backref='questions')
 
 
 # ================================================================
@@ -1325,6 +1325,14 @@ class Notification(db.Model):
     def notify(user_id, title, body='', icon='🔔', link=''):
         db.session.add(Notification(user_id=user_id, title=title, body=body,
                                     icon=icon, link=link))
+
+    @staticmethod
+    def notify_staff(title, body='', icon='🔔', link=''):
+        """اعلان به مدیران و پشتیبان‌های فعال."""
+        for u in User.query.filter(
+                User.role.in_(('admin', 'super_admin', 'support')),
+                User.is_active == True).all():
+            Notification.notify(u.id, title, body, icon, link)
 
 
 # ================================================================
@@ -1507,6 +1515,7 @@ class ForumTopic(db.Model):
     title = db.Column(db.String(200), nullable=False)
     body = db.Column(db.Text)
     is_pinned = db.Column(db.Boolean, default=False)
+    is_approved = db.Column(db.Boolean, default=False)
     views = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=utcnow)
     user = db.relationship('User')
@@ -1521,6 +1530,7 @@ class ForumPost(db.Model):
     topic_id = db.Column(db.Integer, db.ForeignKey('forum_topics.id'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     body = db.Column(db.Text, nullable=False)
+    is_approved = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=utcnow)
     user = db.relationship('User')
 

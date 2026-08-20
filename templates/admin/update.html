@@ -1,5 +1,14 @@
 {% extends 'admin/base.html' %}
-{% block atitle %}بروزرسانی نرم‌افزار{% endblock %}
+{% block atitle %}بروزرسانی نرم‌افزار
+<div class="card" style="padding:18px;margin-top:16px;max-width:640px">
+  <h3 style="font-size:15px">ری‌استارت سیستم</h3>
+  <p class="text-2" style="font-size:13px">پس از بروزرسانی اگر تغییرات دیده نشد، ری‌استارت بزنید (فایل tmp/restart.txt).</p>
+  <form method="post" action="{{ url_for('admin.system_restart') }}">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+    <button class="btn btn-primary" type="submit">🔄 ری‌استارت اپ</button>
+  </form>
+</div>
+{% endblock %}
 {% block acontent %}
 <div class="dash-head"><div><h1>🔄 بروزرسانی نرم‌افزار از گیت</h1>
 <p>کدها را از مخزن گیت دریافت و جایگزین می‌کند + مایگریشن دیتابیس (جدول‌ها و ستون‌های جدید)</p></div></div>

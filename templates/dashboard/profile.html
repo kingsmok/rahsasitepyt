@@ -25,14 +25,18 @@
       </div>
       <div class="grid" style="grid-template-columns:1fr 1fr;gap:14px">
         <div class="form-group">
-          <label for="f_phone_1">شماره موبایل <span class="req">*</span></label>
+          <label for="f_phone_1">شماره موبایل {% if not cur_user.phone %}<span class="req">*</span>{% endif %}</label>
           <input id="f_phone_1" class="form-control" name="phone" value="{{ cur_user.phone or '' }}" dir="ltr"
-                 pattern="09[0-9]{9}" required title="شماره موبایل ۱۱ رقمی">
+                 pattern="09[0-9]{9}" title="شماره موبایل ۱۱ رقمی"
+                 {% if cur_user.phone %}readonly{% else %}required{% endif %}>
+          {% if cur_user.phone %}<small class="muted">پس از ثبت قابل تغییر نیست. برای اصلاح با پشتیبانی تماس بگیرید.</small>{% endif %}
         </div>
         <div class="form-group">
           <label for="f_national_code_1">کد ملی (اختیاری)</label>
           <input id="f_national_code_1" class="form-control" name="national_code" value="{{ cur_user.national_code or '' }}"
-                 dir="ltr" pattern="[0-9]{10}" maxlength="10" title="کد ملی ۱۰ رقمی — فقط برای صدور گواهینامه">
+                 dir="ltr" pattern="[0-9]{10}" maxlength="10" title="کد ملی ۱۰ رقمی — فقط برای صدور گواهینامه"
+                 {% if cur_user.national_code %}readonly{% endif %}>
+          {% if cur_user.national_code %}<small class="muted">پس از ثبت قابل تغییر نیست.</small>{% endif %}
         </div>
       </div>
       <div class="form-group">

@@ -27,6 +27,11 @@
             <iframe src="https://www.aparat.com/video/video/embed/videohash/{{ ap_hash }}/vt/frame"
                     title="{{ current.title }}" allowfullscreen></iframe>
           </div>
+          {% elif current.video_type == 'vimeo' and vm_id %}
+          <div class="pp-iframe">
+            <iframe src="https://player.vimeo.com/video/{{ vm_id }}" title="{{ current.title }}"
+                    allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>
+          </div>
           {% elif current.video_type == 'none' or not video_src %}
           <div class="empty-state" style="color:#fff"><div class="es-icon">📄</div><p style="color:#fff">این جلسه ویدیوی قابل پخش ندارد.</p></div>
           {% else %}
@@ -51,8 +56,8 @@
 
           <!-- واترمارک: نام و کد ملی دانشجو روی ویدیو -->
           {% if site.watermark_enabled != '0' and cur_user %}
-          <div class="pp-wm-corner">🎓 {{ cur_user.name }} — کد ملی: {{ cur_user.national_code|mask_nc }}</div>
-          <div class="pp-wm-moving"><span>{{ cur_user.name }} ✦ {{ cur_user.national_code|mask_nc }} ✦ {{ site.site_name or 'آکادمی آنلاین' }} ✦ {{ cur_user.name }} ✦ {{ cur_user.national_code|mask_nc }} ✦ {{ site.site_name or 'آکادمی آنلاین' }} ✦</span></div>
+          <div class="pp-wm-corner">🎓 {{ cur_user.name }} — {{ cur_user.phone or '' }} — کد ملی: {{ cur_user.national_code|mask_nc }}</div>
+          <div class="pp-wm-moving"><span>{{ cur_user.name }} ✦ {{ cur_user.phone or '' }} ✦ {{ cur_user.national_code|mask_nc }} ✦ {{ site.site_name or 'آکادمی آنلاین' }} ✦ {{ cur_user.name }} ✦ {{ cur_user.phone or '' }} ✦ {{ cur_user.national_code|mask_nc }} ✦</span></div>
           {% endif %}
         </div>
 

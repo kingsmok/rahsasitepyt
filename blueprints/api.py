@@ -255,6 +255,11 @@ def media_upload():
         fname = 'm_' + _uuid.uuid4().hex[:10] + ext
         fpath = _os.path.join(up, fname)
         f.save(fpath)
+        try:
+            from uploads_helper import compress_image_file
+            compress_image_file(fpath)
+        except Exception:
+            _lexc('blueprints/api.py')
         size = _os.path.getsize(fpath)
         kind = 'file'
         if ext in ('.jpg', '.jpeg', '.png', '.webp', '.gif', '.avif'):

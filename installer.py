@@ -401,7 +401,7 @@ DEFAULT_SETTINGS = {
     # درصد پیش‌فرض سهم مدرس از فروش هر دوره (قابل تغییر جداگانه در هر دوره)
     'teacher_default_share': '50',
     'loyalty_discount_percent': '0',
-    'referral_bonus_percent': '0',
+    'referral_bonus_percent': '5',
     'refund_days': '0',
     'shipping_flat_rate': '0',
     'shipping_note': 'هزینه و زمان ارسال پس از بررسی سفارش اعلام می‌شود.',
@@ -824,6 +824,13 @@ def copy_sqlite_into(db_url):
 
 def attach_existing_database(db_url, copy_from_sqlite=False):
     """وصل کردن دیتابیس موجود: داده پاک نمی‌شود؛ فقط .env و جدول‌های جاافتاده."""
+    try:
+        return _attach_existing_database(db_url, copy_from_sqlite=copy_from_sqlite)
+    except Exception as exc:
+        return False, 'خطا هنگام وصل دیتابیس موجود: ' + _friendly_db_error(exc, db_url or '')
+
+
+def _attach_existing_database(db_url, copy_from_sqlite=False):
     url = resolve_url(db_url)
     if str(url).startswith('mysql'):
         try:

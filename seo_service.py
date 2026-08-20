@@ -318,13 +318,51 @@ def teacher_seo(teacher, base_url=''):
 # ═══════════════════════════════════════════════════════════════════════════
 # همگام‌سازی خودکار رکوردهای SeoMeta (شبیه Rank Math auto-config)
 # ═══════════════════════════════════════════════════════════════════════════
+def product_seo(product, base_url=''):
+    """متا تگ + اسکیمای Product برای صفحهٔ محصول فروشگاه."""
+    sn = site_name()
+    base_url = (base_url or '').rstrip('/')
+    path = '/product/' + (product.slug or str(product.id))
+    title = _fit_title('{} | {}'.format(product.title or '', sn), 60)
+    description = ((product.description or product.title or '')[:158])
+    schema = {
+        '@context': 'https://schema.org',
+        '@type': 'Product',
+        'name': product.title,
+        'description': (product.description or '')[:300],
+        'image': absolute(base_url, getattr(product, 'image_url', '') or ''),
+        'offers': {
+            '@type': 'Offer',
+            'price': str(getattr(product, 'final_price', None) or product.price or 0),
+            'priceCurrency': 'IRR',
+            'availability': 'https://schema.org/InStock' if (product.stock or 0) > 0
+            else 'https://schema.org/OutOfStock',
+            'url': base_url + path,
+        },
+    }
+    seo = {
+        'title': title,
+        'description': description,
+        'keywords': (product.category or 'محصول') + ', فروشگاه, ' + sn,
+        'canonical': base_url + path,
+        'og_type': 'product',
+        'og_image': getattr(product, 'image_url', '') or '',
+        'og_title': title,
+        'og_desc': description,
+        'schema': schema,
+        'noindex': False,
+        'nofollow': False,
+    }
+    return apply_overrides(seo, path)
+
+
 def auto_sync():
-    """ساخت SeoMeta برای همهٔ دوره‌ها/مطالب/مدرس‌های بدون رکورد.
+    """ساخت SeoMeta برای همهٔ دوره‌ها/مطالب/مدرس‌ها/محصولات بدون رکورد.
 
     فقط رکوردهای ناقص «ساخته» می‌شوند؛ مقدارهای دستی مدیر هرگز دست نمی‌خورند.
     خروجی: (created, total)
     """
-    from models import BlogPost, Course, User
+    from models import BlogPost, Course, Product, User
     created = 0
     total = 0
     for c in Course.query.filter_by(status='published').all():
@@ -342,6 +380,12 @@ def auto_sync():
     for t in User.query.filter(User.role.in_(('teacher', 'admin')),
                                User.is_active == True).all():
         path = '/teacher/' + str(t.id)
+        total += 1
+        if SeoMeta.query.filter_by(path=path).first() is None:
+            db.session.add(SeoMeta(path=path))
+            created += 1
+    for pr in Product.query.filter_by(is_active=True).all():
+        path = '/product/' + pr.slug
         total += 1
         if SeoMeta.query.filter_by(path=path).first() is None:
             db.session.add(SeoMeta(path=path))

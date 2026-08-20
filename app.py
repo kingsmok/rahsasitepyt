@@ -247,6 +247,12 @@ def create_app():
                 'allow_download': 'BOOLEAN DEFAULT 0',
                 'attendance_required_percent': 'INTEGER DEFAULT 75',
             })
+            _add_columns('forum_topics', {
+                'is_approved': 'BOOLEAN DEFAULT 1',
+            })
+            _add_columns('forum_posts', {
+                'is_approved': 'BOOLEAN DEFAULT 1',
+            })
             _add_columns('order_items', {
                 'quantity': 'INTEGER DEFAULT 1',
             })
@@ -871,7 +877,7 @@ def create_app():
             "frame-ancestors 'self'; "
             "object-src 'none'; "
             "manifest-src 'self'; "
-            "media-src 'self' data: blob:;"
+            "media-src 'self' data: blob: https:;"
         )
         # این directive فقط برای پاسخ HTTPS معتبر است. روی سرور توسعهٔ HTTP،
         # مرورگر در غیر این صورت منابع same-origin را به HTTPS ارتقا می‌دهد و
@@ -888,13 +894,14 @@ def create_app():
             # انتساب سختگیرانه مرورگر برای فرم‌ها
             if request.path.startswith('/admin'):
                 resp.headers['X-Required-Security-Headers'] = 'CSP, X-Frame-Options, X-Content-Type-Options'
-        # فشرده‌سازی gzip برای HTML، CSS و JS
+        # فشرده‌سازی gzip — فقط با ENABLE_GZIP=1 (nginx مضاعف → ۵۰۳)
         import gzip as _gzip
         _ct = resp.content_type or ''
+        _gzip_on = os.environ.get('ENABLE_GZIP', '0').strip().lower() in ('1', 'true', 'yes', 'on')
         _compressible = _ct.startswith('text/html') or _ct.startswith('text/css') or \
                         _ct.startswith('application/javascript') or _ct.startswith('text/javascript') or \
                         _ct.startswith('application/json')
-        if (resp.status_code == 200 and _compressible):
+        if (_gzip_on and resp.status_code == 200 and _compressible):
             try:
                 _data = resp.get_data()
             except RuntimeError:
@@ -913,10 +920,10 @@ def create_app():
         # — سرعت بازدیدهای تکراری بدون خطر لو رفتن سشن/توکن بین کاربران
         if (resp.status_code == 200 and _ct.startswith('text/html') and
                 request.method == 'GET' and not getattr(g, 'user', None) and
-                request.path.startswith(('/course/', '/courses', '/blog', '/about', '/faq',
-                                         '/contact', '/terms', '/privacy', '/teachers', '/',
+                request.path.startswith(('/course/', '/courses', '/blog', '/about',
+                                         '/terms', '/privacy', '/teachers', '/',
                                          '/bundles', '/success-stories', '/learning-paths',
-                                         '/teachers', '/faq'))):
+                                         '/teachers'))):
             # صفحه اصلی و لیست‌ها: کش ۳۰۰ ثانیه (همان کاربر) — سرعت بازدید تکراری
             _age = 300 if request.path == '/' else 120
             resp.headers['Cache-Control'] = f'private, max-age={_age}'
@@ -1516,7 +1523,7 @@ def create_app():
     # کلید شامل توکن CSRF سشن است تا محتوای شخصی‌سازی‌شده بین کاربران لو نرود.
     # (باید بعد از load_globals ثبت شود تا g.user و سشن آماده باشند)
     _html_cache = {}
-    _HTML_PUBLIC = ('/', '/course/', '/courses', '/blog', '/about', '/faq', '/contact',
+    _HTML_PUBLIC = ('/', '/course/', '/courses', '/blog', '/about',
                     '/terms', '/privacy', '/teachers', '/bundles', '/success-stories',
                     '/learning-paths', '/talent-test', '/products', '/product/',
                     '/search', '/sitemap.xml', '/robots.txt', '/feed')
@@ -1780,6 +1787,31 @@ def create_app():
                     seo=getattr(g, 'seo', dict(title='', description='', keywords='',
                                                canonical='', noindex=False, og_image='',
                                                og_type='website', schema=None)))
+
+    def _admin_badge_tickets(user):
+        if not user or not getattr(user, 'is_admin', False) and getattr(user, 'role', '') != 'support':
+            return 0
+        try:
+            return Ticket.query.filter(Ticket.status.in_(['open', 'answered'])).count()
+        except Exception:
+            return 0
+
+    def _admin_badge_orders(user):
+        if not user or not getattr(user, 'is_admin', False):
+            return 0
+        try:
+            return Order.query.filter_by(status='pending').count()
+        except Exception:
+            return 0
+
+    def _admin_badge_forum(user):
+        if not user or not getattr(user, 'is_admin', False) and getattr(user, 'role', '') != 'support':
+            return 0
+        try:
+            from models import ForumTopic as _FT
+            return _FT.query.filter_by(is_approved=False).count()
+        except Exception:
+            return 0
 
     def _group_has_active(group, request):
         """آیا دسته‌ای از منوی ادمین شامل صفحهٔ فعلی است؟ (باز بودن خودکار گروه)"""

@@ -82,7 +82,7 @@ _map(('contact_users', 'reply_tickets'), 'admin.chat', 'admin.chat_user',
 _map(('view_consultations', 'track_leads'), 'admin.consultations', 'admin.messages')
 _map('view_daily_classes', 'admin.live_sessions', 'admin.live_session_delete')
 _map('reply_tickets', 'admin.forum_moderate', 'admin.forum_topic_delete',
-     'admin.forum_topic_pin')
+     'admin.forum_topic_pin', 'admin.forum_topic_approve', 'admin.forum_post_approve')
 _map(('view_reports', 'view_user_courses'), 'admin.behavior_report')
 _map('view_reports',
      'admin.activity', 'admin.reports_index', 'admin.reports_export',
@@ -347,6 +347,7 @@ _ADMIN_GROUPS = [
     ]},
     {'label': 'طراحی و صفحات', 'icon': '🧩', 'items': [
         ('admin.pages', 'صفحات'),
+        ('admin.faq_manage', 'سوالات متداول'),
         ('builder.index', 'صفحه‌ساز'),
         ('admin.forms', 'فرم‌ساز'),
         ('admin.menus', 'منوساز'),

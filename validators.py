@@ -58,8 +58,27 @@ def vimeo_id(url):
 
 
 def aparat_hash(url):
-    m = re.search(r'aparat\.com/v/([A-Za-z0-9_-]+)', url or '')
+    m = re.search(
+        r'aparat\.com/(?:v/|video/video/embed/videohash/)([A-Za-z0-9_-]+)',
+        url or '')
     return m.group(1) if m else None
+
+
+def detect_video(url):
+    """تشخیص نوع پخش از URL — یوتیوب / آپارات / مستقیم."""
+    url = (url or '').strip()
+    yt = youtube_id(url)
+    if yt:
+        return 'youtube', yt
+    ap = aparat_hash(url)
+    if ap:
+        return 'aparat', ap
+    vm = vimeo_id(url)
+    if vm:
+        return 'vimeo', vm
+    if url:
+        return 'direct', url
+    return 'none', ''
 
 
 def safe_int(value, default=0, min_value=None, max_value=None):

@@ -1,0 +1,37 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}سوالات متداول{% endblock %}
+{% block acontent %}
+<div class="dash-head">
+  <div>
+    <h1>❓ سوالات متداول</h1>
+    <p>افزودن، ویرایش و حذف سوال‌های صفحه /faq</p>
+  </div>
+  <a class="btn btn-ghost" href="{{ url_for('site.faq') }}" target="_blank">مشاهده صفحه ←</a>
+</div>
+
+<form method="post" class="card" style="padding:20px;margin-bottom:18px;max-width:720px">
+  <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+  <input type="hidden" name="action" value="add">
+  <div class="grid" style="grid-template-columns:80px 1fr;gap:12px">
+    <div class="form-group"><label>آیکون</label><input class="form-control" name="icon" value="❓" maxlength="8"></div>
+    <div class="form-group"><label>سوال</label><input class="form-control" name="q" required></div>
+  </div>
+  <div class="form-group"><label>پاسخ</label><textarea class="form-control" name="a" rows="3" required></textarea></div>
+  <button class="btn btn-primary" type="submit">➕ افزودن سوال</button>
+</form>
+
+{% for it in items %}
+<div class="card" style="padding:16px 18px;margin-bottom:10px;max-width:720px">
+  <strong>{{ it.icon or '❓' }} {{ it.q }}</strong>
+  <p class="text-2" style="font-size:13px;margin:8px 0">{{ it.a }}</p>
+  <form method="post" style="display:inline">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="action" value="delete">
+    <input type="hidden" name="idx" value="{{ loop.index0 }}">
+    <button class="btn btn-danger btn-sm" type="submit" onclick="return confirm('حذف این سوال؟')">🗑 حذف</button>
+  </form>
+</div>
+{% else %}
+<p class="text-3">هنوز سوالی ثبت نشده — موارد پیش‌فرض در صفحه عمومی نمایش داده می‌شوند.</p>
+{% endfor %}
+{% endblock %}

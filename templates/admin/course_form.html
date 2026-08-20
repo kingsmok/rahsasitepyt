@@ -17,6 +17,11 @@
       <input id="f_title_1" class="form-control" name="title" value="{{ course.title if course else '' }}" required>
     </div>
     <div class="form-group">
+      <label for="f_slug_1">اسلاگ آدرس (URL)</label>
+      <input id="f_slug_1" class="form-control" name="slug" dir="ltr" value="{{ course.slug if course else '' }}" placeholder="مثال: python-beginner">
+      <small class="muted">خالی = ساخته از عنوان. آدرس عمومی: /course/اسلاگ — دورهٔ پیش‌نویس تا انتشار ۴۰۴ می‌دهد.</small>
+    </div>
+    <div class="form-group">
       <label for="f_subtitle_1">زیرعنوان</label>
       <input id="f_subtitle_1" class="form-control" name="subtitle" value="{{ course.subtitle if course else '' }}">
     </div>

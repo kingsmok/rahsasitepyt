@@ -1,10 +1,10 @@
 {% extends 'base.html' %}
-{% from 'contact/_shared.html' import contact_methods, contact_form with context %}
+{% from 'contact/_shared.html' import contact_methods, contact_form, contact_intro with context %}
 {% block title %}{{ seo.title or "تماس با ما" }}{% endblock %}
 {% block content %}
 <section class="section">
   <div class="container" style="max-width:1040px">
-    <div class="section-head"><span class="tag">✉️ تماس با ما</span><h1>پیام خود را ارسال کنید</h1><p>راه‌های تماس ثبت‌شده و فرم پیام در این صفحه در دسترس‌اند.</p></div>
+    <div class="section-head"><span class="tag">✉️ تماس با ما</span><h1>پیام خود را ارسال کنید</h1>{{ contact_intro() }}<p>{% if not site.contact_intro %}راه‌های تماس ثبت‌شده و فرم پیام در این صفحه در دسترس‌اند.{% endif %}</p></div>
     <div class="grid" style="grid-template-columns:.9fr 1.2fr;gap:24px;align-items:start">
       {{ contact_methods() }}
       <div class="card" style="padding:30px"><h2 style="font-size:18px;margin-bottom:18px">فرم تماس</h2>{{ contact_form() }}</div>

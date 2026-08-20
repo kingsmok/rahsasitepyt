@@ -1828,6 +1828,20 @@ def create_app():
         return False
 
     # ---------- سلامت سرویس (برای مانیتورینگ؛ بدون افشای جزئیات) ----------
+    @app.route('/favicon.ico')
+    def favicon_ico():
+        """مرورگرها /favicon.ico می‌خواهند؛ لوگو یا SVG پیش‌فرض."""
+        from flask import send_from_directory, redirect as _redir
+        logo = ''
+        try:
+            logo = (getattr(g, 'settings', {}) or {}).get('logo_url') or ''
+        except Exception:
+            logo = ''
+        if logo and logo.startswith('/'):
+            return _redir(logo, 302)
+        static_img = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'img')
+        return send_from_directory(static_img, 'favicon.svg', mimetype='image/svg+xml')
+
     @app.route('/health')
     def health():
         from flask import jsonify

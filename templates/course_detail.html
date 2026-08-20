@@ -94,6 +94,9 @@
         <div class="course-tabs">
           <button class="active" data-tab="tab-overview">📋 معرفی دوره</button>
           <button data-tab="tab-curriculum">📚 سرفصل‌ها ({{ fa(course.lesson_count) }} جلسه)</button>
+          {% if course.quizzes or course.assignments %}
+          <button data-tab="tab-quizzes">📝 آزمون‌ها ({{ fa(course.quizzes|length) }})</button>
+          {% endif %}
           <button data-tab="tab-reviews">💬 نظرات ({{ fa(course.review_count) }})</button>
           <button data-tab="tab-teacher">👨‍🏫 مدرس</button>
         </div>
@@ -104,32 +107,15 @@
           <div class="panel">
             <h3><span class="ic">🎬</span> ویدئوی معرفی دوره</h3>
             <div style="border-radius:14px;overflow:hidden;aspect-ratio:16/9">
-              {% if 'youtube' in course.intro_video %}
-              <iframe src="{{ course.intro_video.replace('watch?v=', 'embed/') }}" frameborder="0" allowfullscreen style="width:100%;height:100%"></iframe>
-              {% elif 'aparat' in course.intro_video %}
-              <iframe src="https://www.aparat.com/video/video/embed/videohash/{{ course.intro_video.split('/v/')[-1].split('?')[0] }}/vt/frame" frameborder="0" allowfullscreen style="width:100%;height:100%"></iframe>
+              {% if intro_kind == 'youtube' %}
+              <iframe src="https://www.youtube-nocookie.com/embed/{{ intro_id }}" frameborder="0" allowfullscreen style="width:100%;height:100%" title="ویدئوی معرفی"></iframe>
+              {% elif intro_kind == 'aparat' %}
+              <iframe src="https://www.aparat.com/video/video/embed/videohash/{{ intro_id }}/vt/frame" frameborder="0" allowfullscreen style="width:100%;height:100%" title="ویدئوی معرفی"></iframe>
+              {% elif intro_kind == 'vimeo' %}
+              <iframe src="https://player.vimeo.com/video/{{ intro_id }}" frameborder="0" allowfullscreen style="width:100%;height:100%" title="ویدئوی معرفی"></iframe>
               {% else %}
               <video controls preload="none" poster="{{ course.image_url }}" style="width:100%;height:100%;background:#000"><source src="{{ course.intro_video }}"></video>
               {% endif %}
-            </div>
-          </div>
-          {% endif %}
-          {% if course.quizzes or course.assignments %}
-          <div class="panel">
-            <h3><span class="ic">📝</span> آزمون‌ها و تمرین‌های دوره</h3>
-            <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px">
-              {% for qz in course.quizzes %}
-              {% if can_access_coursework %}<a class="card card-hover" style="padding:14px;text-decoration:none" href="{{ url_for('features.quiz_view', qid=qz.id) }}">{% else %}<div class="card" style="padding:14px;opacity:.78" aria-label="پس از ثبت‌نام در دسترس است">{% endif %}
-                <strong style="font-size:13px">📝 {{ qz.title }}</strong>
-                <small class="text-3" style="display:block">{{ fa(qz.questions|length) }} سوال{% if not can_access_coursework %} · 🔒 ویژه دانشجویان دوره{% endif %}</small>
-              {% if can_access_coursework %}</a>{% else %}</div>{% endif %}
-              {% endfor %}
-              {% for asg in course.assignments %}
-              {% if can_access_coursework %}<a class="card card-hover" style="padding:14px;text-decoration:none" href="{{ url_for('features.assignment_view', aid=asg.id) }}">{% else %}<div class="card" style="padding:14px;opacity:.78" aria-label="پس از ثبت‌نام در دسترس است">{% endif %}
-                <strong style="font-size:13px">📌 {{ asg.title }}</strong>
-                <small class="text-3" style="display:block">تمرین دوره{% if not can_access_coursework %} · 🔒 ویژه دانشجویان دوره{% endif %}</small>
-              {% if can_access_coursework %}</a>{% else %}</div>{% endif %}
-              {% endfor %}
             </div>
           </div>
           {% endif %}
@@ -168,6 +154,28 @@
           </div>
           {% endif %}
         </div>
+
+        {% if course.quizzes or course.assignments %}
+        <div class="tab-pane" id="tab-quizzes" style="display:none">
+          <div class="panel">
+            <h3><span class="ic">📝</span> آزمون‌ها و تمرین‌های دوره</h3>
+            <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px">
+              {% for qz in course.quizzes %}
+              {% if can_access_coursework %}<a class="card card-hover" style="padding:14px;text-decoration:none" href="{{ url_for('features.quiz_view', qid=qz.id) }}">{% else %}<div class="card" style="padding:14px;opacity:.78" aria-label="پس از ثبت‌نام در دسترس است">{% endif %}
+                <strong style="font-size:13px">📝 {{ qz.title }}</strong>
+                <small class="text-3" style="display:block">{{ fa(qz.questions|length) }} سوال{% if not can_access_coursework %} · 🔒 ویژه دانشجویان دوره{% endif %}</small>
+              {% if can_access_coursework %}</a>{% else %}</div>{% endif %}
+              {% endfor %}
+              {% for asg in course.assignments %}
+              {% if can_access_coursework %}<a class="card card-hover" style="padding:14px;text-decoration:none" href="{{ url_for('features.assignment_view', aid=asg.id) }}">{% else %}<div class="card" style="padding:14px;opacity:.78" aria-label="پس از ثبت‌نام در دسترس است">{% endif %}
+                <strong style="font-size:13px">📌 {{ asg.title }}</strong>
+                <small class="text-3" style="display:block">تمرین دوره{% if not can_access_coursework %} · 🔒 ویژه دانشجویان دوره{% endif %}</small>
+              {% if can_access_coursework %}</a>{% else %}</div>{% endif %}
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+        {% endif %}
 
         <!-- سرفصل‌ها -->
         <div class="tab-pane" id="tab-curriculum" style="display:none" data-acc-group>

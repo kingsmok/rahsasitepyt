@@ -38,7 +38,8 @@
   document.getElementById('chat-send').addEventListener('click', function () {
     var body = input.value.trim();
     if (!body) return;
-    fetch('/api/chat/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ body: body }) })
+    var token = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+    fetch('/api/chat/send', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': token }, body: JSON.stringify({ body: body }) })
       .then(function () { input.value = ''; });
   });
   input.addEventListener('keydown', function (e) { if (e.key === 'Enter') document.getElementById('chat-send').click(); });

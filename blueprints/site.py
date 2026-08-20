@@ -167,14 +167,22 @@ def courses():
 
 # ---------------------------------------------------------------- جزئیات دوره
 def _find_course(slug):
-    """دورهٔ منتشرشده با slug یا شناسهٔ عددی (پشتیبانی از لینک‌های قدیمی)."""
-    value = (slug or '').strip()
+    """دوره با slug یا شناسهٔ عددی. پیش‌نویس فقط برای مدیر/مدرس همان دوره."""
+    from urllib.parse import unquote
+    value = unquote(slug or '').strip()
     if not value:
         return None
-    course = Course.query.filter_by(slug=value, status='published').first()
+    course = Course.query.filter_by(slug=value).first()
     if course is None and value.isdigit():
-        course = Course.query.filter_by(id=int(value), status='published').first()
-    return course
+        course = Course.query.filter_by(id=int(value)).first()
+    if course is None:
+        return None
+    if course.status == 'published':
+        return course
+    user = getattr(g, 'user', None)
+    if user and (getattr(user, 'is_admin', False) or course.teacher_id == user.id):
+        return course
+    return None
 
 
 @site_bp.route('/course/<slug>')
@@ -234,10 +242,17 @@ def course_detail(slug):
         en = next((e for e in g.user.enrollments if e.course_id == course.id), None)
         if en:
             done_ids = set(en.progress_list())
+    intro_kind, intro_id = 'none', ''
+    try:
+        from validators import detect_video
+        intro_kind, intro_id = detect_video(course.intro_video or '')
+    except Exception:
+        _lexc('blueprints/site.py')
     return render_template('course_detail.html', course=course, related=related,
                            reviews=reviews, enrolled=enrolled, is_fav=is_fav,
                            can_access_coursework=can_access_coursework,
-                           done_ids=done_ids, blog_posts=blog_posts)
+                           done_ids=done_ids, blog_posts=blog_posts,
+                           intro_kind=intro_kind, intro_id=intro_id)
 
 
 @site_bp.route('/course/<slug>/review', methods=['POST'])
@@ -772,6 +787,12 @@ def contact():
             flash('نام و متن پیام الزامی است.', 'error')
         else:
             db.session.add(ContactMessage(name=name, email=email, subject=subject, message=message))
+            try:
+                from models import Notification
+                Notification.notify_staff('پیام تماس جدید', f'{name}: {subject or "بدون موضوع"}',
+                                          '✉️', '/admin/messages')
+            except Exception:
+                _lexc('blueprints/site.py')
             db.session.commit()
             flash('پیام شما با موفقیت ارسال شد. به زودی پاسخ می‌دهیم.', 'success')
             return redirect(url_for('site.contact'))

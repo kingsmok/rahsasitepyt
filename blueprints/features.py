@@ -368,6 +368,13 @@ def chat_send():
     if not body:
         return jsonify(ok=False, msg='پیام خالی است'), 400
     db.session.add(ChatMessage(user_id=g.user.id, body=body[:1000]))
+    try:
+        from models import Notification
+        Notification.notify_staff('پیام چت پشتیبانی',
+                                  f'{g.user.name}: {body[:80]}',
+                                  '💬', url_for('admin.chat_user', uid=g.user.id))
+    except Exception:
+        pass
     db.session.commit()
     return jsonify(ok=True)
 

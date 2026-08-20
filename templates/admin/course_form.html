@@ -121,7 +121,7 @@
     <div class="form-group">
       <label for="f_status_1">وضعیت</label>
       <select id="f_status_1" class="form-control" name="status">
-        <option value="published" {{ 'selected' if course and course.status == 'published' }}>منتشر شده</option>
+        <option value="published" {{ 'selected' if not course or course.status == 'published' }}>منتشر شده</option>
         <option value="draft" {{ 'selected' if course and course.status == 'draft' }}>پیش‌نویس</option>
       </select>
     </div>

@@ -76,7 +76,8 @@
     </div>
     <div class="ss-field"><label>عرض محتوا (kit_container)</label><input name="kit_container" value="{{ vals.get('kit_container','') }}" placeholder="مثلا 1240"></div>
     <div class="ss-field"><label>گردی گوشه (kit_radius)</label><input name="kit_radius" value="{{ vals.get('kit_radius','') }}" placeholder="مثلا 14"></div>
-    <div class="ss-field"><label>متن درباره ما</label><textarea rows="3" name="about_text">{{ vals.get('about_text','') }}</textarea></div>
+    <div class="ss-field"><label>متن درباره ما</label><textarea rows="3" name="about_text">{{ vals.get('about_text','') }}</textarea><p class="ss-hint">یا از منوی «درباره و تماس» ویرایش کنید.</p></div>
+    <div class="ss-field"><label>مقدمه صفحه تماس</label><textarea rows="3" name="contact_intro">{{ vals.get('contact_intro','') }}</textarea></div>
   </div>
   <p class="ss-hint">💡 لوگوی فعلی: <code>{{ vals.get('custom_logo','—') }}</code> — آپلود جدید جایگزین می‌شود.</p>
 </div>

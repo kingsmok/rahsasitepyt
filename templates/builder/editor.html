@@ -6,7 +6,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>🧩 صفحه‌ساز — {{ page.title }} — {{ site.site_name or 'آکادمی آنلاین' }}</title>
-<link rel="icon" href="/static/img/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="{{ site.get('logo_url') or '/static/img/favicon.svg' }}">
 <link rel="stylesheet" href="/static/css/base.css?v={{ asset_v() }}">
 <link rel="stylesheet" href="/static/css/themes/{{ theme }}.css?v={{ asset_v() }}">
 <link rel="stylesheet" href="/static/css/builder.css?v={{ asset_v() }}">

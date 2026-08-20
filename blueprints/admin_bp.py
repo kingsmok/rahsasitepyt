@@ -366,7 +366,7 @@ def _course_form(course):
         course.level = f.get('level', 'مقدماتی')
         course.duration_hours = int(f.get('duration_hours') or 0)
         course.image = f.get('image') or 'course-placeholder.webp'
-        course.status = f.get('status', 'draft')
+        course.status = f.get('status', 'published') or 'published'
         course.featured = bool(f.get('featured'))
         course.what_you_learn = f.get('what_you_learn', '').strip()
         course.requirements = f.get('requirements', '').strip()
@@ -453,7 +453,10 @@ def _course_form(course):
                 db.session.commit()
             except Exception:
                 _lexc('blueprints/admin_bp.py')
-            flash('دوره با موفقیت ذخیره شد.', 'success')
+            if course.status == 'published' and course.slug:
+                flash('دوره ذخیره شد. آدرس عمومی: /course/' + course.slug, 'success')
+            else:
+                flash('دوره به‌صورت پیش‌نویس ذخیره شد و تا انتشار در سایت ۴۰۴ می‌دهد. از همین فرم وضعیت را «منتشر شده» کنید.', 'info')
             return redirect(url_for('admin.course_lessons', cid=course.id))
     return render_template('admin/course_form.html', course=course, teachers=teachers,
                            categories=categories, images=images)
@@ -534,9 +537,18 @@ def course_lessons(cid):
                                             '🎬', url_for('student.learn', course_id=course.id))
                 except Exception:
                     _lexc('blueprints/admin_bp.py')
+                _vurl = request.form.get('video_url', '').strip()
+                _vtype = request.form.get('video_type', 'direct')
+                try:
+                    from validators import detect_video
+                    _kind, _ = detect_video(_vurl)
+                    if _kind != 'none':
+                        _vtype = _kind
+                except Exception:
+                    _lexc('admin_bp.lesson_detect')
                 db.session.add(Lesson(section_id=sec.id, title=title,
-                                      video_type=request.form.get('video_type', 'direct'),
-                                      video_url=request.form.get('video_url', '').strip(),
+                                      video_type=_vtype,
+                                      video_url=_vurl,
                                       file_url=fl['url'] if fl else None,
                                       file_name=fl['name'] if fl else None,
                                       file_size=fl['size'] if fl else None,
@@ -551,8 +563,15 @@ def course_lessons(cid):
             les = db.session.get(Lesson, safe_int(request.form.get('lid')))
             if les:
                 les.title = request.form.get('title', '').strip() or les.title
-                les.video_type = request.form.get('video_type', les.video_type)
                 les.video_url = request.form.get('video_url', '').strip()
+                les.video_type = request.form.get('video_type', les.video_type)
+                try:
+                    from validators import detect_video
+                    _kind, _ = detect_video(les.video_url)
+                    if _kind != 'none':
+                        les.video_type = _kind
+                except Exception:
+                    _lexc('admin_bp.lesson_edit_detect')
                 les.duration = request.form.get('duration') or les.duration
                 les.release_days = request.form.get('release_days', 0, type=int)
                 les.is_free = bool(request.form.get('is_free'))
@@ -2858,7 +2877,7 @@ def super_settings():
             keys = [
                 # عمومی و برند
                 'site_name', 'site_desc', 'phone', 'email', 'address', 'support_hours',
-                'about_text', 'custom_logo', 'brand_color', 'brand_color2',
+                'about_text', 'contact_intro', 'custom_logo', 'brand_color', 'brand_color2',
                 'telegram', 'instagram', 'whatsapp', 'bale', 'eitaa', 'rubika', 'soroush',
                 'aparat', 'twitter', 'linkedin', 'youtube', 'github',
                 # سئو
@@ -3173,7 +3192,7 @@ def products_admin():
                 db.session.commit()
             except Exception:
                 _lexc('blueprints/admin_bp.py')
-            flash('محصول ساخته شد. 🛍', 'success')
+            flash('محصول ساخته شد. آدرس عمومی: /product/' + slug, 'success')
         return redirect(url_for('admin.products_admin'))
     items = _P.query.order_by(_P.created_at.desc()).all()
     return render_template('admin/products.html', items=items)
@@ -3292,4 +3311,26 @@ def faq_manage():
 # بارگذاری بخش‌های تکمیلی (گزارش‌ها، رسانه، داستان موفقیت، اعلان‌ها، مشاوره‌ها)
 # این import صرفاً برای اجرای decoratorهای @admin_bp.route در admin_extra است
 # (star-import نمی‌کنیم تا namespace admin_bp آلودهٔ متغیرهای محلی admin_extra نشود)
+
+@admin_bp.route('/pages-content', methods=['GET', 'POST'])
+@admin_required
+def pages_content():
+    """ویرایش متن درباره ما و مقدمه تماس — مثل FAQ."""
+    keys = ('about_text', 'contact_intro')
+    if request.method == 'POST':
+        for key in keys:
+            value = (request.form.get(key) or '').strip()[:8000]
+            row = db.session.get(Setting, key)
+            if row:
+                row.value = value
+            else:
+                db.session.add(Setting(key=key, value=value))
+        db.session.commit()
+        flash('متن صفحات درباره ما و تماس ذخیره شد.', 'success')
+        return redirect(url_for('admin.pages_content'))
+    vals = {k: ((db.session.get(Setting, k).value if db.session.get(Setting, k) else '') or '')
+            for k in keys}
+    return render_template('admin/pages_content.html', vals=vals)
+
+
 import blueprints.admin_extra  # noqa: F401  (side-effect: رجیستر routeها)

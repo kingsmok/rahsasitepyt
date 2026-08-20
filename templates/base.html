@@ -12,8 +12,8 @@
   <meta name="author" content="{{ site.seo_author or site.site_name or 'آکادمی آنلاین' }}">
   <meta name="generator" content="Academy LMS — Flask">
   <meta name="csrf-token" content="{{ csrf_token }}">
-  <input type="hidden" id="global-csrf-token" value="{{ csrf_token }}">
-  <meta name="theme-color" content="{{ g.theme_color or ('#f2640c' if theme == 'theme-22' else ('#0e9488' if theme == 'theme-21' else '#2563eb')) }}">
+  {% set _brand1 = site.brand_color|css_color %}{% set _brand2 = site.brand_color2|css_color %}
+  <meta name="theme-color" content="{{ _brand1 or g.theme_color or ('#f2640c' if theme == 'theme-22' else ('#0e9488' if theme == 'theme-21' else '#2563eb')) }}">
 
   <!-- Open Graph -->
   <meta property="og:title" content="{{ seo.title or self.title() }}">
@@ -31,7 +31,10 @@
   <meta name="twitter:title" content="{{ seo.title or self.title() }}">
   <meta name="twitter:description" content="{{ seo.description or self.description() }}">
   <meta name="twitter:image" content="{{ _og_url }}">
-  <link rel="icon" href="/static/img/favicon.svg" type="image/svg+xml">
+  {% set _fav = site.get('logo_url') or '/static/img/favicon.svg' %}
+  <link rel="icon" href="{{ _fav }}" type="{{ 'image/svg+xml' if _fav.endswith('.svg') else 'image/png' }}">
+  <link rel="shortcut icon" href="{{ _fav }}">
+  <link rel="apple-touch-icon" href="{{ _fav }}">
   <link rel="preload" href="/static/fonts/Vazirmatn-Variable.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="dns-prefetch" href="https://www.googletagmanager.com">
   <link rel="dns-prefetch" href="https://client.crisp.chat">
@@ -54,7 +57,7 @@
   <link rel="stylesheet" href="/static/css/builder.css?v={{ asset_v() }}">
   <link id="theme-css" rel="stylesheet" href="/static/css/themes/{{ theme }}.css?v={{ asset_v() }}">
   {% set _brand1 = site.brand_color|css_color %}{% set _brand2 = site.brand_color2|css_color %}
-  {% if _brand1 %}<style>:root{--primary:{{ _brand1 }};--primary-2:{{ _brand2 or _brand1 }};--grad-brand:linear-gradient(135deg,{{ _brand1 }},{{ _brand2 or _brand1 }})}</style>{% endif %}
+  {% if _brand1 %}<style>:root{--primary:{{ _brand1 }};--primary-2:{{ _brand2 or _brand1 }};--primary-soft:color-mix(in srgb, {{ _brand1 }} 14%, #ffffff);--grad-brand:linear-gradient(135deg,{{ _brand1 }},{{ _brand2 or _brand1 }});--theme-color:{{ _brand1 }}}</style>{% endif %}
   {% set _eff_cont = (eff_container or site.get('kit_container') or '')|css_int(720, 1800) %}
   {% set _eff_rad = (eff_radius or site.get('kit_radius') or '')|css_int(0, 40) %}
   {% if _eff_cont != '' %}<style>:root{--container:{{ _eff_cont }}px}</style>{% endif %}
@@ -84,6 +87,7 @@
   {{ clarity_script|safe }}
 </head>
 <body class="{% block body_class %}{% endblock %}" {% block body_attrs %}{% endblock %}>
+<input type="hidden" id="global-csrf-token" value="{{ csrf_token }}">
 <a href="#main-content" class="skip-link" style="position:absolute;top:-60px;right:12px;z-index:9999;background:var(--primary);color:#fff;padding:10px 22px;border-radius:0 0 12px 12px;font-weight:800;font-size:13px;transition:top .2s ease" onfocus="this.style.top='0'" onblur="this.style.top='-60px'">پرش به محتوای اصلی</a>
 
 {% include 'partials/flash.html' %}
@@ -187,8 +191,10 @@
       <a href="{{ url_for('site.faq') }}">📖 سوالات متداول</a>
       <a href="{{ url_for('site.contact') }}">✉️ فرم تماس با ما</a>
       {% if cur_user %}
+      <a href="{{ url_for('features.support_chat') }}">💬 چت زنده پشتیبانی</a>
       <a href="{{ url_for('student.ticket_new') }}">🎫 ثبت تیکت پشتیبانی</a>
       {% else %}
+      <a href="{{ url_for('auth.login', next=url_for('features.support_chat')) }}">💬 چت زنده پشتیبانی</a>
       <a href="{{ url_for('auth.login') }}">🎫 ثبت تیکت پشتیبانی</a>
       {% endif %}
       {# ⚠️ راه‌های ارتباطی فقط وقتی نمایش داده می‌شوند که مدیر مقدار واقعی ثبت کرده باشد.
@@ -266,11 +272,13 @@
   });
 })();
 </script>
-<script src="/static/js/app.js?v={{ asset_v() }}"></script>
-<script src="/static/js/ux.js?v={{ asset_v() }}"></script>
-<script src="/static/js/jalali.js?v={{ asset_v() }}"></script>
-<script src="/static/js/form-feedback.js?v={{ asset_v() }}"></script>
-<script src="/static/js/media_library.js?v={{ asset_v() }}"></script>
+<script src="/static/js/app.js?v={{ asset_v() }}" defer></script>
+<script src="/static/js/ux.js?v={{ asset_v() }}" defer></script>
+<script src="/static/js/jalali.js?v={{ asset_v() }}" defer></script>
+<script src="/static/js/form-feedback.js?v={{ asset_v() }}" defer></script>
+{% if request.endpoint and (request.endpoint.startswith('admin.') or request.endpoint.startswith('builder.') or request.endpoint.startswith('student.') or request.endpoint.startswith('teacher.')) %}
+<script src="/static/js/media_library.js?v={{ asset_v() }}" defer></script>
+{% endif %}
 {% block scripts %}{% endblock %}
 <!-- Crisp Chat — پشتیبانی آنلاین (فعال فقط با CRISP_WEBSITE_ID) -->
 {{ crisp_script|safe }}

@@ -212,6 +212,13 @@ def checkout():
                 # کاهش موجودی فقط بعد از پرداخت موفق انجام میشود (در _mark_paid)
         db.session.add(order)
         db.session.flush()
+        try:
+            from models import Notification
+            Notification.notify_staff('سفارش جدید ثبت شد',
+                                      f'{order.code} — {g.user.name} — {order.final_total:,} تومان',
+                                      '🧾', url_for('admin.order_detail', oid=order.id))
+        except Exception:
+            _lexc('shop.checkout.notify')
         db.session.commit()
         session.pop('cart', None)
         session.pop('cart_qty', None)
@@ -700,6 +707,10 @@ def _mark_paid(order, ref, detail):
         from messengers import send_to_all
         send_to_all(f'🎉 پرداخت جدید: سفارش {order.code} به مبلغ {order.final_total:,} تومان توسط {buyer.name if buyer else ""}',
                     g.settings, url_for('admin.orders', _external=True))
+        from models import Notification as _NStaff
+        _NStaff.notify_staff('پرداخت موفق سفارش',
+                             f'{order.code} — {order.final_total:,} تومان',
+                             '💰', url_for('admin.order_detail', oid=order.id))
     except Exception:
         _lexc('blueprints/shop.py')
     # پاداش معرفی فقط با درصد صریح مدیر و فقط روی اولین خرید.

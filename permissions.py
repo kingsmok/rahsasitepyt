@@ -33,7 +33,7 @@ _map('manage_settings',
      'admin.install_test_xampp', 'admin.install_connect_xampp',
      'admin.install_test_git', 'admin.install_inspect_db',
      'admin.install_attach_db', 'admin.install_use_sqlite',
-     'admin.install_migrate_db', 'admin.icons_browser')
+     'admin.install_migrate_db', 'admin.icons_browser', 'admin.system_restart')
 _map('view_users', 'admin.users', 'admin.user_profile')
 _map(('edit_users', 'register_students'), 'admin.user_add')
 _map('edit_users', 'admin.user_role', 'admin.user_toggle',
@@ -64,7 +64,8 @@ _map(('manage_builder', 'manage_pages'),
      'admin.form_toggle', 'admin.menus', 'admin.menu_new', 'admin.menu_edit',
      'admin.menu_toggle', 'admin.menu_delete', 'admin.designs',
      'admin.design_variant_preview', 'admin.design_variant_json',
-     'admin.media_library', 'admin.media_delete')
+     'admin.media_library', 'admin.media_delete',
+     'admin.faq_manage', 'admin.pages_content')
 _map('view_orders', 'admin.orders', 'admin.order_detail', 'admin.installments')
 _map('approve_payments', 'admin.order_fulfillment', 'admin.proofs',
      'admin.proof_verify')
@@ -348,6 +349,7 @@ _ADMIN_GROUPS = [
     {'label': 'طراحی و صفحات', 'icon': '🧩', 'items': [
         ('admin.pages', 'صفحات'),
         ('admin.faq_manage', 'سوالات متداول'),
+        ('admin.pages_content', 'درباره و تماس'),
         ('builder.index', 'صفحه‌ساز'),
         ('admin.forms', 'فرم‌ساز'),
         ('admin.menus', 'منوساز'),

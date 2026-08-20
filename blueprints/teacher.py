@@ -374,9 +374,11 @@ def revenue():
     available = max(0, share - int(paid_out or 0) - (pending.amount if pending else 0))
     history = PayoutRequest.query.filter_by(teacher_id=g.user.id) \
         .order_by(PayoutRequest.created_at.desc()).all()
+    last_account = next((h.account for h in history if h.account), '')
     return render_template('teacher/revenue.html', rows=rows,
                            total=total, share=share, pending=pending,
-                           paid_out=paid_out, available=available, history=history)
+                           paid_out=paid_out, available=available, history=history,
+                           last_account=last_account)
 
 
 @teacher_bp.route('/payout/request', methods=['POST'])
@@ -411,6 +413,12 @@ def payout_request():
         flash('درخواست تسویه قبلی هنوز در انتظار بررسی است.', 'info')
     else:
         db.session.add(PayoutRequest(teacher_id=g.user.id, amount=amount, account=account))
+        try:
+            Notification.notify_staff('درخواست تسویه مدرس',
+                                      f'{g.user.name} — {amount:,} تومان',
+                                      '💰', url_for('admin.payouts'))
+        except Exception:
+            pass
         db.session.commit()
         flash('درخواست تسویه ثبت شد و برای بررسی ارسال گردید. 💰', 'success')
     return redirect(url_for('teacher.revenue'))

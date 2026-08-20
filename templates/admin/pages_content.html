@@ -1,0 +1,29 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}درباره ما و تماس{% endblock %}
+{% block acontent %}
+<div class="dash-head">
+  <div>
+    <h1>📄 درباره ما و تماس</h1>
+    <p>متن این صفحات مثل سوالات متداول از پنل ویرایش می‌شود</p>
+  </div>
+  <div class="flex gap-1">
+    <a class="btn btn-ghost" href="{{ url_for('site.about') }}" target="_blank">درباره ما ←</a>
+    <a class="btn btn-ghost" href="{{ url_for('site.contact') }}" target="_blank">تماس ←</a>
+  </div>
+</div>
+
+<form method="post" class="card" style="padding:22px;max-width:760px">
+  <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+  <div class="form-group">
+    <label for="about_text">متن درباره ما</label>
+    <textarea id="about_text" class="form-control" name="about_text" rows="8">{{ vals.get('about_text','') }}</textarea>
+    <p class="form-hint">در همه طرح‌های صفحه /about نمایش داده می‌شود.</p>
+  </div>
+  <div class="form-group">
+    <label for="contact_intro">مقدمه صفحه تماس</label>
+    <textarea id="contact_intro" class="form-control" name="contact_intro" rows="5">{{ vals.get('contact_intro','') }}</textarea>
+    <p class="form-hint">بالای فرم تماس نمایش داده می‌شود. خالی = متن پیش‌فرض.</p>
+  </div>
+  <button class="btn btn-primary" type="submit">💾 ذخیره</button>
+</form>
+{% endblock %}

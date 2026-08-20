@@ -10,6 +10,7 @@ instance/backups/
 instance/uploads/
 instance/libraries/
 instance/.installed
+instance/.cache_version
 instance/.install_progress.json
 instance/.update_progress.json
 instance/update_history.json

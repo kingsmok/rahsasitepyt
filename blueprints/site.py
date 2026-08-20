@@ -560,18 +560,23 @@ def blog_post(slug):
             if not ok_c:
                 flash(reason or 'متن دیدگاه مجاز نیست.', 'error')
                 return redirect(url_for('site.blog_post', slug=slug) + '#comments')
+            # تأیید دستی فقط وقتی مدیر آن را روشن کرده باشد؛ در غیر این صورت
+            # دیدگاه بلافاصله منتشر می‌شود (متن قبلاً از فیلتر لینک/فحش گذشته).
+            needs_review = str(g.settings.get('blog_comment_moderation') or '0') == '1'
             db.session.add(BlogComment(post_id=post.id, name=name,
                                        comment=comment, ip=client_ip[:60],
-                                       is_approved=False))
+                                       is_approved=not needs_review))
             try:
                 from models import Notification
-                Notification.notify_staff('دیدگاه وبلاگ در انتظار تایید',
-                                          f'{name}: {post.title}',
-                                          '💬', '/admin/reviews')
+                Notification.notify_staff(
+                    'دیدگاه وبلاگ در انتظار تایید' if needs_review else 'دیدگاه جدید وبلاگ',
+                    f'{name}: {post.title}',
+                    '💬', '/admin/reviews')
             except Exception:
                 _lexc('blueprints/site.py')
             db.session.commit()
-            flash('دیدگاه شما ثبت شد و پس از تایید مدیر نمایش داده می‌شود.', 'success')
+            flash('دیدگاه شما ثبت شد و پس از تایید مدیر نمایش داده می‌شود.' if needs_review
+                  else 'دیدگاه شما ثبت شد. سپاس از همراهی 🙏', 'success')
         else:
             flash('نام و متن دیدگاه الزامی است.', 'error')
         return redirect(url_for('site.blog_post', slug=slug) + '#comments')

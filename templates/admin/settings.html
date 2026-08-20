@@ -187,6 +187,14 @@
         <option value="0" {{ 'selected' if (site.allow_phone_login or '1') == '0' }}>غیرفعال</option>
       </select>
     </div>
+    <div class="form-group">
+      <label for="f_blog_comment_moderation">تأیید دستی دیدگاه‌های وبلاگ</label>
+      <select id="f_blog_comment_moderation" class="form-control" name="blog_comment_moderation" style="max-width:260px">
+        <option value="0" {{ 'selected' if (site.blog_comment_moderation or '0') == '0' }}>انتشار فوری (بعد از فیلتر لینک و فحش)</option>
+        <option value="1" {{ 'selected' if (site.blog_comment_moderation or '0') == '1' }}>نیازمند تأیید مدیر</option>
+      </select>
+      <p class="form-hint">در هر دو حالت، لینک‌ها حذف و الفاظ نامناسب رد می‌شوند. دیدگاه‌ها در «نظرات» قابل مدیریت‌اند.</p>
+    </div>
   </div>
 
   <button class="btn btn-primary btn-lg" type="submit">💾 ذخیره تنظیمات</button>

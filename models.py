@@ -1038,7 +1038,11 @@ class BlogComment(db.Model):
     post_id = db.Column(db.Integer, db.ForeignKey('blog_posts.id'), nullable=False)
     name = db.Column(db.String(120), nullable=False)
     comment = db.Column(db.Text, nullable=False)
-    is_approved = db.Column(db.Boolean, default=False, nullable=True)
+    # ⚠️ بدون default در سطح ORM: اگر default=False باشد، مقدار None که عمداً
+    # ست شده هم موقع flush به False تبدیل می‌شود و دیدگاه‌های قدیمیِ دیتابیس
+    # (که ستون بعداً به آن‌ها اضافه شده و NULL هستند) از سایت ناپدید می‌شوند.
+    # وضعیت دیدگاه جدید صریحاً در مسیر ثبت تعیین می‌شود (نیازمند تأیید مدیر).
+    is_approved = db.Column(db.Boolean, nullable=True)
     ip = db.Column(db.String(60), default='')          # برای ضد اسپم (بدون نمایش عمومی)
     created_at = db.Column(db.DateTime, default=utcnow)
     post = db.relationship(

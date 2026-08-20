@@ -709,8 +709,42 @@ def create_app():
     _cache_lock = _cache_thr.Lock()
     _cache_store = {}
 
+    # ── نسخهٔ کش مشترک بین همهٔ workerها (فایل روی دیسک) ──
+    # ⚠️ چرا لازم است: هر worker (Passenger/Gunicorn) حافظهٔ جدا دارد. وقتی
+    # مدیر تنظیمی را در worker شماره ۱ عوض می‌کرد، فقط کش همان worker پاک
+    # می‌شد و بقیه تا ۶۰ ثانیه (یا تا ری‌استارت) مقدار قدیمی را نشان می‌دادند.
+    # دقیقاً همان چیزی که کاربر گزارش کرد: «بعد از تغییر باید ری‌استارت کنیم».
+    # حالا هر worker قبل از خواندن کش، mtime این فایل را می‌بیند و اگر worker
+    # دیگری چیزی را تغییر داده باشد، کش محلی خودش را دور می‌ریزد.
+    _cache_ver_file = os.path.join(app.instance_path, '.cache_version')
+    _cache_ver_seen = [0.0]
+
+    def _shared_cache_version():
+        try:
+            return os.path.getmtime(_cache_ver_file)
+        except OSError:
+            return 0.0
+
+    def _bump_shared_cache_version():
+        try:
+            os.makedirs(app.instance_path, exist_ok=True)
+            with open(_cache_ver_file, 'w', encoding='utf-8') as fh:
+                fh.write(str(time.time()))
+        except OSError:
+            pass
+
+    def _sync_shared_cache():
+        """اگر worker دیگری کش را باطل کرده، کش محلی این worker را خالی کن."""
+        version = _shared_cache_version()
+        if version > _cache_ver_seen[0]:
+            _cache_ver_seen[0] = version
+            with _cache_lock:
+                _cache_store.clear()
+                _html_cache.clear()
+
     def _ttl_cache(key, ttl, fn):
         now = time.time()
+        _sync_shared_cache()
         with _cache_lock:
             hit = _cache_store.get(key)
             if hit and now - hit[0] < ttl:
@@ -727,7 +761,11 @@ def create_app():
         return val
 
     def clear_cache(key=None):
-        """پاک‌سازی کش هنگام تغییر تنظیمات یا محتوا از پنل ادمین"""
+        """پاک‌سازی کش هنگام تغییر تنظیمات یا محتوا از پنل ادمین.
+
+        علاوه بر کش همین worker، نسخهٔ مشترک روی دیسک هم بالا می‌رود تا بقیهٔ
+        workerها در اولین درخواست بعدی کش خود را دور بریزند — بدون ری‌استارت.
+        """
         with _cache_lock:
             if key and key in _cache_store:
                 _cache_store.pop(key, None)
@@ -735,6 +773,10 @@ def create_app():
                 _cache_store.clear()
             if not key:
                 _html_cache.clear()
+        # همیشه اعلام عمومی کن؛ حتی پاک‌سازی یک کلید هم باید به workerهای
+        # دیگر برسد (مثلاً تغییر یک تنظیم که فقط یک کلید را باطل می‌کند).
+        _bump_shared_cache_version()
+        _cache_ver_seen[0] = _shared_cache_version()
     app.jinja_env.globals['clear_cache'] = clear_cache
     app.clear_cache = clear_cache
 
@@ -1593,6 +1635,9 @@ def create_app():
     def html_cache_serve():
         if getattr(g, 'user', None):
             return None
+        # کش HTML مهمان هم باید به تغییرات workerهای دیگر واکنش نشان دهد،
+        # وگرنه صفحهٔ اصلی بعد از ویرایش با صفحه‌ساز تا ۵ دقیقه قدیمی می‌ماند.
+        _sync_shared_cache()
         _key = _html_cache_key()
         if not _key:
             return None

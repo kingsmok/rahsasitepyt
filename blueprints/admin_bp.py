@@ -2908,6 +2908,8 @@ def super_settings():
                 # امنیت و نگهداری
                 'maintenance', 'allow_register', 'allow_phone_login',
                 'admin_2fa_enabled', 'exam_enabled', 'spin_enabled',
+                # تأیید دستی دیدگاه وبلاگ (خاموش = انتشار فوری بعد از فیلتر متن)
+                'blog_comment_moderation',
             ]
             for k in keys:
                 # هر تب فقط فیلدهای خودش را ارسال می‌کند؛ تنظیمات تب‌های دیگر

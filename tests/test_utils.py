@@ -35,12 +35,15 @@ def test_mask_nc():
 
 
 def test_video_id_extraction():
-    from validators import youtube_id, vimeo_id, aparat_hash
+    from validators import youtube_id, vimeo_id, aparat_hash, detect_video
     assert youtube_id('https://www.youtube.com/watch?v=ScMzIvxBSi4') == 'ScMzIvxBSi4'
     assert youtube_id('https://youtu.be/ScMzIvxBSi4') == 'ScMzIvxBSi4'
+    assert youtube_id('https://www.youtube.com/embed/ScMzIvxBSi4') == 'ScMzIvxBSi4'
     assert youtube_id('https://player.vimeo.com/video/123456') is None
     assert vimeo_id('https://vimeo.com/123456') == '123456'
     assert aparat_hash('https://www.aparat.com/v/abc12345') == 'abc12345'
+    assert aparat_hash('https://www.aparat.com/video/abc12345') == 'abc12345'
+    assert detect_video('https://www.youtube.com/watch?v=ScMzIvxBSi4')[0] == 'youtube'
 
 
 def test_safe_filename():

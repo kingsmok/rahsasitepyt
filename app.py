@@ -120,9 +120,15 @@ def create_app():
     app.config['PERMANENT_SESSION_LIFETIME'] = 60 * 60 * 24 * 30  # ۳۰ روز
     app.config['SESSION_COOKIE_HTTPONLY'] = True
     app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-    # کوکی فقط روی HTTPS — در production اجباری
-    app.config['SESSION_COOKIE_SECURE'] = os.environ.get('SESSION_COOKIE_SECURE', '0') == '1' or \
-        os.environ.get('FLASK_ENV') == 'production' or os.environ.get('APP_ENV') == 'production'
+    # کوکی Secure فقط وقتی صریحاً خواسته شود. نصب‌کننده FLASK_ENV=production
+    # می‌نویسد؛ اگر به‌خاطر آن Secure اجباری شود، روی HTTP (سی‌پنل بدون SSL
+    # یا پروکسی بدون TRUST_PROXY) مرورگر کوکی سشن را نمی‌فرستد → CSRF،
+    # ورود، کپچا و آپلود رسانه همه شکست می‌خورند.
+    _secure_cookie = os.environ.get('SESSION_COOKIE_SECURE', '').strip().lower()
+    app.config['SESSION_COOKIE_SECURE'] = _secure_cookie in ('1', 'true', 'yes', 'on')
+    if os.environ.get('TRUST_PROXY') == '1':
+        from werkzeug.middleware.proxy_fix import ProxyFix
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
     # محدودیت حجم بدنه/آپلود: ۵۰ مگابایت
     app.config['MAX_CONTENT_LENGTH'] = int(os.environ.get('MAX_CONTENT_LENGTH', 50 * 1024 * 1024))
     # دیتابیس: SQLite محلی (پیش‌فرض) یا MySQL با DATABASE_URL
@@ -918,13 +924,15 @@ def create_app():
                         resp.headers['Content-Length'] = str(len(compressed))
         # کش خصوصی کوتاه‌مدت برای صفحات عمومی مهمان (فقط مرورگر همان کاربر)
         # — سرعت بازدیدهای تکراری بدون خطر لو رفتن سشن/توکن بین کاربران
+        # ⚠️ startswith('/') همه مسیرها را شامل می‌شد و Cache-Control
+        # no-store صفحات فرم/ادمین را با max-age بازنویسی می‌کرد (کپچا کهنه).
+        _html_ok_cache = request.path == '/' or request.path.startswith((
+            '/course/', '/courses', '/blog', '/about', '/terms', '/privacy',
+            '/teachers', '/bundles', '/success-stories', '/learning-paths',
+        ))
         if (resp.status_code == 200 and _ct.startswith('text/html') and
                 request.method == 'GET' and not getattr(g, 'user', None) and
-                request.path.startswith(('/course/', '/courses', '/blog', '/about',
-                                         '/terms', '/privacy', '/teachers', '/',
-                                         '/bundles', '/success-stories', '/learning-paths',
-                                         '/teachers'))):
-            # صفحه اصلی و لیست‌ها: کش ۳۰۰ ثانیه (همان کاربر) — سرعت بازدید تکراری
+                _html_ok_cache):
             _age = 300 if request.path == '/' else 120
             resp.headers['Cache-Control'] = f'private, max-age={_age}'
         return resp
@@ -1536,7 +1544,8 @@ def create_app():
             for _x in ('/admin', '/builder', '/install', '/license', '/api', '/static',
                        '/uploads', '/auth', '/dashboard', '/teacher-panel', '/student',
                        '/community', '/exam', '/wallet', '/pay', '/cart', '/checkout',
-                       '/newsletter', '/feedback', '/form/'):
+                       '/newsletter', '/feedback', '/form/', '/contact', '/consultation',
+                       '/become-teacher'):
                 if p.startswith(_x):
                     return None
             # عضو '/' فقط خود صفحه خانه است؛ startswith('/') تمام مسیرها را

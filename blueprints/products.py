@@ -52,14 +52,34 @@ def product_list():
 
 
 # ---------------------------------------------------------------- صفحه محصول
-@products_bp.route('/product/<slug>')
+@products_bp.route('/p/<int:pid>')
+def product_by_id(pid):
+    p = db.session.get(Product, pid)
+    if p is None:
+        abort(404)
+    if not p.is_active:
+        user = getattr(g, 'user', None)
+        if not (user and getattr(user, 'is_admin', False)):
+            abort(404)
+    if p.slug:
+        return redirect(url_for('products.product_detail', slug=p.slug), code=301)
+    abort(404)
+
+
+@products_bp.route('/product/<path:slug>')
 def product_detail(slug):
     value = (slug or '').strip()
     if not value:
         abort(404)
     from urllib.parse import unquote
-    value = unquote(value)
+    from models import make_slug
+    value = unquote(unquote(value)).strip().strip('/')
+    value = value.replace('+', '-').replace(' ', '-')
     p = Product.query.filter_by(slug=value).first()
+    if p is None:
+        alt = make_slug(value, fallback='')
+        if alt and alt != value:
+            p = Product.query.filter_by(slug=alt).first()
     if p is None and value.isdigit():
         p = Product.query.filter_by(id=int(value)).first()
         if p is not None and p.is_active:

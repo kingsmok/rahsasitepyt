@@ -151,9 +151,9 @@ def learn(course_id):
     if current is None:
         return render_template('dashboard/learn_empty.html', course=course,
                                enrollment=enrollment, done=done)
-    # اگر نوع ویدیو اشتباه ذخیره شده باشد، از URL تشخیص بده تا پخش نشود.
+    # نوع ذخیره‌شده ممکن است اشتباه باشد (مثلاً «مستقیم» برای لینک یوتیوب).
     _kind, _vid = detect_video(current.video_url)
-    if _kind in ('youtube', 'aparat', 'vimeo', 'direct') and current.video_type in ('none', '', None):
+    if _kind in ('youtube', 'aparat', 'vimeo', 'direct', 'none'):
         current.video_type = _kind
     yt_id = youtube_id(current.video_url) if current.video_type == 'youtube' else None
     ap_hash = aparat_hash(current.video_url) if current.video_type == 'aparat' else None

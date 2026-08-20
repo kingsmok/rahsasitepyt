@@ -255,7 +255,28 @@
   <h3>🎖 گواهینامه</h3>
   <div class="ss-grid">
     <div class="ss-field"><label>متن گواهینامه</label><textarea rows="2" name="certificate_text">{{ vals.get('certificate_text','') }}</textarea></div>
-    <div class="ss-field"><label>امضا/سمت</label><input name="certificate_sign" value="{{ vals.get('certificate_sign','') }}"></div>
+    <div class="ss-field"><label>امضا/سمت (متن)</label><input name="certificate_sign" value="{{ vals.get('certificate_sign','') }}"></div>
+    <div class="ss-field"><label>لوگوی گواهینامه</label>
+      <input type="file" name="certificate_logo_file" accept="image/*">
+      <button type="button" class="mm-btn-lib" style="margin-top:8px"
+              onclick="MediaLibrary.open({target:'certificate_logo', filter:'image'})">📁 کتابخانه</button>
+      <input type="hidden" id="certificate_logo" name="certificate_logo" value="{{ vals.get('certificate_logo','') }}">
+      <p class="ss-hint">فعلی: <code>{{ vals.get('certificate_logo') or 'لوگوی سایت' }}</code></p>
+    </div>
+    <div class="ss-field"><label>مهر گواهینامه</label>
+      <input type="file" name="certificate_stamp_file" accept="image/*">
+      <button type="button" class="mm-btn-lib" style="margin-top:8px"
+              onclick="MediaLibrary.open({target:'certificate_stamp', filter:'image'})">📁 کتابخانه</button>
+      <input type="hidden" id="certificate_stamp" name="certificate_stamp" value="{{ vals.get('certificate_stamp','') }}">
+      <p class="ss-hint">فعلی: <code>{{ vals.get('certificate_stamp') or '—' }}</code></p>
+    </div>
+    <div class="ss-field"><label>تصویر امضا</label>
+      <input type="file" name="certificate_sign_file" accept="image/*">
+      <button type="button" class="mm-btn-lib" style="margin-top:8px"
+              onclick="MediaLibrary.open({target:'certificate_sign_image', filter:'image'})">📁 کتابخانه</button>
+      <input type="hidden" id="certificate_sign_image" name="certificate_sign_image" value="{{ vals.get('certificate_sign_image','') }}">
+      <p class="ss-hint">فعلی: <code>{{ vals.get('certificate_sign_image') or '—' }}</code></p>
+    </div>
   </div>
 </div>
 {% endif %}

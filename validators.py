@@ -48,18 +48,23 @@ def mask_nc(code):
 
 
 def youtube_id(url):
-    m = re.search(r'(?:youtube\.com/(?:watch\?v=|embed/|shorts/|live/)|youtu\.be/)([A-Za-z0-9_-]{11})', url or '')
+    m = re.search(
+        r'(?:youtube(?:-nocookie)?\.com/(?:watch\?v=|embed/|shorts/|live/|v/)|youtu\.be/)([A-Za-z0-9_-]{11})',
+        url or '')
+    if m:
+        return m.group(1)
+    m = re.search(r'[?&]v=([A-Za-z0-9_-]{11})', url or '')
     return m.group(1) if m else None
 
 
 def vimeo_id(url):
-    m = re.search(r'vimeo\.com/(?:video/)?(\d+)', url or '')
+    m = re.search(r'(?:player\.)?vimeo\.com/(?:video/)?(\d+)', url or '')
     return m.group(1) if m else None
 
 
 def aparat_hash(url):
     m = re.search(
-        r'aparat\.com/(?:v/|video/video/embed/videohash/)([A-Za-z0-9_-]+)',
+        r'aparat\.com/(?:video/video/embed/videohash/|v/|video/)([A-Za-z0-9_-]+)',
         url or '')
     return m.group(1) if m else None
 

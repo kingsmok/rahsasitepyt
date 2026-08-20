@@ -176,6 +176,8 @@
     if (!files.length) return;
     var form = new FormData();
     files.forEach(function (f) { form.append('files', f, f.name); });
+    var csrf = csrfToken();
+    if (csrf) form.append('_csrf_token', csrf);
     var bar = document.getElementById('mm-progress');
     if (bar) {
       bar.style.display = 'block';

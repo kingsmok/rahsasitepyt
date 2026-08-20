@@ -169,10 +169,20 @@ def courses():
 def _find_course(slug):
     """دوره با slug یا شناسهٔ عددی. پیش‌نویس فقط برای مدیر/مدرس همان دوره."""
     from urllib.parse import unquote
-    value = unquote(slug or '').strip()
+    from models import make_slug
+    value = unquote(unquote(slug or '')).strip().strip('/')
     if not value:
         return None
-    course = Course.query.filter_by(slug=value).first()
+    value = value.replace('+', '-').replace(' ', '-')
+    candidates = []
+    for cand in (value, make_slug(value, fallback='')):
+        if cand and cand not in candidates:
+            candidates.append(cand)
+    course = None
+    for cand in candidates:
+        course = Course.query.filter_by(slug=cand).first()
+        if course:
+            break
     if course is None and value.isdigit():
         course = Course.query.filter_by(id=int(value)).first()
     if course is None:
@@ -185,7 +195,22 @@ def _find_course(slug):
     return None
 
 
-@site_bp.route('/course/<slug>')
+@site_bp.route('/c/<int:cid>')
+def course_by_id(cid):
+    """آدرس پایدار با شناسه — ضد 404 اسلاگ فارسی روی برخی هاست‌ها."""
+    course = db.session.get(Course, cid)
+    if course is None:
+        abort(404)
+    if course.status != 'published':
+        user = getattr(g, 'user', None)
+        if not (user and (getattr(user, 'is_admin', False) or course.teacher_id == user.id)):
+            abort(404)
+    if course.slug:
+        return redirect(url_for('site.course_detail', slug=course.slug), code=301)
+    abort(404)
+
+
+@site_bp.route('/course/<path:slug>')
 def course_detail(slug):
     course = _find_course(slug)
     if course is None:

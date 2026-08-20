@@ -454,7 +454,8 @@ def _course_form(course):
             except Exception:
                 _lexc('blueprints/admin_bp.py')
             if course.status == 'published' and course.slug:
-                flash('دوره ذخیره شد. آدرس عمومی: /course/' + course.slug, 'success')
+                flash('دوره ذخیره شد. آدرس عمومی: /course/' + course.slug +
+                      '  —  اگر ۴۰۴ دیدید از /c/' + str(course.id) + ' استفاده کنید.', 'success')
             else:
                 flash('دوره به‌صورت پیش‌نویس ذخیره شد و تا انتشار در سایت ۴۰۴ می‌دهد. از همین فرم وضعیت را «منتشر شده» کنید.', 'info')
             return redirect(url_for('admin.course_lessons', cid=course.id))
@@ -2945,8 +2946,13 @@ def super_settings():
                         v = str(max(0, min(90, int(v or 0))))
                     except ValueError:
                         v = '0'
+                elif k == 'teacher_default_share':
+                    try:
+                        v = str(max(0, min(100, int(v or 0))))
+                    except ValueError:
+                        v = '50'
                 elif k in ('cashback_percent', 'loyalty_discount_percent',
-                            'referral_bonus_percent', 'teacher_default_share'):
+                            'referral_bonus_percent'):
                     try:
                         v = str(max(0, min(50, int(v or 0))))
                     except ValueError:
@@ -2997,6 +3003,33 @@ def super_settings():
                     else:
                         db.session.add(Setting(key='custom_logo',
                                                value='/static/img/uploads/brand/' + lname))
+            brand_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                                     'static', 'img', 'uploads', 'brand')
+            os.makedirs(brand_dir, exist_ok=True)
+            from validators import (safe_filename as _sf, ALLOWED_IMAGE_EXT_TRUSTED as _exts,
+                                    file_content_is_safe as _safe)
+            for file_field, setting_key, stem in (
+                ('certificate_logo_file', 'certificate_logo', 'cert-logo'),
+                ('certificate_stamp_file', 'certificate_stamp', 'cert-stamp'),
+                ('certificate_sign_file', 'certificate_sign_image', 'cert-sign'),
+            ):
+                ff = request.files.get(file_field)
+                if not ff or not ff.filename:
+                    continue
+                safe = _sf(ff.filename or '', _exts)
+                if safe and not _safe(ff.stream, os.path.splitext(safe)[1].lower()):
+                    flash('فایل گواهینامه حاوی کد اجرایی است و پذیرفته نشد.', 'error')
+                    safe = None
+                if not safe:
+                    continue
+                fname = stem + os.path.splitext(safe)[1].lower()
+                ff.save(os.path.join(brand_dir, fname))
+                url = '/static/img/uploads/brand/' + fname
+                st = db.session.get(Setting, setting_key)
+                if st:
+                    st.value = url
+                else:
+                    db.session.add(Setting(key=setting_key, value=url))
             db.session.commit()
             flash('تنظیمات با موفقیت ذخیره شد ✅', 'success')
             return redirect(url_for('admin.super_settings', tab=request.form.get('tab', '')))
@@ -3209,7 +3242,8 @@ def products_admin():
                 db.session.commit()
             except Exception:
                 _lexc('blueprints/admin_bp.py')
-            flash('محصول ساخته شد. آدرس عمومی: /product/' + slug, 'success')
+            flash('محصول ساخته شد. آدرس عمومی: /product/' + slug +
+                  '  —  اگر ۴۰۴ دیدید از /p/' + str(_p.id) + ' استفاده کنید.', 'success')
         return redirect(url_for('admin.products_admin'))
     items = _P.query.order_by(_P.created_at.desc()).all()
     return render_template('admin/products.html', items=items)

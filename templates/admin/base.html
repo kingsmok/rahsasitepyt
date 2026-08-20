@@ -29,11 +29,8 @@
       <div class="as-group-body{{ '' if group_has_active(group, request) else ' is-collapsed' }}"
            data-admin-group-body>
         {% for ep, label in group['items'] %}
-        {% set _tok = label.split(' ', 1) %}
-        {% set _emoji = _tok[0]|length <= 3 and not (_tok[0][:1] >= 'ا' and _tok[0][:1] <= 'ی') and not (_tok[0][:1]|lower >= 'a' and _tok[0][:1]|lower <= 'z') %}
         <a href="{{ url_for(ep) }}" data-admin-link class="as-link {{ 'active' if request.endpoint == ep or (request.endpoint and ep and request.endpoint.startswith(ep.split('.')[0] + '.') and ep.split('.')[1] == request.endpoint.split('.')[1]) }}">
-          <span class="as-link-icon" aria-hidden="true">{% if _emoji %}{{ _tok[0] }}{% endif %}</span>
-          <span class="as-link-label">{% if _emoji and _tok|length > 1 %}{{ _tok[1] }}{% else %}{{ label }}{% endif %}</span>
+          <span class="as-link-label">{{ label }}</span>
         </a>
         {% endfor %}
       </div>

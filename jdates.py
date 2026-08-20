@@ -152,6 +152,5 @@ def money(value):
 
 
 def slugify(text):
-    import re as _re
-    text = str(text or '').strip().replace(' ', '-')
-    return _re.sub(r'[^\w\u0600-\u06FF\-]', '', text)
+    from models import make_slug
+    return make_slug(text, fallback='')

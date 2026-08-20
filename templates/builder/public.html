@@ -4,5 +4,22 @@
 {% block title %}{{ seo.title or pseo.get('seo_title') or page.title or site.site_name }}{% endblock %}
 {% block description %}{{ pseo.get('seo_desc') or site.site_desc or '' }}{% endblock %}
 {% block content %}
-{% for row in page.rows() %}{{ row_view(row) }}{% endfor %}
+{% if not page.rows() %}
+  {# فقط مدیر به اینجا می‌رسد (site.custom_page) — بازدیدکننده ۴۰۴ می‌گیرد #}
+  <div class="container" style="padding:48px 16px">
+    <div class="card" style="max-width:620px;margin:0 auto;text-align:center;padding:32px">
+      <div style="font-size:44px;line-height:1;margin-bottom:12px">🧩</div>
+      <h1 style="margin:0 0 10px;font-size:22px">این صفحه هنوز محتوایی ندارد</h1>
+      <p class="muted" style="margin:0 0 20px">
+        صفحه «{{ page.title }}» ساخته شده اما هیچ بخشی به آن اضافه نشده است.
+        تا وقتی محتوا اضافه نکنید، بازدیدکنندگان خطای ۴۰۴ می‌بینند.
+      </p>
+      <a class="btn btn-primary" href="{{ url_for('builder.editor', slug=page.slug) }}">
+        ✏️ ویرایش با صفحه‌ساز
+      </a>
+    </div>
+  </div>
+{% else %}
+  {% for row in page.rows() %}{{ row_view(row) }}{% endfor %}
+{% endif %}
 {% endblock %}

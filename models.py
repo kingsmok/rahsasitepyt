@@ -842,6 +842,12 @@ class BlogPost(db.Model):
 # ═══════════════════════════════════════════════════════════════════════════
 # ابزارهای اسلاگ — تولید و تعمیر URL دوره/محصول/وبلاگ (ضد 404)
 # ═══════════════════════════════════════════════════════════════════════════
+# جدول‌های تبدیل برای ساخت اسلاگ (یک‌بار ساخته می‌شوند، نه در هر فراخوانی)
+_ARABIC_TO_PERSIAN = str.maketrans({'ي': 'ی', 'ك': 'ک', 'ة': 'ه', 'أ': 'ا',
+                                    'إ': 'ا', 'آ': 'ا', 'ؤ': 'و', 'ئ': 'ی'})
+_DIGITS_TO_LATIN = str.maketrans('۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩', '01234567890123456789')
+
+
 def make_slug(text, fallback='item'):
     """اسلاگ کانونی از عنوان — پشتیبانی فارسی/عربی/انگلیسی.
 
@@ -850,14 +856,25 @@ def make_slug(text, fallback='item'):
     تولید نمی‌شود (fallback برمی‌گردد) تا لینک‌های 404 ساخته نشوند.
     """
     import re as _re
+    import unicodedata as _ud
     text = str(text or '').strip()
     if not text:
         return fallback
-    slug = _re.sub(r'[^\w\u0600-\u06FF\-]+', '-', text.replace(' ', '-'))
+    # ۱) یکسان‌سازی نویسه‌های عربی/فارسی (ي→ی، ك→ک) و حذف اعراب
+    text = _ud.normalize('NFKC', text)
+    text = text.translate(_ARABIC_TO_PERSIAN)
+    text = _re.sub(r'[\u064B-\u0652\u0654\u0655\u0670]', '', text)
+    # ۲) ارقام فارسی/عربی → لاتین (تا آدرس‌ها قابل تایپ بمانند)
+    text = text.translate(_DIGITS_TO_LATIN)
+    # ۳) نیم‌فاصله و انواع فاصله‌ها → خط تیره. بدون این، «صفحه‌ساز» به
+    #    «صفحهساز» تبدیل می‌شد و آدرس با متن اصلی نمی‌خواند.
+    text = _re.sub(r'[\u200b-\u200f\u2060\ufeff]', '-', text)
+    text = _re.sub(r'\s+', '-', text)
+    slug = _re.sub(r'[^\w\u0600-\u06FF\-]+', '-', text)
     slug = _re.sub(r'-{2,}', '-', slug).strip('-')
     if not slug or set(slug) == {'-'}:
         return fallback
-    return slug[:220] or fallback
+    return slug[:220].strip('-') or fallback
 
 
 def unique_slug_for(model_class, title, exclude_id=None, fallback='item'):

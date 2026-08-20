@@ -331,8 +331,14 @@ def custom_page(slug):
     if page:
         g.page_custom_header = page.custom_header
         g.page_custom_footer = page.custom_footer
-    if not page or not page.is_published or not page.rows():
+    if not page or not page.is_published:
         abort(404)
+    if not page.rows():
+        # صفحه ساخته شده ولی هنوز محتوایی ندارد. قبلاً اینجا ۴۰۴ می‌داد و
+        # مدیر گمان می‌کرد صفحه ساخته نشده؛ حالا برای مدیر پیام راهنما و
+        # لینک ویرایش نشان می‌دهیم و برای بازدیدکننده ۴۰۴ می‌ماند.
+        if not (g.user and getattr(g.user, 'is_admin', False)):
+            abort(404)
     g.page_settings = page.settings()
     return render_template('builder/public.html', page=page)
 

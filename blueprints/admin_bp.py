@@ -49,8 +49,8 @@ def _save_lesson_file(f):
 
 
 def slugify(text):
-    text = (text or '').strip().replace(' ', '-')
-    return _re.sub(r'[^\w\u0600-\u06FF\-]', '', text)
+    from models import make_slug
+    return make_slug(text, fallback='')
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -1375,9 +1375,7 @@ def bundle_new():
     courses = Course.query.filter_by(status='published').all()
     if request.method == 'POST':
         title = request.form.get('title', '').strip()
-        slug = request.form.get('slug', '').strip() or title
-        import re as _re
-        slug = _re.sub(r'[^\w\u0600-\u06FF-]+', '-', slug).strip('-')
+        slug = slugify(request.form.get('slug', '').strip() or title)
         if not title:
             flash('عنوان الزامی است.', 'error')
         else:
@@ -1795,7 +1793,7 @@ def form_new():
             flash('عنوان الزامی است.', 'error')
         else:
             import re as _re
-            slug = _re.sub(r'[^\w\u0600-\u06FF-]+', '-', title).strip('-') or 'form'
+            slug = slugify(title) or 'form'
             while CustomForm.query.filter_by(slug=slug).first():
                 slug += '-2'
             fields = _parse_form_fields(request.form.get('fields_raw', ''))
@@ -1988,7 +1986,7 @@ def menu_new():
     title = request.form.get('title', '').strip()
     if title:
         import re as _re
-        slug = _re.sub(r'[^\w\u0600-\u06FF-]+', '-', title).strip('-') or 'menu'
+        slug = slugify(title) or 'menu'
         while Menu.query.filter_by(slug=slug).first():
             slug += '-2'
         db.session.add(Menu(title=title, slug=slug,

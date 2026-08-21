@@ -325,3 +325,84 @@ a.contact-method:hover{border-color:var(--primary);transform:translateY(-2px)}
   .tch-hero{padding:24px 20px}
   .tch-hero h1{font-size:21px}
 }
+
+/* ============================================================
+   پنل سئوی فرم‌های محتوا (دوره / مقاله / محصول)
+   ============================================================ */
+.seo-panel { border: 1.5px solid var(--border); border-radius: var(--radius-md);
+  background: var(--card-2); margin: 18px 0; overflow: hidden; }
+.seo-panel__head { display: flex; align-items: center; gap: 10px; padding: 14px 16px;
+  cursor: pointer; font-size: 14px; user-select: none; list-style: none; }
+.seo-panel__head::-webkit-details-marker { display: none; }
+.seo-panel__head::after { content: '⌄'; margin-inline-start: auto; font-size: 18px;
+  transition: transform .25s ease; color: var(--text-3); }
+.seo-panel[open] .seo-panel__head::after { transform: rotate(180deg); }
+.seo-panel__icon { font-size: 17px; }
+.seo-panel__hint { color: var(--text-3); font-size: 12.5px; font-weight: 500; }
+.seo-panel__body { padding: 4px 16px 18px; border-top: 1px dashed var(--border); }
+.seo-panel__row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.seo-panel__og { border: 1px dashed var(--border-2); border-radius: var(--radius-sm);
+  padding: 14px 14px 2px; margin-top: 6px; }
+.seo-panel__og legend { font-size: 12.5px; font-weight: 700; color: var(--text-2); padding: 0 6px; }
+.seo-check { display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px;
+  font-weight: 600; cursor: pointer; padding: 10px 0; }
+.seo-check input { width: 17px; height: 17px; accent-color: var(--primary); cursor: pointer; }
+.seo-count { font-weight: 700; }
+.seo-count.over { color: var(--danger); }
+.seo-count.good { color: var(--success); }
+.seo-preview { margin-top: 16px; padding: 14px 16px; background: #fff;
+  border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.seo-preview__label { font-size: 11.5px; color: var(--text-3); margin-bottom: 8px; font-weight: 700; }
+.seo-preview__title { color: #1a0dab; font-size: 17px; line-height: 1.5;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.seo-preview__url { color: #006621; font-size: 12.5px; direction: ltr; text-align: left; }
+.seo-preview__desc { color: #545454; font-size: 13px; line-height: 1.7; margin-top: 4px; }
+@media (max-width: 700px) { .seo-panel__row { grid-template-columns: 1fr; } }
+.soc-shad:hover { background: #e11d48; }
+/* آیکون‌های ایرانی رنگی هستند — فیلتر سفیدکننده نباید اعمال شود */
+.soc img[src*="/img/social/"] { filter: none; opacity: 1; }
+.bank-strip { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.bank-strip img { border-radius: 10px; box-shadow: var(--shadow-sm); }
+
+/* ============================================================
+   🔔 زنگ هشدار پنل مدیریت
+   ============================================================ */
+.admin-alarm { position: relative; display: inline-flex; }
+.admin-alarm__btn { position: relative; display: inline-flex; align-items: center;
+  justify-content: center; width: 38px; height: 38px; border-radius: 50%;
+  background: transparent; color: inherit; cursor: pointer; transition: background .2s; }
+.admin-alarm__btn:hover { background: rgba(148, 163, 184, .18); }
+.admin-alarm__badge { position: absolute; top: 2px; inset-inline-end: 2px; min-width: 18px;
+  height: 18px; padding: 0 4px; border-radius: 999px; background: var(--danger);
+  color: #fff; font-size: 10.5px; font-weight: 800; line-height: 18px; text-align: center; }
+.admin-alarm.has-alerts .admin-alarm__btn { color: var(--danger); }
+.admin-alarm.is-ringing .admin-alarm__btn { animation: alarmShake .45s ease-in-out 4; }
+@keyframes alarmShake {
+  0%, 100% { transform: rotate(0); }
+  25% { transform: rotate(-14deg); }
+  75% { transform: rotate(14deg); }
+}
+.admin-alarm.is-ringing .admin-alarm__badge { animation: alarmPulse .7s ease-in-out 3; }
+@keyframes alarmPulse { 50% { transform: scale(1.35); } }
+.admin-alarm__panel { position: absolute; top: 46px; inset-inline-end: 0; z-index: 300;
+  width: 268px; background: var(--card); color: var(--text); border: 1px solid var(--border);
+  border-radius: var(--radius-md); box-shadow: var(--shadow-lg); padding: 8px; }
+.admin-alarm__head { display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 8px 10px; border-bottom: 1px dashed var(--border); font-size: 13px; }
+.admin-alarm__sound { display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11.5px; color: var(--text-3); cursor: pointer; font-weight: 600; }
+.admin-alarm__sound input { accent-color: var(--primary); cursor: pointer; }
+.admin-alarm__row { display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 8px; border-radius: var(--radius-sm); font-size: 13px;
+  color: var(--text); transition: background .18s; }
+.admin-alarm__row:hover { background: var(--primary-soft); }
+.admin-alarm__row b { min-width: 24px; text-align: center; padding: 1px 7px;
+  border-radius: 999px; background: var(--danger); color: #fff; font-size: 11.5px; }
+.admin-alarm__row.is-zero { opacity: .55; }
+.admin-alarm__row.is-zero b { background: var(--bg-2); color: var(--text-3); }
+.admin-alarm__empty { padding: 12px 8px 6px; text-align: center;
+  font-size: 12.5px; color: var(--success); font-weight: 700; }
+@media (prefers-reduced-motion: reduce) {
+  .admin-alarm.is-ringing .admin-alarm__btn,
+  .admin-alarm.is-ringing .admin-alarm__badge { animation: none; }
+}

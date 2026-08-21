@@ -322,13 +322,15 @@ _ADMIN_GROUPS = [
         ('market.admin_marketplace', 'مارکت‌پلیس‌ها'),
     ]},
     {'label': 'محتوا و آموزش', 'icon': '📚', 'items': [
-        ('admin.courses', 'دورٚ', 'items': [
         ('admin.courses', 'دوره‌ها'),
         ('admin.blog', 'وبلاگ'),
         ('admin.categories', 'دسته‌بندی‌ها'),
         ('admin.quizzes', 'آزمون‌ها'),
         ('admin.question_bank', 'بانک سوال'),
         ('admin.assignments', 'تمرین‌ها'),
+        ('admin.submissions', 'تحویل تمرین‌ها'),
+        ('admin.reviews', 'نظرات دوره‌ها'),
+        ('admin.lesson_questions', 'پرسش‌های جلسات'),
         ('admin.bundles', 'باندل‌ها'),
         ('admin.success_stories', 'داستان‌های موفقیت'),
         ('admin.certificates', 'گواهی‌ها'),
@@ -345,6 +347,7 @@ _ADMIN_GROUPS = [
         ('admin.tickets', 'تیکت‌ها'),
         ('admin.chat', 'چت آنلاین'),
         ('admin.canned_replies', 'پاسخ‌های آماده'),
+        ('admin.messages', 'پیام‌های تماس'),
         ('admin.newsletters', 'خبرنامه'),
         ('admin.admin_notifications', 'اعلان گروهی'),
     ]},
@@ -356,12 +359,16 @@ _ADMIN_GROUPS = [
         ('admin.forms', 'فرم‌ساز'),
         ('admin.menus', 'منوساز'),
         ('admin.designs', 'طراحی‌های سایت'),
+        ('admin.themes', 'قالب‌های آماده'),
+        ('admin.pages_trash', 'زباله‌دان صفحات'),
         ('admin.media_library', 'کتابخانه رسانه'),
         ('admin.icons_browser', 'آیکون‌ها'),
     ]},
     {'label': 'سئو و بازاریابی', 'icon': '📈', 'items': [
         ('seo_admin.dashboard', 'داشبورد سئو'),
         ('seo_admin.redirects', 'ریدایرکت‌های ۳۰۱'),
+        ('seo_admin.notfound', 'خطاهای ۴۰۴'),
+        ('seo_admin.bulk', 'ویرایش گروهی سئو'),
         ('services.admin_ai_writer_page', 'نویسنده هوشمند'),
         ('admin.sms_settings', 'پیامک'),
         ('admin.messengers', 'پیام‌رسان‌ها'),
@@ -381,6 +388,7 @@ _ADMIN_GROUPS = [
     {'label': 'سیستم', 'icon': '⚙️', 'items': [
         ('admin.super_settings', 'تنظیمات سوپر'),
         ('admin.backup_list', 'بکاپ‌ها'),
+        ('admin.optimizer', 'بهینه‌سازی تصاویر'),
         ('admin.update_page', 'بروزرسانی نرم‌افزار'),
         ('admin.install_manager', 'نصب و اتصالات'),
     ]},
@@ -447,4 +455,3 @@ def menu_groups_for(user):
             groups.append({'label': group['label'], 'icon': group['icon'],
                            'items': items})
     return groups
-return groups

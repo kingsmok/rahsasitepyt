@@ -8,6 +8,13 @@
 <form method="post" class="card" style="padding:26px;max-width:860px">
 <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
   <div class="form-group"><label for="f_title_1">عنوان</label><input id="f_title_1" class="form-control" name="title" value="{{ post.title if post else '' }}" required></div>
+  <div class="form-group">
+    <label for="f_slug_1">آدرس صفحه (نشانی یکتا)</label>
+    <input id="f_slug_1" class="form-control" name="slug" dir="ltr"
+           value="{{ post.slug if post else '' }}"
+           placeholder="خالی بگذارید تا خودکار از عنوان ساخته شود">
+    <small class="text-muted">نشانی نهایی: <code>/blog/{{ post.slug if post and post.slug else '...' }}</code></small>
+  </div>
   <div class="grid" style="grid-template-columns:1fr 1fr;gap:14px">
     <div class="form-group"><label for="f_category_1">دسته</label><input id="f_category_1" class="form-control" name="category" value="{{ post.category if post else 'آموزش' }}"></div>
     <div class="form-group"><label for="f_image_1">تصویر</label>
@@ -30,6 +37,7 @@
   <div class="form-group"><label for="f_excerpt_1">خلاصه</label><textarea id="f_excerpt_1" class="form-control" name="excerpt" style="min-height:70px">{{ post.excerpt if post else '' }}</textarea></div>
   <div class="form-group"><label for="f_body_1">متن کامل</label><textarea id="f_body_1" class="form-control" name="body" style="min-height:240px">{{ post.body if post else '' }}</textarea></div>
   <label class="form-check mb-3"><input type="checkbox" name="published" {{ 'checked' if not post or post.published }}> منتشر شود</label>
+  {% include "partials/seo_fields.html" %}
   <button class="btn btn-primary btn-lg" type="submit">💾 ذخیره</button>
 </form>
 {% endblock %}

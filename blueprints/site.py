@@ -331,8 +331,14 @@ def custom_page(slug):
     if page:
         g.page_custom_header = page.custom_header
         g.page_custom_footer = page.custom_footer
-    if not page or not page.is_published or not page.rows():
+    if not page or not page.is_published:
         abort(404)
+    if not page.rows():
+        # صفحه ساخته شده ولی هنوز محتوایی ندارد. قبلاً اینجا ۴۰۴ می‌داد و
+        # مدیر گمان می‌کرد صفحه ساخته نشده؛ حالا برای مدیر پیام راهنما و
+        # لینک ویرایش نشان می‌دهیم و برای بازدیدکننده ۴۰۴ می‌ماند.
+        if not (g.user and getattr(g.user, 'is_admin', False)):
+            abort(404)
     g.page_settings = page.settings()
     return render_template('builder/public.html', page=page)
 
@@ -535,8 +541,19 @@ def blog():
 
 @site_bp.route('/blog/<slug>', methods=['GET', 'POST'])
 def blog_post(slug):
-    from models import BlogComment
-    post = BlogPost.query.filter_by(slug=slug, published=True).first_or_404()
+    from models import BlogComment, find_by_slug_or_id
+    post = find_by_slug_or_id(BlogPost, slug, fallback='post')
+    if post is None:
+        abort(404)
+    # پیش‌نویس فقط برای مدیر و نویسندهٔ همان مطلب قابل مشاهده است
+    if not post.published:
+        _u = getattr(g, 'user', None)
+        _own = _u and getattr(post, 'author_id', None) == getattr(_u, 'id', None)
+        if not (_u and (getattr(_u, 'is_admin', False) or _own)):
+            abort(404)
+    # اگر آدرس واردشده با اسلاگ رسمی فرق دارد، به آدرس درست منتقل شود (SEO)
+    if post.slug and slug != post.slug:
+        return redirect(url_for('site.blog_post', slug=post.slug), code=301)
     g.current_post = post
     if request.method == 'POST':
         from validators import clamp_field
@@ -560,18 +577,23 @@ def blog_post(slug):
             if not ok_c:
                 flash(reason or 'متن دیدگاه مجاز نیست.', 'error')
                 return redirect(url_for('site.blog_post', slug=slug) + '#comments')
+            # تأیید دستی فقط وقتی مدیر آن را روشن کرده باشد؛ در غیر این صورت
+            # دیدگاه بلافاصله منتشر می‌شود (متن قبلاً از فیلتر لینک/فحش گذشته).
+            needs_review = str(g.settings.get('blog_comment_moderation') or '0') == '1'
             db.session.add(BlogComment(post_id=post.id, name=name,
                                        comment=comment, ip=client_ip[:60],
-                                       is_approved=False))
+                                       is_approved=not needs_review))
             try:
                 from models import Notification
-                Notification.notify_staff('دیدگاه وبلاگ در انتظار تایید',
-                                          f'{name}: {post.title}',
-                                          '💬', '/admin/reviews')
+                Notification.notify_staff(
+                    'دیدگاه وبلاگ در انتظار تایید' if needs_review else 'دیدگاه جدید وبلاگ',
+                    f'{name}: {post.title}',
+                    '💬', '/admin/reviews')
             except Exception:
                 _lexc('blueprints/site.py')
             db.session.commit()
-            flash('دیدگاه شما ثبت شد و پس از تایید مدیر نمایش داده می‌شود.', 'success')
+            flash('دیدگاه شما ثبت شد و پس از تایید مدیر نمایش داده می‌شود.' if needs_review
+                  else 'دیدگاه شما ثبت شد. سپاس از همراهی 🙏', 'success')
         else:
             flash('نام و متن دیدگاه الزامی است.', 'error')
         return redirect(url_for('site.blog_post', slug=slug) + '#comments')
@@ -861,7 +883,7 @@ def custom_form(slug):
                     if not safe:
                         flash('فرمت فایل مجاز نیست.', 'error')
                         return redirect(request.url)
-                    from uploads_helper import file_content_is_safe
+                    from validators import file_content_is_safe
                     if not file_content_is_safe(up.stream, os.path.splitext(safe)[1].lower()):
                         flash('محتوای فایل ارسالی نامعتبر یا ناامن است.', 'error')
                         return redirect(request.url)

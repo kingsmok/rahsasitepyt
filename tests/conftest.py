@@ -8,6 +8,31 @@ import pytest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# ---------------------------------------------------------------------------
+# ایزوله‌سازی از .env سرور
+# ---------------------------------------------------------------------------
+# app.py هنگام import فایل .env را می‌خواند. روی یک سرور واقعی این فایل
+# APP_ENV=production دارد و باعث می‌شود runtime.automated_test_mode() خاموش
+# بماند؛ نتیجه‌اش شکست ده‌ها تست با خطاهای گمراه‌کننده (کد ۲FA تولید نمی‌شود،
+# پیامک دمو رد می‌شود، درگاه‌های آزمایشی کار نمی‌کنند) بود در حالی که کد سالم است.
+#
+# صرفاً ست‌کردن متغیرها کافی نیست: تست‌هایی که عمداً production را شبیه‌سازی
+# می‌کنند با monkeypatch مقدار قبلی را بازمی‌گردانند و اگر آن مقدار از .env
+# آمده باشد، دوباره production می‌شود و بقیهٔ تست‌ها آلوده می‌شوند.
+# بنابراین load_dotenv را قبل از import اپ بی‌اثر می‌کنیم.
+try:  # pragma: no cover - بستگی به نصب python-dotenv دارد
+    import dotenv as _dotenv
+
+    _dotenv.load_dotenv = lambda *a, **k: False
+    if hasattr(_dotenv, 'main'):
+        _dotenv.main.load_dotenv = lambda *a, **k: False
+except Exception:
+    pass
+
+os.environ['APP_ENV'] = 'testing'
+os.environ['FLASK_ENV'] = 'testing'
+os.environ.pop('ENABLE_DEMO_FEATURES', None)
+
 from app import create_app
 from models import db, User, Course, Category
 

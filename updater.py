@@ -1148,6 +1148,24 @@ def _smoke_test_after_update():
     return 'تست سلامت سایت پس از بروزرسانی موفق بود ✅'
 
 
+def _rebuild_assets():
+    """بازتولید فایل‌های .min.css/.min.js پس از به‌روزرسانی کد.
+
+    اگر شکست بخورد چیزی خراب نمی‌شود: تابع asset() در app.py وقتی نسخهٔ فشرده
+    کهنه یا موجود نباشد، خودکار به فایل اصلی برمی‌گردد.
+    """
+    try:
+        script = os.path.join(BASE_DIR, 'scripts', 'build_assets.py')
+        if not os.path.exists(script):
+            return False
+        import subprocess as _sp
+        _sp.run([sys.executable, '-u', script], cwd=BASE_DIR,
+                capture_output=True, timeout=120)
+        return True
+    except Exception:
+        return False
+
+
 def _clear_python_cache():
     """پاک‌سازی cache کد پروژه، بدون دست‌زدن به virtualenv و فایل‌های کاربر."""
     skip = {'.git', '.venv', 'venv', 'env', 'instance', 'uploads'}
@@ -1994,6 +2012,7 @@ def _perform_update(repo, branch=None):
 
     _set_step(4, 'پاک‌سازی cache و آماده‌سازی ری‌استارت...')
     _clear_python_cache()
+    _rebuild_assets()
     # Passenger فقط بعد از ذخیرهٔ state/history لمس می‌شود تا reload وسط گزارش
     # باعث ناپدیدشدن نتیجهٔ موفقیت نشود.
     restarted = _restart_enabled() and any(

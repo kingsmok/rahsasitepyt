@@ -811,3 +811,50 @@ def install_migrate_db():
     except Exception as e:
         return jsonify(ok=False, msg='خطا در مایگریشن دیتابیس: ' + str(e)), 500
 
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 🔔 زنگ هشدار مدیر — تیکت‌ها و سفارش‌های جدید (Polling سبک)
+# ═══════════════════════════════════════════════════════════════════════════
+@admin_bp.route('/api/alerts')
+@admin_required
+def admin_alerts():
+    """شمارش موارد نیازمند رسیدگی — برای زنگ هشدار پنل مدیریت.
+
+    خروجی JSON سبک است تا هر ۳۰ ثانیه بدون فشار روی دیتابیس فراخوانی شود.
+    ``latest_id`` برای تشخیص «مورد جدید از آخرین بازدید» استفاده می‌شود.
+    """
+    from models import Notification, PaymentProof
+    try:
+        open_tickets = Ticket.query.filter(Ticket.status.in_(('open', 'pending'))).count()
+        new_orders = Order.query.filter_by(status='pending').count()
+        paid_orders = Order.query.filter(
+            Order.status == 'paid',
+            Order.fulfillment_status.in_(('not_required', 'pending', 'processing'))
+        ).count() if hasattr(Order, 'fulfillment_status') else 0
+        proofs = PaymentProof.query.filter_by(status='pending').count()
+        unread = Notification.query.filter_by(user_id=g.user.id, is_read=False).count()
+
+        last_ticket = db.session.query(_func.max(Ticket.id)).scalar() or 0
+        last_order = db.session.query(_func.max(Order.id)).scalar() or 0
+
+        return jsonify(
+            ok=True,
+            tickets=int(open_tickets),
+            orders=int(new_orders),
+            fulfillment=int(paid_orders),
+            proofs=int(proofs),
+            unread=int(unread),
+            total=int(open_tickets + new_orders + proofs),
+            latest_ticket_id=int(last_ticket),
+            latest_order_id=int(last_order),
+            urls=dict(
+                tickets=url_for('admin.tickets'),
+                orders=url_for('admin.orders'),
+                proofs=url_for('admin.proofs'),
+            ),
+        )
+    except Exception:
+        from validators import log_exc
+        log_exc('admin_extra.admin_alerts')
+        return jsonify(ok=False, total=0), 200

@@ -15,7 +15,50 @@
     {% endfor %}
   </div>
 </div>
+
+<h2 style="margin:26px 0 12px">🇮🇷 آیکون‌های ایرانی</h2>
+
+<div class="card" style="padding:18px;margin-bottom:18px">
+  <h3 style="font-size:15px;margin-bottom:4px">پیام‌رسان‌های ایرانی</h3>
+  <p style="color:var(--text-3);font-size:12.5px;margin-bottom:12px">
+    کد استفاده: <code dir="ltr">{{ '{{ social_icon(\'eitaa\', 24) }}' }}</code></p>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px">
+    {% for sid, meta in messenger_names() %}
+    <div class="icon-cell" data-name="{{ sid }}" onclick="copyCode(&quot;social_icon('{{ sid }}', 24)&quot;, this)"
+         style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 6px;border:1px solid var(--border);border-radius:10px;cursor:pointer" title="کلیک = کپی">
+      {{ social_icon(sid, 30) }}
+      <code style="font-size:10px;color:var(--text-3);direction:ltr">{{ sid }}</code>
+      <small style="font-size:10.5px">{{ meta.fa }}</small>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="card" style="padding:18px">
+  <h3 style="font-size:15px;margin-bottom:4px">بانک‌ها و درگاه‌های پرداخت</h3>
+  <p style="color:var(--text-3);font-size:12.5px;margin-bottom:12px">
+    کد استفاده: <code dir="ltr">{{ '{{ bank_icon(\'mellat\', 40) }}' }}</code></p>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px">
+    {% for bid, bname in bank_names() %}
+    <div class="icon-cell" data-name="{{ bid }}" onclick="copyCode(&quot;bank_icon('{{ bid }}', 40)&quot;, this)"
+         style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 6px;border:1px solid var(--border);border-radius:10px;cursor:pointer" title="کلیک = کپی">
+      {{ bank_icon(bid, 42) }}
+      <code style="font-size:10px;color:var(--text-3);direction:ltr">{{ bid }}</code>
+      <small style="font-size:10.5px;text-align:center">{{ bname }}</small>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
 <script>
+function copyCode(expr, el) {
+  var code = "{{ '{{' }} " + expr + " {{ '}}' }}";
+  navigator.clipboard.writeText(code).then(function() {
+    el.style.borderColor = 'var(--success)';
+    el.style.background = 'var(--success-soft)';
+    setTimeout(function(){ el.style.borderColor = 'var(--border)'; el.style.background = ''; }, 700);
+  });
+}
 function copyIcon(name, el) {
   var code = "{{ '{{' }} icon('" + name + "') {{ '}}' }}";
   navigator.clipboard.writeText(code).then(function() {

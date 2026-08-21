@@ -1166,8 +1166,10 @@ _SHORTCODE_RE = re.compile(
 
 
 def _slugify(t):
-    t = (t or '').strip().replace(' ', '-')
-    return re.sub(r'[^\w\u0600-\u06FF\-]', '', t)
+    # از تابع مشترک models استفاده می‌شود تا نیم‌فاصله، ارقام فارسی و
+    # نویسه‌های عربی در همه‌جای سایت یکسان به اسلاگ تبدیل شوند.
+    from models import make_slug
+    return make_slug(t, fallback='')
 
 
 def _new_id(prefix='w'):

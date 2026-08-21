@@ -842,6 +842,12 @@ class BlogPost(db.Model):
 # ═══════════════════════════════════════════════════════════════════════════
 # ابزارهای اسلاگ — تولید و تعمیر URL دوره/محصول/وبلاگ (ضد 404)
 # ═══════════════════════════════════════════════════════════════════════════
+# جدول‌های تبدیل برای ساخت اسلاگ (یک‌بار ساخته می‌شوند، نه در هر فراخوانی)
+_ARABIC_TO_PERSIAN = str.maketrans({'ي': 'ی', 'ك': 'ک', 'ة': 'ه', 'أ': 'ا',
+                                    'إ': 'ا', 'آ': 'ا', 'ؤ': 'و', 'ئ': 'ی'})
+_DIGITS_TO_LATIN = str.maketrans('۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩', '01234567890123456789')
+
+
 def make_slug(text, fallback='item'):
     """اسلاگ کانونی از عنوان — پشتیبانی فارسی/عربی/انگلیسی.
 
@@ -850,14 +856,25 @@ def make_slug(text, fallback='item'):
     تولید نمی‌شود (fallback برمی‌گردد) تا لینک‌های 404 ساخته نشوند.
     """
     import re as _re
+    import unicodedata as _ud
     text = str(text or '').strip()
     if not text:
         return fallback
-    slug = _re.sub(r'[^\w\u0600-\u06FF\-]+', '-', text.replace(' ', '-'))
+    # ۱) یکسان‌سازی نویسه‌های عربی/فارسی (ي→ی، ك→ک) و حذف اعراب
+    text = _ud.normalize('NFKC', text)
+    text = text.translate(_ARABIC_TO_PERSIAN)
+    text = _re.sub(r'[\u064B-\u0652\u0654\u0655\u0670]', '', text)
+    # ۲) ارقام فارسی/عربی → لاتین (تا آدرس‌ها قابل تایپ بمانند)
+    text = text.translate(_DIGITS_TO_LATIN)
+    # ۳) نیم‌فاصله و انواع فاصله‌ها → خط تیره. بدون این، «صفحه‌ساز» به
+    #    «صفحهساز» تبدیل می‌شد و آدرس با متن اصلی نمی‌خواند.
+    text = _re.sub(r'[\u200b-\u200f\u2060\ufeff]', '-', text)
+    text = _re.sub(r'\s+', '-', text)
+    slug = _re.sub(r'[^\w\u0600-\u06FF\-]+', '-', text)
     slug = _re.sub(r'-{2,}', '-', slug).strip('-')
     if not slug or set(slug) == {'-'}:
         return fallback
-    return slug[:220] or fallback
+    return slug[:220].strip('-') or fallback
 
 
 def unique_slug_for(model_class, title, exclude_id=None, fallback='item'):
@@ -875,6 +892,70 @@ def unique_slug_for(model_class, title, exclude_id=None, fallback='item'):
         candidate = '{}-{}'.format(base[:216], n)
         n += 1
     return '{}-{}'.format(base[:200], os.urandom(3).hex())
+
+
+def ensure_slug(row, fallback='item', title_attr='title'):
+    """اگر رکورد اسلاگ نداشته باشد، از عنوانش یکی بساز و ذخیره کن (ضد ۴۰۴).
+
+    نصب‌های قدیمی و رکوردهایی که با اسلاگ خالی ذخیره شده‌اند، لینکشان به ۴۰۴
+    می‌خورد. این تابع idempotent است: اگر اسلاگ سالم باشد دست نمی‌زند.
+    """
+    if getattr(row, 'slug', None):
+        return row.slug
+    title = getattr(row, title_attr, '') or ''
+    row.slug = unique_slug_for(type(row), title,
+                               exclude_id=getattr(row, 'id', None),
+                               fallback=fallback)
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+    return row.slug
+
+
+def slug_matches_title(slug, title, fallback='item'):
+    """آیا اسلاگ فعلی از همین عنوان ساخته شده؟ (پسوند یکتاسازی -۲ نادیده)
+
+    برای تشخیص «اسلاگ خودکار» از «اسلاگ دستی مدیر» هنگام ویرایش عنوان.
+    """
+    if not slug:
+        return True
+    base = make_slug(title or '', fallback)
+    if slug == base:
+        return True
+    m = _re.match(r"^(.*)-(\d{1,4})$", slug)
+    return bool(m and m.group(1) == base[:216])
+
+
+def find_by_slug_or_id(model_class, value, fallback='item'):
+    """یافتن رکورد با اسلاگ (فارسی/انکودشده) یا شناسهٔ عددی.
+
+    مرورگر اسلاگ فارسی را percent-encode می‌فرستد و بعضی پراکسی‌ها آن را دوبار
+    انکود می‌کنند؛ هر دو حالت باز می‌شوند. اگر رکورد اسلاگ نداشته باشد نیز با
+    شناسهٔ عددی پیدا و اسلاگش ترمیم می‌شود — دیگر هیچ آیتم ساخته‌شده ۴۰۴ نمی‌دهد.
+    """
+    from urllib.parse import unquote
+    raw = (value or '').strip()
+    if not raw:
+        return None
+    raw = unquote(unquote(raw)).strip().strip('/')
+    raw = raw.replace('+', '-').replace(' ', '-')
+    if not raw:
+        return None
+    candidates = [raw]
+    alt = make_slug(raw, fallback='')
+    if alt and alt not in candidates:
+        candidates.append(alt)
+    for cand in candidates:
+        row = model_class.query.filter_by(slug=cand).first()
+        if row is not None:
+            return row
+    if raw.isdigit():
+        row = model_class.query.filter_by(id=int(raw)).first()
+        if row is not None:
+            ensure_slug(row, fallback=fallback)
+            return row
+    return None
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -1038,7 +1119,11 @@ class BlogComment(db.Model):
     post_id = db.Column(db.Integer, db.ForeignKey('blog_posts.id'), nullable=False)
     name = db.Column(db.String(120), nullable=False)
     comment = db.Column(db.Text, nullable=False)
-    is_approved = db.Column(db.Boolean, default=False, nullable=True)
+    # ⚠️ بدون default در سطح ORM: اگر default=False باشد، مقدار None که عمداً
+    # ست شده هم موقع flush به False تبدیل می‌شود و دیدگاه‌های قدیمیِ دیتابیس
+    # (که ستون بعداً به آن‌ها اضافه شده و NULL هستند) از سایت ناپدید می‌شوند.
+    # وضعیت دیدگاه جدید صریحاً در مسیر ثبت تعیین می‌شود (نیازمند تأیید مدیر).
+    is_approved = db.Column(db.Boolean, nullable=True)
     ip = db.Column(db.String(60), default='')          # برای ضد اسپم (بدون نمایش عمومی)
     created_at = db.Column(db.DateTime, default=utcnow)
     post = db.relationship(

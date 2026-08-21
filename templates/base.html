@@ -41,8 +41,8 @@
   <link rel="manifest" href="/static/manifest.json?v={{ asset_v() }}">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="stylesheet" href="/static/css/base.css?v={{ asset_v() }}">
-  <link rel="stylesheet" href="/static/css/ux.css?v={{ asset_v() }}">
+  <link rel="stylesheet" href="{{ asset('css/base.css') }}">
+  <link rel="stylesheet" href="{{ asset('css/ux.css') }}">
   {% set _ga = site.ga_code|tracking_id %}
   {% if _ga %}
   <!-- Google Analytics — شناسه از فیلتر tracking_id عبور می‌کند (ضد تزریق اسکریپت) -->
@@ -54,7 +54,7 @@
     gtag('config', '{{ _ga }}');
   </script>
   {% endif %}
-  <link rel="stylesheet" href="/static/css/builder.css?v={{ asset_v() }}">
+  <link rel="stylesheet" href="{{ asset('css/builder.css') }}">
   <link id="theme-css" rel="stylesheet" href="/static/css/themes/{{ theme }}.css?v={{ asset_v() }}">
   {% set _brand1 = site.brand_color|css_color %}{% set _brand2 = site.brand_color2|css_color %}
   {% if _brand1 %}<style>:root{--primary:{{ _brand1 }};--primary-2:{{ _brand2 or _brand1 }};--primary-soft:{{ _brand1 }}24;--grad-brand:linear-gradient(135deg,{{ _brand1 }},{{ _brand2 or _brand1 }});--theme-color:{{ _brand1 }}}@supports (color:color-mix(in srgb, red, white)){:root{--primary-soft:color-mix(in srgb, {{ _brand1 }} 14%, #ffffff)}}</style>{% endif %}
@@ -277,12 +277,12 @@
   });
 })();
 </script>
-<script src="/static/js/app.js?v={{ asset_v() }}" defer></script>
-<script src="/static/js/ux.js?v={{ asset_v() }}" defer></script>
-<script src="/static/js/jalali.js?v={{ asset_v() }}" defer></script>
-<script src="/static/js/form-feedback.js?v={{ asset_v() }}" defer></script>
+<script src="{{ asset('js/app.js') }}" defer></script>
+<script src="{{ asset('js/ux.js') }}" defer></script>
+<script src="{{ asset('js/jalali.js') }}" defer></script>
+<script src="{{ asset('js/form-feedback.js') }}" defer></script>
 {% if request.endpoint and (request.endpoint.startswith('admin.') or request.endpoint.startswith('builder.') or request.endpoint.startswith('student.') or request.endpoint.startswith('teacher.')) %}
-<script src="/static/js/media_library.js?v={{ asset_v() }}" defer></script>
+<script src="{{ asset('js/media_library.js') }}" defer></script>
 {% endif %}
 {% block scripts %}{% endblock %}
 <!-- Crisp Chat — پشتیبانی آنلاین (فعال فقط با CRISP_WEBSITE_ID) -->

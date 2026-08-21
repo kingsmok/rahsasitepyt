@@ -165,6 +165,7 @@
 
   <label class="form-check mb-2"><input type="checkbox" name="featured" {{ 'checked' if course and course.featured }}> دوره ویژه (نمایش در صفحه اصلی)</label>
 
+  {% include "partials/seo_fields.html" %}
   <button class="btn btn-primary btn-lg" type="submit">💾 ذخیره دوره</button>
   {% if course %}<a class="btn btn-ghost btn-lg" href="{{ url_for('admin.course_lessons', cid=course.id) }}" style="margin-right:10px">بعد: مدیریت جلسات ←</a>{% endif %}
 </form>

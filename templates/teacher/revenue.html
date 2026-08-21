@@ -1,11 +1,31 @@
 {% extends 'teacher/base.html' %}
 {% block tcontent %}
 <div class="dash-head"><div><h1 style="font-size:20px">💰 درآمد من</h1><p>سهم استاد ۵۰٪ از فروش دوره‌های شما</p></div></div>
-<div class="card stat-ic stat-ic-3" style="padding:22px;text-align:center;margin-bottom:18px">
-  <div style="font-size:14px;color:var(--text-2)">مجموع درآمد شما</div>
-  <div style="font-size:30px;font-weight:900">{{ fa('{:,.0f}'.format(share)) }} تومان</div>
-  <small class="text-3">از فروش قطعی {{ fa('{:,.0f}'.format(total)) }} تومان</small>
-  <div style="margin-top:10px;font-size:12px">پرداخت‌شده: {{ fa('{:,.0f}'.format(paid_out)) }} — مانده قابل درخواست: <b>{{ fa('{:,.0f}'.format(available)) }}</b> تومان</div>
+<div class="card stat-ic stat-ic-3" style="padding:22px;text-align:center;margin-bottom:14px">
+  <div style="font-size:14px;color:var(--text-2)">مانده قابل تسویه (تسویه‌نشده)</div>
+  <div style="font-size:34px;font-weight:900;color:{{ 'var(--success)' if available else 'var(--text-3)' }}">
+    {{ fa('{:,.0f}'.format(available)) }} تومان</div>
+  {% if available == 0 %}
+  <div class="badge badge-success" style="margin-top:8px">✅ تسویه شده — مانده شما صفر است</div>
+  {% endif %}
+  {% if pending %}
+  <div class="badge badge-accent" style="margin-top:8px">⏳ {{ fa('{:,.0f}'.format(pending.amount)) }} تومان در انتظار پرداخت</div>
+  {% endif %}
+</div>
+
+<div class="grid gap-2" style="grid-template-columns:repeat(auto-fit,minmax(190px,1fr));margin-bottom:18px">
+  <div class="card" style="padding:16px;text-align:center">
+    <small class="text-3">فروش کل دوره‌های شما</small>
+    <div style="font-size:19px;font-weight:800">{{ fa('{:,.0f}'.format(total)) }}</div>
+  </div>
+  <div class="card" style="padding:16px;text-align:center">
+    <small class="text-3">سهم شما (از ابتدا)</small>
+    <div style="font-size:19px;font-weight:800">{{ fa('{:,.0f}'.format(share)) }}</div>
+  </div>
+  <div class="card" style="padding:16px;text-align:center">
+    <small class="text-3">تسویه‌شده تاکنون</small>
+    <div style="font-size:19px;font-weight:800;color:var(--primary)">{{ fa('{:,.0f}'.format(paid_out)) }}</div>
+  </div>
 </div>
 <div class="card" style="padding:22px">
   <div class="table-wrap"><table class="table">
@@ -44,14 +64,18 @@
 <div class="card" style="padding:22px;margin-top:16px">
   <h3 style="font-size:15px;margin-bottom:10px">تاریخچه تسویه (مانده صفر می‌شود، سوابق می‌ماند)</h3>
   <div class="table-wrap"><table class="table">
-    <thead><tr><th>مبلغ</th><th>حساب</th><th>وضعیت</th><th>تاریخ</th></tr></thead>
+    <thead><tr><th>مبلغ</th><th>حساب</th><th>وضعیت</th><th>تاریخ درخواست</th><th>تاریخ واریز</th><th>توضیح مدیر</th></tr></thead>
     <tbody>
       {% for h in history %}
       <tr>
         <td>{{ fa('{:,.0f}'.format(h.amount)) }}</td>
         <td dir="ltr">{{ h.account or '—' }}</td>
-        <td>{{ 'پرداخت‌شده' if h.status=='paid' else ('در انتظار' if h.status=='pending' else 'رد شده') }}</td>
+        <td>{% if h.status=='paid' %}<span class="badge badge-success">پرداخت‌شده</span>
+            {% elif h.status=='pending' %}<span class="badge badge-accent">در انتظار</span>
+            {% else %}<span class="badge badge-danger">رد شده</span>{% endif %}</td>
         <td>{{ h.created_at|jdatetime }}</td>
+        <td>{{ h.paid_at|jdatetime if h.paid_at else '—' }}</td>
+        <td style="font-size:12px;color:var(--text-2)">{{ h.admin_note or '—' }}</td>
       </tr>
       {% endfor %}
     </tbody>

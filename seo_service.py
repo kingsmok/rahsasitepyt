@@ -399,3 +399,68 @@ def auto_sync():
         except Exception:
             pass
     return created, total
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# ذخیرهٔ فیلدهای سئو از فرم‌های محتوا (دوره / مقاله / محصول)
+# ═══════════════════════════════════════════════════════════════════════════
+_SEO_FORM_LIMITS = {
+    'title': 200, 'description': 400, 'keywords': 300, 'focus_keyword': 100,
+    'canonical': 300, 'og_image': 300, 'og_title': 200, 'og_desc': 400,
+}
+
+
+def save_seo_from_form(path, form, old_path=None):
+    """ذخیرهٔ فیلدهای seo_* فرم در رکورد SeoMeta مربوط به ``path``.
+
+    - فقط وقتی چیزی پر شده باشد رکورد ساخته می‌شود (فرم خالی = سئوی خودکار).
+    - اگر آدرس صفحه عوض شده باشد (``old_path``)، رکورد قبلی منتقل می‌شود تا
+      تنظیمات دستی مدیر با تغییر اسلاگ از بین نرود.
+    - همهٔ مقادیر به طول ستون بریده می‌شوند (ضد خطای MySQL strict).
+    """
+    try:
+        if old_path and old_path != path:
+            stale = SeoMeta.query.filter_by(path=old_path).first()
+            if stale is not None:
+                clash = SeoMeta.query.filter_by(path=path).first()
+                if clash is not None and clash.id != stale.id:
+                    db.session.delete(clash)
+                    db.session.flush()
+                stale.path = path
+
+        def _v(key):
+            return str(form.get('seo_' + key) or '').strip()[:_SEO_FORM_LIMITS[key]]
+
+        values = {k: _v(k) for k in _SEO_FORM_LIMITS}
+        noindex = bool(form.get('seo_noindex'))
+        nofollow = bool(form.get('seo_nofollow'))
+
+        meta = SeoMeta.query.filter_by(path=path).first()
+        if meta is None:
+            if not any(values.values()) and not noindex and not nofollow:
+                return None          # چیزی وارد نشده — سئوی خودکار کافی است
+            meta = SeoMeta(path=path)
+            db.session.add(meta)
+
+        for key, val in values.items():
+            setattr(meta, key, val)
+        meta.noindex = noindex
+        meta.nofollow = nofollow
+        db.session.commit()
+        return meta
+    except Exception:
+        _lexc('seo_service.save_seo_from_form')
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        return None
+
+
+def get_seo_for(path):
+    """رکورد SeoMeta یک مسیر برای پرکردن فرم — بدون ساختن رکورد جدید."""
+    try:
+        return SeoMeta.query.filter_by(path=path).first()
+    except Exception:
+        _lexc('seo_service.get_seo_for')
+        return None

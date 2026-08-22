@@ -256,6 +256,11 @@ def _git_env():
     # روی هاست، git نباید وسط درخواست منتظر Username/Password بماند.
     env['GIT_TERMINAL_PROMPT'] = '0'
     env.setdefault('LC_ALL', 'C')
+    # ویندوز cp1252 و بعضی هاست‌ها locale ASCII دارند؛ چاپ فارسی در
+    # migrate_database / pip نباید UnicodeEncodeError بدهد.
+    env['PYTHONIOENCODING'] = 'utf-8'
+    env['PYTHONUTF8'] = '1'
+    env['PYTHONUNBUFFERED'] = '1'
     return env
 
 
@@ -334,6 +339,74 @@ def _read_version_txt():
     if value and len(value) <= 64:
         return value
     return ''
+
+
+def _version_label(version_txt, commit=''):
+    """برچسب قابل‌نمایش نسخه: شماره انتشار، وگرنه هش کوتاه کامیت."""
+    version_txt = (version_txt or '').strip()
+    if version_txt:
+        return version_txt
+    commit = (commit or '').strip()
+    return commit[:10] if commit else ''
+
+
+_ENV_LINE_RE = re.compile(r'^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$')
+
+
+def _read_env_file_value(name, env_path=None):
+    """خواندن یک کلید از ``.env`` بدون وابستگی به python-dotenv.
+
+    اگر dotenv لود نشده باشد (ویندوز/هاست ناقص)، ``DATABASE_URL`` نباید
+    گم شود و مایگریشن اشتباهاً روی SQLite پیش‌فرض برود.
+    """
+    path = env_path or os.path.join(BASE_DIR, '.env')
+    try:
+        with open(path, encoding='utf-8') as handle:
+            lines = handle.readlines()
+    except OSError:
+        return ''
+    found = ''
+    for raw in lines:
+        line = raw.strip()
+        if not line or line.startswith('#'):
+            continue
+        match = _ENV_LINE_RE.match(line)
+        if not match or match.group(1) != name:
+            continue
+        value = match.group(2).strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in ('"', "'"):
+            value = value[1:-1]
+        found = value
+    return found
+
+
+def _database_url():
+    """آدرس دیتابیس: محیط، سپس ``.env`` — همان منبعی که Flask استفاده می‌کند."""
+    url = (os.environ.get('DATABASE_URL') or '').strip()
+    if url:
+        return url
+    return (_read_env_file_value('DATABASE_URL') or '').strip()
+
+
+def _database_kind(url=None):
+    value = (url if url is not None else _database_url()).strip().lower()
+    if value.startswith('mysql'):
+        return 'mysql'
+    if value.startswith('postgres'):
+        return 'postgresql'
+    if value.startswith('sqlite') or not value:
+        return 'sqlite'
+    return 'other'
+
+
+def _python_child_env():
+    """محیط پردازش‌های پایتونِ بروزرسانی (مایگریشن / تست سلامت)."""
+    env = _git_env()
+    env['PYTHONPATH'] = BASE_DIR + os.pathsep + env.get('PYTHONPATH', '')
+    db_url = _database_url()
+    if db_url:
+        env['DATABASE_URL'] = db_url
+    return env
 
 
 def _local_version():
@@ -434,6 +507,7 @@ def _run(cmd, cwd=BASE_DIR, timeout=120, env=None):
     """
     try:
         r = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True,
+                           encoding='utf-8', errors='replace',
                            timeout=timeout, env=env or _git_env())
         return r.returncode, (r.stdout or '') + (r.stderr or '')
     except subprocess.TimeoutExpired:
@@ -1096,12 +1170,11 @@ def _run_fresh_migration():
         )
         cmd = [sys.executable, '-u', '-c', code]
     
-    env = _git_env()
-    env['PYTHONPATH'] = BASE_DIR + os.pathsep + env.get('PYTHONPATH', '')
-    
+    env = _python_child_env()
+
     # اجرا با timeout بلندتر برای دیتابیس‌های بزرگ + heartbeat دوره‌ای
     timeout = _bounded_env_int('DB_MIGRATION_TIMEOUT', 900, 60, 3600)
-    
+
     code, out = _run_streaming(cmd, timeout=timeout, env=env,
                                progress_cb=_heartbeat)
     
@@ -1136,8 +1209,7 @@ def _smoke_test_after_update():
         'raise SystemExit(0 if r.status_code in (200, 301, 302, 303, 307, 308) else 1)'
     )
     cmd = [sys.executable, '-u', '-c', code]
-    env = _git_env()
-    env['PYTHONPATH'] = BASE_DIR + os.pathsep + env.get('PYTHONPATH', '')
+    env = _python_child_env()
     timeout = _bounded_env_int('UPDATE_SMOKE_TIMEOUT', 180, 30, 600)
     rc, out = _run_streaming(cmd, timeout=timeout, env=env,
                              progress_cb=_heartbeat)
@@ -1560,7 +1632,7 @@ def _write_code_backup(snapshot, commit=''):
 
 
 def _sqlite_database_path():
-    url = os.environ.get('DATABASE_URL', '').strip()
+    url = _database_url()
     if not url:
         return os.path.join(INSTANCE_DIR, 'academy.db')
     match = re.match(r'^sqlite(?:\+pysqlite)?:///(.*)$', url, re.I)
@@ -1783,17 +1855,24 @@ def check_for_update(repo_url=None, branch=None):
         raise UpdateError('شاخهٔ «{}» در مخزن پیدا نشد.'.format(chosen))
     local = _local_version_info()
     local_commit = local['commit']
+    # همیشه version.txt ریموت را هم می‌گیریم تا پنل «نسخه فعلی / نسخه مخزن»
+    # در نصب ZIP خالی نماند (قبلاً فقط هش گیت نشان داده می‌شد).
+    remote_version = _remote_version_txt(repo, chosen) or ''
 
     available = False
-    remote_version = ''
     if local_commit and remote_commit == local_commit:
         msg = 'کد سایت با آخرین نسخهٔ مخزن یکسان است.'
+        if local['version_txt']:
+            msg += ' (نسخهٔ {}).'.format(local['version_txt'])
     elif local_commit:
         available = True
-        msg = 'نسخهٔ جدید موجود است.'
+        if local['version_txt'] and remote_version and local['version_txt'] != remote_version:
+            msg = 'نسخهٔ جدید موجود است (محلی {} ← مخزن {}).'.format(
+                local['version_txt'], remote_version)
+        else:
+            msg = 'نسخهٔ جدید موجود است.'
     else:
         # نصب ZIP: commit محلی نداریم؛ version.txt را مقایسه می‌کنیم.
-        remote_version = _remote_version_txt(repo, chosen) or ''
         if remote_version and local['version_txt'] == remote_version:
             msg = ('کد سایت با آخرین نسخهٔ مخزن یکسان است '
                    '(نسخهٔ {} — نصب ZIP).'.format(local['version_txt']))
@@ -1805,19 +1884,23 @@ def check_for_update(repo_url=None, branch=None):
             # نسخهٔ محلی/ریموت قابل مقایسه نیست؛ بروزرسانی را مسدود نمی‌کنیم.
             available = True
             msg = 'نسخهٔ محلی ثبت نشده (نصب ZIP). نسخهٔ مخزن آمادهٔ نصب است.'
+    local_label = _version_label(local['version_txt'], local_commit)
+    remote_label = _version_label(remote_version, remote_commit)
     return {
         'ok': True,
         'available': available,
         'branch': chosen,
         'local_commit': local_commit,
         'remote_commit': remote_commit,
-        'local_short': local_commit[:10] if local_commit else '',
-        'remote_short': remote_commit[:10],
+        'local_short': local_label,
+        'remote_short': remote_label,
+        'local_commit_short': local_commit[:10] if local_commit else '',
+        'remote_commit_short': remote_commit[:10] if remote_commit else '',
         'repo': _display_repo(repo),
         'git_worktree': _is_git_worktree(),
         'install_kind': local['kind'],
-        'local_version': local['version_txt'],
-        'remote_version': remote_version,
+        'local_version': local['version_txt'] or local_label,
+        'remote_version': remote_version or remote_label,
         'msg': msg,
     }
 
@@ -2040,6 +2123,8 @@ def _perform_update(repo, branch=None):
         'dependencies': dependency_msg,
         'restart_requested': restarted,
         'backup_ref': backup_ref,
+        'version': _read_version_txt(),
+        'database': _database_kind(),
     }
     return result
 
@@ -2056,16 +2141,19 @@ def _success_message(result):
                     if removed_count else '')
     smoke = result.get('smoke_test', '')
     smoke_text = ' تست سلامت: {}'.format(smoke) if smoke else ''
+    version = result.get('version') or _read_version_txt() or result.get('new_short') or '—'
+    db_kind = result.get('database') or _database_kind()
     return (
         'بروزرسانی کامل شد ✅ نسخهٔ {} از شاخهٔ {} نصب شد؛ '
-        '{} فایل تغییر کرد{}. {} وابستگی: {} مایگریشن: {}{}'
+        '{} فایل تغییر کرد{}. {} وابستگی: {} مایگریشن [{}]: {}{}'
     ).format(
-        result.get('new_short', '—'),
+        version,
         result.get('branch', '—'),
         result.get('changed_count', 0),
         removed_text,
         restart,
         result.get('dependencies', '—'),
+        db_kind,
         result.get('migration', '—'),
         smoke_text,
     )
@@ -2397,7 +2485,7 @@ def _run_data_migrations(engine, progress_cb=None):
         if version in applied_versions:
             continue
         path = os.path.join(MIGRATIONS_DIR, name)
-        namespace = {}
+        namespace = {'__file__': path, '__name__': 'migration_' + version}
         try:
             with open(path, encoding='utf-8') as f:
                 code = f.read()
@@ -2510,7 +2598,7 @@ def _migrate_db(engine=None, progress_cb=None):
             report.append('{} هشدار ایندکس'.format(len(warnings)))
         if not report:
             report.append('ساختار و داده‌ها به‌روز بودند')
-        result = '(' + '، '.join(report) + ')'
+        result = '[{}] ('.format(engine.dialect.name) + '، '.join(report) + ')'
         if warnings:
             result += ' هشدار: ' + ' | '.join(warnings[:3])
         return result

@@ -4,6 +4,10 @@
 این فایل عمداً یک process جداست و updater بعد از git reset آن را اجرا می‌کند؛
 در نتیجه ``models.py`` از نسخهٔ جدید import می‌شود، نه نسخه‌ای که از قبل در
 حافظهٔ Worker وب مانده است.
+
+روی ویندوز کنسول پیش‌فرض اغلب cp1252 است و چاپ فارسی/خط تیرهٔ فارسی
+``UnicodeEncodeError`` می‌داد — در حالی که خود مایگریشن موفق بود. updater
+خروج غیرصفر را شکست می‌دید و کل بروزرسانی را rollback می‌کرد.
 """
 import glob
 import os
@@ -15,14 +19,66 @@ from datetime import datetime
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
-os.chdir(ROOT)
+
+
+def configure_stdio():
+    """خروجی را UTF-8 کن تا چاپ فارسی روی ویندوز/هاست هیچ‌وقت مایگریشن را نکشد."""
+    os.environ.setdefault('PYTHONIOENCODING', 'utf-8')
+    os.environ.setdefault('PYTHONUTF8', '1')
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, 'reconfigure', None)
+        if not callable(reconfigure):
+            continue
+        try:
+            reconfigure(encoding='utf-8', errors='replace')
+        except Exception:
+            pass
+
+
+def safe_print(msg):
+    """چاپ مقاوم: شکست encoding هرگز باعث exit code غیرصفر نمی‌شود."""
+    text = str(msg)
+    if not text.endswith('\n'):
+        text += '\n'
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.write(text)
+            stream.flush()
+            return True
+        except Exception:
+            pass
+        try:
+            buf = getattr(stream, 'buffer', None)
+            if buf is not None:
+                buf.write(text.encode('utf-8', errors='replace'))
+                buf.flush()
+                return True
+        except Exception:
+            pass
+    try:
+        sys.stdout.write(text.encode('ascii', 'replace').decode('ascii'))
+        return True
+    except Exception:
+        return False
+
+
+def database_kind(uri):
+    """تشخیص موتور دیتابیس از URI فلاسک — sqlite / mysql / other."""
+    value = str(uri or '').strip().lower()
+    if value.startswith('mysql'):
+        return 'mysql'
+    if value.startswith('postgres') or value.startswith('postgresql'):
+        return 'postgresql'
+    if value.startswith('sqlite') or not value:
+        return 'sqlite'
+    return 'other'
 
 
 def _sqlite_backup(app):
     """قبل از DDL یک snapshot امن از SQLite/WAL بساز؛ MySQL بکاپ خارجی می‌خواهد."""
     url = str(app.config.get('SQLALCHEMY_DATABASE_URI') or '')
     if not url.startswith('sqlite'):
-        return 'بکاپ خودکار فایل فقط برای SQLite انجام می‌شود.'
+        return 'بکاپ فایل فقط برای SQLite است؛ MySQL/phpMyAdmin از خود هاست بکاپ بگیرید.'
     try:
         from sqlalchemy.engine import make_url
         db_path = make_url(url).database
@@ -73,18 +129,24 @@ def _sqlite_backup(app):
 
 
 def main():
+    os.chdir(ROOT)
     # import app تمام مدل‌های ext_models را نیز ثبت می‌کند.
     from app import app
     from updater import _migrate_db
     with app.app_context():
+        kind = database_kind(app.config.get('SQLALCHEMY_DATABASE_URI'))
         backup_msg = _sqlite_backup(app)
         migration_msg = _migrate_db()
-        print(backup_msg + ' — ' + migration_msg)
+        safe_print('[{}] {} | {}'.format(kind, backup_msg, migration_msg))
 
 
 if __name__ == '__main__':
+    configure_stdio()
     try:
         main()
     except Exception:
-        traceback.print_exc()
+        try:
+            traceback.print_exc()
+        except Exception:
+            pass
         raise SystemExit(1)

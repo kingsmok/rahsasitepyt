@@ -30,6 +30,7 @@ def test_database_migration_adds_missing_column_without_losing_rows(app):
         assert restored is not None
         assert restored.id == user_id
         assert 'ستون جدید' in report
+        assert '[sqlite]' in report
 
 
 def test_private_repo_is_masked():
@@ -192,12 +193,17 @@ def test_check_for_update_works_without_local_git(monkeypatch):
     )
     monkeypatch.setattr('updater._remote_default_branch', lambda repo: 'main')
     monkeypatch.setattr('updater._remote_version_txt', lambda repo, branch: '2.0.0')
+    monkeypatch.setattr('updater._read_version_txt', lambda: '1.5.0')
 
     info = check_for_update('https://github.com/kingsmok/rahsasitepyt.git')
     assert info['ok'] is True
     assert info['available'] is True
     assert info['branch'] == 'main'
-    assert info['remote_short'] == 'abcdef1234'
+    assert info['remote_commit'] == 'abcdef1234567890'
+    assert info['remote_version'] == '2.0.0'
+    assert info['remote_short'] == '2.0.0'
+    assert info['local_version'] == '1.5.0'
+    assert info['local_short'] == '1.5.0'
 
 
 def test_overlay_preserves_env_and_instance(tmp_path):
@@ -366,3 +372,51 @@ def test_sqlite_backup_can_restore_migration_changes(tmp_path, monkeypatch):
         assert value == 'before'
     finally:
         updater._cleanup_sqlite_backup(backup)
+
+
+def test_version_label_prefers_version_txt():
+    assert updater._version_label('1.5.1', 'dead778803eeb606') == '1.5.1'
+    assert updater._version_label('', 'dead778803eeb606') == 'dead778803'
+    assert updater._version_label('', '') == ''
+
+
+def test_database_url_reads_env_file_when_os_env_empty(tmp_path, monkeypatch):
+    monkeypatch.delenv('DATABASE_URL', raising=False)
+    env_path = tmp_path / '.env'
+    env_path.write_text(
+        '# comment\n'
+        'SECRET_KEY=abc\n'
+        'DATABASE_URL=mysql+pymysql://u:p=ass@localhost/db\n',
+        encoding='utf-8',
+    )
+    monkeypatch.setattr(updater, 'BASE_DIR', str(tmp_path))
+    assert updater._database_url().startswith('mysql+pymysql://')
+    assert updater._database_kind() == 'mysql'
+    assert updater._sqlite_database_path() is None
+
+
+def test_python_child_env_forces_utf8_and_database_url(monkeypatch):
+    monkeypatch.setenv('DATABASE_URL', 'mysql+pymysql://u:p@localhost/academy')
+    env = updater._python_child_env()
+    assert env['PYTHONIOENCODING'] == 'utf-8'
+    assert env['PYTHONUTF8'] == '1'
+    assert env['DATABASE_URL'].startswith('mysql+pymysql://')
+    git_env = updater._git_env()
+    assert git_env['PYTHONIOENCODING'] == 'utf-8'
+
+
+def test_success_message_includes_release_version():
+    msg = updater._success_message({
+        'version': '1.5.1',
+        'branch': 'main',
+        'changed_count': 3,
+        'removed_count': 0,
+        'restart_requested': False,
+        'dependencies': 'ok',
+        'migration': '[sqlite] (ساختار به‌روز بود)',
+        'smoke_test': 'ok',
+        'database': 'sqlite',
+        'new_short': 'dead778803',
+    })
+    assert '1.5.1' in msg
+    assert '[sqlite]' in msg

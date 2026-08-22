@@ -154,3 +154,10 @@ idempotent و قابل بازبینی داشته باشد؛ updater هیچ تب�
 - `pip check`: متن همان بستهٔ ناسازگار در گزارش می‌آید؛ بروزرسانی deploy نمی‌شود.
 - عدم reload در Gunicorn: `UPDATE_TOUCH_RESTART` مخصوص Passenger است؛ سرویس
   Gunicorn باید توسط systemd/supervisor جداگانه restart شود.
+- `UnicodeEncodeError / charmap / cp1252`: چاپ فارسی مایگریشن روی کنسول ویندوز
+  قبلاً بعد از موفقیت مایگریشن کل بروزرسانی را rollback می‌کرد. از نسخهٔ ۱.۵.۱
+  خروجی UTF-8 است و شکست چاپ دیگر مایگریشن را خراب نمی‌کند.
+- مایگریشن روی phpMyAdmin دیده نمی‌شود: بروزرسان همان `DATABASE_URL` داخل `.env`
+  را مایگریت می‌کند. اگر این متغیر خالی باشد سایت روی SQLite
+  (`instance/academy.db`) کار می‌کند، نه MySQL هاست. در گزارش مایگریشن موتور
+  (`[mysql]` یا `[sqlite]`) نوشته می‌شود.

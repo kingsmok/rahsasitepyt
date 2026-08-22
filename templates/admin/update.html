@@ -48,8 +48,9 @@
 
 <div class="card" style="padding:20px">
   <h3>⚡ بروزرسانی</h3>
-  <p class="text-2" style="font-size:12.5px;margin:6px 0">
-    نسخهٔ نصب‌شده: <b dir="ltr">{{ local_version or '—' }}</b>
+  <p class="text-2" style="font-size:13px;margin:6px 0">
+    نسخهٔ نصب‌شده: <b dir="ltr" id="installed-version">{{ local_version or '—' }}</b>
+    {% if applied_commit %}<span class="text-3" dir="ltr">({{ applied_commit }})</span>{% endif %}
     {% if install_kind == 'zip' %}<span class="badge">نصب ZIP (بدون پوشهٔ .git)</span>
     {% elif install_kind == 'git' %}<span class="badge">مخزن Git</span>{% endif %}
   </p>
@@ -202,9 +203,14 @@ function checkUpdate() {
   .then(function(res) {
     var d = res.d || {};
     if (d.ok) {
+      var localV = d.local_version || d.local_short || '—';
+      var remoteV = d.remote_version || d.remote_short || '—';
       showCheckMessage(d.msg +
-        ' شاخه: ' + (d.branch || '—') + ' | نسخه فعلی: ' + (d.local_short || '—') +
-        ' | نسخه مخزن: ' + (d.remote_short || '—'));
+        ' شاخه: ' + (d.branch || '—') +
+        ' | نسخه فعلی: ' + localV +
+        ' | نسخه مخزن: ' + remoteV);
+      var installed = document.getElementById('installed-version');
+      if (installed && d.local_version) installed.textContent = d.local_version;
       showMessage(true, d.available ? 'نسخهٔ جدید برای نصب آماده است.' : 'نسخهٔ سایت به‌روز است.');
     } else {
       showCheckMessage('بررسی مخزن ناموفق بود.');

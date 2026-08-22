@@ -74,6 +74,9 @@ def test_check_for_update_zip_compares_version_txt(monkeypatch):
     result = check_for_update('https://github.com/o/r.git')
     assert result['available'] is False
     assert 'یکسان' in result['msg']
+    assert result['local_short'] == '1.5.0'
+    assert result['local_version'] == '1.5.0'
+    assert result['remote_short'] == '1.5.0'
 
     monkeypatch.setattr(updater, '_remote_version_txt', lambda repo, branch: '1.6.0')
     result = check_for_update('https://github.com/o/r.git')

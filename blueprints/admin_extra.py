@@ -486,7 +486,8 @@ def update_page():
     return render_template('admin/update.html',
                            repo_url=_display_repo(repo),
                            branch=get_update_branch(),
-                           local_version=local['label'],
+                           local_version=local['label'] or local['version_txt'],
+                           applied_commit=local['commit_short'],
                            install_kind=local['kind'],
                            webhook_url=request.url_root.rstrip('/') +
                            url_for('admin.github_update_webhook'),
@@ -666,7 +667,8 @@ def update_log():
     local = _local_version_info()
     return render_template('admin/update.html', repo_url='', is_super=True,
                            history=rows, view='log',
-                           local_version=local['label'],
+                           local_version=local['label'] or local['version_txt'],
+                           applied_commit=local['commit_short'],
                            install_kind=local['kind'])
 
 

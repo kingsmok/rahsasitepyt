@@ -2,6 +2,9 @@
 {% block atitle %}گواهی‌ها{% endblock %}
 {% block acontent %}
 <div class="dash-head"><div><h1>🏅 گواهی‌های صادرشده</h1><p>{{ fa(certs|length) }} گواهی — استعلام عمومی در /verify-certificate</p></div></div>
+{% set section_key = 'verify-certificate' %}
+{% set hint = 'فرم استعلام عمومی را با صفحه‌ساز بچینید. نتیجهٔ ارسال همان صفحه نمایش داده می‌شود.' %}
+{% include 'admin/_builder_section_banner.html' %}
 <div class="card" style="padding:20px">
   <div class="table-wrap"><table class="table">
     <thead><tr><th>دانشجو</th><th>دوره</th><th>تاریخ صدور</th><th>کد رهگیری</th><th>عملیات</th></tr></thead>

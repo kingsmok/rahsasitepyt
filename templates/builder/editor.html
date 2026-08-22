@@ -32,7 +32,8 @@ window.PB_PAGE_TEMPLATES = {{ page_templates|tojson }};
 window.PB_PAGES = {{ other_pages|tojson }};
 window.PB_ASSET_V = {{ asset_v()|tojson }};
 window.PB_THEME = {{ theme|tojson }};
-window.PB_PREVIEW_URL = {{ ('/' if page.ptype in ['home', 'header', 'footer', 'footer_mobile', 'mobile_menu'] else url_for('site.custom_page', slug=page.slug))|tojson }};
+window.PB_PREVIEW_URL = {{ preview_url|tojson }};
+window.PB_PTYPE = {{ page.ptype|tojson }};
 </script>
 
 <!-- نوار ابزار بالا (مثل المنتور) -->
@@ -41,12 +42,13 @@ window.PB_PREVIEW_URL = {{ ('/' if page.ptype in ['home', 'header', 'footer', 'f
     <a class="pb-tb-back" href="{{ url_for('builder.index') }}" title="بازگشت به فهرست صفحات">→</a>
     <div class="pb-tb-title">
       <strong>{{ page.title }}</strong>
-      <small>{{ {'home': 'صفحه اصلی', 'header': 'هدر سایت', 'footer': 'فوتر سایت', 'footer_mobile': 'فوتر موبایل', 'mobile_menu': 'منوی موبایل', 'page': 'صفحه'}.get(page.ptype, 'صفحه') }}</small>
+      <small>{{ (section_spec.title if section_spec else {'home': 'صفحه اصلی', 'header': 'هدر سایت', 'footer': 'فوتر سایت', 'footer_mobile': 'فوتر موبایل', 'mobile_menu': 'منوی موبایل', 'page': 'صفحه', 'course': 'قالب دوره', 'teacher': 'قالب مدرس', 'post': 'قالب مقاله', '404': 'صفحه ۴۰۴'}.get(page.ptype, 'صفحه')) }}</small>
     </div>
     <select id="pb-page-switch" class="pb-tb-page-switch" title="تغییر صفحه">
-      {% for p in g.pages.values() %}{% if p.id != page.id %}
-      <option value="{{ p.slug }}">{{ p.title }} ({{ p.ptype }})</option>
-      {% endif %}{% endfor %}
+      <option value="{{ page.slug }}" selected>{{ page.title }}</option>
+      {% for p in other_pages %}
+      <option value="{{ p.slug }}">{{ p.title }}</option>
+      {% endfor %}
     </select>
   </div>
 
@@ -79,6 +81,17 @@ window.PB_PREVIEW_URL = {{ ('/' if page.ptype in ['home', 'header', 'footer', 'f
     <span id="pb-save-state" class="pb-save-state"></span>
   </div>
 </header>
+{% if page.ptype == 'home' or section_spec %}
+<div class="pb-home-banner">
+  {% if page.ptype == 'home' %}
+  <span>این همان صفحهٔ اصلی سایت است — بعد از ذخیره، روی نشانی <b dir="ltr">/</b> دیده می‌شود. ویجت را از پالت چپ بکشید یا کلیک کنید.</span>
+  <a href="/" target="_blank" rel="noopener">👁 مشاهده صفحه اصلی</a>
+  {% else %}
+  <span>{{ section_spec.hint or ('این صفحه بعد از انتشار روی نشانی ' ~ section_spec.url ~ ' دیده می‌شود.') }}</span>
+  <a href="{{ preview_url }}" target="_blank" rel="noopener">👁 مشاهده صفحه</a>
+  {% endif %}
+</div>
+{% endif %}
 
 <div class="pb-layout">
   <!-- پنل چپ: کتابخانه ویجت‌ها -->
@@ -97,9 +110,12 @@ window.PB_PREVIEW_URL = {{ ('/' if page.ptype in ['home', 'header', 'footer', 'f
   <main class="pb-canvas-wrap" id="pb-canvas-wrap">
     <div class="pb-empty" id="pb-empty" style="display:none">
       <div class="pb-empty-ic">🪄</div>
-      <h3>صفحه خالی است</h3>
-      <p>از پنل سمت راست یک سکشن بکشید، یا با دکمه زیر شروع کنید. بعداً همه‌چیز با درگ قابل جابه‌جایی است.</p>
-      <button type="button" class="pb-btn pb-btn-primary" id="pb-empty-add">➕ افزودن اولین سکشن</button>
+      <h3>{% if page.ptype == 'home' %}صفحه اصلی هنوز عنصری ندارد{% else %}صفحه خالی است{% endif %}</h3>
+      <p>{% if page.ptype == 'home' %}این همان صفحه‌ای است که روی نشانی / دیده می‌شود. یک سکشن اضافه کنید یا قالب لندینگ را اعمال کنید.{% elif section_spec %}قالب آمادهٔ این صفحه را اعمال کنید یا از پالت چپ ویجت بکشید.{% else %}از پالت چپ یک ویجت بکشید، یا با دکمه زیر سکشن بسازید.{% endif %}</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center">
+        <button type="button" class="pb-btn pb-btn-primary" id="pb-empty-add">➕ افزودن اولین سکشن</button>
+        <button type="button" class="pb-btn pb-btn-ghost" id="pb-empty-landing" data-template="{{ section_spec.template if section_spec and section_spec.template else 'landing' }}">🚀 اعمال قالب آماده</button>
+      </div>
     </div>
     <div class="pb-frame-shell dev-desktop" id="pb-frame-shell">
       <iframe id="pb-frame" title="بوم ویرایش"></iframe>

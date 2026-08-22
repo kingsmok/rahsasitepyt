@@ -11,6 +11,10 @@
     <a class="btn btn-ghost" href="{{ url_for('site.contact') }}" target="_blank">تماس ←</a>
   </div>
 </div>
+{% set section_key = 'about' %}
+{% set hint = 'متن را اینجا بنویسید؛ ظاهر صفحهٔ درباره و تماس را جداگانه با صفحه‌ساز بچینید.' %}
+{% include 'admin/_builder_section_banner.html' %}
+<p style="margin:-6px 0 16px"><a class="btn btn-ghost btn-sm" href="{{ url_for('builder.open_section', key='contact') }}">🧩 ویرایش صفحه تماس</a></p>
 
 <form method="post" class="card" style="padding:22px;max-width:760px">
   <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">

@@ -109,11 +109,16 @@
 <!-- تنظیمات صفحه اصلی -->
 <div class="card" style="padding:18px 22px;margin-top:18px">
   <h4 style="font-size:14.5px;margin-bottom:12px">⚙️ تنظیمات سریع</h4>
+  <div class="flex between wrap" style="gap:12px;align-items:center;margin-bottom:14px;background:var(--primary-soft,#eef2ff);border-radius:12px;padding:12px 14px">
+    <p style="margin:0;font-size:13px;line-height:1.9">عناصر صفحهٔ اصلی را در صفحه‌ساز اضافه کنید. انتخاب «صفحه صفحه‌ساز» همان چیدمان را روی نشانی / نشان می‌دهد.</p>
+    <a class="btn btn-primary btn-sm" href="{{ url_for('builder.open_home') }}">🏠 ویرایش صفحه اصلی</a>
+  </div>
   <form method="post" class="flex gap-2 wrap">
     <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
     <input type="hidden" name="field" value="home_design">
     <label style="font-size:13px;font-weight:700">چیدمان صفحه اصلی (بدون تغییر تم):</label>
     <select name="value" class="form-control" style="width:auto">
+      <option value="builder" {{ 'selected' if cur_home == 'builder' }}>صفحه صفحه‌ساز</option>
       {% for k, d in home_designs.items() %}
       <option value="{{ k }}" {{ 'selected' if cur_home == k }}>{{ d.title }}</option>
       {% endfor %}

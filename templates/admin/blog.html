@@ -5,6 +5,9 @@
   <div><h1>📝 مدیریت وبلاگ</h1><p>{{ fa(posts|length) }} مطلب</p></div>
   <a class="btn btn-primary" href="{{ url_for('admin.blog_new') }}">+ مطلب جدید</a>
 </div>
+{% set section_key = 'blog' %}
+{% set hint = 'مطالب را اینجا بنویسید؛ ظاهر فهرست وبلاگ را با صفحه‌ساز بچینید.' %}
+{% include 'admin/_builder_section_banner.html' %}
 <div class="table-wrap">
   <table class="table">
     <thead><tr><th>مطلب</th><th>دسته</th><th>بازدید</th><th>تاریخ</th><th>وضعیت</th><th>عملیات</th></tr></thead>

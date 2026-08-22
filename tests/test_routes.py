@@ -11,7 +11,8 @@ def test_home(client):
 
 def test_public_pages(client):
     for p in ['/courses', '/about', '/faq', '/contact', '/terms', '/privacy',
-              '/teachers', '/blog', '/bundles', '/success-stories', '/verify-certificate']:
+              '/teachers', '/blog', '/bundles', '/success-stories',
+              '/verify-certificate', '/products']:
         r = client.get(p)
         assert r.status_code == 200, f'{p} → {r.status_code}'
 

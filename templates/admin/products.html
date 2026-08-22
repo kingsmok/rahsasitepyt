@@ -2,6 +2,9 @@
 {% block atitle %}محصولات فروشگاه{% endblock %}
 {% block acontent %}
 <div class="dash-head"><div><h1>🛍 محصولات فروشگاه</h1><p>{{ fa(items|length) }} محصول — کالاهای فیزیکی قابل فروش</p></div></div>
+{% set section_key = 'products' %}
+{% set hint = 'کالاها را اینجا بسازید؛ ظاهر فهرست فروشگاه را با صفحه‌ساز بچینید.' %}
+{% include 'admin/_builder_section_banner.html' %}
 
 <div class="card" style="padding:22px;margin-bottom:18px">
   <h2 style="font-size:14px;margin-bottom:12px">➕ محصول جدید</h2>

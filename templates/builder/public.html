@@ -9,10 +9,14 @@
   <div class="container" style="padding:48px 16px">
     <div class="card" style="max-width:620px;margin:0 auto;text-align:center;padding:32px">
       <div style="font-size:44px;line-height:1;margin-bottom:12px">🧩</div>
-      <h1 style="margin:0 0 10px;font-size:22px">این صفحه هنوز محتوایی ندارد</h1>
+      <h1 style="margin:0 0 10px;font-size:22px">{% if page.ptype == 'home' %}صفحه اصلی هنوز عنصری ندارد{% else %}این صفحه هنوز محتوایی ندارد{% endif %}</h1>
       <p class="muted" style="margin:0 0 20px">
+        {% if page.ptype == 'home' %}
+        این همان صفحه‌ای است که روی نشانی / دیده می‌شود. از صفحه‌ساز یک سکشن اضافه کنید و ذخیره کنید تا بازدیدکنندگان چیدمان شما را ببینند.
+        {% else %}
         صفحه «{{ page.title }}» ساخته شده اما هیچ بخشی به آن اضافه نشده است.
         تا وقتی محتوا اضافه نکنید، بازدیدکنندگان خطای ۴۰۴ می‌بینند.
+        {% endif %}
       </p>
       <a class="btn btn-primary" href="{{ url_for('builder.editor', slug=page.slug) }}">
         ✏️ ویرایش با صفحه‌ساز

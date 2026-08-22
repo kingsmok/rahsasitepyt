@@ -5,6 +5,9 @@
   <div><h1>📦 باندل‌ها</h1><p>بسته‌های چند دوره با تخفیف</p></div>
   <a class="btn btn-primary" href="{{ url_for('admin.bundle_new') }}">+ باندل جدید</a>
 </div>
+{% set section_key = 'bundles' %}
+{% set hint = 'بسته‌ها را اینجا بسازید؛ ظاهر صفحهٔ فهرست را با صفحه‌ساز بچینید.' %}
+{% include 'admin/_builder_section_banner.html' %}
 <div class="card" style="padding:22px">
   <div class="table-wrap">
     <table class="table">

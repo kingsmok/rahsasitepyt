@@ -57,6 +57,8 @@ input,select,textarea{font-family:inherit;font-size:13px}
 .pb-publish input:checked+.pb-switch{background:var(--pb-ok)}
 .pb-publish input:checked+.pb-switch::after{transform:translateX(-14px);background:#fff}
 .pb-save-state{font-size:11px;color:#7fd1c9;min-width:86px;text-align:left;direction:ltr}
+.pb-home-banner{background:linear-gradient(135deg,#0f766e,#134e4a);color:#fff;padding:10px 16px;font-size:12.5px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-shrink:0;line-height:1.8}
+.pb-home-banner a{color:#fff;font-weight:800;text-decoration:underline;white-space:nowrap}
 
 /* ---------- چیدمان اصلی ---------- */
 .pb-layout{flex:1;display:grid;grid-template-columns:292px minmax(0,1fr) 324px;min-height:0;position:relative}

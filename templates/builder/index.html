@@ -4,25 +4,55 @@
 <div class="dash-head">
   <div>
     <h1>🧩 صفحه‌ساز سایت</h1>
-    <p>ساخت و ویرایش تمام صفحات — شبیه المنتور با درگ‌انددراپ زنده</p>
+    <p>صفحه اصلی، هدر و فوتر، و صفحات ثابت سایت را از اینجا بسازید و ویرایش کنید.</p>
   </div>
-  <button class="btn btn-primary" onclick="document.getElementById('new-page-form').style.display='block';this.style.display='none'">+ صفحه جدید</button>
+  <div class="flex gap-1 wrap">
+    <a class="btn btn-primary" href="{{ url_for('builder.open_home') }}">🏠 ویرایش صفحه اصلی</a>
+    <button class="btn btn-ghost" type="button" onclick="document.getElementById('new-page-form').style.display='block';this.style.display='none'">+ صفحه سفارشی</button>
+  </div>
 </div>
 
-<div class="card" id="new-page-form" style="padding:22px;margin-bottom:22px;display:none;max-width:560px">
-  <h4 class="mb-2" style="font-size:15px">➕ ایجاد صفحه جدید</h4>
+{# ——— صفحه اصلی ——— #}
+<div class="card" style="padding:22px 24px;margin-bottom:20px;border:2px solid var(--primary);background:linear-gradient(135deg,var(--primary-soft,#eef2ff),var(--card))">
+  <div class="flex between wrap" style="gap:16px;align-items:center">
+    <div style="flex:1;min-width:240px">
+      <div class="flex gap-1" style="align-items:center;margin-bottom:6px">
+        <span style="font-size:28px">🏠</span>
+        <h2 style="font-size:18px;margin:0">صفحه اصلی سایت</h2>
+        {% if home_live %}<span class="badge badge-success">روی / در حال نمایش</span>
+        {% elif home and home.is_published %}<span class="badge badge-accent">منتشر — هنوز روی سایت نیست</span>
+        {% elif home %}<span class="badge badge-gray">پیش‌نویس</span>
+        {% else %}<span class="badge badge-gray">ساخته نشده</span>{% endif %}
+      </div>
+      <p style="font-size:13px;color:var(--text-2);margin:0;line-height:1.9">
+        عناصر صفحهٔ اصلی را اینجا اضافه کنید. بعد از ذخیره، همان چیدمان روی نشانی
+        <a href="/" target="_blank" dir="ltr">/</a> دیده می‌شود.
+        {% if home %}آخرین ویرایش: {{ home.updated_at|jdatetime }}{% endif %}
+      </p>
+    </div>
+    <div class="flex gap-1 wrap">
+      <a class="btn btn-primary btn-lg" href="{{ url_for('builder.open_home') }}">🧩 {{ 'ویرایش صفحه اصلی' if home else 'ساخت و ویرایش صفحه اصلی' }}</a>
+      <a class="btn btn-ghost" href="/" target="_blank">👁 مشاهده سایت</a>
+    </div>
+  </div>
+</div>
+
+<div class="card" id="new-page-form" style="padding:22px;margin-bottom:22px;display:none;max-width:640px">
+  <h4 class="mb-2" style="font-size:15px">➕ ایجاد صفحه سفارشی</h4>
   <form method="post" action="{{ url_for('builder.new_page') }}" class="flex gap-2 wrap">
     <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
     <input class="form-control" name="title" placeholder="عنوان صفحه (مثلا: صفحه تخفیف‌ها)" required style="flex:1;min-width:200px">
     <select class="form-control" name="ptype" style="width:auto">
       <option value="page">صفحه معمولی</option>
-      <option value="post">قالب پست/مقاله</option>
+      <option value="post">قالب پست / مقاله</option>
+      <option value="course">قالب صفحه دوره</option>
+      <option value="teacher">قالب صفحه مدرس</option>
+      {% if not home %}<option value="home">صفحه اصلی</option>{% endif %}
+      {% if not chrome.header %}<option value="header">هدر</option>{% endif %}
+      {% if not chrome.footer %}<option value="footer">فوتر</option>{% endif %}
+      {% if not chrome.mobile_menu %}<option value="mobile_menu">منوی موبایل</option>{% endif %}
+      {% if not chrome.footer_mobile %}<option value="footer_mobile">فوتر موبایل</option>{% endif %}
       <option value="404">صفحه خطای ۴۰۴</option>
-      <option value="home">صفحه اصلی</option>
-      <option value="header">هدر</option>
-      <option value="footer">فوتر</option>
-      <option value="mobile_menu">منوی موبایل</option>
-      <option value="footer_mobile">فوتر موبایل</option>
     </select>
     <select class="form-control" name="template" style="width:auto">
       <option value="">— بدون قالب —</option>
@@ -30,114 +60,139 @@
       <option value="about_page">ℹ️ درباره ما</option>
       <option value="contact_page">📨 تماس</option>
       <option value="pricing_page">💎 قیمت‌گذاری</option>
-    </select>
-    <select class="form-control" name="design" style="width:auto">
-      <option value="">— بدون طرح آماده —</option>
-      {% for t in persian_themes %}
-      <option value="{{ t.id }}">🖼 {{ t.name }} ({{ t.category }})</option>
-      {% endfor %}
+      <option value="faq_page">❓ سوالات متداول</option>
+      <option value="courses_page">📚 دوره‌ها</option>
+      <option value="blog_page">📰 وبلاگ</option>
+      <option value="products_page">🛍 فروشگاه</option>
+      <option value="bundles_page">📦 بسته‌ها</option>
+      <option value="stories_page">🌟 داستان موفقیت</option>
+      <option value="verify_page">🛡 استعلام گواهی</option>
     </select>
     <button class="btn btn-primary" type="submit">ساخت</button>
   </form>
 </div>
 
-<!-- گالری ۲۰ طرح آماده -->
-<div class="card" style="padding:20px 22px;margin-bottom:22px">
-  <h4 style="font-size:15px;margin-bottom:4px">🖼 طرح‌های آماده سایت (۲۰ طرح ایرانی)</h4>
-  <p style="font-size:12.5px;color:var(--text-3);margin-bottom:16px">انتخاب طرح در «پنل مدیریت ← طراحی‌های سایت» انجام می‌شود؛ از اینجا می‌توانید صفحه اصلی را با چیدمان هر طرح بسازید یا پیش‌نمایش بگیرید.</p>
-  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px">
-    {% for t in persian_themes %}
-    {% set c = t.colors %}
-    <div class="card" style="overflow:hidden;display:flex;flex-direction:column">
-      <a href="/?site_design={{ t.id }}&preview=1" target="_blank" style="display:block;height:74px;background:linear-gradient(135deg,{{ c.primary }} 0%,{{ c.accent }} 70%,{{ c.secondary }} 100%)"></a>
-      <div style="padding:12px 14px;display:flex;flex-direction:column;gap:6px;flex:1">
-        <div class="flex between"><b style="font-size:13px">{{ t.name }}</b>{% if t.dark %}<span class="badge badge-gray">🌙</span>{% endif %}</div>
-        <span class="badge badge-primary" style="font-size:9.5px;align-self:flex-start">{{ t.category }}</span>
-        <div class="flex gap-1" style="margin-top:4px">
-          <form method="post" action="{{ url_for('builder.new_page') }}" style="margin:0;flex:1">
-            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
-            <input type="hidden" name="title" value="صفحه {{ t.name }}">
-            <input type="hidden" name="design" value="{{ t.id }}">
-            <button class="btn btn-primary btn-sm btn-block" type="submit">+ ساخت صفحه</button>
-          </form>
-          <a class="btn btn-ghost btn-sm" href="/?site_design={{ t.id }}&preview=1" target="_blank">👁</a>
-        </div>
+{# ——— هدر و فوتر ——— #}
+<div class="card" style="padding:20px 22px;margin-bottom:20px">
+  <h4 style="font-size:15px;margin-bottom:4px">☰ پوسته سایت (هدر و فوتر)</h4>
+  <p style="font-size:12.5px;color:var(--text-3);margin-bottom:14px">این بخش‌ها روی همه صفحات تکرار می‌شوند. اگر نسازید، هدر و فوتر پیش‌فرض قالب استفاده می‌شود.</p>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px">
+    {% for key, label, ic in [('header','هدر سایت','☰'),('footer','فوتر سایت','🦶'),('mobile_menu','منوی موبایل','📱'),('footer_mobile','فوتر موبایل','📲')] %}
+    {% set cp = chrome.get(key) %}
+    <div class="card" style="padding:14px 16px">
+      <div style="font-size:20px">{{ ic }}</div>
+      <strong style="font-size:13.5px">{{ label }}</strong>
+      <div style="margin:6px 0 10px">
+        {% if cp and cp.is_published %}<span class="badge badge-success">فعال</span>
+        {% elif cp %}<span class="badge badge-gray">پیش‌نویس</span>
+        {% else %}<span class="badge badge-gray">پیش‌فرض قالب</span>{% endif %}
       </div>
+      <a class="btn btn-primary btn-sm btn-block" href="{{ url_for('builder.open_section', key=key) }}">{{ 'ویرایش' if cp else '+ ساخت و ویرایش' }}</a>
     </div>
     {% endfor %}
   </div>
 </div>
 
-<!-- صفحات ثابت سایت → قابل ویرایش در صفحه‌ساز -->
-<div class="card" style="padding:20px 22px;margin-bottom:22px">
-  <div class="flex between wrap" style="gap:12px;margin-bottom:4px">
+{# ——— صفحات ثابت ——— #}
+<div class="card" style="padding:20px 22px;margin-bottom:20px">
+  <div class="flex between wrap" style="gap:12px;margin-bottom:12px">
     <div>
-      <h4 style="font-size:15px;margin-bottom:4px">📄 صفحات ثابت سایت (درباره ما، تماس، قوانین و…)</h4>
-      <p style="font-size:12.5px;color:var(--text-3)">این صفحات الان با قالب‌های ثابت نمایش داده می‌شوند. با یک کلیک نسخهٔ صفحه‌سازشان را بسازید تا کاملاً قابل ویرایش شوند (تا وقتی منتشر نشوند، قالب قبلی نمایش داده می‌شود).</p>
+      <h4 style="font-size:15px;margin-bottom:4px">📄 صفحات ثابت سایت</h4>
+      <p style="font-size:12.5px;color:var(--text-3);margin:0">درباره، تماس، قوانین و بقیه صفحات عمومی. تا وقتی نسخهٔ صفحه‌ساز را منتشر نکنید، قالب قبلی نمایش داده می‌شود.</p>
     </div>
     <form method="post" action="{{ url_for('builder.ensure_site_pages') }}">
       <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
-      <button class="btn btn-primary btn-sm" type="submit">➕ ساخت نسخهٔ صفحه‌ساز همه</button>
+      <button class="btn btn-ghost btn-sm" type="submit">➕ ساخت نسخهٔ صفحه‌ساز همه</button>
     </form>
   </div>
-  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
-    {% for slug, title in [('about','درباره ما'),('contact','تماس با ما'),('faq','سوالات متداول'),('terms','قوانین'),('privacy','حریم خصوصی'),('learning-paths','مسیرهای یادگیری'),('become-teacher','مدرس شو'),('consultation','مشاوره'),('teachers','اساتید')] %}
-    {% set sp = pages|selectattr('slug','equalto',slug)|first %}
-    <span class="badge {{ 'badge-success' if sp and sp.is_published else ('badge-primary' if sp else 'badge-gray') }}" style="font-size:11px">
-      {{ title }}
-      {% if sp and sp.is_published %}✅{% elif sp %}⏳ پیش‌نویس{% else %}— قالب ثابت{% endif %}
-    </span>
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>صفحه</th><th>نشانی</th><th>وضعیت</th><th>عملیات</th></tr></thead>
+      <tbody>
+        {% for item in site_status %}
+        <tr>
+          <td><strong>{{ item.title }}</strong></td>
+          <td><a class="text-3" dir="ltr" href="{{ item.url }}" target="_blank">{{ item.url }} ↗</a></td>
+          <td>
+            {% if item.page and item.page.is_published %}<span class="badge badge-success">صفحه‌ساز — منتشر</span>
+            {% elif item.page %}<span class="badge badge-accent">صفحه‌ساز — پیش‌نویس</span>
+            {% else %}<span class="badge badge-gray">قالب ثابت</span>{% endif %}
+          </td>
+          <td>
+            <a class="btn btn-primary btn-sm" href="{{ url_for('builder.open_section', key=item.key or item.slug) }}">🧩 {{ 'ویرایش' if item.page else 'ساخت و ویرایش' }}</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{# ——— قالب‌های تک‌صفحه (دوره / مدرس / مقاله / ۴۰۴) ——— #}
+{% if theme_status %}
+<div class="card" style="padding:20px 22px;margin-bottom:20px">
+  <h4 style="font-size:15px;margin-bottom:4px">🎨 قالب‌های تک‌صفحه</h4>
+  <p style="font-size:12.5px;color:var(--text-3);margin-bottom:14px">این قالب‌ها روی همه صفحات همان نوع اعمال می‌شوند (مثلاً هر دورهٔ منتشرشده).</p>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px">
+    {% for item in theme_status %}
+    <div class="card" style="padding:14px 16px">
+      <div style="font-size:20px">{{ item.icon }}</div>
+      <strong style="font-size:13.5px">{{ item.title }}</strong>
+      <div style="margin:6px 0 10px">
+        {% if item.page and item.page.is_published %}<span class="badge badge-success">فعال</span>
+        {% elif item.page %}<span class="badge badge-gray">پیش‌نویس</span>
+        {% else %}<span class="badge badge-gray">ساخته نشده</span>{% endif %}
+      </div>
+      <a class="btn btn-primary btn-sm btn-block" href="{{ url_for('builder.open_section', key=item.key) }}">{{ 'ویرایش' if item.page else '+ ساخت و ویرایش' }}</a>
+    </div>
     {% endfor %}
   </div>
 </div>
+{% endif %}
 
-<div class="table-wrap">
-  <table class="table">
-    <thead><tr><th>صفحه</th><th>نوع</th><th>آخرین ویرایش</th><th>وضعیت</th><th>عملیات</th></tr></thead>
-    <tbody>
-      {% for p in pages %}
-      <tr>
-        <td>
-          <div class="flex gap-1">
-            <span class="avatar" style="background:{{ {'home':'#2563eb','header':'#7c3aed','footer':'#059669','mobile_menu':'#db2777','page':'#64748b'}.get(p.ptype,'#64748b') }};border-radius:10px;width:34px;height:34px;font-size:15px">
-              {{ {'home':'🏠','header':'☰','footer':'🦶','mobile_menu':'📱','page':'📄'}.get(p.ptype,'📄') }}
-            </span>
-            <div><strong style="font-size:13.5px">{{ p.title }}</strong><br>
-              {% if p.ptype == 'page' %}
-              <a class="text-3" dir="ltr" href="{{ url_for('site.custom_page', slug=p.slug) }}" target="_blank" title="باز کردن صفحه">/page/{{ p.slug }} ↗</a>
-              {% elif p.ptype == 'home' %}
-              <a class="text-3" dir="ltr" href="/" target="_blank" title="باز کردن صفحه">/ ↗</a>
-              {% else %}
-              <small class="text-3" dir="ltr">/page/{{ p.slug }}</small>
-              {% endif %}
+{# ——— صفحات سفارشی و قالب‌ها ——— #}
+{% set extras = other_pages %}
+<div class="card" style="padding:20px 22px;margin-bottom:20px">
+  <div class="flex between wrap" style="gap:12px;margin-bottom:12px">
+    <h4 style="font-size:15px;margin:0">📑 صفحات سفارشی و قالب‌ها</h4>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.designs') }}">🖼 طرح‌های آماده سایت</a>
+  </div>
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>صفحه</th><th>نوع</th><th>آخرین ویرایش</th><th>وضعیت</th><th>عملیات</th></tr></thead>
+      <tbody>
+        {% for p in extras %}
+        <tr>
+          <td>
+            <strong style="font-size:13.5px">{{ p.title }}</strong><br>
+            <a class="text-3" dir="ltr" href="{{ page_public_url(p) }}" target="_blank">{{ page_public_url(p) }} ↗</a>
+          </td>
+          <td>{{ types.get(p.ptype, p.ptype) }}</td>
+          <td>{{ p.updated_at|jdatetime }}</td>
+          <td>
+            {% if p.is_published %}<span class="badge badge-success">منتشر</span>
+            {% else %}<span class="badge badge-gray">پیش‌نویس</span>{% endif %}
+          </td>
+          <td>
+            <div class="actions-cell">
+              <a class="btn btn-primary btn-sm" href="{{ url_for('builder.editor', slug=p.slug) }}">🧩 ویرایش</a>
+              <form method="post" action="{{ url_for('builder.delete_page', slug=p.slug) }}" onsubmit="return confirm('صفحه حذف شود؟')">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                <button class="btn btn-danger btn-sm" type="submit">🗑</button>
+              </form>
             </div>
-          </div>
-        </td>
-        <td>{{ types.get(p.ptype, p.ptype) }}</td>
-        <td>{{ p.updated_at|jdatetime }}</td>
-        <td>
-          {% if p.is_published %}<span class="badge badge-success">منتشر</span>
-          {% else %}<span class="badge badge-gray">پیش‌نویس</span>{% endif %}
-        </td>
-        <td>
-          <div class="actions-cell">
-            <a class="btn btn-primary btn-sm" href="{{ url_for('builder.editor', slug=p.slug) }}">🧩 ویرایش</a>
-            {% if p.ptype == 'page' %}<a class="btn btn-ghost btn-sm" href="{{ url_for('site.custom_page', slug=p.slug) }}" target="_blank">👁</a>{% endif %}
-            <form method="post" action="{{ url_for('builder.delete_page', slug=p.slug) }}" onsubmit="return confirm('صفحه حذف شود؟')">
-              <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
-              <button class="btn btn-danger btn-sm" type="submit">🗑</button>
-            </form>
-          </div>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="text-3" style="text-align:center;padding:18px">صفحه سفارشی ندارید. از «صفحه سفارشی» یک لندینگ یا قالب بسازید.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </div>
 
 <div class="card mt-3" style="padding:20px;font-size:13px;color:var(--text-2)">
-  💡 <b>راهنما:</b> «هدر سایت»، «فوتر سایت» و «منوی موبایل» هم با همین صفحه‌ساز قابل ویرایش هستند.
-  فوتر را می‌توانید به ۱ تا ۷ ستون تغییر دهید (دکمه «تعداد ستون‌ها» در تنظیمات ردیف) تا نماد اعتماد، لینک‌ها و ... را بچینید.
-  برای افزودن اسلایدر، ویجت «اسلایدر» را از پالت بکشید و روی بوم رها کنید.
+  💡 <b>راهنما:</b> برای افزودن عنصر، صفحه را باز کنید، ویجت را از پالت چپ بکشید یا کلیک کنید و روی ستون بوم رها کنید.
+  سبد خرید، تسویه و داشبورد دانشجو صفحات برنامه هستند و از پنل مربوط خود مدیریت می‌شوند.
 </div>
 {% endblock %}

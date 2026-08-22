@@ -121,16 +121,11 @@ function defaults(type) {
     else if (f.type === 'checkbox') d[f.key] = false;
     else d[f.key] = '';
   });
-  /* محتوای شروع خنثی؛ بدون آمار یا ضمانت ساختگی */
-  if (type === 'slider') {
-    var imgs = IMAGES.filter(function (i) { return i.indexOf('cover-') === 0; });
-    imgs = imgs.length ? imgs : IMAGES;
-    d.slides = [
-      { img: imgs[0] || '', title: 'دوره‌های آموزشی', sub: 'فهرست دوره‌های منتشرشده را ببینید و گزینه مناسب را انتخاب کنید.', btn_text: 'مشاهده دوره‌ها', btn_url: '/courses', align: 'right' }
-    ];
-    d.height = '420'; d.overlay = '60'; d.autoplay = true; d.interval = '5';
-    d.dots = true; d.arrows = true; d.swipe = true;
-  }
+  var starter = (w && w.starter) || {};
+  Object.keys(starter).forEach(function (k) {
+    try { d[k] = JSON.parse(JSON.stringify(starter[k])); }
+    catch (e) { d[k] = starter[k]; }
+  });
   return d;
 }
 
@@ -1727,12 +1722,22 @@ function buildPalette() {
     });
     html += '</div>';
   }
-  /* دسته‌بندی ویجت‌ها */
+  /* دسته‌بندی ویجت‌ها — پنهان‌ها و ویجت‌های هدر/فوتر/قالب فقط در صفحهٔ مربوط */
+  var ptype = (window.PB_PAGE && window.PB_PAGE.ptype) || window.PB_PTYPE || 'page';
+  function widgetAllowed(k, w) {
+    if (!w) return false;
+    if (w.palette === false) return false;
+    var ctx = w.ctx || '';
+    if (ctx === 'header' && ptype !== 'header' && ptype !== 'mobile_menu') return false;
+    if (ctx === 'footer' && ptype !== 'footer' && ptype !== 'footer_mobile') return false;
+    if (ctx === 'theme' && ['post', 'course', 'teacher'].indexOf(ptype) < 0) return false;
+    return true;
+  }
   window.PB_CATS.forEach(function (cat) {
     var cid = cat[0], cname = cat[1];
     var items = [];
     Object.keys(WIDGETS).forEach(function (k) {
-      if (WIDGETS[k].cat === cid) items.push(k);
+      if (WIDGETS[k].cat === cid && widgetAllowed(k, WIDGETS[k])) items.push(k);
     });
     if (!items.length) return;
     html += '<div class="pb-palette-section open" data-cat="' + cid + '">'
@@ -1746,6 +1751,22 @@ function buildPalette() {
     });
     html += '</div></div>';
   });
+  var extra = [];
+  Object.keys(WIDGETS).forEach(function (k) {
+    if (!widgetAllowed(k, WIDGETS[k])) extra.push(k);
+  });
+  if (extra.length) {
+    html += '<div class="pb-palette-section" data-cat="extra" data-extra="1" style="display:none">'
+      + '<button type="button" class="pb-palette-cat" data-toggle-cat><span class="pb-cat-arrow">◀</span> سایر ویجت‌ها'
+      + '<span class="pb-cat-count">' + extra.length + '</span></button>'
+      + '<div class="pb-palette-items">';
+    extra.forEach(function (k) {
+      var w = WIDGETS[k];
+      html += '<div class="pb-palette-item" draggable="false" data-type="' + k + '">'
+        + '<span class="pb-pi-icon">' + (w.icon || '🧩') + '</span><span>' + esc(w.name) + '</span></div>';
+    });
+    html += '</div></div>';
+  }
   scroll.innerHTML = html;
   bindPalette();
 }
@@ -1761,7 +1782,12 @@ function bindPalette() {
         it.style.display = show ? '' : 'none';
         if (show) any = true;
       });
-      sec.style.display = any || !q ? '' : 'none';
+      var extra = sec.getAttribute('data-extra');
+      if (extra) {
+        sec.style.display = (q && any) ? '' : 'none';
+      } else {
+        sec.style.display = any || !q ? '' : 'none';
+      }
       if (any) sec.classList.add('open');
     });
   });
@@ -1933,9 +1959,27 @@ function init() {
     document.getElementById('pb-panel').classList.toggle('open');
   });
   document.getElementById('pb-page-switch').addEventListener('change', function (e) {
-    window.location = '/builder/' + e.target.value;
+    var slug = e.target.value || '';
+    var cur = (window.PB_PAGE && window.PB_PAGE.slug) || '';
+    if (!slug || slug === cur) return;
+    window.location = '/builder/' + encodeURIComponent(slug);
   });
   document.getElementById('pb-empty-add').addEventListener('click', function () { showAddSectionModal(0); });
+  var emptyLanding = document.getElementById('pb-empty-landing');
+  if (emptyLanding) emptyLanding.addEventListener('click', function () {
+    var key = emptyLanding.getAttribute('data-template') || 'landing';
+    var tpl = PAGE_TPLS[key] || PAGE_TPLS.landing || PAGE_TPLS.about_page;
+    if (!tpl || !tpl.rows) { showAddSectionModal(0); return; }
+    var copy = JSON.parse(JSON.stringify(tpl.rows));
+    copy.forEach(function (row) {
+      row.id = uid('r');
+      (row.cols || []).forEach(function (col) { col.forEach(function (w) { w.id = uid(); }); });
+    });
+    data.rows = copy;
+    pushHistory();
+    toast('قالب آماده اعمال شد ✅', 'ok');
+    immediateRender();
+  });
   document.getElementById('pb-tpl').addEventListener('click', savePageTemplate);
   /* صفحه‌ساز فقط برای ویرایش؛ خروجی نهایی با دکمه پیش‌نمایش */
   document.addEventListener('keydown', function (e) {
@@ -1981,3 +2025,4 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
 else init();
 
 })();
+

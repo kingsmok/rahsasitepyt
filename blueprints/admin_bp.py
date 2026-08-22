@@ -1017,20 +1017,30 @@ def designs():
             from persian_themes import get_theme
             t = get_theme(value)
             if t:
-                page = Page.query.filter_by(slug='home').first()
-                if page:
-                    page.content = json.dumps({'settings': page.settings(), 'rows': home_rows(t)},
-                                              ensure_ascii=False)
-                    db.session.commit()
-                    flash(f'صفحه اصلی با چیدمان طرح «{t["name"]}» بازنویسی شد ✅', 'success')
+                from blueprints.builder import ensure_home_page, _clear_app_cache
+                page, _created = ensure_home_page(seed=False)
+                page.ptype = 'home'
+                if not (page.title or '').strip():
+                    page.title = 'صفحه اصلی'
+                page.content = json.dumps({'settings': page.settings(), 'rows': home_rows(t)},
+                                          ensure_ascii=False)
+                db.session.commit()
+                _clear_app_cache()
+                flash(f'صفحه اصلی با چیدمان طرح «{t["name"]}» بازنویسی شد ✅', 'success')
             return redirect(url_for('admin.designs'))
         if field in ('home_design', 'about_design', 'contact_design') and value:
+            if field == 'home_design' and value not in list(HOME_DESIGNS.keys()) + ['builder']:
+                flash('طراحی صفحه اصلی نامعتبر است.', 'error')
+                return redirect(url_for('admin.designs'))
             s = db.session.get(Setting, field)
             if s:
                 s.value = value
             else:
                 db.session.add(Setting(key=field, value=value))
             db.session.commit()
+            if field == 'home_design' and value == 'builder':
+                from blueprints.builder import ensure_home_page
+                ensure_home_page(seed=True)
             flash('طراحی انتخابی ذخیره شد ✅', 'success')
         if field == 'home_page_slug':
             # انتخاب هر صفحهٔ صفحه‌ساز به عنوان صفحه اصلی سایت
@@ -1773,8 +1783,10 @@ def pages():
     """لیست تمام صفحات + مدیریت (کپی/حذف موقت/بازیابی/نسخه‌ها)"""
     from models import Page, PageRevision
     items = Page.query.order_by(Page.ptype, Page.updated_at.desc()).all()
-    types = {'home': 'خانه', 'header': 'هدر', 'footer': 'فوتر', 'mobile_menu': 'منوی موبایل',
-             'page': 'صفحه', '404': 'خطای ۴۰۴', 'post': 'قالب مقاله'}
+    types = {'home': 'صفحه اصلی', 'header': 'هدر', 'footer': 'فوتر',
+             'footer_mobile': 'فوتر موبایل', 'mobile_menu': 'منوی موبایل',
+             'page': 'صفحه', '404': 'خطای ۴۰۴', 'post': 'قالب مقاله',
+             'course': 'قالب دوره', 'teacher': 'قالب مدرس'}
     return render_template('admin/pages.html', pages=items, types=types,
                            rev_count={p.id: PageRevision.query.filter_by(page_id=p.id).count() for p in items})
 
@@ -3039,6 +3051,9 @@ def settings():
                     db.session.add(Setting(key='custom_logo',
                                            value='/static/img/uploads/brand/' + lname))
         db.session.commit()
+        if request.form.get('home_design') == 'builder':
+            from blueprints.builder import ensure_home_page
+            ensure_home_page(seed=True)
         flash('تنظیمات با موفقیت ذخیره شد.', 'success')
         return redirect(url_for('admin.settings'))
     return render_template('admin/settings.html')
@@ -3225,6 +3240,9 @@ def super_settings():
                 else:
                     db.session.add(Setting(key=setting_key, value=url))
             db.session.commit()
+            if request.form.get('home_design') == 'builder':
+                from blueprints.builder import ensure_home_page
+                ensure_home_page(seed=True)
             flash('تنظیمات با موفقیت ذخیره شد ✅', 'success')
             return redirect(url_for('admin.super_settings', tab=request.form.get('tab', '')))
         # ب) ریدایرکت‌های سئو

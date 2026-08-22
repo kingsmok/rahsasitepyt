@@ -2,6 +2,9 @@
 {% block atitle %}درخواست‌های مشاوره{% endblock %}
 {% block acontent %}
 <div class="dash-head"><div><h1>🎯 درخواست‌های مشاوره</h1><p>درخواست‌های ثبت‌شده همراه با شماره تماس و زمان ترجیحی</p></div></div>
+{% set section_key = 'consultation' %}
+{% set hint = 'درخواست‌ها اینجا می‌آیند؛ ظاهر صفحهٔ عمومی را با صفحه‌ساز بچینید.' %}
+{% include 'admin/_builder_section_banner.html' %}
 <div class="card" style="padding:22px">
   <div style="overflow-x:auto">
     <table class="table" style="width:100%;font-size:13px">

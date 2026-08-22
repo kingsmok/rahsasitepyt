@@ -190,10 +190,12 @@ def grant_cashback(order, base_amount=None):
     u = db.session.get(User, order.user_id)
     if not u:
         return None
-    u.wallet_balance = (u.wallet_balance or 0) + amount
-    db.session.add(WalletTransaction(
-        user_id=u.id, amount=amount, type='bonus',
-        detail=f'Cashback خرید {fa("{:,}".format(base))} تومان ({pct}٪) — سفارش {order.code}'))
+    # از منبع واحد کیف پول استفاده می‌شود (قبلاً منطق افزایش موجودی و ثبت
+    # WalletTransaction این‌جا کپی شده بود — نقض DRY و ناامن در برابر
+    # همزمانی: cashback و پاداش معرفی می‌توانند هم‌زمان اجرا شوند).
+    from gamification import wallet_bonus
+    wallet_bonus(u, amount,
+                 f'Cashback خرید {fa("{:,}".format(base))} تومان ({pct}٪) — سفارش {order.code}')
     db.session.add(CashbackLog(user_id=u.id, order_id=order.id, amount=amount,
                                percent=pct, base_amount=base,
                                note=f'بازگشت {pct}٪ پس از پرداخت موفق'))

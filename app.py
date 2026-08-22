@@ -2053,8 +2053,13 @@ def create_app():
                     from models import NotFoundLog
                     log = NotFoundLog.query.filter_by(path=request.path).first()
                     if log:
-                        log.count += 1
-                        log.referrer = request.referrer or log.referrer
+                        # افزایش اتمیک: ربات‌ها معمولاً یک مسیر ۴۰۴ را
+                        # هم‌زمان از چند اتصال می‌زنند؛ read-modify-write
+                        # باعث کم‌شماری آمار می‌شد.
+                        NotFoundLog.query.filter(NotFoundLog.id == log.id).update(
+                            {NotFoundLog.count: db.func.coalesce(NotFoundLog.count, 0) + 1,
+                             NotFoundLog.referrer: (request.referrer or log.referrer)},
+                            synchronize_session=False)
                     else:
                         db.session.add(NotFoundLog(path=request.path[:300],
                                                    referrer=(request.referrer or '')[:400]))

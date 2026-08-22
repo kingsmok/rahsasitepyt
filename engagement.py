@@ -140,10 +140,10 @@ def api_spin():
     coupon_code = None
     msg = 'شانس خود را فردا دوباره امتحان کنید! 🍀'
     if ptype == 'wallet':
-        g.user.wallet_balance = (g.user.wallet_balance or 0) + val
-        from models import WalletTransaction
-        db.session.add(WalletTransaction(user_id=g.user.id, amount=val, type='bonus',
-                                         detail=f'جایزه گردونه شانس ({_today()})'))
+        # از منبع واحد کیف پول استفاده می‌شود تا افزایش موجودی اتمیک باشد
+        # (قبلاً read-modify-write مستقیم روی g.user انجام می‌شد).
+        from gamification import wallet_bonus
+        wallet_bonus(g.user, val, f'جایزه گردونه شانس ({_today()})')
         msg = f'🎉 {fa("{:,}".format(val))} تومان به کیف پول شما اضافه شد!'
     elif ptype == 'coupon':
         coupon_code, err = _make_coupon(val)

@@ -45,16 +45,32 @@ class _DesignPage:
 @site_bp.route('/')
 def index():
     from designs import HOME_DESIGNS
+    from models import Page as _Pg
     # پارامتر پیش‌نمایش فقط برای مدیر واردشده پذیرفته می‌شود.
-    preview_design = request.args.get('design') if (g.user and g.user.is_admin) else None
+    is_admin = bool(g.user and g.user.is_admin)
+    preview_design = request.args.get('design') if is_admin else None
+    # پیش‌نمایش زندهٔ ویرایشگر: مدیر می‌تواند صفحهٔ اصلیِ هنوز منتشرنشده را ببیند
+    is_preview = request.args.get('preview') is not None and is_admin
     design = preview_design or g.settings.get('home_design', '1')
+    # انتخاب دستی «صفحه اصلی» در تنظیمات — هر صفحه‌ای از صفحه‌ساز می‌تواند
+    # صفحه اصلی سایت باشد (تنظیم home_page_slug)
+    hp_slug = (g.settings.get('home_page_slug') or '').strip()
+    if hp_slug:
+        chosen = _Pg.query.filter_by(slug=hp_slug).first()
+        if chosen and (chosen.is_published or is_preview) and chosen.rows():
+            g.page_settings = chosen.settings()
+            g.page_custom_header = chosen.custom_header
+            g.page_custom_footer = chosen.custom_footer
+            return render_template('builder/public.html', page=chosen)
     hp = getattr(g, 'pages', {}).get('home')
     # fallback: اگر صفحه home در builder خالی باشد → طرح پیش‌فرض (جلوگیری از صفحه خالی)
-    if hp and hp.is_published and not hp.rows():
+    if hp and hp.is_published and not hp.rows() and not is_preview:
         hp = None
         design = '1'
+    if hp and not hp.is_published and not is_preview:
+        hp = None
     # اگر «صفحه صفحه‌ساز» انتخاب شده یا طرح نامعتبر است و صفحه builder موجود است
-    if design == 'builder' and hp and hp.is_published and hp.rows():
+    if (design == 'builder' or is_preview) and hp and (hp.is_published or is_preview) and hp.rows():
         g.page_settings = hp.settings()
         g.page_custom_header = hp.custom_header
         g.page_custom_footer = hp.custom_footer
@@ -331,7 +347,10 @@ def custom_page(slug):
     if page:
         g.page_custom_header = page.custom_header
         g.page_custom_footer = page.custom_footer
-    if not page or not page.is_published:
+    # پیش‌نمایش زندهٔ ویرایشگر: فقط مدیر می‌تواند صفحهٔ منتشرنشده را ببیند
+    is_preview = request.args.get('preview') is not None
+    is_admin = bool(g.user and getattr(g.user, 'is_admin', False))
+    if not page or (not page.is_published and not (is_preview and is_admin)):
         abort(404)
     if not page.rows():
         # صفحه ساخته شده ولی هنوز محتوایی ندارد. قبلاً اینجا ۴۰۴ می‌داد و
@@ -345,8 +364,32 @@ def custom_page(slug):
 
 
 # ---------------------------------------------------------------- صفحات قانونی
+def _builder_page(slug):
+    """نسخهٔ صفحه‌ساز یک صفحهٔ ثابت (درباره/تماس/قوانین/...).
+
+    اگر مدیر برای این slug یک صفحهٔ منتشرشده با محتوا در صفحه‌ساز ساخته باشد،
+    همان صفحه رندر می‌شود؛ وگرنه None برمی‌گردد تا قالب ثابت قبلی نمایش داده شود.
+    """
+    from models import Page
+    page = Page.query.filter_by(slug=slug, ptype='page').first()
+    if page and page.is_published and page.rows():
+        return page
+    return None
+
+
+def _render_builder_page(page):
+    """رندر مشترک نسخهٔ صفحه‌ساز برای صفحات ثابت سایت"""
+    g.page_settings = page.settings()
+    g.page_custom_header = page.custom_header
+    g.page_custom_footer = page.custom_footer
+    return render_template('builder/public.html', page=page)
+
+
 @site_bp.route('/terms')
 def terms():
+    bp = _builder_page('terms')
+    if bp:
+        return _render_builder_page(bp)
     try:
         refund_days = max(0, int(g.settings.get('refund_days') or 0))
     except (TypeError, ValueError):
@@ -372,6 +415,9 @@ def terms():
 
 @site_bp.route('/privacy')
 def privacy():
+    bp = _builder_page('privacy')
+    if bp:
+        return _render_builder_page(bp)
     return render_template('legal.html', page_title='حریم خصوصی',
         page_icon='🔒', intro='حفظ حریم خصوصی شما برای ما اهمیت بالایی دارد. این خط‌مشی نحوه جمع‌آوری و استفاده از اطلاعات شما را شرح می‌دهد.',
         sections=[
@@ -497,6 +543,9 @@ def teachers():
             .filter(Course.teacher_id.in_(tids), Course.status == 'published') \
             .group_by(Course.teacher_id).all()
         course_counts = {tid: n for tid, n in crows}
+    bp = _builder_page('teachers')
+    if bp:
+        return _render_builder_page(bp)
     return render_template('teachers.html', teachers=teachers, ratings=ratings,
                            teacher_students=students, teacher_courses=course_counts)
 
@@ -630,6 +679,9 @@ def blog_post(slug):
 # ---------------------------------------------------------------- صفحات ثابت
 @site_bp.route('/about')
 def about():
+    bp = _builder_page('about')
+    if bp:
+        return _render_builder_page(bp)
     from models import User as _U, Section as _S, Lesson as _L, Review as _RV
     teachers = _U.query.filter(_U.role.in_(['teacher', 'admin']), _U.is_active == True).count()
     total_courses = Course.query.filter_by(status='published').count()
@@ -655,6 +707,9 @@ def about():
 
 @site_bp.route('/faq')
 def faq():
+    bp = _builder_page('faq')
+    if bp:
+        return _render_builder_page(bp)
     import json as _json
     items = []
     raw = (g.settings or {}).get('faq_items') or ''
@@ -723,6 +778,9 @@ def learning_paths():
 
     g.seo['title'] = "مسیرهای یادگیری — نقشه راه دوره‌ها | آکادمی آنلاین"
     g.seo['description'] = "مسیر یادگیری قدم‌به‌قدم: برنامه‌نویسی وب، هوش مصنوعی، طراحی محصول و کسب‌وکار دیجیتال — بدانید بعد از هر دوره، کدام دوره را بگذرانید."
+    bp = _builder_page('learning-paths')
+    if bp:
+        return _render_builder_page(bp)
     return render_template('learning_paths.html', paths=paths)
 
 
@@ -754,6 +812,9 @@ def consultation():
             return redirect(url_for('site.consultation'))
     g.seo['title'] = "درخواست مشاوره انتخاب مسیر یادگیری | آکادمی آنلاین"
     g.seo['description'] = "فرم درخواست مشاوره برای بررسی دوره‌ها و انتخاب مسیر یادگیری؛ اطلاعات تماس و هدف خود را ثبت کنید."
+    bp = _builder_page('consultation')
+    if bp:
+        return _render_builder_page(bp)
     return render_template('consultation.html')
 
 
@@ -838,15 +899,20 @@ def contact():
         if not verify_captcha():
             flash('پاسخ سوال امنیتی اشتباه است. دوباره تلاش کنید.', 'error')
             return redirect(url_for('site.contact'))
-        from validators import clamp_field
+        from validators import clamp_field, is_valid_phone
         name = clamp_field(request.form.get('name'), 'name')
         email = clamp_field(request.form.get('email'), 'email')
+        phone = clamp_field(request.form.get('phone'), 'phone')
         subject = clamp_field(request.form.get('subject'), 'subject')
         message = clamp_field(request.form.get('message'), 'message')
         if not name or not message:
             flash('نام و متن پیام الزامی است.', 'error')
         else:
-            db.session.add(ContactMessage(name=name, email=email, subject=subject, message=message))
+            # شماره تماس نامعتبر → ذخیره نشود تا گزارش‌ها درست بمانند
+            if phone and not is_valid_phone(phone):
+                phone = ''
+            db.session.add(ContactMessage(name=name, email=email, phone=phone,
+                                          subject=subject, message=message))
             try:
                 from models import Notification
                 Notification.notify_staff('پیام تماس جدید', f'{name}: {subject or "بدون موضوع"}',
@@ -856,6 +922,9 @@ def contact():
             db.session.commit()
             flash('پیام شما با موفقیت ارسال شد. به زودی پاسخ می‌دهیم.', 'success')
             return redirect(url_for('site.contact'))
+    bp = _builder_page('contact')
+    if bp:
+        return _render_builder_page(bp)
     preview_design = request.args.get('design') if (g.user and g.user.is_admin) else None
     design = preview_design or g.settings.get('contact_design', '1')
     if design not in [str(i) for i in range(1, 6)]:

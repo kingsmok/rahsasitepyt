@@ -143,6 +143,32 @@
   </div>
 </div>
 
+<!-- کارت ۶: بازنشانی کامل امن -->
+<div class="card" style="padding:22px;margin-bottom:18px;border:1.5px solid #dc2626">
+  <h3 style="margin:0 0 10px;font-size:17px">🧹 بازنشانی کامل دیتابیس (نصب دوباره از صفر)</h3>
+  <p class="text-2" style="font-size:13.5px;line-height:1.9;margin-bottom:12px">
+    همهٔ جدول‌ها پاک شده و دیتابیس دقیقاً مثل اولین نصب از نو ساخته می‌شود (تنظیمات،
+    دسته‌بندی‌ها و حساب مدیر). <b style="color:var(--danger)">قبل از شروع یک نسخهٔ بکاپ کامل در
+    <code dir="ltr">instance/backups/</code> ساخته می‌شود</b> — با آن می‌توانید به حالت قبل برگردید.
+    این عملیات فقط برای دیتابیس محلی SQLite و فقط توسط مدیر کل امکان‌پذیر است.
+  </p>
+  <div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:12px;padding:14px;font-size:13px;color:#991b1b;line-height:2">
+    ⚠️ همهٔ کاربران، دوره‌ها، سفارش‌ها، نظرات، تیکت‌ها، صفحات و محتوای آموزشی حذف می‌شوند.
+    اگر فقط می‌خواهید کدها را به‌روز کنید از «به‌روزرسانی از گیت» بالای همین صفحه استفاده کنید.
+  </div>
+  <div style="display:grid;gap:10px;margin-top:14px">
+    <label style="font-size:13px;display:flex;gap:8px;align-items:center;cursor:pointer">
+      <input type="checkbox" id="reset-understand" style="width:18px;height:18px">
+      متوجه هستم که همهٔ داده‌ها حذف می‌شوند و ابتدا بکاپ خودکار گرفته می‌شود.
+    </label>
+    <div class="flex gap-1 wrap">
+      <input class="form-control" type="text" id="reset-confirm" dir="rtl" placeholder="برای تأیید، عبارت «بازنشانی کامل» را تایپ کنید" style="flex:1;min-width:240px">
+      <input class="form-control" type="password" id="reset-pass" dir="ltr" placeholder="رمز جدید مدیر (حداقل ۸ کاراکتر)" style="flex:1;min-width:220px">
+      <button class="btn btn-danger btn-sm" type="button" onclick="runFullReset()" style="white-space:nowrap">🧹 بازنشانی کامل</button>
+    </div>
+  </div>
+</div>
+
 <script>
 function showMsg(ok, text){
   var m = document.getElementById('im-msg');
@@ -251,6 +277,37 @@ function useUploadedSqlite(){
       if (d.ok) setTimeout(() => location.reload(), 1800);
     })
     .catch(e => showMsg(false, 'خطا: ' + e));
+}
+
+function runFullReset(){
+  var understand = document.getElementById('reset-understand').checked;
+  var confirmText = document.getElementById('reset-confirm').value.trim();
+  var pass = document.getElementById('reset-pass').value;
+  if (!understand){ showMsg(false, 'گزینهٔ «متوجه هستم» را علامت بزنید.'); return; }
+  if (confirmText !== 'بازنشانی کامل'){ showMsg(false, 'عبارت تأیید را دقیقاً «بازنشانی کامل» تایپ کنید.'); return; }
+  if (pass.length < 8){ showMsg(false, 'رمز جدید مدیر باید حداقل ۸ کاراکتر باشد.'); return; }
+  if (!confirm('⚠️ هشدار نهایی: همهٔ داده‌ها برای همیشه پاک می‌شوند (بکاپ در instance/backups ساخته می‌شود). ادامه می‌دهید؟')) return;
+  var fd = new FormData();
+  fd.append('_csrf_token', getCsrf());
+  fd.append('i_understand', '1');
+  fd.append('confirm_text', confirmText);
+  fd.append('new_password', pass);
+  var btn = event.target;
+  btn.disabled = true;
+  btn.textContent = 'در حال بازنشانی...';
+  fetch('/admin/install-manager/reset', {method: 'POST', body: fd})
+    .then(r => r.json())
+    .then(d => {
+      showMsg(d.ok, d.msg);
+      if (d.ok){
+        document.getElementById('reset-understand').checked = false;
+        document.getElementById('reset-confirm').value = '';
+        document.getElementById('reset-pass').value = '';
+        setTimeout(() => { location.href = '/auth/logout'; }, 3500);
+      }
+    })
+    .catch(e => showMsg(false, 'خطا در بازنشانی: ' + e))
+    .finally(() => { btn.disabled = false; btn.textContent = '🧹 بازنشانی کامل'; });
 }
 
 function runAutoMigrate(){

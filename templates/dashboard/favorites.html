@@ -11,12 +11,12 @@
 {% if favs %}
 <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px">
   {% for f in favs %}
-  <div class="card card-hover course-card">
+  <div class="card card-hover course-card" data-fav-card="1">
     <div class="thumb">
       <a href="{{ url_for('site.course_detail', slug=f.course.slug) }}">
         <img src="{{ f.course.image_url }}" alt="">
       </a>
-      <button class="fav-btn active" data-fav="{{ f.course.id }}">❤️</button>
+      <button class="fav-btn active" data-fav="{{ f.course.id }}" title="حذف از علاقه‌مندی‌ها">❤️</button>
     </div>
     <div class="body">
       <h3 style="min-height:0"><a href="{{ url_for('site.course_detail', slug=f.course.slug) }}">{{ f.course.title }}</a></h3>

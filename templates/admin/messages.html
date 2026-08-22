@@ -9,7 +9,8 @@
     <div class="flex between wrap gap-2">
       <div>
         <strong>{{ m.name }}</strong>
-        {% if m.email %}<span class="text-3" style="font-size:12.5px;margin-right:10px" dir="ltr">{{ m.email }}</span>{% endif %}
+        {% if m.phone %}<a class="text-3" style="font-size:12.5px;margin-right:10px" dir="ltr" href="tel:{{ m.phone }}">📱 {{ m.phone }}</a>{% endif %}
+        {% if m.email %}<a class="text-3" style="font-size:12.5px;margin-right:10px" dir="ltr" href="mailto:{{ m.email }}">{{ m.email }}</a>{% endif %}
         {% if m.subject %}<span class="badge badge-primary" style="margin-right:10px">{{ m.subject }}</span>{% endif %}
       </div>
       <div class="flex gap-1">

@@ -17,6 +17,32 @@ from jdates import fa_num
 student_bp = Blueprint('student', __name__)
 
 
+def _normalize_birth_date(value):
+    """تاریخ تولد را به ISO (yyyy-mm-dd) نرمال می‌کند.
+
+    پشتیبانی: مقدار ISO میلادی، شمسی با ارقام لاتین یا فارسی (1405/05/25 یا
+    ۱۴۰۵/۰۵/۱۵). خروجی نامعتبر → '' تا مقدار قبلی پاک نشود.
+    """
+    import re as _re
+    v = (value or '').strip()
+    if not v:
+        return ''
+    # ارقام فارسی/عربی → لاتین
+    v = v.translate(str.maketrans('۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩', '01234567890123456789'))
+    v = v.replace('/', '-')
+    # از قبل ISO میلادی
+    if _re.match(r'^\d{4}-\d{2}-\d{2}$', v):
+        return v
+    try:
+        from jdates import jalali_to_gregorian
+        iso = jalali_to_gregorian(v)
+        if iso:
+            return iso
+    except Exception:
+        pass
+    return ''
+
+
 def _local_video_filename(value):
     """فقط نام فایل داخل static/video؛ URL خارجی یا مسیر مشکوک پذیرفته نمی‌شود."""
     value = (value or '').strip()
@@ -513,11 +539,22 @@ def profile():
         color = request.form.get('avatar_color', '#2563eb')
         password = request.form.get('password', '')
         err = None
-        if g.user.phone:
-            phone = g.user.phone
-        if g.user.national_code:
-            nc = g.user.national_code
-        if len(name) < 3:
+        # فرم کناری «عکس پروفایل» فقط avatar/avatar_lib ارسال می‌کند؛ اگر
+        # فیلدهای اصلی پروفایل خالی بود یعنی کاربر فقط قصد تغییر عکس دارد
+        # و نباید به‌خاطر «نام خالی» خطا بگیرد.
+        _avatar_only = bool(request.files.get('avatar') and request.files['avatar'].filename) \
+            or bool((request.form.get('avatar_lib') or '').strip())
+        if not _avatar_only:
+            if g.user.phone:
+                phone = g.user.phone
+            if g.user.national_code:
+                nc = g.user.national_code
+        if _avatar_only:
+            # فرم کناری «عکس پروفایل» فقط فایل را عوض می‌کند؛ اعتبارسنجی
+            # فیلدهای دیگر معنا ندارد (phone در این فرم ارسال نمی‌شود و خالی
+            # است) — وگرنه «شماره تماس معتبر نیست» مانع آپلود عکس می‌شد.
+            err = None
+        elif len(name) < 3:
             err = 'نام و نام خانوادگی را کامل وارد کنید.'
         elif not is_valid_phone(phone):
             err = 'شماره تماس معتبر نیست — باید با 09 شروع شود و ۱۱ رقم باشد.'
@@ -532,27 +569,31 @@ def profile():
         if err:
             flash(err, 'error')
             return redirect(url_for('student.profile'))
-        g.user.name = name
-        # موبایل و کد ملی پس از ثبت قفل می‌شوند (اختیاری بودن حفظ می‌شود)
-        if g.user.phone:
-            phone = g.user.phone
-        if g.user.national_code:
-            nc = g.user.national_code
-        g.user.phone = phone
-        g.user.national_code = nc or None
-        g.user.bio = bio
-        g.user.avatar_color = color
-        g.user.notify_email = bool(request.form.get('notify_email'))
-        g.user.notify_sms = bool(request.form.get('notify_sms'))
-        # اطلاعات تکمیلی پروفایل (فرم کامل)
-        from validators import clamp_field
-        g.user.national_id = clamp_field(request.form.get('national_id'), 'default')
-        g.user.birth_date = clamp_field(request.form.get('birth_date'), 'default')
-        g.user.education_level = clamp_field(request.form.get('education_level'), 'default')
-        g.user.education_major = clamp_field(request.form.get('education_major'), 'default')
-        g.user.marital_status = clamp_field(request.form.get('marital_status'), 'default')
-        if password:
-            g.user.set_password(password)
+        if not _avatar_only:
+            g.user.name = name
+            # موبایل و کد ملی پس از ثبت قفل می‌شوند
+            if g.user.phone:
+                phone = g.user.phone
+            if g.user.national_code:
+                nc = g.user.national_code
+            g.user.phone = phone
+            g.user.national_code = nc or None
+            g.user.bio = bio
+            g.user.avatar_color = color
+            g.user.notify_email = bool(request.form.get('notify_email'))
+            g.user.notify_sms = bool(request.form.get('notify_sms'))
+            # اطلاعات تکمیلی پروفایل (فرم کامل)
+            from validators import clamp_field
+            g.user.national_id = clamp_field(request.form.get('national_id'), 'default')
+            # تاریخ تولد: ورودی تقویم شمسی به ISO (yyyy-mm-dd) تبدیل می‌شود؛
+            # اگر مقدار فارسی/شمسی رسید (بدون جاوااسکریپت) همان‌جا نرمال می‌شود.
+            _bd = (request.form.get('birth_date') or '').strip()
+            g.user.birth_date = _normalize_birth_date(_bd)
+            g.user.education_level = clamp_field(request.form.get('education_level'), 'default')
+            g.user.education_major = clamp_field(request.form.get('education_major'), 'default')
+            g.user.marital_status = clamp_field(request.form.get('marital_status'), 'default')
+            if password:
+                g.user.set_password(password)
         # آپلود عکس پروفایل — فایل مستقیم یا انتخاب از کتابخانهٔ رسانه
         f = request.files.get('avatar')
         if f and f.filename:

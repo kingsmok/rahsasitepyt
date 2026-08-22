@@ -1,6 +1,8 @@
 {% extends 'base.html' %}
 {% block title %}{{ seo.title or "چت آنلاین پشتیبانی" }}{% endblock %}
 {% block content %}
+{% include 'partials/account_nav.html' %}
+
 <section class="section" style="padding-top:30px">
   <div class="container" style="max-width:720px">
     <div class="card" style="padding:24px;border-radius:20px">

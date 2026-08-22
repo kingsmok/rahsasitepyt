@@ -812,6 +812,80 @@ def install_migrate_db():
         return jsonify(ok=False, msg='خطا در مایگریشن دیتابیس: ' + str(e)), 500
 
 
+@admin_bp.route('/install-manager/reset', methods=['POST'])
+@admin_required
+def install_reset():
+    """بازنشانی کامل امن: بکاپ خودکار → پاک‌سازی → نصب دوباره از صفر.
+
+    فقط مدیر کل؛ فقط برای SQLite محلی؛ فقط با تأیید سه‌گانه:
+    ۱) تیک «متوجه هستم»  ۲) تایپ عبارت «بازنشانی کامل»  ۳) رمز جدید مدیر
+    قبل از هر چیز یک نسخهٔ بکاپ از دیتابیس در instance/backups ساخته می‌شود.
+    """
+    if g.user.role not in ('super_admin', 'admin'):
+        return jsonify(ok=False, msg='فقط مدیر کل می‌تواند بازنشانی کامل انجام دهد.'), 403
+    confirm_text = (request.form.get('confirm_text') or '').strip()
+    new_password = request.form.get('new_password') or ''
+    if not request.form.get('i_understand') == '1':
+        return jsonify(ok=False, msg='برای ادامه باید گزینهٔ «متوجه هستم» را علامت بزنید.'), 400
+    if confirm_text != 'بازنشانی کامل':
+        return jsonify(ok=False, msg='عبارت تأیید اشتباه است؛ دقیقاً «بازنشانی کامل» را تایپ کنید.'), 400
+    if len(new_password) < 8:
+        return jsonify(ok=False, msg='رمز جدید مدیر باید حداقل ۸ کاراکتر باشد.'), 400
+    from installer import env_db_url, sqlite_file_path
+    db_url = str(env_db_url() or '')
+    if db_url.startswith('mysql'):
+        return jsonify(ok=False, msg='بازنشانی کامل فقط برای دیتابیس محلی SQLite پشتیبانی می‌شود (برای MySQL از مایگریشن استفاده کنید).'), 400
+    # ── ۱) بکاپ خودکار ──
+    import shutil as _sh
+    from datetime import datetime as _dt
+    _root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    db_path = sqlite_file_path()
+    backup_dir = os.path.join(_root, 'instance', 'backups')
+    os.makedirs(backup_dir, exist_ok=True)
+    stamp = _dt.now().strftime('%Y%m%d_%H%M%S')
+    backup_path = os.path.join(backup_dir, f'academy_{stamp}.db')
+    if os.path.exists(db_path):
+        try:
+            _sh.copy2(db_path, backup_path)
+        except OSError as exc:
+            return jsonify(ok=False, msg='خطا در ساخت بکاپ — بازنشانی لغو شد: ' + str(exc)[:180]), 500
+    # ── ۲) پاک‌سازی و نصب دوباره ──
+    try:
+        db.session.remove()
+        db.drop_all()
+        db.create_all()
+        from models import ensure_indexes as _ei
+        _ei()
+        from installer import run_install as _run_install
+        admin = {'email': g.user.email, 'name': g.user.name or 'مدیر', 'password': new_password}
+        site = {}
+        try:
+            from models import Setting as _S
+            row = db.session.get(_S, 'site_name')
+            if row and row.value:
+                site['name'] = row.value
+        except Exception:
+            pass
+        ok, msg = _run_install(db_url, admin, site, create_demo_student=False)
+        if not ok:
+            return jsonify(ok=False, msg='بازنشانی ناقص انجام شد (بکاپ در instance/backups موجود است): ' + str(msg)[:240]), 500
+        db.session.commit()
+        _backup_note = os.path.join(backup_dir, f'academy_{stamp}.txt')
+        try:
+            with open(_backup_note, 'w', encoding='utf-8') as f:
+                f.write(f'reset by {g.user.email} at {_dt.now().isoformat()}\nbackup={backup_path}\n')
+        except OSError:
+            pass
+        return jsonify(ok=True, msg=(
+            f'بازنشانی کامل انجام شد ✅\n'
+            f'بکاپ: {os.path.basename(backup_path)}\n'
+            f'حساب مدیر: {g.user.email} — با رمز جدیدی که وارد کردید دوباره وارد شوید.'))
+    except Exception as exc:
+        _lexc('admin_extra.install_reset')
+        return jsonify(ok=False, msg='خطا در بازنشانی: ' + str(exc)[:240] + ' (بکاپ در instance/backups موجود است)'), 500
+
+
+
 
 # ═══════════════════════════════════════════════════════════════════════════
 # 🔔 زنگ هشدار مدیر — تیکت‌ها و سفارش‌های جدید (Polling سبک)
@@ -834,9 +908,12 @@ def admin_alerts():
         ).count() if hasattr(Order, 'fulfillment_status') else 0
         proofs = PaymentProof.query.filter_by(status='pending').count()
         unread = Notification.query.filter_by(user_id=g.user.id, is_read=False).count()
+        from models import ChatMessage as _CM
+        chat_unread = _CM.query.filter_by(is_admin=False, is_read=False).count()
 
         last_ticket = db.session.query(_func.max(Ticket.id)).scalar() or 0
         last_order = db.session.query(_func.max(Order.id)).scalar() or 0
+        last_chat = db.session.query(_func.max(_CM.id)).scalar() or 0
 
         return jsonify(
             ok=True,
@@ -844,14 +921,17 @@ def admin_alerts():
             orders=int(new_orders),
             fulfillment=int(paid_orders),
             proofs=int(proofs),
+            chat=int(chat_unread),
             unread=int(unread),
-            total=int(open_tickets + new_orders + proofs),
+            total=int(open_tickets + new_orders + proofs + chat_unread),
             latest_ticket_id=int(last_ticket),
             latest_order_id=int(last_order),
+            latest_chat_id=int(last_chat),
             urls=dict(
                 tickets=url_for('admin.tickets'),
                 orders=url_for('admin.orders'),
                 proofs=url_for('admin.proofs'),
+                chat=url_for('admin.chat'),
             ),
         )
     except Exception:

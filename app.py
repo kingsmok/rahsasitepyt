@@ -275,6 +275,10 @@ def create_app():
             _add_columns('blog_comments', {
                 'is_approved': 'BOOLEAN DEFAULT 1',
             })
+            # شماره تماس پیام‌های فرم تماس — تا مدیر بداند پیام از طرف چه کسی است
+            _add_columns('contact_messages', {
+                'phone': "VARCHAR(20) DEFAULT ''",
+            })
             _add_columns('order_items', {
                 'quantity': 'INTEGER DEFAULT 1',
             })
@@ -484,7 +488,11 @@ def create_app():
             _abort(404)
         from uploads_helper import uploads_dir as _udir
         _ext = os.path.splitext(filename)[1].lower()
-        _inline_ok = _ext in ('.jpg', '.jpeg', '.png', '.webp', '.gif', '.avif', '.pdf')
+        # زیرنویس (srt/vtt) باید inline و با Content-Type درست سرو شود تا
+        # عنصر <track> پلیر بتواند آن را بارگذاری کند (قبلاً به‌صورت
+        # دانلود اجباری سرو می‌شد و زیرنویس هرگز نمایش داده نمی‌شد).
+        _inline_ok = _ext in ('.jpg', '.jpeg', '.png', '.webp', '.gif', '.avif', '.pdf',
+                              '.srt', '.vtt')
         try:
             _resp = _sfd(_udir(folder), filename, as_attachment=not _inline_ok)
         except FileNotFoundError:
@@ -493,8 +501,19 @@ def create_app():
         # اگر پسوند ناشناخته بود، mimetype اجرایی به آن نچسبد
         if not _inline_ok:
             _resp.headers['Content-Type'] = 'application/octet-stream'
+        elif _ext == '.vtt':
+            _resp.headers['Content-Type'] = 'text/vtt; charset=utf-8'
+        elif _ext == '.srt':
+            _resp.headers['Content-Type'] = 'text/plain; charset=utf-8'
+        # تِرک زیرنویس با crossorigin="anonymous" بارگذاری می‌شود؛ پاسخ باید
+        # هدر CORS را برگرداند تا مرورگر آن را رد نکند.
+        _resp.headers['Access-Control-Allow-Origin'] = '*'
         # سندباکس کامل: حتی اگر چیزی از فیلترها رد شد، اسکریپتی اجرا نمی‌شود
-        _resp.headers['Content-Security-Policy'] = "default-src 'none'; sandbox; frame-ancestors 'none'"
+        # (زیرنویس‌ها فقط متن‌اند؛ از sandbox برای مسیرهای دیگر حفظ می‌شود)
+        if _ext in ('.srt', '.vtt'):
+            _resp.headers['Content-Security-Policy'] = "default-src 'none'"
+        else:
+            _resp.headers['Content-Security-Policy'] = "default-src 'none'; sandbox; frame-ancestors 'none'"
         _resp.headers['X-Robots-Tag'] = 'noindex, nofollow, noarchive'
         return _resp
 
@@ -635,6 +654,8 @@ def create_app():
     app.jinja_env.globals['builder_products'] = builder_products
     app.jinja_env.globals['rd'] = render_dynamic
     app.jinja_env.globals['rshort'] = render_shortcodes
+    from blueprints.builder import bc_menu
+    app.jinja_env.globals['bc_menu'] = bc_menu
     app.jinja_env.globals['uniq_cats'] = uniq_cats
     # دسترسی ماکروها به داده‌های درخواست (ماکروها context ندارند)
     from blueprints.builder import WIDGETS as _WIDGETS
@@ -1902,6 +1923,8 @@ def create_app():
                     admin_badge_tickets=_admin_badge_tickets(_u),
                     admin_badge_orders=_admin_badge_orders(_u),
                     admin_badge_forum=_admin_badge_forum(_u),
+                    admin_badge_chat=_admin_badge_chat(_u),
+                    admin_badge_proofs=_admin_badge_proofs(_u),
                     seo=getattr(g, 'seo', dict(title='', description='', keywords='',
                                                canonical='', noindex=False, og_image='',
                                                og_type='website', schema=None)))
@@ -1928,6 +1951,26 @@ def create_app():
         try:
             from models import ForumTopic as _FT
             return _FT.query.filter_by(is_approved=False).count()
+        except Exception:
+            return 0
+
+    def _admin_badge_chat(user):
+        """پیام‌های خوانده‌نشده چت آنلاین — بج قرمز روی «چت آنلاین» در منوی ادمین"""
+        if not user or not (getattr(user, 'is_admin', False) or getattr(user, 'role', '') == 'support'):
+            return 0
+        try:
+            from models import ChatMessage as _CM
+            return _CM.query.filter_by(is_admin=False, is_read=False).count()
+        except Exception:
+            return 0
+
+    def _admin_badge_proofs(user):
+        """فیش‌های واریزی در انتظار تایید"""
+        if not user or not getattr(user, 'is_admin', False):
+            return 0
+        try:
+            from models import PaymentProof as _PP
+            return _PP.query.filter_by(status='pending').count()
         except Exception:
             return 0
 

@@ -265,7 +265,7 @@ def notifications_unread():
 # ================================================================
 # آزمون استعدادیابی
 # ================================================================
-TALENT_QUESTIONS = [
+TALENT_DEFAULT_QUESTIONS = [
     {'q': 'در مدرسه/دانشگاه کدام درس را بیشتر دوست داشتی؟',
      'o': [('ریاضی و منطق', 'web'), ('نقاشی و طراحی', 'design'), ('ادبیات و تحقیق', 'marketing'), ('زیست و آزمایش', 'ai')]},
     {'q': 'وقتی وقت آزاد داری بیشتر دوست داری چه کار کنی؟',
@@ -284,6 +284,10 @@ TALENT_QUESTIONS = [
      'o': [('من عاشق ساختن هستم', 'web'), ('من عاشق زیبایی هستم', 'design'), ('من عاشق ارتباط هستم', 'marketing'), ('من عاشق کشف هستم', 'ai')]},
 ]
 
+# TALENT_QUESTIONS: از تنظیمات قابل ویرایش در پنل مدیریت خوانده می‌شود
+# (کلید: talent_questions — JSON). اگر خالی بود از پیش‌فرض استفاده می‌شود.
+TALENT_QUESTIONS = []
+
 PATHS = {
     'web': {'name': 'توسعه‌دهنده وب', 'icon': '💻', 'color': '#2563eb',
             'desc': 'برنامه‌نویسی، ساخت سایت و اپلیکیشن — مسیر پرمتقاضی بازار کار',
@@ -300,21 +304,46 @@ PATHS = {
 }
 
 
+def _get_talent_questions():
+    """سوالات استعدادیابی — از تنظیمات قابل ویرایش (JSON) با fallback به پیش‌فرض"""
+    try:
+        raw = (g.settings or {}).get('talent_questions') or ''
+        if raw:
+            data = json.loads(raw)
+            if isinstance(data, list) and data:
+                clean = []
+                for item in data:
+                    if not isinstance(item, dict) or not str(item.get('q', '')).strip():
+                        continue
+                    opts = []
+                    for o in item.get('o', []):
+                        if isinstance(o, (list, tuple)) and len(o) >= 2:
+                            opts.append((str(o[0]).strip(), str(o[1]).strip()))
+                    if len(opts) >= 2:
+                        clean.append({'q': str(item['q']).strip(), 'o': opts})
+                if clean:
+                    return clean
+    except Exception:
+        _lexc('blueprints/features.py')
+    return TALENT_DEFAULT_QUESTIONS
+
+
 @features_bp.route('/talent-test')
 def talent_test():
     g.seo['title'] = 'آزمون استعدادیابی — انتخاب مسیر شغلی | آکادمی آنلاین'
-    g.seo['description'] = 'با ۸ سوال کوتاه، استعداد و مسیر شغلی مناسب خود را کشف کنید.'
-    return render_template('features/talent_test.html', questions=TALENT_QUESTIONS)
+    g.seo['description'] = 'با چند سوال کوتاه، استعداد و مسیر شغلی مناسب خود را کشف کنید.'
+    return render_template('features/talent_test.html', questions=_get_talent_questions())
 
 
 @features_bp.route('/talent-test/result', methods=['POST'])
 def talent_result():
+    questions = _get_talent_questions()
     scores = {'web': 0, 'design': 0, 'marketing': 0, 'ai': 0}
-    for i, tq in enumerate(TALENT_QUESTIONS):
+    for i, tq in enumerate(questions):
         ans = request.form.get(f't_{i}')
         for text, path in tq['o']:
             if ans == text:
-                scores[path] += 1
+                scores[path] = scores.get(path, 0) + 1
     best = max(scores, key=scores.get)
     path = PATHS[best]
     if g.user:
@@ -523,6 +552,20 @@ def referral():
         .filter(WalletTransaction.detail.like('%ارجاع%') | WalletTransaction.detail.like('%معرفی%')) \
         .order_by(WalletTransaction.created_at.desc()).all()
     bonus_sum = sum(t.amount for t in bonuses)
+    # پاداش به‌ازای هر دعوت‌شده — مطابقت با نام/موبایل داخل متن تراکنش (جینجا test
+    # سفارشی «search» ندارد؛ محاسبه در پایتون امن‌تر و سریع‌تر است).
+    def _match_bonus(txn, user):
+        hay = (txn.detail or '') + ' '
+        if user.name and user.name in hay:
+            return True
+        if user.phone and user.phone in hay:
+            return True
+        if user.email and user.email in hay:
+            return True
+        return False
+    bonus_map = {}
+    for _u in invited_users:
+        bonus_map[_u.id] = sum(t.amount for t in bonuses if _match_bonus(t, _u))
     # رتبه افیلیت بر اساس مجموع خرید دعوت‌شده‌ها
     rank = 'نقره‌ای'
     if total_purchased >= 20_000_000:
@@ -539,7 +582,7 @@ def referral():
                            invited_orders=invited_orders, total_purchased=total_purchased,
                            bonuses=bonuses, bonus_sum=bonus_sum, rank=rank,
                            referral_percent=referral_percent,
-                           next_rank_gap=next_rank_gap)
+                           next_rank_gap=next_rank_gap, bonus_map=bonus_map)
 
 
 # ================================================================

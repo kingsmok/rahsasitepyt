@@ -751,6 +751,9 @@ def _mark_paid(order, ref, detail):
     except Exception:
         _lexc('blueprints/shop.py')
     db.session.commit()
+    # ⚠️ بدون return صریح، تابع None برمی‌گرداند و بررسی‌کننده‌های
+    # `if not _mark_paid(...)` (مثل تایید فیش) موفقیت را «شکست» می‌پنداشتند.
+    return True
 
 
 @shop_bp.route('/pay/result/<code>')

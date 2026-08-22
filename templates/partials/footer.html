@@ -56,10 +56,14 @@
       <span>© {{ fa(now.year) }} — تمامی حقوق برای {{ site.site_name or 'آکادمی آنلاین' }} محفوظ است.</span>
       <div class="socials">
         {# شبکه‌های اجتماعی فقط با آیدی واقعی — لینک به اکانت ناموجود سیگنال منفی است #}
-        {% if site.telegram %}<a href="https://t.me/{{ site.telegram }}" target="_blank" rel="noopener" title="تلگرام">{{ icon('brand-telegram', 18) }}</a>{% endif %}
-        {% if site.instagram %}<a href="https://instagram.com/{{ site.instagram }}" target="_blank" rel="noopener" title="اینستاگرام">{{ icon('brand-instagram', 18) }}</a>{% endif %}
-        {% if site.whatsapp %}<a href="https://wa.me/{{ site.whatsapp }}" target="_blank" rel="noopener" title="واتساپ">{{ icon('brand-whatsapp', 18) }}</a>{% endif %}
-        {% if site.youtube %}<a href="https://youtube.com/{{ site.youtube }}" target="_blank" rel="noopener" title="یوتیوب">{{ icon('brand-youtube', 18) }}</a>{% endif %}
+        {% if site.telegram %}<a href="https://t.me/{{ site.telegram }}" target="_blank" rel="noopener" title="تلگرام"><img src="/static/img/social/telegram.svg" alt="تلگرام" style="width:18px;height:18px"></a>{% endif %}
+        {% if site.instagram %}<a href="https://instagram.com/{{ site.instagram }}" target="_blank" rel="noopener" title="اینستاگرام"><img src="/static/img/social/instagram.svg" alt="اینستاگرام" style="width:18px;height:18px"></a>{% endif %}
+        {% if site.whatsapp %}<a href="https://wa.me/{{ site.whatsapp }}" target="_blank" rel="noopener" title="واتساپ"><img src="/static/img/social/whatsapp.svg" alt="واتساپ" style="width:18px;height:18px"></a>{% endif %}
+        {% if site.bale %}<a href="https://ble.ir/{{ site.bale }}" target="_blank" rel="noopener" title="بله"><img src="/static/img/social/bale.svg" alt="بله" style="width:18px;height:18px"></a>{% endif %}
+        {% if site.eitaa %}<a href="https://eitaa.com/{{ site.eitaa }}" target="_blank" rel="noopener" title="ایتا"><img src="/static/img/social/eitaa.svg" alt="ایتا" style="width:18px;height:18px"></a>{% endif %}
+        {% if site.rubika %}<a href="https://rubika.ir/{{ site.rubika }}" target="_blank" rel="noopener" title="روبیکا"><img src="/static/img/social/rubika.svg" alt="روبیکا" style="width:18px;height:18px"></a>{% endif %}
+        {% if site.aparat %}<a href="https://aparat.com/{{ site.aparat }}" target="_blank" rel="noopener" title="آپارات"><img src="/static/img/social/aparat.svg" alt="آپارات" style="width:18px;height:18px"></a>{% endif %}
+        {% if site.youtube %}<a href="https://youtube.com/{{ site.youtube }}" target="_blank" rel="noopener" title="یوتیوب"><img src="/static/img/social/youtube.svg" alt="یوتیوب" style="width:18px;height:18px"></a>{% endif %}
       </div>
     </div>
   </div>

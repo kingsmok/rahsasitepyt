@@ -277,7 +277,20 @@ class User(db.Model):
 
     @property
     def birth_jalali(self):
-        """تاریخ تولد شمسی استخراج‌شده از کد ملی — '۱۵ مرداد ۱۳۸۰'"""
+        """تاریخ تولد شمسی — اول از فیلد birth_date (که در پروفایل ثبت می‌شود)
+        و اگر خالی بود از کد ملی استخراج می‌شود: '۱۵ مرداد ۱۳۸۰'"""
+        bd = (self.birth_date or '').strip()
+        if bd:
+            try:
+                from jdates import g2j, fa
+                import re as _re
+                _m = _re.match(r'^(\d{4})-(\d{2})-(\d{2})', bd)
+                if _m:
+                    j = g2j(int(_m.group(1)), int(_m.group(2)), int(_m.group(3)))
+                    from jdates import MONTHS
+                    return fa(f'{j[2]} {MONTHS[j[1] - 1]} {j[0]}')
+            except Exception:
+                pass
         try:
             from validators import birth_jalali_str
             return birth_jalali_str(self.national_code)
@@ -1144,6 +1157,7 @@ class ContactMessage(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(120), nullable=False)
     email = db.Column(db.String(160))
+    phone = db.Column(db.String(20), default='')
     subject = db.Column(db.String(200))
     message = db.Column(db.Text, nullable=False)
     is_read = db.Column(db.Boolean, default=False)
@@ -1427,11 +1441,15 @@ ROLES = {
     'super_admin': dict(name='سوپر ادمین', fa='سوپر ادمین',
         permissions=['*']),
     'admin': dict(name='مدیر', fa='ادمین',
-        permissions=['dashboard', 'view_users', 'edit_users', 'manage_courses',
-                     'manage_builder', 'manage_pages', 'manage_bundles', 'view_orders',
-                     'approve_payments', 'manage_coupons', 'manage_blog', 'reply_tickets',
-                     'view_reports', 'manage_settings', 'manage_gateways', 'manage_sms',
-                     'manage_messengers', 'manage_seo', 'view_all_revenue', 'manage_roles']),
+        permissions=['dashboard', 'view_users', 'edit_users', 'register_students',
+                     'manage_courses', 'manage_builder', 'manage_pages', 'manage_bundles',
+                     'view_orders', 'approve_payments', 'manage_coupons', 'manage_blog',
+                     'reply_tickets', 'use_canned_replies', 'contact_users',
+                     'view_consultations', 'track_leads', 'view_daily_classes',
+                     'view_daily_tasks', 'view_user_courses', 'reply_questions',
+                     'grade_assignments', 'view_reports', 'manage_settings',
+                     'manage_gateways', 'manage_sms', 'send_sms', 'manage_messengers',
+                     'manage_seo', 'view_all_revenue', 'manage_roles']),
     'teacher': dict(name='مدرس', fa='استاد',
         permissions=['dashboard', 'edit_own_courses', 'view_own_students',
                      'reply_questions', 'grade_assignments', 'manage_own_quizzes',
@@ -1634,6 +1652,12 @@ class LiveSession(db.Model):
     starts_at = db.Column(db.DateTime, nullable=False)
     duration_min = db.Column(db.Integer, default=90)
     is_recorded = db.Column(db.Boolean, default=False)
+    # ضبط جلسه: لینک مستقیم/فایل محلی، نسخه HD و زیرنویس (srt/vtt)
+    video_url = db.Column(db.String(300), default='')       # لینک/فایل ضبط (کیفیت پایه)
+    video_url_hd = db.Column(db.String(300), default='')    # لینک نسخه HD (دکمه کیفیت)
+    captions = db.Column(db.String(300), default='')        # نام فایل زیرنویس داخل uploads/lessons
+    # باز شدن ضبط: 0 = فوری؛ n>0 یعنی n روز پس از برگزاری جلسه قابل مشاهده است
+    release_days = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=utcnow)
     course = db.relationship('Course')
 

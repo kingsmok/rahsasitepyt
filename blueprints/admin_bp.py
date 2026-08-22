@@ -48,6 +48,36 @@ def _save_lesson_file(f):
             'size': human_size(size)}
 
 
+def _save_lesson_captions(f):
+    """ذخیره فایل زیرنویس جلسه (srt/vtt) — فقط همین دو پسوند پذیرفته می‌شود.
+
+    خروجی: نام فایل ذخیره‌شده (برای فیلد captions) یا None.
+    """
+    if not f or not f.filename:
+        return None
+    _ext = os.path.splitext((f.filename or '').lower())[1]
+    if _ext not in ('.srt', '.vtt'):
+        return None
+    from uploads_helper import uploads_dir
+    up = uploads_dir('lessons')
+    # نام امن و یکتا — محتوای زیرنویس نباید قابل اجرا باشد (text فقط)
+    name = 'cap_' + uuid.uuid4().hex[:8] + _ext
+    path = os.path.join(up, name)
+    try:
+        _data = f.read(1024 * 1024)  # حداکثر ۱ مگابایت
+    except Exception:
+        _data = b''
+    if not _data or len(_data) > 1024 * 1024:
+        return None
+    # بررسی خام: نباید تگ/اسکریپت HTML داشته باشد
+    _low = _data[:2000].lower()
+    if b'<script' in _low or b'<!doctype' in _low or b'<html' in _low:
+        return None
+    with open(path, 'wb') as _out:
+        _out.write(_data)
+    return name
+
+
 def slugify(text):
     from models import make_slug
     return make_slug(text, fallback='')
@@ -555,9 +585,12 @@ def course_lessons(cid):
                         _vtype = _kind
                 except Exception:
                     _lexc('admin_bp.lesson_detect')
+                _cap = _save_lesson_captions(request.files.get('captions_file'))
                 db.session.add(Lesson(section_id=sec.id, title=title,
                                       video_type=_vtype,
                                       video_url=_vurl,
+                                      video_url_hd=request.form.get('video_url_hd', '').strip() or None,
+                                      captions=_cap,
                                       file_url=fl['url'] if fl else None,
                                       file_name=fl['name'] if fl else None,
                                       file_size=fl['size'] if fl else None,
@@ -585,6 +618,10 @@ def course_lessons(cid):
                 les.release_days = request.form.get('release_days', 0, type=int)
                 les.is_free = bool(request.form.get('is_free'))
                 les.content = request.form.get('content', '').strip()
+                les.video_url_hd = request.form.get('video_url_hd', '').strip() or None
+                _cap = _save_lesson_captions(request.files.get('captions_file'))
+                if _cap:
+                    les.captions = _cap
                 fl = _save_lesson_file(request.files.get('file'))
                 if fl:
                     les.file_url, les.file_name, les.file_size = fl['url'], fl['name'], fl['size']
@@ -763,6 +800,18 @@ def proof_verify(pid):
         db.session.add(proof)
         db.session.commit()
         flash(f'فیش سفارش {order.code} تایید و سفارش فعال شد. ✅', 'success')
+        # اطلاع‌رسانی به کاربر: فیش تایید و دسترسی فعال شد
+        # ⚠️ Notification.notify فقط add می‌کند — commit جدا لازم است وگرنه
+        # در پایان درخواست rollback می‌شود و کاربر هرگز اعلان نمی‌بیند.
+        try:
+            from models import Notification
+            if order.user_id:
+                Notification.notify(order.user_id, 'فیش واریزی تایید شد ✅',
+                                    f'سفارش {order.code} فعال شد و دوره‌های آن در حساب شما باز شد.',
+                                    '✅', url_for('student.orders'))
+                db.session.commit()
+        except Exception:
+            _lexc('blueprints/admin_bp.py')
     elif action == 'reject':
         proof.status = 'rejected'
         proof.admin_note = request.form.get('note', '')
@@ -770,6 +819,17 @@ def proof_verify(pid):
         order.status = 'pending'
         db.session.commit()
         flash('فیش رد شد و سفارش به حالت در انتظار بازگشت.', 'info')
+        try:
+            from models import Notification
+            if order.user_id:
+                _note = (request.form.get('note') or '').strip()
+                Notification.notify(order.user_id, 'فیش واریزی رد شد ❌',
+                                    f'سفارش {order.code} قابل تایید نبود. لطفاً فیش جدید ثبت کنید یا با پشتیبانی تماس بگیرید.'
+                                    + (f' دلیل: {_note[:150]}' if _note else ''),
+                                    '❌', url_for('student.orders'))
+                db.session.commit()
+        except Exception:
+            _lexc('blueprints/admin_bp.py')
     return redirect(safe_referrer(url_for('admin.orders')))
 
 
@@ -972,15 +1032,37 @@ def designs():
                 db.session.add(Setting(key=field, value=value))
             db.session.commit()
             flash('طراحی انتخابی ذخیره شد ✅', 'success')
+        if field == 'home_page_slug':
+            # انتخاب هر صفحهٔ صفحه‌ساز به عنوان صفحه اصلی سایت
+            if value:
+                from models import Page as _Pg
+                pg = _Pg.query.filter_by(slug=value).first()
+                if not pg:
+                    flash('صفحه انتخابی پیدا نشد.', 'error')
+                    return redirect(url_for('admin.designs'))
+            s = db.session.get(Setting, field)
+            if value:
+                if s:
+                    s.value = value
+                else:
+                    db.session.add(Setting(key=field, value=value))
+            elif s:
+                db.session.delete(s)
+            db.session.commit()
+            flash('صفحه اصلی سایت انتخاب شد ✅', 'success')
         return redirect(url_for('admin.designs'))
     cur_site = db.session.get(Setting, 'site_design')
     cur_site = cur_site.value if cur_site else '1'
+    _hp_row = db.session.get(Setting, 'home_page_slug')
+    cur_home_page = _hp_row.value if _hp_row else ''
+    pages = Page.query.order_by(Page.ptype, Page.title).all()
     return render_template('admin/designs.html',
                            persian_themes=PERSIAN_THEMES, categories=CATEGORIES,
                            home_designs=HOME_DESIGNS, home_names=HOME_DESIGN_NAMES,
                            site_designs=SITE_DESIGNS,
                            cur_site=cur_site,
                            cur_home=db.session.get(Setting, 'home_design').value if db.session.get(Setting, 'home_design') else '1',
+                           cur_home_page=cur_home_page, pages=pages,
                            cur_about=db.session.get(Setting, 'about_design').value if db.session.get(Setting, 'about_design') else '1',
                            cur_contact=db.session.get(Setting, 'contact_design').value if db.session.get(Setting, 'contact_design') else '1')
 
@@ -1356,6 +1438,57 @@ def submission_grade(sid):
 # ================================================================
 # پرسش‌های درسی
 # ================================================================
+@admin_bp.route('/talent-test', methods=['GET', 'POST'])
+@admin_required
+def talent_test_admin():
+    """ویرایش سوالات آزمون استعدادیابی — ذخیره در تنظیمات (JSON)"""
+    import json as _json
+    if request.method == 'POST':
+        action = request.form.get('action')
+        if action == 'save':
+            questions = []
+            qs = request.form.getlist('q[]')
+            for qi, qtext in enumerate(qs):
+                qtext = (qtext or '').strip()
+                opts = []
+                for oi in range(4):
+                    text = request.form.get(f'o[{qi}][{oi}]', '').strip()
+                    path = request.form.get(f'p[{qi}][{oi}]', '').strip()
+                    if text and path in ('web', 'design', 'marketing', 'ai'):
+                        opts.append([text, path])
+                if qtext and len(opts) >= 2:
+                    questions.append({'q': qtext[:300], 'o': opts})
+            s = db.session.get(Setting, 'talent_questions')
+            if questions:
+                val = _json.dumps(questions, ensure_ascii=False)
+                if s:
+                    s.value = val
+                else:
+                    db.session.add(Setting(key='talent_questions', value=val))
+            elif s:
+                db.session.delete(s)
+            db.session.commit()
+            flash('سوالات استعدادیابی ذخیره شد.', 'success')
+        elif action == 'reset':
+            s = db.session.get(Setting, 'talent_questions')
+            if s:
+                db.session.delete(s)
+                db.session.commit()
+            flash('سوالات به حالت پیش‌فرض برگشت.', 'info')
+        return redirect(url_for('admin.talent_test_admin'))
+    try:
+        _row = db.session.get(Setting, 'talent_questions')
+        questions = _json.loads(_row.value) if _row and _row.value else None
+    except Exception:
+        questions = None
+    if not isinstance(questions, list):
+        from blueprints.features import TALENT_DEFAULT_QUESTIONS
+        questions = [{'q': t['q'], 'o': [[text, path] for text, path in t['o']]}
+                     for t in TALENT_DEFAULT_QUESTIONS]
+    paths = [('web', 'توسعه وب'), ('design', 'طراحی'), ('marketing', 'بازاریابی'), ('ai', 'هوش مصنوعی')]
+    return render_template('admin/talent_test.html', questions=questions, paths=paths)
+
+
 @admin_bp.route('/lesson-questions')
 @admin_required
 def lesson_questions():
@@ -2051,8 +2184,11 @@ def menu_edit(mid):
         db.session.commit()
         flash('منو به‌روزرسانی شد.', 'success')
         return redirect(url_for('admin.menus'))
-    raw = '\n'.join(f"{i.label}|{i.url}|{i.icon}|{i.roles}" for i in m.items)
-    return render_template('admin/menu_edit.html', m=m, raw=raw)
+    ordered = sorted(m.items, key=lambda it: it.sort or 0)
+    idx_of = {it.id: n + 1 for n, it in enumerate(ordered)}
+    items = [dict(label=it.label, url=it.url, icon=it.icon, roles=it.roles,
+                   parent_idx=idx_of.get(it.parent_id, '')) for it in ordered]
+    return render_template('admin/menu_edit.html', m=m, items=items)
 
 
 @admin_bp.route('/menus/<int:mid>/toggle', methods=['POST'])
@@ -2412,9 +2548,33 @@ def course_students_export(cid):
 def live_sessions():
     from datetime import datetime as _dt
     if request.method == 'POST':
+        action = request.form.get('action', 'create')
         title = request.form.get('title', '').strip()
         link = request.form.get('link', '').strip()
         starts = request.form.get('starts_at', '').strip()
+        _cap = _save_lesson_captions(request.files.get('captions_file'))
+        if action == 'edit' and request.form.get('sid', type=int):
+            sess = db.session.get(LiveSession, request.form.get('sid', type=int))
+            if sess and title:
+                sess.title = title
+                sess.description = request.form.get('description', '').strip()
+                sess.link = link or None
+                sess.duration_min = request.form.get('duration_min', 90, type=int)
+                sess.course_id = request.form.get('course_id', type=int) or None
+                sess.is_recorded = bool(request.form.get('is_recorded'))
+                sess.video_url = (request.form.get('video_url', '').strip() or None)
+                sess.video_url_hd = (request.form.get('video_url_hd', '').strip() or None)
+                sess.release_days = request.form.get('release_days', 0, type=int) or 0
+                if _cap:
+                    sess.captions = _cap
+                if starts:
+                    try:
+                        sess.starts_at = _dt.strptime(starts, '%Y-%m-%dT%H:%M')
+                    except Exception:
+                        pass
+                db.session.commit()
+                flash('کلاس آنلاین به‌روزرسانی شد. 🎥', 'success')
+            return redirect(url_for('admin.live_sessions'))
         if title and starts:
             try:
                 dt = _dt.strptime(starts, '%Y-%m-%dT%H:%M')
@@ -2422,7 +2582,11 @@ def live_sessions():
                                           title=title, description=request.form.get('description', '').strip(),
                                           link=link or None, starts_at=dt,
                                           duration_min=request.form.get('duration_min', 90, type=int),
-                                          is_recorded=bool(request.form.get('is_recorded'))))
+                                          is_recorded=bool(request.form.get('is_recorded')),
+                                          video_url=request.form.get('video_url', '').strip() or None,
+                                          video_url_hd=request.form.get('video_url_hd', '').strip() or None,
+                                          captions=_cap,
+                                          release_days=request.form.get('release_days', 0, type=int) or 0))
                 db.session.commit()
                 flash('کلاس آنلاین ساخته شد. 🎥', 'success')
             except Exception:
@@ -2949,7 +3113,7 @@ def super_settings():
                 'competitive_prices', 'shipping_flat_rate', 'shipping_note',
                 # صفحه‌ساز و طراحی
                 'kit_container', 'kit_radius', 'site_design', 'home_design',
-                'about_design', 'contact_design',
+                'about_design', 'contact_design', 'home_page_slug',
                 # امنیت و نگهداری
                 'maintenance', 'allow_register', 'allow_phone_login',
                 'admin_2fa_enabled', 'exam_enabled', 'spin_enabled',

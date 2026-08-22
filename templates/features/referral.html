@@ -1,6 +1,8 @@
 {% extends 'base.html' %}
 {% block title %}{{ seo.title or "دعوت دوستان" }}{% endblock %}
 {% block content %}
+{% include 'partials/account_nav.html' %}
+
 <section class="section" style="padding-top:30px">
   <div class="container" style="max-width:820px">
     <nav class="breadcrumb" aria-label="مسیر صفحه">
@@ -16,7 +18,7 @@
         <small class="text-3" style="display:block;margin-bottom:6px">لینک اختصاصی شما</small>
         <div class="flex gap-1">
           <input id="ref-link" class="form-control" value="{{ link }}" dir="ltr" readonly style="flex:1;font-size:12.5px">
-          <button class="btn btn-primary" type="button" onclick="navigator.clipboard.writeText(document.getElementById('ref-link').value);this.textContent='✅ کپی شد'">📋 کپی</button>
+          <button class="btn btn-primary" type="button" id="ref-copy-btn" onclick="var b=this,inp=document.getElementById('ref-link');copyText(inp.value).then(function(){b.textContent='✅ کپی شد';setTimeout(function(){b.textContent='📋 کپی';},2200);}).catch(function(){inp.select();inp.setSelectionRange(0,9999);b.textContent='خودتان کپی کنید (Ctrl+C)';});">📋 کپی</button>
         </div>
       </div>
 
@@ -63,8 +65,8 @@
                 {% else %}<span class="badge" style="background:#fef3c7;color:#b45309">در انتظار خرید</span>{% endif %}
               </td>
               <td class="text-primary" style="font-weight:800">
-                {% set my_bonus = bonuses|selectattr('detail', 'search', u.name)|list %}
-                {{ fa('{:,.0f}'.format(my_bonus|sum(attribute='amount'))) }} تومان
+                {% set my_bonus = bonus_map.get(u.id, 0) %}
+                {{ fa('{:,.0f}'.format(my_bonus)) }} تومان
               </td>
             </tr>
             {% endfor %}

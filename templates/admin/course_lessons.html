@@ -66,17 +66,17 @@
               </select>
               <input class="form-control" name="video_url" value="{{ l.video_url or '' }}" placeholder="نام فایل محلی یا لینک ویدیو" dir="ltr" style="grid-column:1/-1">
               <small class="form-hint" style="grid-column:1/-1">نام فایل داخل static/video با لینک امضاشده پخش می‌شود؛ لینک خارجی تابع سیاست همان میزبان است.</small>
+              <input class="form-control" name="video_url_hd" value="{{ l.video_url_hd or '' }}" placeholder="لینک نسخه HD (برای دکمه کیفیت)" dir="ltr" style="grid-column:1/-1">
               <input class="form-control" name="duration" value="{{ l.duration }}" placeholder="00:10:00" dir="ltr">
+              <input class="form-control" type="number" name="release_days" value="{{ l.release_days or 0 }}" min="0" title="روز بعد از ثبت‌نام باز شود (0=فوری)">
               <label for="f_file_1" class="form-check" style="align-self:center"><input type="checkbox" name="is_free" {{ 'checked' if l.is_free }}> رایگان</label>
+              <label class="form-check" style="align-self:center"><input type="checkbox" name="keep_captions" {{ 'checked' if l.captions }}> زیرنویس: {{ l.captions or '—' }}</label>
               <input id="f_file_1" class="form-control" type="file" name="file" accept=".zip,.rar,.pdf,.csv,.xlsx,.sql,.txt,.py,.ipynb" style="grid-column:1/-1;font-size:12px">
+              <input class="form-control" type="file" name="captions_file" accept=".srt,.vtt" title="فایل زیرنویس (srt/vtt)" style="grid-column:1/-1;font-size:12px">
               <textarea class="form-control" name="content" placeholder="توضیحات جلسه (اختیاری)" style="grid-column:1/-1;min-height:60px">{{ l.content or '' }}</textarea>
               <button class="btn btn-primary btn-sm" type="submit" style="grid-column:1/-1">💾 ذخیره تغییرات جلسه</button>
             </form>
-          </div><div class="form-group" style="margin-bottom:6px"><label style="font-size:11.5px">لینک نسخه HD (اختیاری)</label>
-      <input class="form-control" name="video_url_hd" placeholder="https://... (برای دکمه کیفیت)" style="padding:6px 8px" dir="ltr"></div>
-      <div class="form-group" style="margin-bottom:6px"><label style="font-size:11.5px">فایل زیرنویس (srt/vtt)</label>
-      <input class="form-control" type="file" name="captions_file" accept=".srt,.vtt" style="padding:6px 8px"></div><div class="form-group" style="margin-bottom:6px"><label style="font-size:11.5px">باز شدن (روز بعد از ثبت‌نام — 0=فوری)</label>
-      <input class="form-control" type="number" name="release_days" value="0" min="0" style="padding:6px 8px"></div>
+          </div>
         </div>
         {% endfor %}
       </div>
@@ -98,9 +98,13 @@
           <input class="form-control" name="duration" placeholder="مدت 00:10:00" dir="ltr">
           <input class="form-control" name="video_url" placeholder="نام فایل داخل static/video یا لینک یوتیوب/آپارات/مستقیم" dir="ltr" style="grid-column:1/-1">
           <small class="form-hint" style="grid-column:1/-1">برای کنترل دسترسی بهتر، نام فایل محلی وارد کنید؛ ذخیره مطلق ویدیو در مرورگر قابل تضمین نیست.</small>
+          <input class="form-control" name="video_url_hd" placeholder="لینک نسخه HD (اختیاری — برای دکمه کیفیت)" dir="ltr" style="grid-column:1/-1">
+          <input class="form-control" type="file" name="captions_file" accept=".srt,.vtt" title="فایل زیرنویس (srt/vtt)" style="grid-column:1/-1;font-size:12px">
           <input class="form-control" type="file" name="file" accept=".zip,.rar,.pdf,.csv,.xlsx,.sql,.txt,.py,.ipynb" style="grid-column:1/-1;font-size:12px">
           <textarea class="form-control" name="content" placeholder="توضیحات جلسه (اختیاری)" style="grid-column:1/-1;min-height:60px"></textarea>
           <label class="form-check" style="align-self:center"><input type="checkbox" name="is_free"> جلسه رایگان</label>
+          <div class="form-group" style="margin:0"><label style="font-size:11.5px">باز شدن (روز بعد از ثبت‌نام — 0=فوری)</label>
+          <input class="form-control" type="number" name="release_days" value="0" min="0"></div>
           <button class="btn btn-primary" type="submit">افزودن جلسه</button>
         </form>
       </details>

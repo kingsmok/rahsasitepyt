@@ -1,0 +1,75 @@
+{% extends 'admin/base.html' %}
+{% block atitle %}آزمون استعدادیابی{% endblock %}
+{% block acontent %}
+<div class="dash-head">
+  <div>
+    <h1>🧠 آزمون استعدادیابی</h1>
+    <p>سوالات و گزینه‌های آزمون را ویرایش کنید — هر گزینه به یک مسیر شغلی متصل است.</p>
+  </div>
+</div>
+
+<form method="post" id="talent-form">
+<input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+<input type="hidden" name="action" value="save">
+<div id="talent-questions">
+  {% for tq in questions %}
+  {% set qi = loop.index0 %}
+  <div class="card talent-q" style="padding:18px;margin-bottom:16px">
+    <div class="flex between mb-2">
+      <strong>سوال {{ fa(loop.index) }}</strong>
+      <button type="button" class="btn btn-danger btn-sm" onclick="this.closest('.talent-q').remove()">🗑 حذف سوال</button>
+    </div>
+    <div class="form-group">
+      <input class="form-control" name="q[]" value="{{ tq.q }}" placeholder="متن سوال" required>
+    </div>
+    {% for o in tq.o %}
+    {% set text = o[0] if o is iterable and o is not string else o %}
+    {% set path = o[1] if o is iterable and o is not string else '' %}
+    <div class="grid" style="grid-template-columns:1fr 150px;gap:8px;margin-bottom:8px">
+      <input class="form-control" name="o[{{ qi }}][{{ loop.index0 }}]" value="{{ text }}" placeholder="گزینه {{ fa(loop.index) }}">
+      <select class="form-control" name="p[{{ qi }}][{{ loop.index0 }}]">
+        {% for pid, pname in paths %}
+        <option value="{{ pid }}" {{ 'selected' if path == pid }}>{{ pname }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endfor %}
+  </div>
+  {% endfor %}
+</div>
+
+<div class="flex gap-2" style="margin-top:6px">
+  <button type="button" class="btn btn-ghost" id="talent-add-q">➕ افزودن سوال</button>
+  <button class="btn btn-primary" type="submit">💾 ذخیره سوالات</button>
+  <button class="btn btn-ghost" type="submit" name="action" value="reset" onclick="return confirm('بازگشت به سوالات پیش‌فرض؟')">↺ بازگشت به پیش‌فرض</button>
+</div>
+</form>
+
+<script>
+(function(){
+  var box = document.getElementById('talent-questions');
+  var add = document.getElementById('talent-add-q');
+  if (!box || !add) return;
+  add.addEventListener('click', function(){
+    var div = document.createElement('div');
+    div.className = 'card talent-q';
+    div.style.cssText = 'padding:18px;margin-bottom:16px';
+    var idx = box.querySelectorAll('.talent-q').length;
+    var paths = {{ paths|tojson }};
+    var opts = '';
+    paths.forEach(function(p, i){
+      opts += '<div style="display:grid;grid-template-columns:1fr 150px;gap:8px;margin-bottom:8px">'
+        + '<input class="form-control" name="o[' + idx + '][' + i + ']" placeholder="گزینه ' + (i+1) + '">'
+        + '<select class="form-control" name="p[' + idx + '][' + i + ']">'
+        + paths.map(function(x){ return '<option value="' + x[0] + '"' + (x[0]===p[0]?' selected':'') + '>' + x[1] + '</option>'; }).join('')
+        + '</select></div>';
+    });
+    div.innerHTML = '<div class="flex between mb-2"><strong>سوال ' + (idx+1) + '</strong>'
+      + '<button type="button" class="btn btn-danger btn-sm" onclick="this.closest(\'.talent-q\').remove()">🗑 حذف سوال</button></div>'
+      + '<div class="form-group"><input class="form-control" name="q[]" placeholder="متن سوال" required></div>'
+      + opts;
+    box.appendChild(div);
+  });
+})();
+</script>
+{% endblock %}

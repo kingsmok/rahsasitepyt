@@ -238,8 +238,55 @@ HOME_DESIGNS = {
                         {'id': 'd5_exam', 'settings': {'gap': 0, 'py': 40}, 'cols': [[
                 {'id': 'd5_we', 'type': 'exam_cta', 'data': {'title': 'آماده آزمون کنکور؟ 🎯', 'text': 'با شبیه‌ساز آزمون، سوالات تصادفی از بانک سوال را با تایمر تمرین کن.'}}]],
             },
-{'id': 'd5_cta', 'settings': {'gap': 0, 'py': 30}, 'cols': [[
+            {'id': 'd5_cta', 'settings': {'gap': 0, 'py': 30}, 'cols': [[
                 {'id': 'd5_w8', 'type': 'cta', 'data': {'title': 'حساب یادگیری خود را بسازید 🎓', 'text': 'ثبت‌نام کنید و دوره‌های منتشرشده را در یک پنل مدیریت کنید.', 'btn_text': 'ثبت‌نام', 'btn_url': '/auth/register'}}]],
+            },
+        ]),
+
+    '6': dict(
+        title='صفحه اصلی — فرادرس/لیموناد',
+        desc='هیرو با نوار جستجو + دسته‌ها + کارت‌های درشت دوره + آمار + اساتید + خبرنامه (الهام‌گرفته از فرادرس و لیموناد)',
+        settings={'seo_title': 'آکادمی آنلاین — آموزش آنلاین با ضبط جلسات و گواهی معتبر'},
+        rows=[
+            {'id': 'd6_hero', 'settings': {'gap': 0, 'py': 0}, 'cols': [[
+                {'id': 'd6_w1', 'type': 'slider', 'data': {
+                    'height': '500', 'overlay': '70', 'radius': '0', 'autoplay': False,
+                    'interval': '6', 'dots': False, 'arrows': False, 'swipe': True,
+                    'search': True,
+                    'search_hint': 'مثلاً «پایتون» — جستجو در عنوان و سرفصل دوره‌ها',
+                    'slides': [
+                        {'img': 'hero.webp', 'title': 'همین امروز یادگیری را شروع کنید', 'sub': 'آموزش‌های گام‌به‌گام فارسی با پروژه واقعی، مدرس متخصص و گواهی قابل استعلام', 'align': 'center'},
+                        {'img': 'cover-python.webp', 'title': 'از صفر تا اولین پروژه', 'sub': 'مسیر یادگیری منظم با تمرین و پشتیبانی تیکت', 'btn_text': 'مشاهده همه دوره‌ها', 'btn_url': '/courses', 'align': 'center'},
+                    ]}}]],
+            },
+            {'id': 'd6_cats', 'settings': {'gap': 14, 'py': 56, 'bg': '#ffffff', 'radius': 0}, 'cols': [[
+                {'id': 'd6_w2', 'type': 'categories', 'data': {'title': 'موضوع موردعلاقه‌ات را انتخاب کن', 'limit': '12', 'columns': '6'}}]],
+            },
+            {'id': 'd6_courses', 'settings': {'gap': 24, 'py': 64}, 'cols': [[
+                {'id': 'd6_w3', 'type': 'courses', 'data': {'title': 'جدیدترین دوره‌های آموزشی', 'subtitle': 'سرفصل، مدرس و نظرات دانشجویان را ببینید و مقایسه کنید', 'limit': '9', 'columns': '3', 'sort': 'newest', 'link_text': 'مشاهده همه دوره‌ها', 'link_url': '/courses'}}]],
+            },
+            {'id': 'd6_feat', 'settings': {'gap': 22, 'py': 56, 'bg': '#ffffff', 'radius': 0}, 'cols': [[
+                {'id': 'd6_w4', 'type': 'feature', 'data': {'columns': '4', 'items': [
+                    {'icon': '🎬', 'title': 'ضبط جلسات', 'text': 'جلسات برگزارشده با زیرنویس در همان‌جا پخش می‌شود'},
+                    {'icon': '🏅', 'title': 'گواهی معتبر', 'text': 'کد رهگیری منحصربه‌فرد و قابل استعلام'},
+                    {'icon': '👨‍🏫', 'title': 'مدرس متخصص', 'text': 'معرفی کامل مدرس پیش از ثبت‌نام'},
+                    {'icon': '💬', 'title': 'پشتیبانی تیکت', 'text': 'پیگیری درخواست از داخل حساب کاربری'}]}}]],
+            },
+            {'id': 'd6_stats', 'settings': {'gap': 0, 'py': 50}, 'cols': [[
+                {'id': 'd6_w5', 'type': 'stats', 'data': {'columns': '4', 'items': [
+                    {'value': '{courses}', 'label': 'دوره آموزشی'},
+                    {'value': '{students}', 'label': 'دانشجوی فعال'},
+                    {'value': '{hours}', 'label': 'ساعت آموزش'},
+                    {'value': '{lessons}', 'label': 'درس منتشرشده'}]}}]],
+            },
+            {'id': 'd6_teach', 'settings': {'gap': 22, 'py': 60}, 'cols': [[
+                {'id': 'd6_w6', 'type': 'teachers', 'data': {'title': 'اساتید آکادمی', 'limit': '4', 'columns': '4'}}]],
+            },
+            {'id': 'd6_stories', 'settings': {'gap': 22, 'py': 60}, 'cols': [[
+                {'id': 'd6_ws', 'type': 'success_stories', 'data': {'title': '🌟 داستان‌های موفقیت دانشجویان', 'limit': '3'}}]],
+            },
+            {'id': 'd6_news', 'settings': {'gap': 0, 'py': 56, 'bg': '#ffffff', 'radius': 0}, 'cols': [[
+                {'id': 'd6_w7', 'type': 'newsletter', 'data': {'title': 'از تخفیف‌ها و دوره‌های جدید زودتر باخبر شو', 'text': 'عضویت در خبرنامه — بدون اسپم، انصراف یک‌کلیکی', 'btn_text': 'عضویت خبرنامه'}}]],
             },
         ]),
 }

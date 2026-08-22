@@ -19,12 +19,15 @@
   <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
   <div class="grid" style="grid-template-columns:1fr 1fr;gap:14px">
     <div class="form-group"><label for="contact-name">نام و نام خانوادگی <span class="req">*</span></label><input id="contact-name" class="form-control" name="name" value="{{ request.form.get('name','') }}" autocomplete="name" required></div>
-    <div class="form-group"><label for="contact-email">ایمیل</label><input id="contact-email" class="form-control" type="email" name="email" value="{{ request.form.get('email','') }}" autocomplete="email" dir="ltr"></div>
+    <div class="form-group"><label for="contact-phone">شماره تماس</label><input id="contact-phone" class="form-control" name="phone" value="{{ request.form.get('phone','') }}" inputmode="numeric" pattern="09[0-9]{9}" title="شماره موبایل ۱۱ رقمی" dir="ltr" placeholder="09123456789"></div>
   </div>
-  <div class="form-group"><label for="contact-subject">موضوع</label>
-    <select id="contact-subject" class="form-control" name="subject">
-      {% for option in ['سوال درباره دوره‌ها','همکاری با مجموعه','پیشنهاد و انتقاد','مشکل در پرداخت','سایر'] %}<option {{ 'selected' if request.form.get('subject') == option }}>{{ option }}</option>{% endfor %}
-    </select>
+  <div class="grid" style="grid-template-columns:1fr 1fr;gap:14px">
+    <div class="form-group"><label for="contact-email">ایمیل</label><input id="contact-email" class="form-control" type="email" name="email" value="{{ request.form.get('email','') }}" autocomplete="email" dir="ltr"></div>
+    <div class="form-group"><label for="contact-subject">موضوع</label>
+      <select id="contact-subject" class="form-control" name="subject">
+        {% for option in ['سوال درباره دوره‌ها','همکاری با مجموعه','پیشنهاد و انتقاد','مشکل در پرداخت','سایر'] %}<option {{ 'selected' if request.form.get('subject') == option }}>{{ option }}</option>{% endfor %}
+      </select>
+    </div>
   </div>
   <div class="form-group"><label for="contact-message">متن پیام <span class="req">*</span></label><textarea id="contact-message" class="form-control" name="message" style="min-height:145px" required>{{ request.form.get('message','') }}</textarea></div>
   {{ captcha_box() }}

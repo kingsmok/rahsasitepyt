@@ -69,7 +69,7 @@
     {% for item in o.items %}
     {% set obj = item.course or item.product %}
     <div class="cart-row" style="padding:10px 4px">
-      {% if obj and obj.image %}<img class="c-thumb" src="{{ obj.image_url if item.product else '/static/img/' + obj.image }}" alt="" style="width:84px;height:52px">{% endif %}
+      {% if obj and obj.image %}<img class="c-thumb" src="{{ obj.image_url }}" alt="" style="width:84px;height:52px;object-fit:cover">{% endif %}
       <div class="c-info"><h4 style="font-size:13.5px">{{ obj.title if obj else 'آیتم حذف‌شده' }}</h4><small class="text-3">{{ 'دوره' if item.course else 'محصول فیزیکی' }} — {{ fa(item.quantity or 1) }} عدد</small></div>
       <span class="price" style="font-size:13.5px">{{ fa('{:,.0f}'.format(item.price * (item.quantity or 1))) }} <small class="text-3" style="font-size:11px">تومان</small></span>
     </div>

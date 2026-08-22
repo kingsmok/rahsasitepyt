@@ -37,6 +37,10 @@
           <span class="as-badge">{{ admin_badge_orders }}</span>
           {% elif ep == 'admin.forum_moderate' and admin_badge_forum %}
           <span class="as-badge">{{ admin_badge_forum }}</span>
+          {% elif ep == 'admin.chat' and admin_badge_chat %}
+          <span class="as-badge as-badge-chat">{{ admin_badge_chat }}</span>
+          {% elif ep == 'admin.proofs' and admin_badge_proofs %}
+          <span class="as-badge">{{ admin_badge_proofs }}</span>
           {% endif %}
         </a>
         {% endfor %}
@@ -81,6 +85,8 @@
               <span>🛒 سفارش‌های در انتظار</span><b data-alarm-orders>۰</b></a>
             <a class="admin-alarm__row" data-alarm-link="proofs" href="{{ url_for('admin.proofs') }}">
               <span>🧾 فیش‌های بررسی‌نشده</span><b data-alarm-proofs>۰</b></a>
+            <a class="admin-alarm__row" data-alarm-link="chat" href="{{ url_for('admin.chat') }}">
+              <span>💬 پیام‌های چت آنلاین</span><b data-alarm-chat>۰</b></a>
             <div class="admin-alarm__empty" data-alarm-empty hidden>✅ همه چیز رسیدگی شده است</div>
           </div>
         </div>

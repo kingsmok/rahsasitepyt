@@ -1,47 +1,248 @@
 {% extends 'admin/base.html' %}
 {% block atitle %}ویرایش منو{% endblock %}
 {% block acontent %}
-<div class="dash-head"><div><h1>🧭 {{ m.title }}</h1><p>آیتم‌ها — هر خط: برچسب | آدرس | آیکون | نقش‌ها</p></div><a class="btn btn-ghost" href="{{ url_for('admin.menus') }}">← منوها</a></div>
-<div class="card" style="padding:24px;max-width:760px">
-  <form method="post">
-    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
-    <div class="grid" style="grid-template-columns:2fr 1fr 1fr;gap:14px">
-      <div class="form-group"><label>عنوان</label><input class="form-control" name="title" value="{{ m.title }}" required></div>
-      <div class="form-group"><label>موقعیت</label>
-        <select class="form-control" name="location">
-          {% for loc, name in [('main','هدر'),('footer','فوتر'),('mobile','موبایل'),('user','پنل کاربری')] %}
-          <option value="{{ loc }}" {{ 'selected' if m.location == loc }}>{{ name }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="form-check" style="align-self:end;margin-bottom:18px"><label><input type="checkbox" name="is_active" {{ 'checked' if m.is_active }}> فعال</label></div>
-    </div>
-    <div class="form-group">
-      <label>آیتم‌های منو</label>
-      <textarea class="form-control" name="items_raw" rows="12" dir="rtl">{{ raw }}</textarea>
-      <p class="form-hint">فرمت: برچسب | آدرس | آیکون | نقش‌ها | شماره خط والد (خالی = سطح اول) — زیرمنو با والد پشتیبانی می‌شود</p>
-    </div>
-    <button class="btn btn-primary" type="submit">💾 ذخیره منو</button>
-  </form>
-  <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
-    <h3 style="font-size:13px;margin-bottom:8px">👁 پیش‌نمایش (بر اساس نقش)</h3>
-    <div style="display:flex;gap:14px;flex-wrap:wrap">
-      {% for role in ['guest', 'student', 'teacher', 'admin'] %}
-      <div class="card" style="padding:12px;background:var(--bg-2);border:none;min-width:180px">
-        <small class="text-3" style="display:block;margin-bottom:6px">{{ {'guest':'مهمان','student':'دانشجو','teacher':'استاد','admin':'ادمین'}[role] }}</small>
-        {% for i in m.items if not i.parent_id %}
-          {% set roles = i.roles.split(',') if i.roles else [] %}
-          {% if (role == 'guest' and not roles) or role in roles %}
-          <div style="font-size:12.5px;padding:3px 0">{{ i.icon or '•' }} {{ i.label }}
-            {% for ch in m.items if ch.parent_id == i.id %}
-            <div style="padding-right:14px;font-size:11.5px;color:var(--text-2)">└ {{ ch.icon or '•' }} {{ ch.label }}</div>
+<div class="dash-head"><div><h1>🧭 منوساز — {{ m.title }}</h1><p>آیتم اضافه کنید، جابه‌جا کنید، زیرمنو بسازید و ذخیره کنید</p></div><a class="btn btn-ghost" href="{{ url_for('admin.menus') }}">← منوها</a></div>
+
+<div class="grid" style="grid-template-columns:1.6fr 1fr;gap:18px;align-items:start">
+  <div class="card" style="padding:22px">
+    <form method="post" id="menu-form">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="items_raw" id="items_raw" value="">
+      <div class="grid" style="grid-template-columns:2fr 1fr 1fr;gap:14px">
+        <div class="form-group"><label>عنوان</label><input class="form-control" name="title" value="{{ m.title }}" required></div>
+        <div class="form-group"><label>موقعیت</label>
+          <select class="form-control" name="location">
+            {% for loc, name in [('main','هدر (اصلی)'),('footer','فوتر'),('mobile','موبایل'),('user','پنل کاربری')] %}
+            <option value="{{ loc }}" {{ 'selected' if m.location == loc }}>{{ name }}</option>
             {% endfor %}
-          </div>
-          {% endif %}
+          </select>
+        </div>
+        <div class="form-check" style="align-self:end;margin-bottom:18px"><label><input type="checkbox" name="is_active" {{ 'checked' if m.is_active }}> فعال</label></div>
+      </div>
+
+      <div class="flex between" style="margin-bottom:10px">
+        <label style="font-weight:800;font-size:14px">آیتم‌های منو</label>
+        <div class="flex gap-1">
+          <select id="preset" class="form-control" style="width:auto;padding:6px 10px;font-size:12.5px">
+            <option value="">➕ افزودن آیتم آماده…</option>
+            <option value="خانه|/|🏠|">خانه — /</option>
+            <option value="دوره‌ها|/courses|📚|">دوره‌ها — /courses</option>
+            <option value="وبلاگ|/blog|✍️|">وبلاگ — /blog</option>
+            <option value="دوره‌های من|/dashboard/my-courses|📖|student">دوره‌های من (دانشجو)</option>
+            <option value="کیف پول|/wallet|👛|student">کیف پول (دانشجو)</option>
+            <option value="پنل مدیریت|/admin/|⚙️|admin">پنل مدیریت (ادمین)</option>
+            <option value="پنل مدرس|/teacher-panel|👨‍🏫|teacher">پنل مدرس</option>
+            <option value="درباره ما|/about|ℹ️|">درباره ما</option>
+            <option value="تماس با ما|/contact|📨|">تماس با ما</option>
+            <option value="سوالات متداول|/faq|❓|">سوالات متداول</option>
+            <option value="ثبت‌نام|/auth/register|📝|">ثبت‌نام</option>
+            <option value="ورود|/auth/login|🔑|">ورود</option>
+          </select>
+          <button type="button" class="btn btn-primary btn-sm" id="add-preset">افزودن</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="add-blank">+ آیتم خالی</button>
+        </div>
+      </div>
+
+      <div id="menu-items" style="display:flex;flex-direction:column;gap:8px"></div>
+      <p class="form-hint" style="margin-top:8px">برای زیرمنو، «والد» آیتم را روی یک آیتم بالاتر بگذارید. نقش‌ها را انتخاب کنید (خالی = نمایش برای همه).</p>
+
+      <button class="btn btn-primary" type="submit" style="margin-top:14px">💾 ذخیره منو</button>
+    </form>
+  </div>
+
+  <div>
+    <div class="card" style="padding:22px;margin-bottom:14px">
+      <h3 style="font-size:13.5px;margin-bottom:10px">👁 پیش‌نمایش زنده</h3>
+      <div class="flex gap-1" style="margin-bottom:12px">
+        {% for role, name in [('guest','مهمان'),('student','دانشجو'),('teacher','استاد'),('admin','ادمین')] %}
+        <button type="button" class="btn btn-ghost btn-sm pv-tab {{ 'active' if role == 'guest' }}" data-role="{{ role }}" style="{{ 'background:var(--primary);color:#fff' if role == 'guest' }}">{{ name }}</button>
         {% endfor %}
       </div>
-      {% endfor %}
+      <div id="pv-box" style="background:var(--bg-2);border:1.5px dashed var(--border-2);border-radius:12px;padding:14px;min-height:120px;font-size:13px"></div>
+      <p class="form-hint" style="margin-top:8px">خروجی نهایی در ویجت «منوی ناوبری» صفحه‌ساز با انتخاب همین منو نمایش داده می‌شود.</p>
+    </div>
+    <div class="card" style="padding:18px;font-size:12.5px;color:var(--text-2)">
+      💡 <b>استفاده در سایت:</b> در صفحه‌ساز، ویجت «منوی ناوبری» را بکشید و در تنظیمات آن، این منو را از «منوی ذخیره‌شده» انتخاب کنید. زیرمنوها با هاور باز می‌شوند.
     </div>
   </div>
 </div>
+
+<script>
+(function(){
+  var items = {{ items|tojson }};
+  var box = document.getElementById('menu-items');
+  var raw = document.getElementById('items_raw');
+
+  var ROLE_NAMES = {guest:'همه/مهمان', student:'دانشجو', teacher:'استاد', admin:'ادمین'};
+  var ALL_ROLES = ['student','teacher','admin'];
+
+  function roleVal(it){ return (it.roles || '').split(',').map(function(r){return r.trim();}).filter(Boolean); }
+
+  function render(){
+    box.innerHTML = '';
+    items.forEach(function(it, idx){
+      var row = document.createElement('div');
+      row.className = 'menu-row card';
+      row.style.cssText = 'padding:10px 12px;background:var(--card-2);border:1px solid var(--border);border-radius:12px;display:flex;flex-direction:column;gap:8px';
+      var roles = roleVal(it);
+
+      var top = document.createElement('div');
+      top.style.cssText = 'display:flex;gap:8px;align-items:center;flex-wrap:wrap';
+      top.innerHTML =
+        '<span style="cursor:grab;color:var(--text-3);font-size:16px;user-select:none" title="جابه‌جایی">⋮⋮</span>' +
+        '<input class="form-control f-label" placeholder="برچسب" value="' + esc(it.label) + '" style="flex:2;min-width:130px;padding:7px 10px">' +
+        '<input class="form-control f-url" dir="ltr" placeholder="/courses" value="' + esc(it.url) + '" style="flex:2;min-width:140px;padding:7px 10px">' +
+        '<input class="form-control f-icon" placeholder="آیکون" value="' + esc(it.icon || '') + '" style="width:64px;padding:7px 10px" title="ایموجی آیکون">' +
+        '<div class="flex gap-1" style="margin-right:auto">' +
+          '<button type="button" class="btn btn-ghost btn-sm mv-up" title="بالا">↑</button>' +
+          '<button type="button" class="btn btn-ghost btn-sm mv-down" title="پایین">↓</button>' +
+          '<button type="button" class="btn btn-danger btn-sm mv-del" title="حذف">🗑</button>' +
+        '</div>';
+
+      var bottom = document.createElement('div');
+      bottom.style.cssText = 'display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding-right:26px';
+      var parentOpts = '<select class="form-control f-parent" style="width:auto;padding:6px 10px;font-size:12.5px"><option value="">— والد: سطح اول —</option>';
+      items.forEach(function(p, pi){
+        if (pi === idx) return;
+        parentOpts += '<option value="' + pi + '" ' + (String(it.parent_idx) === String(pi + 1) ? 'selected' : '') + '>' + esc(p.label || ('آیتم ' + (pi + 1))) + '</option>';
+      });
+      parentOpts += '</select>';
+      var roleHtml = '';
+      ALL_ROLES.forEach(function(r){
+        roleHtml += '<label style="display:inline-flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" class="f-role" value="' + r + '" ' + (roles.indexOf(r) >= 0 ? 'checked' : '') + '> ' + ROLE_NAMES[r] + '</label>';
+      });
+      bottom.innerHTML = parentOpts + '<span style="font-size:12px;color:var(--text-3)">نمایش برای:</span> ' + roleHtml;
+      if (it.parent_idx) row.style.marginRight = '22px';
+      row.appendChild(top);
+      row.appendChild(bottom);
+      box.appendChild(row);
+    });
+    if (!items.length){
+      box.innerHTML = '<div style="padding:26px;text-align:center;color:var(--text-3);font-size:13px;border:1.5px dashed var(--border-2);border-radius:12px">هنوز آیتمی نیست — از دکمه بالا اضافه کنید.</div>';
+    }
+    bindRows();
+    preview();
+  }
+
+  function bindRows(){
+    box.querySelectorAll('.menu-row').forEach(function(row, idx){
+      row.querySelector('.mv-up').addEventListener('click', function(){ move(idx, -1); });
+      row.querySelector('.mv-down').addEventListener('click', function(){ move(idx, 1); });
+      row.querySelector('.mv-del').addEventListener('click', function(){
+        items.splice(idx, 1);
+        items.forEach(function(it){ if (String(it.parent_idx) === String(idx + 1)) it.parent_idx = ''; });
+        render();
+      });
+      row.querySelectorAll('input').forEach(function(inp){
+        inp.addEventListener('input', function(){
+          if (inp.classList.contains('f-label')) items[idx].label = inp.value;
+          else if (inp.classList.contains('f-url')) items[idx].url = inp.value;
+          else if (inp.classList.contains('f-icon')) items[idx].icon = inp.value;
+        });
+      });
+      var sel = row.querySelector('.f-parent');
+      if (sel) sel.addEventListener('change', function(){ items[idx].parent_idx = sel.value; render(); });
+    });
+  }
+
+  function move(idx, dir){
+    var to = idx + dir;
+    if (to < 0 || to >= items.length) return;
+    var tmp = items[idx]; items[idx] = items[to]; items[to] = tmp;
+    render();
+  }
+
+  function esc(s){
+    return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function addItem(parts){
+    var p = parts.split('|');
+    items.push({label: p[0] || 'آیتم جدید', url: p[1] || '#', icon: p[2] || '', roles: p[3] || '', parent_idx: ''});
+    render();
+  }
+
+  document.getElementById('add-blank').addEventListener('click', function(){ addItem('آیتم جدید|#||'); });
+  document.getElementById('add-preset').addEventListener('click', function(){
+    var sel = document.getElementById('preset');
+    if (sel.value){ addItem(sel.value); sel.value = ''; }
+  });
+  document.getElementById('preset').addEventListener('change', function(){
+    if (this.value){ addItem(this.value); this.value = ''; }
+  });
+
+  /* پیش‌نمایش با فیلتر نقش */
+  var curRole = 'guest';
+  document.querySelectorAll('.pv-tab').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      curRole = btn.dataset.role;
+      document.querySelectorAll('.pv-tab').forEach(function(b){
+        b.style.background = ''; b.style.color = '';
+      });
+      btn.style.background = 'var(--primary)'; btn.style.color = '#fff';
+      preview();
+    });
+  });
+
+  function preview(){
+    var pv = document.getElementById('pv-box');
+    if (!pv) return;
+    var roots = [];
+    var byIdx = {};
+    items.forEach(function(it, i){
+      var roles = roleVal(it);
+      var show = !roles.length || (curRole === 'guest' ? false : roles.indexOf(curRole) >= 0);
+      if (curRole === 'guest' && !roles.length) show = true;
+      byIdx[i] = {it: it, ch: []};
+    });
+    Object.keys(byIdx).forEach(function(i){
+      var node = byIdx[i];
+      var pidx = String(node.it.parent_idx);
+      if (pidx && byIdx[pidx - 1] && !Object.is(pidx - 1, i)) byIdx[pidx - 1].ch.push(node);
+      else roots.push(node);
+    });
+    var html = '';
+    function renderNode(node, depth){
+      var it = node.it, roles = roleVal(it);
+      var show = !roles.length || roles.indexOf(curRole) >= 0;
+      if (!show) return;
+      html += '<div style="padding:' + (3 + depth * 14) + 'px 10px 3px 0;border-bottom:1px dashed var(--border)">' +
+        (it.icon || '•') + ' ' + esc(it.label || '(بدون برچسب)') +
+        (it.url ? ' <code style="font-size:10.5px;color:var(--text-3)" dir="ltr">' + esc(it.url) + '</code>' : '') +
+        (node.ch.length ? '' : '') + '</div>';
+      node.ch.forEach(function(c){ renderNode(c, depth + 1); });
+    }
+    roots.forEach(function(n){ renderNode(n, 0); });
+    pv.innerHTML = html || '<div style="color:var(--text-3);font-size:12.5px;text-align:center;padding:20px 0">هیچ آیتمی برای این نقش نمایش داده نمی‌شود.</div>';
+  }
+
+  /* ذخیره: ریشه‌ها اول، بعد زیرمنوها — با شماره خط والد (۱-پایه) */
+  document.getElementById('menu-form').addEventListener('submit', function(){
+    var lines = [];
+    var idxOf = {};
+    function walk(node, pi){
+      var roles = roleVal(node.it);
+      lines.push((node.it.label || '').replace(/\|/g, ' ') + '|' + (node.it.url || '#').replace(/\|/g, ' ') + '|' + (node.it.icon || '').replace(/\|/g, ' ') + '|' + roles.join(',') + (pi ? '|' + pi : ''));
+      idxOf[node.it] = lines.length;
+      node.ch.forEach(function(c){ walk(c, lines.length); });
+    }
+    var byIdx = {};
+    items.forEach(function(it, i){ byIdx[i] = {it: it, ch: []}; });
+    var roots = [];
+    Object.keys(byIdx).forEach(function(i){
+      var node = byIdx[i];
+      var pidx = String(node.it.parent_idx);
+      if (pidx && byIdx[pidx - 1] && (pidx - 1) !== i) byIdx[pidx - 1].ch.push(node);
+      else roots.push(node);
+    });
+    roots.forEach(function(n){ walk(n, ''); });
+    raw.value = lines.join('\n');
+  });
+
+  render();
+})();
+</script>
+<style>
+.pv-tab.active{background:var(--primary)!important;color:#fff!important}
+</style>
 {% endblock %}

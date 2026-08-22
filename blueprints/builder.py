@@ -667,6 +667,32 @@ WIDGETS = {
             dict(key='show_cat', label='انتخاب دسته', type='checkbox'),
             dict(key='button', label='متن دکمه', type='text'),
         ]),
+    'shop_products': dict(name='فروشگاه محصولات', icon='🛍', cat='woo',
+        desc='کارت‌های کالای فیزیکی فروشگاه — لینک به صفحه محصول',
+        fields=[
+            dict(key='title', label='عنوان بخش', type='text'),
+            dict(key='subtitle', label='متن/توضیح بخش', type='textarea'),
+            dict(key='link_text', label='متن لینک «مشاهده همه»', type='text'),
+            dict(key='link_url', label='آدرس لینک', type='text'),
+            dict(key='limit', label='تعداد', type='select',
+                 options=[('4', '۴'), ('8', '۸'), ('12', '۱۲')]),
+            dict(key='columns', label='ستون‌ها', type='select',
+                 options=[('2', '۲'), ('3', '۳'), ('4', '۴')]),
+            dict(key='sort', label='مرتب‌سازی', type='select',
+                 options=[('newest', 'جدیدترین'), ('popular', 'پربازدیدترین'),
+                          ('cheap', 'ارزان‌ترین'), ('expensive', 'گران‌ترین')]),
+            dict(key='show_price', label='نمایش قیمت', type='checkbox'),
+        ]),
+    'bundles': dict(name='بسته‌های آموزشی', icon='📦', cat='grid',
+        desc='کارت‌های بسته چند دوره',
+        fields=[
+            dict(key='title', label='عنوان بخش', type='text'),
+            dict(key='limit', label='تعداد', type='select',
+                 options=[('3', '۳'), ('6', '۶'), ('9', '۹')]),
+            dict(key='columns', label='ستون‌ها', type='select',
+                 options=[('2', '۲'), ('3', '۳')]),
+            dict(key='show_price', label='نمایش قیمت', type='checkbox'),
+        ]),
 }
 
 
@@ -735,6 +761,12 @@ PAGE_TEMPLATES = {
             {'id': 't1b', 'type': 'teachers', 'data': {'title': 'اساتید', 'limit': '4', 'columns': '4'}}
         ]]}]),
 }
+
+from builder_sections import (
+    EXTRA_PAGE_TEMPLATES, SITE_SECTIONS, chrome_specs, ensure_section,
+    section_spec_for_page, site_page_specs, theme_specs,
+)
+PAGE_TEMPLATES.update(EXTRA_PAGE_TEMPLATES)
 
 WIDGET_CATS = [
     ('basic', 'پایه'),
@@ -842,6 +874,11 @@ WIDGET_STARTERS = {
                         text='کد رهگیری درج‌شده روی گواهی را وارد کنید.'),
     'course_search': dict(placeholder='جستجو در دوره‌ها...', show_cat=True,
                           button='جستجو'),
+    'shop_products': dict(title='فروشگاه محصولات', limit='8', columns='4',
+                          show_price=True, link_text='همه محصولات',
+                          link_url='/products', sort='newest'),
+    'bundles': dict(title='بسته‌های آموزشی', limit='6', columns='3',
+                    show_price=True),
     'icon': dict(icon='⭐', size='64', align='center'),
     'google_maps': dict(height='400', radius='12'),
     'search': dict(placeholder='جستجو در دوره‌ها...', show_cat=True),
@@ -869,18 +906,12 @@ WIDGET_STARTERS = {
 
 # صفحات ثابت سایت که نسخه‌ساز صفحه‌ساز دارند (slug, عنوان, قالب, مسیر زنده)
 SITE_PAGES = [
-    ('about', 'درباره ما', 'about_page', '/about'),
-    ('contact', 'تماس با ما', 'contact_page', '/contact'),
-    ('faq', 'سوالات متداول', 'faq_page', '/faq'),
-    ('terms', 'قوانین و مقررات', '', '/terms'),
-    ('privacy', 'حریم خصوصی', '', '/privacy'),
-    ('learning-paths', 'مسیرهای یادگیری', '', '/learning-paths'),
-    ('become-teacher', 'مدرس شو', 'teacher_landing', '/become-teacher'),
-    ('consultation', 'درخواست مشاوره', 'consult_page', '/consultation'),
-    ('teachers', 'اساتید', 'teacher_landing', '/teachers'),
+    (s['slug'], s['title'], s['template'], s['url'])
+    for s in site_page_specs()
 ]
 
-SINGLETON_PTYPES = ('home', 'header', 'footer', 'footer_mobile', 'mobile_menu', '404')
+SINGLETON_PTYPES = ('home', 'header', 'footer', 'footer_mobile', 'mobile_menu',
+                    '404', 'course', 'teacher', 'post')
 
 
 def _widgets_for_client():
@@ -897,15 +928,10 @@ def _widgets_for_client():
 
 def page_public_url(page):
     """آدرس زندهٔ صفحه برای پیش‌نمایش و لینک فهرست."""
-    if getattr(page, 'ptype', '') in ('home', 'header', 'footer',
-                                      'footer_mobile', 'mobile_menu'):
-        return '/'
+    spec = section_spec_for_page(page)
+    if spec:
+        return spec.get('url') or '/'
     slug = getattr(page, 'slug', '') or ''
-    for site_slug, _title, _tpl, url in SITE_PAGES:
-        if slug == site_slug:
-            return url
-    if getattr(page, 'ptype', '') == '404':
-        return '/this-page-does-not-exist'
     try:
         return url_for('site.custom_page', slug=slug)
     except Exception:
@@ -1561,6 +1587,41 @@ def builder_teachers(d):
     return _b_cache(f'teachers:{lim}', 120, _q)
 
 
+def builder_shop_products(d):
+    sort = (d or {}).get('sort', 'newest')
+    _lim = max(1, min(24, int((d or {}).get('limit') or 8)))
+    def _q():
+        from models import Product
+        from cache_safe import product_lite
+        q = Product.query.filter_by(is_active=True)
+        order = {
+            'newest': Product.created_at.desc(),
+            'popular': Product.views.desc(),
+            'cheap': Product.price.asc(),
+            'expensive': Product.price.desc(),
+        }.get(sort, Product.created_at.desc())
+        rows = q.order_by(order).limit(_lim).all()
+        return [product_lite(p) for p in rows]
+    return _b_cache(f'shop_products:{sort}:{_lim}', 60, _q)
+
+
+def builder_bundles(d):
+    _lim = max(1, min(24, int((d or {}).get('limit') or 6)))
+    def _q():
+        from models import Bundle
+        from cache_safe import bundle_lite
+        rows = (Bundle.query.filter_by(is_active=True)
+                .order_by(Bundle.created_at.desc()).limit(_lim).all())
+        return [bundle_lite(b) for b in rows]
+    return _b_cache(f'bundles:{_lim}', 60, _q)
+
+
+def bc_verify_result():
+    """نتیجهٔ استعلام گواهی در صفحهٔ صفحه‌ساز (از g.verify_result)."""
+    from flask import g as _g
+    return getattr(_g, 'verify_result', None)
+
+
 def builder_cat_options():
     return [(str(c.id), c.name) for c in Category.query.order_by(Category.sort).all()]
 
@@ -1664,9 +1725,12 @@ def index():
     site_slugs = {spec[0] for spec in SITE_PAGES}
     site_status = []
     by_slug = {p.slug: p for p in pages}
-    for slug, title, _tpl, url in SITE_PAGES:
-        site_status.append(dict(slug=slug, title=title, url=url,
-                                page=by_slug.get(slug)))
+    for spec in site_page_specs():
+        site_status.append(dict(spec, page=by_slug.get(spec['slug'])))
+    theme_status = []
+    for spec in theme_specs():
+        theme_status.append(dict(spec, page=next(
+            (p for p in pages if p.ptype == spec['ptype']), None)))
     custom_pages = [p for p in pages
                     if p.ptype == 'page' and p.slug not in site_slugs]
     other_pages = [p for p in pages
@@ -1691,6 +1755,7 @@ def index():
     return render_template('builder/index.html', pages=pages, types=types,
                            section_lib=section_lib, page_lib=page_lib,
                            home=home, chrome=chrome, site_status=site_status,
+                           theme_status=theme_status,
                            custom_pages=custom_pages, other_pages=other_pages,
                            home_live=home_live,
                            page_public_url=page_public_url)
@@ -1714,6 +1779,23 @@ def open_home():
     return redirect(url_for('builder.editor', slug=page.slug))
 
 
+@builder_bp.route('/builder/open/<key>')
+def open_section(key):
+    """یک کلیک: بخش عمومی سایت را بساز (اگر نیست) و ویرایشگر را باز کن."""
+    r = _admin_required()
+    if r:
+        return r
+    if key not in SITE_SECTIONS:
+        abort(404)
+    spec = SITE_SECTIONS[key]
+    page, created = ensure_section(key, seed=True)
+    if created:
+        flash(f'«{spec["title"]}» ساخته شد — عناصر را اضافه کنید و ذخیره کنید.', 'success')
+    else:
+        flash(f'«{spec["title"]}» باز شد. بعد از ذخیره روی نشانی {spec["url"]} دیده می‌شود.', 'info')
+    return redirect(url_for('builder.editor', slug=page.slug))
+
+
 @builder_bp.route('/builder/new', methods=['GET', 'POST'])
 def new_page():
     r = _admin_required()
@@ -1728,6 +1810,11 @@ def new_page():
                      'mobile_menu', 'footer_mobile', 'course', 'teacher'):
         ptype = 'page'
     if ptype in SINGLETON_PTYPES:
+        if ptype in SITE_SECTIONS:
+            page, created = ensure_section(ptype, seed=True)
+            if not created:
+                flash('این نوع صفحه از قبل وجود دارد — همان را باز کردیم.', 'info')
+            return redirect(url_for('builder.editor', slug=page.slug))
         existing = Page.query.filter_by(ptype=ptype).first()
         if existing:
             if ptype == 'home':
@@ -1775,33 +1862,19 @@ def ensure_site_pages():
     r = _admin_required()
     if r:
         return r
-    _specs = [(slug, title, template) for slug, title, template, _url in SITE_PAGES]
+    only = (request.form.get('only') or '').strip()
+    specs = site_page_specs()
+    if only:
+        specs = [s for s in specs if s['key'] == only or s['slug'] == only]
     made = 0
-    for slug, title, template in _specs:
-        if Page.query.filter_by(slug=slug).first():
-            continue
-        rows = []
-        if template and template in PAGE_TEMPLATES:
-            rows = PAGE_TEMPLATES[template]['rows']
-        if not rows:
-            # ردیف پیش‌فرض ساده: تیتر + متن — مدیر بعداً در صفحه‌ساز کاملش می‌کند
-            rows = [{'id': f'st_{slug}', 'settings': {'gap': 24, 'py': 60},
-                     'cols': [[
-                         {'id': f'st_{slug}_h', 'type': 'heading',
-                          'data': {'text': title, 'tag': 'h1', 'align': 'right'}},
-                         {'id': f'st_{slug}_t', 'type': 'text',
-                          'data': {'content': 'این صفحه هنوز با صفحه‌ساز ویرایش نشده است. از دکمه «ویرایش» همین صفحه را با صفحه‌ساز کامل کنید.', 'align': 'right'}},
-                     ]]}]
-        # پیش‌فرض: پیش‌نویس — تا وقتی مدیر دکمه «انتشار» را نزند، قالب ثابت قبلی
-        # نمایش داده می‌شود و صفحهٔ ناتمام به دید بازدیدکننده نمی‌آید.
-        db.session.add(Page(title=title, slug=slug, ptype='page',
-                            is_published=False,
-                            content=json.dumps({'settings': {}, 'rows': rows},
-                                               ensure_ascii=False)))
-        made += 1
-    db.session.commit()
+    for spec in specs:
+        _page, created = ensure_section(spec['key'], seed=True, publish=False)
+        if created:
+            made += 1
     if made:
         flash(f'نسخهٔ صفحه‌ساز {made} صفحهٔ ثابت ساخته شد. حالا از دکمه «ویرایش» محتوای هرکدام را کامل کنید. 🧩', 'success')
+    elif only:
+        flash('این صفحه از قبل در صفحه‌ساز موجود است.', 'info')
     else:
         flash('همهٔ صفحات ثابت از قبل در صفحه‌ساز موجود بودند.', 'info')
     return redirect(url_for('builder.index'))
@@ -1923,6 +1996,7 @@ def editor(slug):
                            section_templates=SECTION_TEMPLATES,
                            page_templates=PAGE_TEMPLATES,
                            preview_url=page_public_url(page),
+                           section_spec=section_spec_for_page(page),
                            persian_designs=_persian_designs_meta())
 
 

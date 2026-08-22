@@ -1967,7 +1967,8 @@ function init() {
   document.getElementById('pb-empty-add').addEventListener('click', function () { showAddSectionModal(0); });
   var emptyLanding = document.getElementById('pb-empty-landing');
   if (emptyLanding) emptyLanding.addEventListener('click', function () {
-    var tpl = PAGE_TPLS.landing || PAGE_TPLS.about_page;
+    var key = emptyLanding.getAttribute('data-template') || 'landing';
+    var tpl = PAGE_TPLS[key] || PAGE_TPLS.landing || PAGE_TPLS.about_page;
     if (!tpl || !tpl.rows) { showAddSectionModal(0); return; }
     var copy = JSON.parse(JSON.stringify(tpl.rows));
     copy.forEach(function (row) {
@@ -1976,7 +1977,7 @@ function init() {
     });
     data.rows = copy;
     pushHistory();
-    toast('قالب لندینگ اعمال شد ✅', 'ok');
+    toast('قالب آماده اعمال شد ✅', 'ok');
     immediateRender();
   });
   document.getElementById('pb-tpl').addEventListener('click', savePageTemplate);

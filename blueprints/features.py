@@ -725,6 +725,10 @@ def exam_practice_history():
 # ================================================================
 @features_bp.route('/success-stories')
 def success_stories():
+    from builder_sections import find_builder_page, render_builder_page
+    bp = find_builder_page('success-stories')
+    if bp:
+        return render_builder_page(bp)
     from models import SuccessStory
     stories = SuccessStory.query.filter_by(is_active=True).order_by(SuccessStory.sort).all()
     g.seo['title'] = "داستان‌های موفقیت دانشجویان — آکادمی آنلاین"
@@ -737,6 +741,10 @@ def success_stories():
 # ================================================================
 @features_bp.route('/bundles')
 def bundles():
+    from builder_sections import find_builder_page, render_builder_page
+    bp = find_builder_page('bundles')
+    if bp:
+        return render_builder_page(bp)
     items = Bundle.query.filter_by(is_active=True).all()
     g.seo['title'] = "بسته‌های آموزشی (باندل) — آکادمی آنلاین"
     return render_template('features/bundles.html', bundles=items)

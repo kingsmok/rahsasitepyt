@@ -34,6 +34,14 @@ def product_list():
     q = request.args.get('q', '').strip()
     cat = request.args.get('cat', '').strip()
     sort = request.args.get('sort', 'newest')
+    from builder_sections import (
+        find_builder_page, listing_filters_active, render_builder_page,
+    )
+    if not listing_filters_active('q', 'cat', 'sort',
+                                  ignore_defaults={'sort': 'newest'}):
+        bp = find_builder_page('products')
+        if bp:
+            return render_builder_page(bp)
     query = Product.query.filter_by(is_active=True)
     if q:
         like = f'%{q}%'

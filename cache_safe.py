@@ -235,3 +235,66 @@ def story_lite(s):
 def post_lite(p):
     return PostLite(p.slug, p.image or '', p.category or '', p.created_at,
                     p.title, pid=p.id)
+
+
+class ProductLite:
+    """کارت کالای فیزیکی — بدون اتصال ORM."""
+    __slots__ = ('id', 'title', 'slug', 'image', 'image_url', 'price',
+                 'discount_price', 'category', 'sku', 'stock', 'views')
+
+    def __init__(self, p):
+        self.id = p.id
+        self.title = p.title
+        self.slug = p.slug
+        self.image = p.image
+        self.image_url = p.image_url
+        self.price = p.price or 0
+        self.discount_price = p.discount_price or 0
+        self.category = p.category or ''
+        self.sku = p.sku or ''
+        self.stock = p.stock
+        self.views = p.views or 0
+
+    @property
+    def final_price(self):
+        return self.discount_price if self.discount_price and self.discount_price < self.price else self.price
+
+    @property
+    def has_discount(self):
+        return bool(self.discount_price and self.discount_price < self.price)
+
+
+class BundleLite:
+    """کارت بسته آموزشی — بدون اتصال ORM."""
+    __slots__ = ('id', 'title', 'slug', 'description', 'image', 'image_url',
+                 'price', 'discount_price', 'course_count')
+
+    def __init__(self, b):
+        self.id = b.id
+        self.title = b.title
+        self.slug = b.slug
+        self.description = b.description or ''
+        self.image = b.image
+        self.image_url = b.image_url
+        self.price = b.price or 0
+        self.discount_price = b.discount_price or 0
+        try:
+            self.course_count = len(b.courses or [])
+        except Exception:
+            self.course_count = 0
+
+    @property
+    def final_price(self):
+        return self.discount_price if self.discount_price and self.discount_price < self.price else self.price
+
+    @property
+    def has_discount(self):
+        return bool(self.discount_price and self.discount_price < self.price)
+
+
+def product_lite(p):
+    return ProductLite(p)
+
+
+def bundle_lite(b):
+    return BundleLite(b)

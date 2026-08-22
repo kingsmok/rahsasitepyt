@@ -100,6 +100,16 @@ def courses():
     price = request.args.get('price', '').strip()
     sort = request.args.get('sort', 'newest')
 
+    from builder_sections import (
+        find_builder_page, listing_filters_active, render_builder_page,
+    )
+    if not listing_filters_active(
+            'q', 'cat', 'level', 'price', 'sort', 'per',
+            ignore_defaults={'sort': 'newest'}):
+        bp = find_builder_page('courses')
+        if bp:
+            return render_builder_page(bp)
+
     from sqlalchemy.orm import selectinload as _sil
     query = Course.query.options(joinedload(Course.category), joinedload(Course.teacher),
                                  _sil(Course.sections).selectinload(Section.lessons)) \
@@ -371,20 +381,16 @@ def _builder_page(slug):
 
     اگر مدیر برای این slug یک صفحهٔ منتشرشده با محتوا در صفحه‌ساز ساخته باشد،
     همان صفحه رندر می‌شود؛ وگرنه None برمی‌گردد تا قالب ثابت قبلی نمایش داده شود.
+    پیش‌نمایش مدیر با ?preview هم پذیرفته می‌شود.
     """
-    from models import Page
-    page = Page.query.filter_by(slug=slug, ptype='page').first()
-    if page and page.is_published and page.rows():
-        return page
-    return None
+    from builder_sections import find_builder_page
+    return find_builder_page(slug)
 
 
 def _render_builder_page(page):
     """رندر مشترک نسخهٔ صفحه‌ساز برای صفحات ثابت سایت"""
-    g.page_settings = page.settings()
-    g.page_custom_header = page.custom_header
-    g.page_custom_footer = page.custom_footer
-    return render_template('builder/public.html', page=page)
+    from builder_sections import render_builder_page
+    return render_builder_page(page)
 
 
 @site_bp.route('/terms')
@@ -456,7 +462,10 @@ def sitemap():
     xml += 'xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">'
     # صفحات اصلی
     xml += f'<url><loc>{base}/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>'
-    for u in ['/courses', '/teachers', '/blog', '/about', '/faq', '/contact', '/terms', '/privacy', '/become-teacher', '/learning-paths', '/consultation']:
+    for u in ['/courses', '/teachers', '/blog', '/about', '/faq', '/contact',
+              '/terms', '/privacy', '/become-teacher', '/learning-paths',
+              '/consultation', '/products', '/success-stories',
+              '/verify-certificate', '/bundles']:
         xml += f'<url><loc>{base}{u}</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>'
     # دوره‌ها با تصویر و اولویت بالا
     for c in Course.query.filter_by(status='published').all():
@@ -515,6 +524,9 @@ def robots():
 # ---------------------------------------------------------------- اساتید
 @site_bp.route('/teachers')
 def teachers():
+    bp = _builder_page('teachers')
+    if bp:
+        return _render_builder_page(bp)
     from sqlalchemy import func as _f
     from models import Review, Course, Enrollment
     # ⚠️ قبلاً همه ثبت‌نام‌های هر دوره بارگذاری می‌شد (هزاران ردیف) — حالا فقط شمارش
@@ -545,9 +557,6 @@ def teachers():
             .filter(Course.teacher_id.in_(tids), Course.status == 'published') \
             .group_by(Course.teacher_id).all()
         course_counts = {tid: n for tid, n in crows}
-    bp = _builder_page('teachers')
-    if bp:
-        return _render_builder_page(bp)
     return render_template('teachers.html', teachers=teachers, ratings=ratings,
                            teacher_students=students, teacher_courses=course_counts)
 
@@ -581,6 +590,11 @@ def teacher_detail(uid):
 def blog():
     page = request.args.get('page', 1, type=int)
     cat = request.args.get('cat', '').strip()
+    from builder_sections import listing_filters_active
+    if not listing_filters_active('cat'):
+        bp = _builder_page('blog')
+        if bp:
+            return _render_builder_page(bp)
     query = BlogPost.query.options(db.joinedload(BlogPost.author)).filter_by(published=True)
     if cat:
         query = query.filter(BlogPost.category == cat)
@@ -729,6 +743,9 @@ def faq():
 @site_bp.route('/learning-paths')
 def learning_paths():
     """صفحه مسیرهای یادگیری — نقشه راه پیشنهادی دوره‌ها"""
+    bp = _builder_page('learning-paths')
+    if bp:
+        return _render_builder_page(bp)
     from models import Category
     paths = []
     # مسیر ۱: برنامه‌نویسی وب (از صفر تا استخدام)
@@ -780,9 +797,6 @@ def learning_paths():
 
     g.seo['title'] = "مسیرهای یادگیری — نقشه راه دوره‌ها | آکادمی آنلاین"
     g.seo['description'] = "مسیر یادگیری قدم‌به‌قدم: برنامه‌نویسی وب، هوش مصنوعی، طراحی محصول و کسب‌وکار دیجیتال — بدانید بعد از هر دوره، کدام دوره را بگذرانید."
-    bp = _builder_page('learning-paths')
-    if bp:
-        return _render_builder_page(bp)
     return render_template('learning_paths.html', paths=paths)
 
 
@@ -856,6 +870,10 @@ def verify_certificate():
             result = {'code': code, 'valid': False}
     g.seo['title'] = 'استعلام گواهینامه — آکادمی آنلاین'
     g.seo['description'] = 'با وارد کردن کد رهگیری گواهینامه، از صحت آن مطمئن شوید.'
+    g.verify_result = result
+    bp = _builder_page('verify-certificate')
+    if bp:
+        return _render_builder_page(bp)
     return render_template('verify_certificate.html', result=result, code=code)
 
 

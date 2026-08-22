@@ -2,6 +2,9 @@
 {% block atitle %}داستان‌های موفقیت{% endblock %}
 {% block acontent %}
 <div class="dash-head"><div><h1>🌟 داستان‌های موفقیت</h1><p>نتایج واقعی دانشجویان — نمایش در صفحه اصلی و صفحه اختصاصی</p></div></div>
+{% set section_key = 'success-stories' %}
+{% set hint = 'داستان‌ها را اینجا ثبت کنید؛ ظاهر صفحه را با صفحه‌ساز بچینید.' %}
+{% include 'admin/_builder_section_banner.html' %}
 <div class="grid" style="grid-template-columns:1fr 1fr;gap:18px;align-items:start">
   <div class="card" style="padding:22px">
     <h2 style="font-size:14px;margin-bottom:14px">➕ داستان جدید</h2>

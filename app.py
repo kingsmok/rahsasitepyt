@@ -529,6 +529,8 @@ def create_app():
     from blueprints.api import api_bp
     from blueprints.builder import (builder_bp, builder_courses, builder_categories,
                                     builder_posts, builder_teachers, builder_products,
+                                    builder_shop_products, builder_bundles,
+                                    bc_verify_result,
                                     render_dynamic, render_shortcodes, uniq_cats)
     from models import Course as _CourseModel
 
@@ -652,6 +654,8 @@ def create_app():
     app.jinja_env.globals['builder_review_pro'] = builder_review_pro
     app.jinja_env.globals['builder_teachers'] = builder_teachers
     app.jinja_env.globals['builder_products'] = builder_products
+    app.jinja_env.globals['builder_shop_products'] = builder_shop_products
+    app.jinja_env.globals['builder_bundles'] = builder_bundles
     app.jinja_env.globals['rd'] = render_dynamic
     app.jinja_env.globals['rshort'] = render_shortcodes
     from blueprints.builder import bc_menu
@@ -879,7 +883,8 @@ def create_app():
         bc_current_teacher=lambda: getattr(g, 'current_teacher', None),
         bc_success_stories=lambda: getattr(g, '_success_stories', None) or _load_success_stories(),
         bc_reviews=lambda: _load_reviews(),
-        bc_exam_cats=lambda: _load_exam_cats())
+        bc_exam_cats=lambda: _load_exam_cats(),
+        bc_verify_result=bc_verify_result)
 
     # ---------- هدرهای امنیتی + فشرده‌سازی ----------
     @app.after_request
@@ -1037,6 +1042,7 @@ def create_app():
         _html_ok_cache = request.path == '/' or request.path.startswith((
             '/course/', '/courses', '/blog', '/about', '/terms', '/privacy',
             '/teachers', '/bundles', '/success-stories', '/learning-paths',
+            '/products',
         ))
         if (resp.status_code == 200 and _ct.startswith('text/html') and
                 request.method == 'GET' and not getattr(g, 'user', None) and

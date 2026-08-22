@@ -1,0 +1,13 @@
+{# بنر یک‌کلیکی صفحه‌ساز برای صفحات مدیریت محتوا.
+   انتظار: section_key — کلید SITE_SECTIONS؛ hint اختیاری. #}
+{% if section_key %}
+<div class="card" style="padding:14px 18px;margin-bottom:16px;background:linear-gradient(135deg,var(--primary-soft,#eef2ff),var(--card))">
+  <div class="flex between wrap" style="gap:10px;align-items:center">
+    <p style="margin:0;font-size:13px;line-height:1.8">
+      ظاهر این صفحه را با صفحه‌ساز بچینید.
+      {% if hint %}<span class="text-3">{{ hint }}</span>{% endif %}
+    </p>
+    <a class="btn btn-primary btn-sm" href="{{ url_for('builder.open_section', key=section_key) }}">🧩 ویرایش با صفحه‌ساز</a>
+  </div>
+</div>
+{% endif %}

@@ -61,6 +61,12 @@
       <option value="contact_page">📨 تماس</option>
       <option value="pricing_page">💎 قیمت‌گذاری</option>
       <option value="faq_page">❓ سوالات متداول</option>
+      <option value="courses_page">📚 دوره‌ها</option>
+      <option value="blog_page">📰 وبلاگ</option>
+      <option value="products_page">🛍 فروشگاه</option>
+      <option value="bundles_page">📦 بسته‌ها</option>
+      <option value="stories_page">🌟 داستان موفقیت</option>
+      <option value="verify_page">🛡 استعلام گواهی</option>
     </select>
     <button class="btn btn-primary" type="submit">ساخت</button>
   </form>
@@ -81,16 +87,7 @@
         {% elif cp %}<span class="badge badge-gray">پیش‌نویس</span>
         {% else %}<span class="badge badge-gray">پیش‌فرض قالب</span>{% endif %}
       </div>
-      {% if cp %}
-      <a class="btn btn-primary btn-sm btn-block" href="{{ url_for('builder.editor', slug=cp.slug) }}">ویرایش</a>
-      {% else %}
-      <form method="post" action="{{ url_for('builder.new_page') }}">
-        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
-        <input type="hidden" name="title" value="{{ label }}">
-        <input type="hidden" name="ptype" value="{{ key }}">
-        <button class="btn btn-ghost btn-sm btn-block" type="submit">+ ساخت</button>
-      </form>
-      {% endif %}
+      <a class="btn btn-primary btn-sm btn-block" href="{{ url_for('builder.open_section', key=key) }}">{{ 'ویرایش' if cp else '+ ساخت و ویرایش' }}</a>
     </div>
     {% endfor %}
   </div>
@@ -122,14 +119,7 @@
             {% else %}<span class="badge badge-gray">قالب ثابت</span>{% endif %}
           </td>
           <td>
-            {% if item.page %}
-            <a class="btn btn-primary btn-sm" href="{{ url_for('builder.editor', slug=item.page.slug) }}">🧩 ویرایش</a>
-            {% else %}
-            <form method="post" action="{{ url_for('builder.ensure_site_pages') }}" style="display:inline">
-              <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
-              <button class="btn btn-ghost btn-sm" type="submit">+ ساخت نسخهٔ صفحه‌ساز</button>
-            </form>
-            {% endif %}
+            <a class="btn btn-primary btn-sm" href="{{ url_for('builder.open_section', key=item.key or item.slug) }}">🧩 {{ 'ویرایش' if item.page else 'ساخت و ویرایش' }}</a>
           </td>
         </tr>
         {% endfor %}
@@ -137,6 +127,28 @@
     </table>
   </div>
 </div>
+
+{# ——— قالب‌های تک‌صفحه (دوره / مدرس / مقاله / ۴۰۴) ——— #}
+{% if theme_status %}
+<div class="card" style="padding:20px 22px;margin-bottom:20px">
+  <h4 style="font-size:15px;margin-bottom:4px">🎨 قالب‌های تک‌صفحه</h4>
+  <p style="font-size:12.5px;color:var(--text-3);margin-bottom:14px">این قالب‌ها روی همه صفحات همان نوع اعمال می‌شوند (مثلاً هر دورهٔ منتشرشده).</p>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px">
+    {% for item in theme_status %}
+    <div class="card" style="padding:14px 16px">
+      <div style="font-size:20px">{{ item.icon }}</div>
+      <strong style="font-size:13.5px">{{ item.title }}</strong>
+      <div style="margin:6px 0 10px">
+        {% if item.page and item.page.is_published %}<span class="badge badge-success">فعال</span>
+        {% elif item.page %}<span class="badge badge-gray">پیش‌نویس</span>
+        {% else %}<span class="badge badge-gray">ساخته نشده</span>{% endif %}
+      </div>
+      <a class="btn btn-primary btn-sm btn-block" href="{{ url_for('builder.open_section', key=item.key) }}">{{ 'ویرایش' if item.page else '+ ساخت و ویرایش' }}</a>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
 
 {# ——— صفحات سفارشی و قالب‌ها ——— #}
 {% set extras = other_pages %}
@@ -181,6 +193,6 @@
 
 <div class="card mt-3" style="padding:20px;font-size:13px;color:var(--text-2)">
   💡 <b>راهنما:</b> برای افزودن عنصر، صفحه را باز کنید، ویجت را از پالت چپ بکشید یا کلیک کنید و روی ستون بوم رها کنید.
-  فهرست دوره‌ها، سبد خرید و داشبورد دانشجو صفحات برنامه هستند و از پنل مربوط خود مدیریت می‌شوند.
+  سبد خرید، تسویه و داشبورد دانشجو صفحات برنامه هستند و از پنل مربوط خود مدیریت می‌شوند.
 </div>
 {% endblock %}

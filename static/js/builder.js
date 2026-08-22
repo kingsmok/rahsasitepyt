@@ -53,7 +53,7 @@ var saveBtn = document.getElementById('pb-save');
 var saveState = document.getElementById('pb-save-state');
 var dirty = false, renderTimer = null, sel = null, clipboard = null;
 var currentDev = 'desktop', panelTab = 'content', armedType = null;
-var pendingScroll = 0;
+var pendingScroll = 0, pendingScrollTo = null;
 
 function csrfTok() {
   var m = document.querySelector('meta[name="csrf-token"]');
@@ -258,7 +258,7 @@ function render(silent) {
     if (!res.ok) { toast('خطا در رندر صفحه', 'err'); return; }
     var prevScroll = 0;
     try { prevScroll = iframeEl.contentWindow ? iframeEl.contentWindow.scrollY : 0; } catch (e) { }
-    pendingScroll = prevScroll;
+    if (!pendingScrollTo) pendingScroll = prevScroll;
     var empty = document.getElementById('pb-empty');
     if (!data.rows.length) {
       empty.style.display = 'flex';
@@ -270,7 +270,15 @@ function render(silent) {
         bindFrame();
         restoreSelection();
         applyArmedFrame();
-        try { iframeEl.contentWindow.scrollTo(0, pendingScroll); } catch (e) { }
+        try {
+          if (pendingScrollTo) {
+            var _el = iframeEl.contentDocument && iframeEl.contentDocument.querySelector(pendingScrollTo);
+            if (_el) _el.scrollIntoView({ behavior: 'auto', block: 'center' });
+          } else {
+            iframeEl.contentWindow.scrollTo(0, pendingScroll);
+          }
+        } catch (e) { }
+        pendingScrollTo = null;
       };
     }
   }).catch(function () { toast('خطا در ارتباط با سرور', 'err'); });
@@ -438,6 +446,7 @@ function restoreSelection() {
   buildNavigator();
 }
 function scrollToElInFrame(q) {
+  if (q) pendingScrollTo = q;
   var d = doc(); if (!d) return;
   var el = d.querySelector(q);
   if (el) { try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) { } }
@@ -473,6 +482,7 @@ function copyWidget(f) {
   var cols = containerOf(f);
   cols[f.ci].splice(f.wi + 1, 0, copy);
   pushHistory(); scheduleRender();
+  scrollToElInFrame('[data-wid="' + copy.id + '"]');
   toast('ویجت کپی شد ⧉');
 }
 function delWidget(f) {
@@ -493,6 +503,7 @@ function copyRow(f) {
   copy.cols.forEach(function (col) { col.forEach(function (w) { w.id = uid(); }); });
   data.rows.splice(f.ri + 1, 0, copy);
   pushHistory(); scheduleRender();
+  scrollToElInFrame('[data-row="' + copy.id + '"]');
   toast('سکشن کپی شد ⧉');
 }
 function delRow(f) {
@@ -759,9 +770,11 @@ function insertWidgetInCol(colEl) {
   if (!tgt) return;
   var ci = parseInt(colEl.dataset.col, 10);
   if (!tgt.cols[ci]) return;
-  tgt.cols[ci].push({ id: uid(), type: armedType, data: defaults(armedType) });
+  var _nid = uid();
+  tgt.cols[ci].push({ id: _nid, type: armedType, data: defaults(armedType) });
   pushHistory();
   immediateRender();
+  scrollToElInFrame('[data-wid="' + _nid + '"]');
   toast('«' + (WIDGETS[armedType] ? WIDGETS[armedType].name : armedType) + '» اضافه شد ✅ — می‌توانید دوباره کلیک کنید', 'ok');
 }
 
@@ -887,6 +900,10 @@ function fieldHtml(f, v, repKey, repIdx) {
   } else if (f.type === 'course') {
     html += '<select data-field="' + f.key + '"' + drep + '><option value="">— انتخاب دوره —</option>';
     COURSE_OPTS.forEach(function (o) { html += '<option value="' + o[0] + '" ' + (String(val) === String(o[0]) ? 'selected' : '') + '>' + esc(o[1]) + '</option>'; });
+    html += '</select>';
+  } else if (f.type === 'menu') {
+    html += '<select data-field="' + f.key + '"' + drep + '><option value="">— منوی دستی (لینک‌های زیر) —</option>';
+    (window.PB_MENU_OPTS || []).forEach(function (o) { html += '<option value="' + esc(o[0]) + '" ' + (String(val) === String(o[0]) ? 'selected' : '') + '>' + esc(o[1]) + '</option>'; });
     html += '</select>';
   } else if (f.type === 'image') {
     html += imageControlHtml(f.key, val, drep);

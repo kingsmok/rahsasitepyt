@@ -14,6 +14,7 @@
   var API = '/admin/api/alerts';
   var LS_TICKET = 'adminAlarm.lastTicketId';
   var LS_ORDER = 'adminAlarm.lastOrderId';
+  var LS_CHAT = 'adminAlarm.lastChatId';
   var LS_SOUND = 'adminAlarm.sound';
 
   var btn = root.querySelector('[data-alarm-toggle]');
@@ -22,6 +23,7 @@
   var elTickets = root.querySelector('[data-alarm-tickets]');
   var elOrders = root.querySelector('[data-alarm-orders]');
   var elProofs = root.querySelector('[data-alarm-proofs]');
+  var elChat = root.querySelector('[data-alarm-chat]');
   var elEmpty = root.querySelector('[data-alarm-empty]');
   var soundBox = root.querySelector('[data-alarm-sound]');
   var timer = null;
@@ -73,6 +75,7 @@
     setRow(elTickets, d.tickets || 0);
     setRow(elOrders, d.orders || 0);
     setRow(elProofs, d.proofs || 0);
+    setRow(elChat, d.chat || 0);
     if (elEmpty) elEmpty.hidden = total > 0;
     if (badge) {
       badge.hidden = !total;
@@ -100,11 +103,14 @@
         render(d);
         var lastT = parseInt(read(LS_TICKET) || '0', 10);
         var lastO = parseInt(read(LS_ORDER) || '0', 10);
+        var lastC = parseInt(read(LS_CHAT) || '0', 10);
         var freshT = (d.latest_ticket_id || 0) > lastT;
         var freshO = (d.latest_order_id || 0) > lastO;
-        if (!first && (freshT || freshO)) ring();
+        var freshC = (d.latest_chat_id || 0) > lastC;
+        if (!first && (freshT || freshO || freshC)) ring();
         store(LS_TICKET, d.latest_ticket_id || 0);
         store(LS_ORDER, d.latest_order_id || 0);
+        store(LS_CHAT, d.latest_chat_id || 0);
       })
       .catch(function () { /* شبکه قطع — دفعه بعد دوباره تلاش می‌شود */ });
   }

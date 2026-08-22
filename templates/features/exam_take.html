@@ -1,6 +1,8 @@
 {% extends 'base.html' %}
 {% block title %}{{ seo.title or "آزمون در حال اجرا" }}{% endblock %}
 {% block content %}
+{% include 'partials/account_nav.html' %}
+
 <section class="section" style="padding-top:24px">
   <div class="container" style="max-width:760px">
     <div class="card" style="padding:16px 22px;border-radius:16px;margin-bottom:16px;background:var(--primary-soft);border:1px dashed var(--primary)">

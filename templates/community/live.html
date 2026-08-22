@@ -2,28 +2,51 @@
 {% block title %}{{ seo.title or "کلاس‌های آنلاین" }}{% endblock %}
 {% block content %}
 <section class="section" style="padding-top:36px">
-  <div class="container" style="max-width:860px">
+  <div class="container" style="max-width:960px">
     <div class="dash-head" style="margin-bottom:18px">
       <div>
         <h1 style="font-size:22px">🎥 کلاس‌های آنلاین و وبینارها</h1>
-        <p class="text-2" style="font-size:13px">جلسات زنده، رفع اشکال و کارگاه‌های تعاملی</p>
+        <p class="text-2" style="font-size:13px">جلسات زنده، رفع اشکال و کارگاه‌های تعاملی — ضبط جلسات برگزارشده هم در همین‌جا</p>
       </div>
       <a class="btn btn-ghost" href="{{ url_for('community.forum') }}">← انجمن</a>
     </div>
-    <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px">
+    <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:18px">
       {% for s in sessions %}
-      <div class="card card-hover" style="overflow:hidden">
-        <div style="background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;padding:16px;display:flex;align-items:center;gap:10px">
-          <span style="font-size:26px">🎥</span>
-          <div><strong style="font-size:14px">{{ s.title }}</strong></div>
+      <div class="card card-hover" style="overflow:hidden;display:flex;flex-direction:column">
+        <div style="background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;padding:14px 16px;display:flex;align-items:center;gap:10px">
+          <span style="font-size:24px">{{ '🎬' if s._rec_src else '🎥' }}</span>
+          <div><strong style="font-size:13.5px">{{ s.title }}</strong></div>
         </div>
-        <div style="padding:16px">
-          {% if s.description %}<p class="text-2" style="font-size:12.5px;margin-bottom:10px">{{ s.description[:120] }}</p>{% endif %}
+        {% if s._rec_src %}
+        <div style="background:#000">
+          {% if s._rec_open %}
+          <video controls preload="metadata" style="width:100%;aspect-ratio:16/9;display:block"
+                 {% if s.captions and s._rec_src.startswith('/') %}crossorigin="anonymous"{% endif %}
+                 {% if s._rec_hd %}data-hd="{{ s._rec_hd }}"{% endif %}>
+            <source src="{{ s._rec_src }}" type="video/mp4">
+            {% if s.captions %}<track kind="captions" src="/uploads/lessons/{{ s.captions }}" srclang="fa" label="فارسی" default>{% endif %}
+            مرورگر شما از پخش ویدیو پشتیبانی نمی‌کند.
+          </video>
+          {% if s._rec_hd %}<div style="text-align:center;padding:5px">
+            <button type="button" class="btn btn-ghost btn-sm" onclick="var v=this.closest('div').parentElement.querySelector('video');if(!v)return;var hd=v.dataset.hd;if(!hd)return;var cur=v.currentSrc||'';v.src=cur.indexOf(hd)>=0?v.querySelector('source').src:hd;v.load();v.play();this.textContent=cur.indexOf(hd)>=0?'HD':'SD';" style="background:rgba(255,255,255,.12);color:#fff">HD</button>
+          </div>{% endif %}
+          {% else %}
+          <div style="display:flex;align-items:center;justify-content:center;min-height:150px;color:#fff;gap:10px;flex-direction:column;padding:20px;text-align:center">
+            <span style="font-size:30px">🔒</span>
+            <strong style="font-size:13px">ضبط این جلسه هنوز باز نشده است</strong>
+            <small style="opacity:.85;font-size:12px">حدوداً {{ fa(s._rec_locked_days) }} روز دیگر ({{ fa(s.release_days) }} روز پس از برگزاری) در دسترس می‌شود.</small>
+          </div>
+          {% endif %}
+        </div>
+        {% endif %}
+        <div style="padding:14px 16px;flex:1;display:flex;flex-direction:column">
+          {% if s.description %}<p class="text-2" style="font-size:12.5px;margin-bottom:10px">{{ s.description[:140] }}</p>{% endif %}
           <div style="font-size:12.5px;color:var(--text-2);margin-bottom:8px">
             🗓 {{ s.starts_at|jdatetime }} — ⏱ {{ fa(s.duration_min) }} دقیقه
+            {% if s.captions %} — 🧾 زیرنویس{% endif %}
           </div>
-          {% if s.course %}<span class="badge badge-primary" style="margin-bottom:8px">📚 {{ s.course.title[:30] }}</span>{% endif %}
-          <div class="flex gap-1" style="margin-top:10px">
+          {% if s.course %}<span class="badge badge-primary" style="margin-bottom:8px;align-self:flex-start">📚 {{ s.course.title[:30] }}</span>{% endif %}
+          <div class="flex gap-1" style="margin-top:auto;padding-top:10px">
             {% if cur_user %}
             <form method="post" action="{{ url_for('community.live_book', sid=s.id) }}" style="flex:1">
               <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">

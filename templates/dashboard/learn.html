@@ -38,8 +38,8 @@
           <video id="pp-video" src="{{ video_src or '' }}"
                  poster="{{ course.image_url }}" preload="metadata" playsinline
                  controlslist="nodownload noremoteplayback" disablepictureinpicture oncontextmenu="return false"
-                 {% if current.captions %}crossorigin="anonymous"{% endif %}>
-            {% if current.captions %}<track kind="captions" src="/uploads/lessons/{{ current.captions }}" srclang="fa" label="فارسی">{% endif %}
+                 {% if current.captions and video_src and (video_src.startswith('/') or '://' not in video_src) %}crossorigin="anonymous"{% endif %}>
+            {% if current.captions %}<track kind="captions" src="/uploads/lessons/{{ current.captions }}" srclang="fa" label="فارسی" default>{% endif %}
           </video>
           <div class="pp-controls" id="pp-controls">
             <button class="pp-btn" id="pp-play" type="button" title="پخش/توقف">▶</button>

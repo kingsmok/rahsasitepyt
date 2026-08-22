@@ -44,19 +44,16 @@
     </div>
   </div>
   <div class="card" style="padding:22px">
-    <h2 style="font-size:14px;margin-bottom:8px">📖 راهنمای آیتم‌های منو</h2>
-    <p class="text-3" style="font-size:12px;margin-bottom:12px">هر خط یک آیتم با فرمت:<br>
-      <code dir="ltr">برچسب | آدرس | آیکون | نقش‌ها</code><br>
-      نقش‌ها خالی = برای همه · یا: <code dir="ltr">student,teacher,admin</code></p>
-    <p class="form-hint">مثال: مدیریت دوره‌ها | /admin/courses | 📚 | admin,teacher — این آیتم فقط برای مدیر و استاد نمایش داده می‌شود.</p>
-    <div class="form-group" style="margin-top:10px">
-      <label>نمونه آیتم‌ها</label>
-      <textarea class="form-control" dir="rtl" rows="8" readonly>خانه | / | 🏠 |
-دوره‌ها | /courses | 📚 |
-دوره‌های من | /dashboard/my-courses | 📖 | student
-پنل مدیریت | /admin/ | ⚙️ | admin
-مدرس شو | /become-teacher | 👨‍🏫 |</textarea>
-    </div>
+    <h2 style="font-size:14px;margin-bottom:8px">📖 راهنمای منوساز</h2>
+    <p class="text-3" style="font-size:12px;margin-bottom:10px">روی دکمه «✏️» کنار هر منو بروید و در صفحه ویرایش، آیتم‌ها را با فرم بصری بسازید:</p>
+    <ul class="text-3" style="font-size:12.5px;line-height:2.1;padding-right:6px">
+      <li>➕ از «افزودن آیتم آماده» یا «آیتم خالی» استفاده کنید</li>
+      <li>⋮⋮ آیتم را درگ کنید یا با ↑ ↓ جابه‌جا کنید</li>
+      <li>برای زیرمنو، فیلد «والد» آیتم را روی آیتم بالاتر بگذارید</li>
+      <li>نقش‌ها را تیک بزنید؛ خالی = نمایش برای همه</li>
+      <li>پیش‌نمایش زنده را برای نقش‌های مختلف ببینید</li>
+    </ul>
+    <p class="form-hint" style="margin-top:10px">سپس در صفحه‌ساز، ویجت «منوی ناوبری» را بکشید و این منو را از «منوی ذخیره‌شده» انتخاب کنید تا در هدر/فوتر نمایش داده شود.</p>
   </div>
 </div>
 {% endblock %}

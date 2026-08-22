@@ -65,6 +65,9 @@
       <span class="badge badge-white">{{ course.level }}</span>
       <span class="badge badge-white">{{ course.delivery_icon }} {{ course.delivery_label }}</span>
       {% if course.is_free() %}<span class="badge badge-success">رایگان</span>{% endif %}
+      {% if cur_user %}
+      <button class="fav-btn hero-fav {{ 'active' if is_fav }}" data-fav="{{ course.id }}" title="علاقه‌مندی" style="background:rgba(255,255,255,.15);border:none;border-radius:99px;padding:6px 14px;font-size:13px;color:#fff;cursor:pointer;backdrop-filter:blur(6px)">{{ '❤️ ذخیره شد' if is_fav else '🤍 ذخیره در علاقه‌مندی‌ها' }}</button>
+      {% endif %}
     </div>
     <h1>{{ course.title }}</h1>
     <p class="sub">{{ course.subtitle }}</p>

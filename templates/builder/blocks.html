@@ -8,6 +8,23 @@
    به‌صورت متن می‌دید؛ حالا هم درست نمایش داده می‌شود و هم امن است. #}
 {% macro nl2br(t) %}{{ t|nl2br }}{% endmacro %}
 
+{# تبدیل لینک اشتراک‌گذاری یوتیوب/آپارات/ویمو/اینستاگرام به لینک درج (embed) #}
+{% macro embed_src(url) %}
+{%- set u = (url or '')|string|trim -%}
+{%- if 'youtube.com/watch' in u and 'v=' in u %}{% set vid = u.split('v=')[1].split('&')[0] %}https://www.youtube.com/embed/{{ vid }}
+{%- elif 'youtu.be/' in u %}https://www.youtube.com/embed/{{ u.split('youtu.be/')[1].split('?')[0] }}
+{%- elif 'aparat.com/v/' in u %}https://www.aparat.com/video/video/embed/videohash/{{ u.split('/v/')[1].split('?')[0] }}/vt/frame
+{%- elif 'vimeo.com/' in u %}https://player.vimeo.com/video/{{ u.rstrip('/').split('/')[-1].split('?')[0] }}
+{%- elif 'instagram.com/' in u %}https://www.instagram.com/embed/{{ u.rstrip('/').split('/')[-1].split('?')[0] }}/embed/captioned/
+{%- else %}{{ u }}{% endif -%}
+{% endmacro %}
+
+{# فقط آدرس‌های http/https یا مسیر داخلی — جلوگیری از javascript: و … #}
+{% macro safe_embed_url(url) %}
+{%- set u = (url or '')|string|trim -%}
+{%- if u.startswith('http://') or u.startswith('https://') %}{{ u }}{% elif u.startswith('/') %}{{ u }}{% endif -%}
+{% endmacro %}
+
 {# مسیر صحیح تصویر: URL خارجی/data، مسیر مطلق، آپلودهای کتابخانه رسانه
    (uploads/...) و تصاویر عادی (/static/img/...) را درست resolve می‌کند. #}
 {% macro img_url(src) %}
@@ -160,7 +177,7 @@
 
 {% elif t == 'slider' %}
   {% set sl_total = d.slides|length %}
-  <div class="pb-slider" data-autoplay="{{ '1' if d.autoplay else '' }}" data-interval="{{ d.interval or 5 }}" data-swipe="{{ '1' if d.swipe else '' }}"
+  <div class="pb-slider{% if d.search %} has-search{% endif %}" data-autoplay="{{ '1' if d.autoplay else '' }}" data-interval="{{ d.interval or 5 }}" data-swipe="{{ '1' if d.swipe else '' }}"
        style="height:{{ d.height or 420 }}px;border-radius:{{ d.radius or 0 }}px">
     <div class="pb-slider-track">
       {% for s in d.slides if s is mapping %}
@@ -174,6 +191,16 @@
       </div>
       {% endfor %}
     </div>
+    {% if d.search %}
+    <div class="pb-slider-search">
+      <form action="{{ url_for('site.courses') }}" method="get" class="pb-search-box" role="search">
+        <span class="pb-search-ic">🔍</span>
+        <input type="search" name="q" placeholder="{{ d.search_hint or 'جستجو در تمام دوره‌های آموزشی...' }}" aria-label="جستجوی دوره">
+        <button type="submit" class="btn btn-accent">جستجو</button>
+      </form>
+      {% if d.search_hint %}<small class="pb-search-note">{{ d.search_hint }}</small>{% endif %}
+    </div>
+    {% endif %}
     {% if d.arrows and sl_total > 1 %}<button class="pb-slide-arrow pb-arrow-prev" aria-label="اسلاید قبلی">❮</button><button class="pb-slide-arrow pb-arrow-next" aria-label="اسلاید بعدی">❯</button>{% endif %}
     {% if d.dots and sl_total > 1 %}<div class="pb-slide-dots"></div>{% endif %}
     {% if not sl_total %}<div class="pb-slider-empty">اسلایدر خالی است — از پنل سمت چپ اسلاید اضافه کنید</div>{% endif %}
@@ -291,10 +318,16 @@
 
 {% elif t == 'courses' %}
   {% set cs = builder_courses(d) %}
-  <div class="pb-block-head">
-    {% if d.title %}<h2 style="font-size:clamp(20px,2.6vw,28px);font-weight:900">{{ d.title }}</h2>{% endif %}
-    {% if d.subtitle %}<p class="text-2" style="margin-top:6px">{{ d.subtitle }}</p>{% endif %}
+  {% if d.image or d.title or d.subtitle or d.link_text %}
+  <div class="pb-block-head" style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+    <div style="flex:1;min-width:220px">
+      {% if d.title %}<h2 style="font-size:clamp(20px,2.6vw,28px);font-weight:900">{{ d.title }}</h2>{% endif %}
+      {% if d.subtitle %}<p class="text-2" style="margin-top:6px">{{ d.subtitle }}</p>{% endif %}
+    </div>
+    {% if d.image %}<img src="{{ img_url(d.image) }}" alt="{{ d.title or '' }}" style="width:100%;max-width:340px;border-radius:14px;object-fit:cover;display:block">{% endif %}
+    {% if d.link_text %}<a class="btn btn-outline btn-sm" href="{{ d.link_url or url_for('site.courses') }}" style="white-space:nowrap">{{ d.link_text }} ◂</a>{% endif %}
   </div>
+  {% endif %}
   <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax({{ {'2':'420','3':'280','4':'220'}.get(d.columns or '3', '280') }}px,1fr));gap:22px;margin-top:22px">
     {% for c in cs %}{{ course_card(c) }}{% endfor %}
   </div>
@@ -314,7 +347,16 @@
 
 {% elif t == 'posts' %}
   {% set ps = builder_posts(d) %}
-  {% if d.title %}<div class="pb-block-head"><h2 style="font-size:clamp(20px,2.6vw,28px);font-weight:900">{{ d.title }}</h2></div>{% endif %}
+  {% if d.image or d.title or d.subtitle or d.link_text %}
+  <div class="pb-block-head" style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+    <div style="flex:1;min-width:220px">
+      {% if d.title %}<h2 style="font-size:clamp(20px,2.6vw,28px);font-weight:900">{{ d.title }}</h2>{% endif %}
+      {% if d.subtitle %}<p class="text-2" style="margin-top:6px">{{ d.subtitle }}</p>{% endif %}
+    </div>
+    {% if d.image %}<img src="{{ img_url(d.image) }}" alt="{{ d.title or '' }}" style="width:100%;max-width:340px;border-radius:14px;object-fit:cover;display:block">{% endif %}
+    {% if d.link_text %}<a class="btn btn-outline btn-sm" href="{{ d.link_url or url_for('site.blog') }}" style="white-space:nowrap">{{ d.link_text }} ◂</a>{% endif %}
+  </div>
+  {% endif %}
   <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:22px;margin-top:20px">
     {% for p in ps %}
     <article class="card card-hover post-card">
@@ -730,10 +772,30 @@
   {% endif %}
 
 {% elif t == 'nav_menu' %}
-  <ul class="dk-nav" style="justify-content:{{ 'center' if d.align == 'center' else 'flex-start' }}">
-    {% for it in (d.links or []) if it is mapping and it.url and it.text %}
-    <li><a href="{{ it.url }}">{{ it.text }}</a></li>
-    {% endfor %}
+  {% set m_items = bc_menu(d.menu_id) if d.menu_id else [] %}
+  {% macro _menu_sub(items, depth) %}
+    <ul class="pb-submenu" {% if depth > 0 %}style="right:100%;top:-8px"{% endif %}>
+      {% for ch in items %}
+      <li class="pb-menu-item {{ 'has-sub' if ch.children }}">
+        <a href="{{ ch.url }}">{% if ch.icon %}{{ ch.icon }} {% endif %}{{ ch.label }}</a>
+        {% if ch.children %}{{ _menu_sub(ch.children, depth + 1) }}{% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+  {% endmacro %}
+  <ul class="dk-nav pb-menu" style="justify-content:{{ 'center' if d.align == 'center' else 'flex-start' }}">
+    {% if m_items %}
+      {% for it in m_items %}
+      <li class="pb-menu-item {{ 'has-sub' if it.children }}">
+        <a href="{{ it.url }}">{% if it.icon %}{{ it.icon }} {% endif %}{{ it.label }}</a>
+        {% if it.children %}{{ _menu_sub(it.children, 1) }}{% endif %}
+      </li>
+      {% endfor %}
+    {% else %}
+      {% for it in (d.links or []) if it is mapping and it.url and it.text %}
+      <li><a href="{{ it.url }}">{{ it.text }}</a></li>
+      {% endfor %}
+    {% endif %}
   </ul>
 
 {% elif t == 'footer_about' %}
@@ -937,6 +999,22 @@
             src="https://w.soundcloud.com/player/?url={{ d.url or '' }}&amp;auto_play={{ 'true' if d.autoplay else 'false' }}&amp;color=%230e9488"></iframe>
   </div>
 
+{% elif t == 'embed' %}
+  {% if d.url %}
+    {% set _emb = embed_src(d.url) %}
+    {% if _emb %}
+    <div class="pb-embed" style="border-radius:{{ d.radius or 0 }}px;overflow:hidden;box-shadow:var(--shadow-sm);position:relative;aspect-ratio:{{ d.ratio or '16/9' }}">
+      <iframe src="{{ _emb }}" loading="lazy" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen
+              scrolling="{{ 'yes' if d.scroll else 'no' }}" style="position:absolute;inset:0;width:100%;height:100%;border:0;display:block"></iframe>
+    </div>
+    {% else %}
+    <div class="pb-embed" style="border-radius:{{ d.radius or 0 }}px;overflow:hidden;box-shadow:var(--shadow-sm);position:relative;{% if d.height %}height:{{ d.height }}px{% else %}aspect-ratio:{{ d.ratio or '16/9' }}{% endif %}">
+      <iframe src="{{ safe_embed_url(d.url) }}" loading="lazy" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen
+              scrolling="{{ 'yes' if d.scroll else 'no' }}" style="position:absolute;inset:0;width:100%;height:100%;border:0;display:block"></iframe>
+    </div>
+    {% endif %}
+  {% elif edit %}<div class="pb-embed-empty" style="aspect-ratio:16/9;display:grid;place-items:center;background:var(--bg-2);border:1.5px dashed var(--border-2);border-radius:12px;color:var(--text-3);font-size:13px">🔗 لینک محتوای خارجی را وارد کنید (یوتیوب، آپارات، اینستاگرام، نقشه و…)</div>{% endif %}
+
 {% elif t == 'shortcode' %}
   <div class="pb-shortcode">{{ rshort(d.code) }}</div>
 
@@ -1139,7 +1217,16 @@
 
 {% elif t == 'products' %}
   {% set ps = builder_products(d) %}
-  {% if d.title %}<div class="pb-block-head"><h2 style="font-size:clamp(20px,2.6vw,28px);font-weight:900">{{ d.title }}</h2></div>{% endif %}
+  {% if d.image or d.title or d.subtitle or d.link_text %}
+  <div class="pb-block-head" style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+    <div style="flex:1;min-width:220px">
+      {% if d.title %}<h2 style="font-size:clamp(20px,2.6vw,28px);font-weight:900">{{ d.title }}</h2>{% endif %}
+      {% if d.subtitle %}<p class="text-2" style="margin-top:6px">{{ d.subtitle }}</p>{% endif %}
+    </div>
+    {% if d.image %}<img src="{{ img_url(d.image) }}" alt="{{ d.title or '' }}" style="width:100%;max-width:340px;border-radius:14px;object-fit:cover;display:block">{% endif %}
+    {% if d.link_text %}<a class="btn btn-outline btn-sm" href="{{ d.link_url or url_for('products.index') }}" style="white-space:nowrap">{{ d.link_text }} ◂</a>{% endif %}
+  </div>
+  {% endif %}
   <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax({{ {'2':'420','3':'280','4':'220'}.get(d.columns or '3', '280') }}px,1fr));gap:22px;margin-top:20px">
     {% for c in ps %}{{ course_card(c) }}{% endfor %}
   </div>

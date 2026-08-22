@@ -1,0 +1,21 @@
+{% if cur_user %}
+{# نوار افقی منوی حساب کاربری — برای زیرصفحه‌هایی که سایدبار داشبورد ندارند #}
+<nav class="container" aria-label="منوی حساب کاربری" style="max-width:1200px;padding-top:18px">
+  <div class="dash-strip" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:10px 12px;box-shadow:var(--shadow-sm)">
+    {% set ep = request.endpoint or '' %}
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('student.dashboard') }}" style="{{ 'background:var(--primary);color:#fff' if ep == 'student.dashboard' }}">🏠 داشبورد</a>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('student.my_courses') }}" style="{{ 'background:var(--primary);color:#fff' if ep in ['student.my_courses','student.learn'] }}">📚 دوره‌های من</a>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('student.favorites') }}" style="{{ 'background:var(--primary);color:#fff' if ep == 'student.favorites' }}">❤️ علاقه‌مندی‌ها</a>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('student.orders') }}" style="{{ 'background:var(--primary);color:#fff' if ep in ['student.orders','student.invoice'] }}">🧾 سفارش‌ها</a>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('student.tickets') }}" style="{{ 'background:var(--primary);color:#fff' if ep in ['student.tickets','student.ticket_new','student.ticket_view'] }}">🎫 تیکت‌ها</a>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('features.support_chat') }}" style="{{ 'background:var(--primary);color:#fff' if ep == 'features.support_chat' }}">💬 چت آنلاین</a>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('features.wallet') }}" style="{{ 'background:var(--primary);color:#fff' if ep == 'features.wallet' }}">💰 کیف پول</a>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('features.notifications') }}" style="{{ 'background:var(--primary);color:#fff' if ep == 'features.notifications' }}">🔔 اعلان‌ها</a>
+    {% if site.get('referral_bonus_percent','0')|int > 0 %}<a class="btn btn-ghost btn-sm" href="{{ url_for('features.referral') }}" style="{{ 'background:var(--primary);color:#fff' if ep == 'features.referral' }}">🎁 دعوت دوستان</a>{% endif %}
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('features.talent_test') }}" style="{{ 'background:var(--primary);color:#fff' if ep in ['features.talent_test','features.talent_result'] }}">🧠 استعدادیابی</a>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('features.exam_practice') }}" style="{{ 'background:var(--primary);color:#fff' if ep and ep.startswith('features.exam') }}">🎯 آزمون تمرینی</a>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('features.study_plan') }}" style="{{ 'background:var(--primary);color:#fff' if ep == 'features.study_plan' }}">📅 برنامه مطالعه</a>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('student.profile') }}" style="{{ 'background:var(--primary);color:#fff' if ep == 'student.profile' }}">⚙️ تنظیمات حساب</a>
+  </div>
+</nav>
+{% endif %}

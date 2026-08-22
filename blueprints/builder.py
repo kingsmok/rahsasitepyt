@@ -116,6 +116,8 @@ WIDGETS = {
         dict(key='dots', label='نقطه‌ها', type='checkbox'),
         dict(key='arrows', label='فلش‌ها', type='checkbox'),
         dict(key='swipe', label='کشیدن با انگشت (موبایل)', type='checkbox'),
+        dict(key='search', label='نوار جستجوی دوره روی اسلایدر (سبک فرادرس)', type='checkbox'),
+        dict(key='search_hint', label='متن راهنمای نوار جستجو', type='text'),
     ]),
     'video_bg': dict(name='ویدیو پس‌زمینه', icon='◍', cat='media', fields=[
         dict(key='title', label='عنوان', type='text'),
@@ -151,7 +153,10 @@ WIDGETS = {
     # ---------- گریدها (داده از سایت) ----------
     'courses': dict(name='گرید دوره‌ها', icon='▦', cat='grid', fields=[
         dict(key='title', label='عنوان بخش', type='text'),
-        dict(key='subtitle', label='زیرعنوان', type='text'),
+        dict(key='subtitle', label='متن/توضیح بخش', type='textarea'),
+        dict(key='image', label='تصویر سربرگ بخش (اختیاری)', type='image'),
+        dict(key='link_text', label='متن لینک «مشاهده همه»', type='text'),
+        dict(key='link_url', label='آدرس لینک', type='text'),
         dict(key='category', label='دسته‌بندی', type='category'),
         dict(key='limit', label='تعداد', type='select', options=[('4', '۴'), ('6', '۶'), ('8', '۸'), ('12', '۱۲')]),
         dict(key='columns', label='ستون‌ها', type='select', options=[('2', '۲'), ('3', '۳'), ('4', '۴')]),
@@ -165,6 +170,10 @@ WIDGETS = {
     ]),
     'posts': dict(name='گرید مقالات', icon='▦', cat='grid', fields=[
         dict(key='title', label='عنوان بخش', type='text'),
+        dict(key='subtitle', label='متن/توضیح بخش', type='textarea'),
+        dict(key='image', label='تصویر سربرگ بخش (اختیاری)', type='image'),
+        dict(key='link_text', label='متن لینک «مشاهده همه»', type='text'),
+        dict(key='link_url', label='آدرس لینک', type='text'),
         dict(key='limit', label='تعداد', type='select', options=[('3', '۳'), ('6', '۶')]),
         dict(key='columns', label='ستون‌ها', type='select', options=[('3', '۳')]),
     ]),
@@ -285,7 +294,8 @@ WIDGETS = {
     ]),
     'user_menu': dict(name='منوی کاربر', icon='👤', cat='header', fields=[]),
     'nav_menu': dict(name='منوی ناوبری', icon='☷', cat='header', fields=[
-        dict(key='links', label='لینک‌ها', type='repeater', item_fields=[
+        dict(key='menu_id', label='منوی ذخیره‌شده (منوساز پنل مدیریت)', type='menu'),
+        dict(key='links', label='لینک‌های دستی (اگر منویی انتخاب نشد)', type='repeater', item_fields=[
             dict(key='text', label='متن', type='text'),
             dict(key='url', label='لینک', type='text'),
         ]),
@@ -436,6 +446,16 @@ WIDGETS = {
         dict(key='height', label='ارتفاع', type='select', options=[('166', 'کوچک'), ('300', 'متوسط'), ('450', 'بزرگ')]),
         dict(key='autoplay', label='پخش خودکار', type='checkbox'),
     ]),
+    'embed': dict(name='بلد (Embed)', icon='🔗', cat='general',
+        desc='درج هر محتوای خارجی (یوتیوب، آپارات، اینستاگرام، نقشه، اسلاید و…) با iframe',
+        fields=[
+            dict(key='url', label='لینک درج (YouTube / Aparat / Instagram / …)', type='text'),
+            dict(key='ratio', label='نسبت ابعاد', type='select',
+                  options=[('16/9', '۱۶:۹'), ('4/3', '۴:۳'), ('1/1', '۱:۱'), ('21/9', '۲۱:۹')]),
+            dict(key='height', label='ارتفاع دستی (px — خالی = نسبت ابعاد)', type='number'),
+            dict(key='radius', label='گردی گوشه', type='select', options=[('0', 'بدون'), ('12', '۱۲px'), ('20', '۲۰px')]),
+            dict(key='scroll', label='اجازه اسکرول داخل کادر', type='checkbox'),
+        ]),
     'shortcode': dict(name='شورت‌کد', icon='[]', cat='general', fields=[
         dict(key='code', label='کد شورت‌کد', type='textarea'),
     ]),
@@ -582,6 +602,10 @@ WIDGETS = {
     # ================= فروشگاهی =================
     'products': dict(name='محصولات (دوره‌ها)', icon='🛍', cat='woo', fields=[
         dict(key='title', label='عنوان بخش', type='text'),
+        dict(key='subtitle', label='متن/توضیح بخش', type='textarea'),
+        dict(key='image', label='تصویر سربرگ بخش (اختیاری)', type='image'),
+        dict(key='link_text', label='متن لینک «مشاهده همه»', type='text'),
+        dict(key='link_url', label='آدرس لینک', type='text'),
         dict(key='filter', label='فیلتر', type='select', options=[
             ('all', 'همه'), ('sale', 'تخفیف‌دار'), ('featured', 'ویژه'), ('popular', 'پرفروش‌ترین')]),
         dict(key='limit', label='تعداد', type='select', options=[('4', '۴'), ('8', '۸'), ('12', '۱۲')]),
@@ -1120,6 +1144,41 @@ def builder_products(d):
     return _b_cache(f'products:{f}:{_lim}', 60, _q)
 
 
+def bc_menu(menu_id):
+    """آیتم‌های یک منوی ذخیره‌شده (با فیلتر نقش و ساختار زیرمنو) برای ویجت منوی ناوبری"""
+    try:
+        from models import Menu as _Menu
+        m = _Menu.query.filter_by(id=int(menu_id or 0), is_active=True).first()
+    except Exception:
+        return []
+    if not m:
+        return []
+    role = ''
+    try:
+        from flask import g as _g
+        u = getattr(_g, 'user', None)
+        role = (u.role or '') if u else ''
+    except Exception:
+        pass
+    ordered = sorted(m.items, key=lambda it: it.sort or 0)
+    visible = []
+    for it in ordered:
+        roles = [r.strip() for r in (it.roles or '').split(',') if r.strip()]
+        if roles and role not in roles:
+            continue
+        visible.append({'id': it.id, 'label': it.label, 'url': it.url, 'icon': it.icon,
+                        'parent_id': it.parent_id, 'children': []})
+    by_id = {it['id']: it for it in visible}
+    roots = []
+    for it in visible:
+        p = by_id.get(it['parent_id'])
+        if p is not None:
+            p['children'].append(it)
+        else:
+            roots.append(it)
+    return roots
+
+
 def render_shortcodes(text):
     """رندر شورت‌کدهای ساده: [courses limit=4] [categories] [posts] [button] [alert] [anchor]"""
     from html_sanitizer import sanitize_markup
@@ -1406,6 +1465,58 @@ def new_page():
     return redirect(url_for('builder.editor', slug=slug))
 
 
+@builder_bp.route('/builder/ensure-site-pages', methods=['POST'])
+def ensure_site_pages():
+    """ساخت نسخهٔ صفحه‌ساز برای صفحات ثابت سایت (درباره، تماس، قوانین و...).
+
+    اگر صفحه‌ای با همان slug از قبل موجود باشد، دست‌نخورده می‌ماند؛
+    برای صفحات جدید، ردیف‌های شروع از قالب‌های آمادهٔ موجود بارگذاری می‌شود.
+    """
+    r = _admin_required()
+    if r:
+        return r
+    _specs = [
+        ('about', 'درباره ما', 'about_page'),
+        ('contact', 'تماس با ما', 'contact_page'),
+        ('faq', 'سوالات متداول', ''),
+        ('terms', 'قوانین و مقررات', ''),
+        ('privacy', 'حریم خصوصی', ''),
+        ('learning-paths', 'مسیرهای یادگیری', ''),
+        ('become-teacher', 'مدرس شو', ''),
+        ('consultation', 'درخواست مشاوره', ''),
+        ('teachers', 'اساتید', ''),
+    ]
+    made = 0
+    for slug, title, template in _specs:
+        if Page.query.filter_by(slug=slug).first():
+            continue
+        rows = []
+        if template and template in PAGE_TEMPLATES:
+            rows = PAGE_TEMPLATES[template]['rows']
+        if not rows:
+            # ردیف پیش‌فرض ساده: تیتر + متن — مدیر بعداً در صفحه‌ساز کاملش می‌کند
+            rows = [{'id': f'st_{slug}', 'settings': {'gap': 24, 'py': 60},
+                     'cols': [[
+                         {'id': f'st_{slug}_h', 'type': 'heading',
+                          'data': {'text': title, 'tag': 'h1', 'align': 'right'}},
+                         {'id': f'st_{slug}_t', 'type': 'text',
+                          'data': {'content': 'این صفحه هنوز با صفحه‌ساز ویرایش نشده است. از دکمه «ویرایش» همین صفحه را با صفحه‌ساز کامل کنید.', 'align': 'right'}},
+                     ]]}]
+        # پیش‌فرض: پیش‌نویس — تا وقتی مدیر دکمه «انتشار» را نزند، قالب ثابت قبلی
+        # نمایش داده می‌شود و صفحهٔ ناتمام به دید بازدیدکننده نمی‌آید.
+        db.session.add(Page(title=title, slug=slug, ptype='page',
+                            is_published=False,
+                            content=json.dumps({'settings': {}, 'rows': rows},
+                                               ensure_ascii=False)))
+        made += 1
+    db.session.commit()
+    if made:
+        flash(f'نسخهٔ صفحه‌ساز {made} صفحهٔ ثابت ساخته شد. حالا از دکمه «ویرایش» محتوای هرکدام را کامل کنید. 🧩', 'success')
+    else:
+        flash('همهٔ صفحات ثابت از قبل در صفحه‌ساز موجود بودند.', 'info')
+    return redirect(url_for('builder.index'))
+
+
 @builder_bp.route('/builder/<slug>/delete', methods=['POST'])
 def delete_page(slug):
     r = _admin_required()
@@ -1507,10 +1618,13 @@ def editor(slug):
             page.content = json.dumps({'settings': page.settings(), 'rows': home_rows(t)},
                                       ensure_ascii=False)
             db.session.commit()
+    from models import Menu as _Menu
+    menu_options = [[str(m.id), m.title] for m in
+                    _Menu.query.filter_by(is_active=True).order_by(_Menu.title).all()]
     return render_template('builder/editor.html', page=page, widgets=WIDGETS,
                            cats=WIDGET_CATS, images=IMG_OPTIONS,
                            cat_options=builder_cat_options(), other_pages=other_pages,
-                           course_options=course_options,
+                           course_options=course_options, menu_options=menu_options,
                            section_templates=SECTION_TEMPLATES,
                            page_templates=PAGE_TEMPLATES,
                            persian_designs=_persian_designs_meta())

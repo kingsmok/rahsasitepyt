@@ -269,8 +269,31 @@ def my_classes():
 
 @community_bp.route('/live')
 def live():
-    """کلاس‌های آنلاین آتی"""
+    """کلاس‌های آنلاین آتی + ضبط جلسات برگزارشده"""
     sessions = LiveSession.query.order_by(LiveSession.starts_at.desc()).all()
+    # برای هر جلسه: منبع ویدیوی ضبط (محلی/ریموت)، HD، وضعیت قفل زمان‌بازشدن
+    from datetime import timedelta as _td
+    _now = utcnow()
+    from blueprints.student import _local_video_filename as _lv
+    for s in sessions:
+        s._rec_src = ''
+        s._rec_hd = ''
+        s._rec_open = False
+        s._rec_locked_days = 0
+        if s.is_recorded and s.video_url:
+            _fn = _lv(s.video_url)
+            s._rec_src = ('/static/video/' + _fn) if _fn else s.video_url
+            if s.video_url_hd:
+                _hd = _lv(s.video_url_hd)
+                s._rec_hd = ('/static/video/' + _hd) if _hd else s.video_url_hd
+            if s.release_days and s.release_days > 0:
+                _unlock = (s.starts_at + _td(days=s.release_days)).replace(tzinfo=None)
+                if _now.replace(tzinfo=None) >= _unlock:
+                    s._rec_open = True
+                else:
+                    s._rec_locked_days = max(1, (_unlock - _now.replace(tzinfo=None)).days + 1)
+            else:
+                s._rec_open = True
     g.seo['title'] = 'کلاس‌های آنلاین و وبینارها — آکادمی آنلاین'
     return render_template('community/live.html', sessions=sessions)
 

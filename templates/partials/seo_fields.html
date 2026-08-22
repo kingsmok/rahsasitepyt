@@ -34,10 +34,62 @@
                maxlength="100" value="{{ seo.focus_keyword if seo else '' }}">
       </div>
       <div class="form-group">
-        <label for="seo_keywords">کلمات کلیدی (با ویرگول جدا کنید)</label>
-        <input id="seo_keywords" class="form-control" name="seo_keywords"
-               maxlength="300" value="{{ seo.keywords if seo else '' }}">
+        <label for="seo_keywords">کلمات کلیدی</label>
+        <div class="seo-tags" id="seo-tags" data-input="seo_keywords" data-hidden="seo_keywords_hidden"></div>
+        <input id="seo_keywords" class="form-control seo-tags-input" type="text"
+               placeholder="یک کلمه کلیدی بنویسید و Enter بزنید" maxlength="60" autocomplete="off">
+        <input type="hidden" id="seo_keywords_hidden" name="seo_keywords" maxlength="300"
+               value="{{ seo.keywords if seo else '' }}">
+        <small class="text-muted">برای هر کلمه کلیدی Enter بزنید تا به‌صورت برچسب اضافه شود.</small>
       </div>
+      <script>
+      (function(){
+        var box = document.getElementById('seo-tags');
+        if (!box) return;
+        var inp = document.getElementById('seo_keywords');
+        var hid = document.getElementById('seo_keywords_hidden');
+        var tags = [];
+        function render(){
+          box.innerHTML = '';
+          tags.forEach(function(t){
+            var s = document.createElement('span');
+            s.className = 'seo-tag';
+            s.textContent = t;
+            var x = document.createElement('button');
+            x.type = 'button'; x.textContent = '✕';
+            x.setAttribute('aria-label', 'حذف ' + t);
+            x.addEventListener('click', function(){ tags = tags.filter(function(y){return y !== t;}); render(); });
+            s.appendChild(x);
+            box.appendChild(s);
+          });
+          hid.value = tags.join(', ');
+        }
+        function seed(){
+          (hid.value || '').split(',').forEach(function(k){ k = k.trim(); if (k && tags.indexOf(k) === -1) tags.push(k); });
+          render();
+        }
+        inp.addEventListener('keydown', function(e){
+          if (e.key === 'Enter' || e.key === ','){
+            e.preventDefault();
+            var v = inp.value.trim();
+            if (v){
+              v = v.replace(/,$/,'');
+              if (tags.indexOf(v) === -1 && tags.length < 25) tags.push(v);
+              inp.value = '';
+              render();
+            }
+          } else if (e.key === 'Backspace' && !inp.value && tags.length){
+            tags.pop(); render();
+          }
+        });
+        inp.addEventListener('blur', function(){
+          var v = inp.value.trim();
+          if (v){ if (tags.indexOf(v) === -1 && tags.length < 25) tags.push(v); inp.value=''; render(); }
+        });
+        box.addEventListener('click', function(){ inp.focus(); });
+        seed();
+      })();
+      </script>
     </div>
 
     <div class="form-group">

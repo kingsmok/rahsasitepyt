@@ -120,6 +120,20 @@
     </select>
     <button class="btn btn-primary" type="submit">ذخیره</button>
   </form>
+  <hr style="border:none;border-top:1px dashed var(--border);margin:16px 0">
+  <form method="post" class="flex gap-2 wrap" style="align-items:flex-end">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="field" value="home_page_slug">
+    <label style="font-size:13px;font-weight:700">🏠 صفحه اصلی سایت (انتخاب از صفحات صفحه‌ساز):</label>
+    <select name="value" class="form-control" style="width:auto;max-width:320px">
+      <option value="">— بدون انتخاب (استفاده از چیدمان بالا) —</option>
+      {% for p in pages %}
+      <option value="{{ p.slug }}" {{ 'selected' if cur_home_page == p.slug }}>{{ p.title }} ({{ p.slug }})</option>
+      {% endfor %}
+    </select>
+    <button class="btn btn-primary" type="submit">انتخاب به عنوان صفحه اصلی</button>
+  </form>
+  <p class="form-hint" style="margin-top:8px">اگر صفحه‌ای انتخاب شود، دقیقاً همان صفحه به عنوان صفحه اصلی سایت نمایش داده می‌شود و چیدمان بالا نادیده گرفته می‌شود.</p>
 </div>
 
 <script>

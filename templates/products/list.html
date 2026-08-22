@@ -14,6 +14,14 @@
       </div>
     </div>
 
+    <div style="background:linear-gradient(120deg,#7c3aed,#a855f7 55%,#d946ef);border-radius:18px;padding:26px 28px;color:#fff;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:22px;box-shadow:0 12px 30px rgba(124,58,237,.28)">
+      <div>
+        <div style="font-size:19px;font-weight:900">تخفیف‌های ویژهٔ محصولات آموزشی</div>
+        <div style="opacity:.9;font-size:13px;margin-top:4px">همه کالاها در انبار آکادمی — ارسال سریع به سراسر کشور</div>
+      </div>
+      <a href="{{ url_for('products.product_list', sort='cheap') }}" class="btn btn-white" style="border-radius:12px;font-weight:800">ارزان‌ترین‌ها ←</a>
+    </div>
+
     <form method="get" class="flex gap-1" style="gap:10px;margin-bottom:22px;align-items:center">
       <input class="form-control" name="q" value="{{ q }}" placeholder="جستجوی محصول..." style="flex:1">
       <select class="form-control" name="cat" style="max-width:200px">
@@ -35,7 +43,7 @@
     <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:20px">
       {% for p in items %}
       <a class="card card-hover" href="{{ url_for('products.product_detail', slug=p.slug) }}" style="overflow:hidden;border-radius:16px;text-decoration:none;color:inherit;display:flex;flex-direction:column">
-        <div style="position:relative;aspect-ratio:1/1;background:var(--bg-2);overflow:hidden">
+        <div style="position:relative;aspect-ratio:16/9;background:var(--bg-2);overflow:hidden">
           {% if p.image %}
           <img src="{{ p.image_url }}" alt="{{ p.title }}" style="width:100%;height:100%;object-fit:cover" loading="lazy">
           {% else %}
@@ -47,11 +55,16 @@
         <div style="padding:14px 16px 16px;display:flex;flex-direction:column;gap:6px;flex:1">
           <div style="font-size:11px;color:var(--text-3)">{{ p.category or '' }}{% if p.sku %} · کد: {{ p.sku }}{% endif %}</div>
           <strong style="font-size:14.5px;line-height:1.6">{{ p.title }}</strong>
-          <div class="flex between" style="align-items:center;margin-top:auto">
+          <div class="flex between" style="align-items:center;margin-top:auto;gap:8px">
             <div>
               {% if p.has_discount %}<span style="text-decoration:line-through;color:#9ca3af;font-size:12px">{{ fa('{:,.0f}'.format(p.price)) }}</span>{% endif %}
               <div style="color:var(--primary);font-weight:900;font-size:16px">{{ fa('{:,.0f}'.format(p.final_price)) }} <small style="font-size:10.5px">تومان</small></div>
             </div>
+            {% if p.stock is not none and p.stock <= 0 %}
+            <span class="badge" style="background:#fee2e2;color:#b91c1c;font-size:11px">ناموجود</span>
+            {% else %}
+            <button type="button" class="btn btn-primary btn-sm" data-add-product="{{ p.id }}" title="افزودن به سبد" style="border-radius:10px">🛒</button>
+            {% endif %}
           </div>
         </div>
       </a>
@@ -66,4 +79,34 @@
     {% endif %}
   </div>
 </section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelectorAll('[data-add-product]').forEach(function (btn) {
+  btn.addEventListener('click', function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    var id = btn.dataset.addProduct;
+    var orig = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner" style="width:14px;height:14px;border-width:2px"></span>';
+    fetch('/api/product-cart/add', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': (window.csrfToken ? window.csrfToken() : '') },
+      body: JSON.stringify({ product_id: parseInt(id, 10) })
+    }).then(function (r) { return r.json(); }).then(function (d) {
+      btn.disabled = false;
+      if (d && d.ok) {
+        btn.textContent = '✓';
+        if (window.updateCartBadge) window.updateCartBadge();
+        setTimeout(function () { btn.innerHTML = '🛒'; }, 1200);
+      } else {
+        btn.innerHTML = '🛒';
+        alert((d && d.msg) || 'خطا در افزودن به سبد');
+      }
+    }).catch(function () { btn.disabled = false; btn.innerHTML = '🛒'; });
+  });
+});
+</script>
 {% endblock %}

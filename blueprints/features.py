@@ -19,7 +19,7 @@ from gamification import (award_points, record_streak, user_badges,
                           make_referral_code)
 
 from jdates import jtime
-from validators import safe_int
+from validators import safe_int, log_exc as _lexc
 
 features_bp = Blueprint('features', __name__)
 

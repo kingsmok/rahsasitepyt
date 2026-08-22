@@ -305,3 +305,35 @@ def test_run_install_never_overwrites_existing_data(tmp_path, monkeypatch):
         assert _db.session.get(Setting, 'site_name').value == 'سایت قبلی'
         # مدیر جدید هم اضافه شده
         assert User.query.filter_by(email='new@site.ir').first() is not None
+
+
+# ---------------------------------------------------------------------------
+# رگرسیون: تنظیمات JSON خراب نباید صفحه را ۵۰۰ کند
+# ---------------------------------------------------------------------------
+def test_talent_test_survives_malformed_settings_json(client, app):
+    """اگر ادمین JSON نامعتبر در talent_questions ذخیره کند، صفحه باید با
+    سوالات پیش‌فرض بالا بیاید — نه خطای ۵۰۰.
+
+    باگ واقعی: بلوک except تابع _get_talent_questions نام _lexc را صدا می‌زد
+    که در features.py import نشده بود؛ در نتیجه همان مسیری که قرار بود خطا را
+    مهار کند، خودش NameError می‌داد و کل صفحه از کار می‌افتاد.
+    """
+    with app.app_context():
+        db.session.add(Setting(key='talent_questions', value='{not valid json'))
+        db.session.commit()
+    r = client.get('/talent-test')
+    assert r.status_code == 200
+
+
+def test_talent_test_uses_valid_custom_questions(client, app):
+    """JSON معتبر باید واقعاً جایگزین سوالات پیش‌فرض شود."""
+    import json as _json
+    payload = _json.dumps([
+        {'q': 'سوال سفارشی تست', 'o': [['a', 'گزینه یک'], ['b', 'گزینه دو']]},
+    ], ensure_ascii=False)
+    with app.app_context():
+        db.session.add(Setting(key='talent_questions', value=payload))
+        db.session.commit()
+    r = client.get('/talent-test')
+    assert r.status_code == 200
+    assert 'سوال سفارشی تست' in r.text

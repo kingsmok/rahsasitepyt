@@ -4,11 +4,10 @@ import io
 import os
 import re
 
-import pytest
 from PIL import Image
 
 from models import (BlogPost, Course, Media, Product, Setting, User, db,
-                    normalize_logo_url, resolve_image_url)
+                    normalize_logo_url)
 
 
 def _png_bytes(color=(200, 40, 40), size=(48, 48)):

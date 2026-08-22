@@ -2,7 +2,7 @@
 """تست پنل ادمین، پنل معلم و انجمن — CRUD و کنترل دسترسی."""
 import re
 from conftest import login
-from models import db, User, Course, Category, Enrollment, Ticket, ForumTopic
+from models import db, User, Enrollment, Ticket, ForumTopic
 
 
 def _make_admin(app):

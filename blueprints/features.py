@@ -11,12 +11,11 @@ except ImportError:  # پایتون < 3.11 (هاست‌های اشتراکی)
     UTC = _tz_utc.utc
 from flask import (Blueprint, render_template, request, redirect, url_for,
                    flash, g, session, abort, jsonify)
-from models import (utcnow, db, User, Course, Quiz, QuizQuestion, QuizAttempt,
-                    Assignment, AssignmentSubmission, LessonQuestion,
-                    Enrollment, Order, OrderItem, Bundle, BundleCourse,
-                    StudyPlan, ActivityLog, ChatMessage, StudyDay)
-from gamification import (award_points, record_streak, user_badges,
-                          make_referral_code)
+from models import (utcnow, db, User, Course, Quiz, QuizAttempt, Assignment,
+                    AssignmentSubmission, LessonQuestion, Enrollment,
+                    Order, OrderItem, Bundle, StudyPlan, ChatMessage,
+                    StudyDay)
+from gamification import (award_points, make_referral_code)
 
 from jdates import jtime
 from validators import safe_int, log_exc as _lexc

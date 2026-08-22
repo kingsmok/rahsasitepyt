@@ -1,14 +1,10 @@
 # -*- coding: utf-8 -*-
 """فروشگاه محصولات فیزیکی — لیست، صفحه محصول، سبد و تسویه یکپارچه"""
-import re as _re
-import random
 
-from flask import (Blueprint, render_template, request, redirect, url_for, flash,
-                   g, session, abort, jsonify)
+from flask import (Blueprint, render_template, request, redirect, url_for, g,
+                   session, abort, jsonify)
 
-from models import (utcnow, db, User, Product, Order, OrderItem, Enrollment,
-                    PaymentLog, Notification, ActivityLog, Category, Course)
-from jdates import fa
+from models import (db, Product, Course)
 
 products_bp = Blueprint('products', __name__)
 

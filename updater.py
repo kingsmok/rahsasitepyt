@@ -685,7 +685,6 @@ def _parse_github(url):
 
 def _http_json(url, token='', timeout=30):
     """دریافت JSON از API گیت‌هاب با خطایابی بهتر."""
-    import errno
     import socket
     req = urllib.request.Request(url, headers={
         'User-Agent': 'rahsasitepyt-updater',
@@ -2390,7 +2389,7 @@ def _safe_add_column(engine, table, column):
     * اگر SQLite «default غیرثابت» را رد کند → ستون nullable اضافه و backfill
       جدا انجام می‌شود؛ هیچ‌وقت داده از بین نمی‌رود.
     """
-    from sqlalchemy import inspect, text
+    from sqlalchemy import text
     ddl, _default_sql = _column_ddl(column, engine.dialect)
     table_sql = _quote_table(table, engine.dialect)
     sql = 'ALTER TABLE {} ADD COLUMN {}'.format(table_sql, ddl)
@@ -2527,7 +2526,7 @@ def _migrate_db(engine=None, progress_cb=None):
         تازه‌اضافه‌شده با default مدل پر می‌شود.
       * خطا دیگر به شکل «موفق» پنهان نمی‌شود و exception به caller می‌رسد.
     """
-    from sqlalchemy import inspect, text
+    from sqlalchemy import inspect
     from models import db
 
     try:

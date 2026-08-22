@@ -5,7 +5,6 @@
 """
 import os
 import time
-from datetime import datetime
 try:
     from datetime import UTC
 except ImportError:  # پایتون < 3.11 (هاست‌های اشتراکی)
@@ -21,9 +20,8 @@ except Exception:
 
 import hmac
 from flask import Flask, g, request, session, redirect, url_for, abort, render_template
-from models import utcnow, db, User, Setting, Category, Order, NewsletterEmail, Course
-from jdates import (fa, fa_num, money, MONTHS, slugify, jdate, jdatetime, jdate_num, jtime,
-                  jalali_to_gregorian, g2j, j2g)
+from models import utcnow, db, User, Setting, Category, Order, Course
+from jdates import (fa, money, slugify, jdate, jdatetime, jdate_num, jtime)
 from validators import log_exc as _lexc
 
 
@@ -637,13 +635,10 @@ def create_app():
         init_admin(app)
     except Exception as e:
         app.logger.warning(f'Flask-Admin غیرفعال: {e}')
-    # روت پنل Flask-Admin به /admin-extra تا با پنل ما تداخل نکند
-    try:
-        from flask_admin import Admin as _A
-        # مسیر پیش‌فرض /admin/ است — آن را به /admin-extra تغییر می‌دهیم
-        # (این کار بعد از ساخت Admin انجام می‌شود؛ در admin_panel تنظیم شده)
-    except Exception:
-        _lexc('app.py')
+    # نکته: مسیر پنل Flask-Admin به /admin-extra تغییر داده شده تا با پنل
+    # اختصاصی ما تداخل نکند. این تنظیم داخل admin_panel.init_admin انجام
+    # می‌شود؛ بلوک try/except قبلی در این نقطه فقط flask_admin را import
+    # می‌کرد و هیچ کاری انجام نمی‌داد (کد مرده) — حذف شد.
     app.jinja_env.globals['builder_courses'] = builder_courses
     app.jinja_env.globals['builder_categories'] = builder_categories
     app.jinja_env.globals['builder_posts'] = builder_posts

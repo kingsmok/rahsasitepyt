@@ -59,10 +59,7 @@ def test_media_upload_forbidden_for_student(client):
 
 def test_upload_rejects_non_image_in_builder(client):
     """آپلود غیرتصویر در صفحه‌ساز رد شود"""
-    from conftest import login as _login
     # ادمین بسازیم
-    from models import db, User
-    from app import create_app
     r = client.post('/api/media/upload', data={
         'file': (io.BytesIO(b'MZ fake exe'), 'evil.exe')
     }, headers=csrf_headers(client), content_type='multipart/form-data')

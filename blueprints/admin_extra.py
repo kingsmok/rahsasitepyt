@@ -6,23 +6,16 @@ import hmac
 import json
 import os
 import uuid
-from datetime import datetime
 
-from flask import (Blueprint, render_template, request, redirect, url_for, flash,
-                   g, abort, jsonify, Response)
+from flask import (render_template, request, redirect, url_for, flash, g,
+                   abort, jsonify)
 from sqlalchemy import func as _func
 
-from models import (utcnow, db, User, Category, Course, Section, Lesson, Order, OrderItem,
-                    Coupon, BlogPost, NewsletterEmail, ContactMessage,
-                    Ticket, Setting, Enrollment, Review, PaymentProof, ActivityLog,
-                    Quiz, QuizAttempt, Assignment, AssignmentSubmission,
-                    LessonQuestion, Bundle, CustomForm, CustomFormEntry,
-                    PayoutRequest, StudyDay, ForumTopic, ForumPost, LiveSession,
-                    Installment, TicketReply, SuccessStory, Media, ExamAttempt,
-                    CourseTeacher, QuestionBank, SeoMeta, Page, Notification)
+from models import (utcnow, db, User, Course, Order, OrderItem, Coupon, BlogPost, ContactMessage,
+                    Ticket, Enrollment, ActivityLog)
 from blueprints.admin_bp import admin_bp, admin_required
-from validators import safe_filename, safe_int, human_size, log_exc as _lexc
-from jdates import jdate_num, jtime, fa
+from validators import safe_filename, safe_int, log_exc as _lexc
+from jdates import jdate_num, jtime
 
 
 @admin_bp.route('/consultations', methods=['GET', 'POST'])
@@ -306,7 +299,6 @@ def report_revenue_courses():
 @admin_required
 def report_coupons():
     """گزارش مصرف کدهای تخفیف"""
-    from sqlalchemy import func as _func
     rows = []
     total_saved = 0
     for c in Coupon.query.all():
@@ -326,7 +318,6 @@ def report_coupons():
 @admin_required
 def report_feedback():
     """گزارش رضایت‌سنجی دوره‌ها"""
-    from sqlalchemy import func as _func
     from models import CourseFeedback
     rows = []
     for c in Course.query.all():
@@ -379,7 +370,6 @@ def report_teachers():
 @admin_required
 def report_exams():
     """گزارش واقعی تلاش‌ها و نتایج آزمون‌های تمرینی."""
-    from sqlalchemy import func as _func
     from models import ExamAttempt
     attempts = ExamAttempt.query.all()
     users = len({a.user_id for a in attempts})
@@ -404,7 +394,6 @@ def report_exams():
 @admin_required
 def report_popular_pages():
     """صفحات پربازدید"""
-    from models import SeoMeta
     pages = []
     for c in Course.query.filter_by(status='published').all():
         pages.append({'url': '/course/' + c.slug, 'title': c.title, 'views': c.views or 0})

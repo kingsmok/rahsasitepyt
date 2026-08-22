@@ -3,17 +3,16 @@
 تشخیص نسخه از version.txt، تشخیص «توقف» با liveness قفل و مایگریشن امن."""
 import json
 import os
-import sqlite3
 import time
 
 import pytest
-from sqlalchemy import Column, DateTime, Integer, MetaData, String, Table, create_engine, inspect, text
+from sqlalchemy import Column, DateTime, Integer, MetaData, String, Table, create_engine, text
 
 import updater
 from updater import (
     UpdateError, _apply_extracted_archive, _local_version_info, _overlay_skip,
-    _overlay_tree, _run_data_migrations, _safe_add_column, _snapshot_code_files,
-    check_for_update, update_progress,
+    _overlay_tree, _run_data_migrations, _safe_add_column, check_for_update,
+    update_progress,
 )
 
 

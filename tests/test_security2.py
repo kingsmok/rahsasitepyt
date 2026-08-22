@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """تست‌های امنیتی تکمیلی — پیشگیری از تسخیر حساب در بازیابی رمز + مقایسهٔ مقاوم OTP."""
 import re
-import time
 import blueprints.auth as auth_mod
 from models import User, Setting, db
 

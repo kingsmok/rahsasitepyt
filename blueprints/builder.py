@@ -763,8 +763,8 @@ PAGE_TEMPLATES = {
 }
 
 from builder_sections import (
-    EXTRA_PAGE_TEMPLATES, SITE_SECTIONS, chrome_specs, ensure_section,
-    section_spec_for_page, site_page_specs, theme_specs,
+    EXTRA_PAGE_TEMPLATES, SITE_SECTIONS, ensure_section, section_spec_for_page,
+    site_page_specs, theme_specs,
 )
 PAGE_TEMPLATES.update(EXTRA_PAGE_TEMPLATES)
 
@@ -1217,7 +1217,6 @@ def _sanitize_rows(rows):
 def _dynamic_value(key):
     """مقداردهی تگ‌های پویا از دیتابیس"""
     from flask import g as _g
-    from datetime import datetime
     try:
         from datetime import UTC as _dt
     except ImportError:

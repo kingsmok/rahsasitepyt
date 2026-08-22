@@ -2,7 +2,7 @@
 """دسته ۶: UI/UX — منوی گروه‌بندی‌شدهٔ ادمین و داشبورد جدید مدرس."""
 import re
 
-from models import (Course, Setting, User, db)
+from models import (Course, User, db)
 
 from permissions import menu_groups_for
 

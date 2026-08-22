@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 """تست مسیرهای عمومی و مدیریت خطا"""
-from conftest import login
 
 
 def test_home(client):

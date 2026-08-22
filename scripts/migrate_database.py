@@ -14,7 +14,7 @@ import os
 import sqlite3
 import sys
 import traceback
-from datetime import datetime
+from datetime import datetime, timezone
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT not in sys.path:
@@ -94,7 +94,9 @@ def _sqlite_backup(app):
 
     backup_dir = os.path.join(ROOT, 'instance', 'backups')
     os.makedirs(backup_dir, exist_ok=True)
-    stamp = datetime.utcnow().strftime('%Y%m%d-%H%M%S')
+    # datetime.utcnow() در پایتون ۳.۱۲+ منسوخ است و در نسخه‌های بعدی حذف
+    # می‌شود؛ معادل صریح و آینده‌پذیر آن استفاده می‌شود.
+    stamp = datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S')
     destination = os.path.join(backup_dir, 'academy-update-{}.db'.format(stamp))
     source = destination_conn = None
     try:

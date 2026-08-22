@@ -220,7 +220,7 @@ def test_complete_lesson_blocked_for_locked_installment_lesson(client, app):
     cid, oid = _installment_fixture(app, per=2)
     login(client, 'demo@test.ir', 'demo123')
     with app.app_context():
-        lessons = Course.query.get(cid).lessons
+        lessons = db.session.get(Course, cid).lessons
         locked_id = lessons[4].id  # جلسه ۵ — خارج از سقف
     page = client.get('/learn/{}'.format(cid))
     tok = re.search(r'name="_csrf_token" value="([^"]+)"', page.text).group(1)
@@ -237,7 +237,7 @@ def test_admin_marks_installment_paid_and_unlocks(client, app):
     with app.app_context():
         inst2 = Installment.query.filter_by(order_id=oid, number=2).first()
         iid = inst2.id
-        order = Order.query.get(oid)
+        order = db.session.get(Order, oid)
         assert order.status == 'paid'
     tok = _csrf(client, '/admin/installments')
     r = client.post('/admin/installments/{}/mark-paid'.format(iid), data={
@@ -258,7 +258,7 @@ def test_admin_marks_installment_paid_and_unlocks(client, app):
 def test_unlock_notice_in_order_for_bnpl_page(app):
     cid, oid = _installment_fixture(app, per=3)
     with app.app_context():
-        order = Order.query.get(oid)
+        order = db.session.get(Order, oid)
         notice = order.unlock_notice()
         assert '۳' in notice and 'جلسه' in notice
 

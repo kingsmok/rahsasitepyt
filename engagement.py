@@ -9,7 +9,7 @@ import random
 import uuid
 
 from flask import (Blueprint, render_template, request, redirect, url_for,
-                   flash, g, jsonify)
+                   g, jsonify)
 from models import db, utcnow, User, Coupon, Setting
 from jdates import jdate, fa
 from ext_models import SpinResult

@@ -91,8 +91,6 @@ def test_cart_add_rejects_unknown_course(client):
 def test_installment_payment_requires_gateway_outside_sandbox(app, client):
     """در حالت غیرآزمایشی، پرداخت قسط باید به درگاه برود نه مستقیم paid"""
     from models import db, Order, OrderItem, Installment, User
-    from datetime import datetime, timedelta
-    import random
     with app.app_context():
         # غیرفعال کردن sandbox_mode — شبیه production
         from models import Setting

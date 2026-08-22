@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 """Flask-Admin — مدیریت کامل همه مدل‌ها با امنیت"""
-from flask import redirect, url_for, request, session
+from flask import redirect, url_for, session
 from flask_admin import Admin, AdminIndexView, expose
 from flask_admin.contrib.sqla import ModelView
 from models import (db, User, Category, Course, Section, Lesson, Review, Order,
-                    OrderItem, Coupon, Enrollment, BlogPost, BlogComment, Ticket,
-                    NewsletterEmail, ContactMessage, SeoMeta, Page)
+                    Coupon, Enrollment, BlogPost, BlogComment, Ticket, NewsletterEmail,
+                    ContactMessage, SeoMeta, Page)
 
 
 # ============================================================

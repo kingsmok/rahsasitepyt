@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
 """داده‌های اولیه دمو برای آکادمی آنلاین"""
-from datetime import datetime, timedelta
+from datetime import timedelta
 try:
     from datetime import UTC
 except ImportError:  # پایتون < 3.11
     from datetime import timezone as _tz_utc
     UTC = _tz_utc.utc
-import os
 import random
 from validators import gen_national_code
 from models import (utcnow, db, User, Category, Course, Section, Lesson, Review, Order,

@@ -4,8 +4,7 @@ import os
 import re
 import uuid
 from conftest import csrf_headers, login
-from models import db, User, Course, Category, Enrollment, Order, OrderItem, \
-    Bundle, BlogPost
+from models import db, User, Course, Enrollment, Bundle, BlogPost
 
 
 def _make_media_file(name):

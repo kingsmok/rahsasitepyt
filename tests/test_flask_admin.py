@@ -7,7 +7,6 @@
 تفکیک سطح دسترسی را تضمین می‌کنند.
 """
 import re
-from conftest import login
 from models import db, User
 from tests.test_admin_panel import _login_admin_2fa
 

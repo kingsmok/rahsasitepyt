@@ -13,8 +13,7 @@ from flask import (Blueprint, render_template, request, redirect, url_for,
                    flash, g, jsonify)
 from datetime import datetime, timedelta
 
-from models import (db, utcnow, Order, User, WalletTransaction, Setting,
-                    Installment)
+from models import (db, utcnow, Order, User, Setting, Installment)
 from jdates import jdate, fa, jdatetime
 from validators import safe_int
 

@@ -14,15 +14,13 @@ except ImportError:  # پایتون < 3.11 (هاست‌های اشتراکی)
 from flask import (Blueprint, render_template, request, redirect, url_for, flash,
                    g, abort, session, jsonify, current_app)
 from sqlalchemy import func
-from models import (utcnow, db, User, Category, Course, Section, Lesson, Order, OrderItem,
-                    Coupon, BlogPost, BlogComment, NewsletterEmail, ContactMessage,
-                    Ticket, Setting, Enrollment, Review, PaymentProof, ActivityLog,
-                    Quiz, QuizQuestion, QuizAttempt, Assignment, AssignmentSubmission,
-                    LessonQuestion, Bundle, BundleCourse, CustomForm, CustomFormEntry, CannedReply, Menu, MenuItem, ChatMessage,
-                    PayoutRequest, StudyDay, ForumTopic, ForumPost, LiveSession, Installment, TicketReply,
-                    Page, RedirectRule)
+from models import (utcnow, db, User, Category, Course, Section, Lesson, Order, Coupon,
+                    BlogPost, BlogComment, NewsletterEmail, ContactMessage, Ticket,
+                    Setting, Enrollment, Review, PaymentProof, ActivityLog, Quiz,
+                    QuizQuestion, Assignment, AssignmentSubmission, LessonQuestion, Bundle,
+                    BundleCourse, CustomForm, CustomFormEntry, CannedReply, Menu, MenuItem, ChatMessage, PayoutRequest, ForumTopic,
+                    ForumPost, LiveSession, TicketReply, Page, RedirectRule)
 
-import re as _re
 from validators import human_size, safe_int
 from validators import log_exc as _lexc
 from validators import safe_referrer
@@ -367,7 +365,6 @@ def course_edit(cid):
 
 
 def _course_form(course):
-    from app import THEMES
     teachers = User.query.filter(User.role.in_(['teacher', 'admin'])).all()
     categories = Category.query.all()
     images = ['cover-python.webp', 'cover-flask.webp', 'cover-django.webp', 'cover-react.webp',
@@ -906,7 +903,6 @@ def blog_edit(pid):
 
 
 def _blog_form(post):
-    from app import THEMES
     if request.method == 'POST':
         f = request.form
         if not post:
@@ -1733,7 +1729,7 @@ def messenger_test(mid):
 @admin_required
 def sms_settings():
     """تنظیمات پیامک خودکار"""
-    from sms import PROVIDERS, send_sms, test_sms
+    from sms import PROVIDERS, test_sms
     if request.method == 'POST':
         keys = ['sms_provider', 'sms_kavenegar_key', 'sms_kavenegar_sender', 'sms_kavenegar_template',
                 'sms_melli_username', 'sms_melli_password', 'sms_melli_sender',
@@ -1958,7 +1954,6 @@ def form_new():
         if not title:
             flash('عنوان الزامی است.', 'error')
         else:
-            import re as _re
             slug = slugify(title) or 'form'
             while CustomForm.query.filter_by(slug=slug).first():
                 slug += '-2'
@@ -2151,7 +2146,6 @@ def menu_new():
         return redirect(url_for('admin.menus'))
     title = request.form.get('title', '').strip()
     if title:
-        import re as _re
         slug = slugify(title) or 'menu'
         while Menu.query.filter_by(slug=slug).first():
             slug += '-2'
@@ -3420,7 +3414,6 @@ def products_admin():
         if not title:
             flash('عنوان محصول الزامی است.', 'error')
         else:
-            import re as _re2
             from models import unique_slug_for
             _slug_req = (request.form.get('slug') or '').strip()
             slug = unique_slug_for(_P, _slug_req or title, fallback='product')

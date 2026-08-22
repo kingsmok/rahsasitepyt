@@ -1331,6 +1331,9 @@ class LessonQuestion(db.Model):
 # ================================================================
 class PointLog(db.Model):
     __tablename__ = 'point_logs'
+    # ایندکس روی user_id: تاریخچهٔ امتیاز هر کاربر در داشبورد و پروفایل با
+    # filter_by(user_id=...) خوانده می‌شود و این جدول با هر فعالیت رشد می‌کند.
+    __table_args__ = (db.Index('idx_pointlog_user', 'user_id'),)
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     points = db.Column(db.Integer, default=0)
@@ -1570,6 +1573,9 @@ class MenuItem(db.Model):
 # ================================================================
 class ChatMessage(db.Model):
     __tablename__ = 'chat_messages'
+    # گفتگوی پشتیبانی همیشه بر اساس کاربر و به ترتیب زمان خوانده می‌شود؛
+    # ایندکس ترکیبی هم فیلتر و هم مرتب‌سازی را پوشش می‌دهد.
+    __table_args__ = (db.Index('idx_chat_user_created', 'user_id', 'created_at'),)
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     body = db.Column(db.Text, nullable=False)
@@ -1600,6 +1606,8 @@ class PayoutRequest(db.Model):
 # ================================================================
 class StudyDay(db.Model):
     __tablename__ = 'study_days'
+    # نمودار مطالعه روزانه: جستجو همیشه با (user_id, day) انجام می‌شود.
+    __table_args__ = (db.Index('idx_studyday_user_day', 'user_id', 'day'),)
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     day = db.Column(db.String(10), nullable=False)      # YYYY-MM-DD
@@ -1730,6 +1738,10 @@ class TicketReply(db.Model):
 # ================================================================
 class PrivateMessage(db.Model):
     __tablename__ = 'private_messages'
+    # صندوق ورودی/خروجی و شمارندهٔ پیام‌های نخوانده روی این دو ستون فیلتر
+    # می‌کنند؛ بدون ایندکس، هر بار بارگذاری هدر یک full-table scan بود.
+    __table_args__ = (db.Index('idx_pm_recipient', 'recipient_id', 'is_read'),
+                      db.Index('idx_pm_sender', 'sender_id'),)
     id = db.Column(db.Integer, primary_key=True)
     sender_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     recipient_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)

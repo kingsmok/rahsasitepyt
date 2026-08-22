@@ -1,13 +1,10 @@
 # -*- coding: utf-8 -*-
 """دسته ۳: مسیریابی ضد 404، فعالسازی سایت، اسلاگسازی، دیدگاه وبلاگ، نصب مجدد داده."""
-import hashlib
 import re
-from datetime import datetime, timedelta
 
 from models import (BlogComment, BlogPost, Category, Course, Product, Setting,
                     User, db, make_slug, unique_slug_for)
 
-from conftest import login
 
 
 def _make_admin(app, email='admcore@test.ir', role='super_admin'):
@@ -267,7 +264,6 @@ def test_run_install_never_overwrites_existing_data(tmp_path, monkeypatch):
     """اجرای نصب روی دیتابیسی که قبلاً کاربر/دسته/تنظیم دارد، داده را دست نمیزند."""
     import installer
     db_path = str(tmp_path / 'reuse.db')
-    from sqlalchemy import create_engine
     from app import create_app
     from models import db as _db
     import os as _os

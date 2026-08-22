@@ -637,6 +637,36 @@ WIDGETS = {
         dict(key='show_students', label='تعداد دانشجو', type='checkbox'),
         dict(key='show_meta', label='سطح/مدت/دسته', type='checkbox'),
     ]),
+    'hero': dict(name='هیرو (بنر اصلی)', icon='🏠', cat='media',
+        desc='بنر تمام‌عرض با تصویر، عنوان و دکمه — ساده‌تر از اسلایدر',
+        fields=[
+            dict(key='title', label='عنوان', type='text'),
+            dict(key='sub', label='زیرعنوان', type='textarea'),
+            dict(key='image', label='تصویر پس‌زمینه', type='image'),
+            dict(key='btn_text', label='متن دکمه', type='text'),
+            dict(key='btn_url', label='لینک دکمه', type='text'),
+            dict(key='align', label='تراز', type='select',
+                 options=[('right', 'راست'), ('center', 'وسط'), ('left', 'چپ')]),
+            dict(key='height', label='ارتفاع', type='select',
+                 options=[('320', '۳۲۰px'), ('420', '۴۲۰px'), ('520', '۵۲۰px')]),
+            dict(key='overlay', label='تیرگی لایه روی تصویر', type='select',
+                 options=[('45', '۴۵٪'), ('60', '۶۰٪'), ('75', '۷۵٪')]),
+            dict(key='radius', label='گردی گوشه', type='select',
+                 options=[('0', 'بدون'), ('16', '۱۶px'), ('24', '۲۴px')]),
+        ]),
+    'cert_verify': dict(name='استعلام گواهینامه', icon='🛡', cat='adv',
+        desc='فرم استعلام کد رهگیری گواهی پایان دوره',
+        fields=[
+            dict(key='title', label='عنوان', type='text'),
+            dict(key='text', label='توضیح', type='textarea'),
+        ]),
+    'course_search': dict(name='جستجوی دوره', icon='🔍', cat='grid',
+        desc='نوار جستجوی مستقل دوره‌ها برای وسط صفحه',
+        fields=[
+            dict(key='placeholder', label='متن راهنما', type='text'),
+            dict(key='show_cat', label='انتخاب دسته', type='checkbox'),
+            dict(key='button', label='متن دکمه', type='text'),
+        ]),
 }
 
 
@@ -708,16 +738,232 @@ PAGE_TEMPLATES = {
 
 WIDGET_CATS = [
     ('basic', 'پایه'),
-    ('general', 'عمومی'),
     ('media', 'اسلایدر و رسانه'),
-    ('grid', 'گریدهای محتوا'),
-    ('adv', 'پیشرفته'),
-    ('pro', 'حرفه‌ای (Pro)'),
-    ('theme', 'قالب‌ساز'),
-    ('woo', 'فروشگاهی'),
-    ('header', 'ویجت‌های هدر'),
-    ('footer', 'ویجت‌های فوتر'),
+    ('grid', 'دوره و محتوا'),
+    ('adv', 'بخش‌های صفحه'),
+    ('general', 'عمومی'),
+    ('pro', 'حرفه‌ای'),
+    ('theme', 'قالب پست / دوره'),
+    ('woo', 'فروش'),
+    ('header', 'هدر'),
+    ('footer', 'فوتر'),
 ]
+
+# ویجت‌هایی که رندر می‌شوند ولی از پالت پیش‌فرض پنهان‌اند (تکراری، گمراه‌کننده یا خاص قالب)
+PALETTE_HIDDEN = frozenset({
+    'soundcloud', 'shortcode', 'price_history', 'review_pro',
+    'checkout_widget', 'my_account', 'products', 'toggle',
+    'site_logo', 'site_title', 'flip_box', 'animated_heading',
+    'dynamic_data', 'code_highlight',
+})
+
+# زمینه نمایش در پالت: فقط وقتی همان نوع صفحه باز است
+WIDGET_CTX = {
+    'topbar': 'header', 'logo': 'header', 'search': 'header',
+    'category_mega': 'header', 'category_strip': 'header',
+    'icon_link': 'header', 'user_menu': 'header', 'nav_menu': 'header',
+    'footer_about': 'footer', 'link_list': 'footer', 'contact_info': 'footer',
+    'socials': 'footer', 'mobile_item': 'footer', 'mobile_link': 'footer',
+    'current_course': 'theme', 'current_teacher': 'theme',
+    'user_dashboard': 'theme',
+    'post_title': 'theme', 'post_content': 'theme', 'featured_image': 'theme',
+    'post_info': 'theme', 'post_comments': 'theme', 'author_box': 'theme',
+}
+
+# محتوای شروع واقعی برای ویجت تازه‌افزوده‌شده — تا جعبه خالی دیده نشود
+WIDGET_STARTERS = {
+    'heading': dict(text='عنوان بخش', tag='h2', align='right', mb='16'),
+    'text': dict(content='متن خود را اینجا بنویسید.', align='right', size='15'),
+    'text_editor': dict(content='<p>متن خود را اینجا بنویسید.</p>', align='right'),
+    'button': dict(text='مشاهده دوره‌ها', url='/courses', btn_style='primary',
+                   size='md', hover='lift', align='right'),
+    'spacer': dict(height=40),
+    'divider': dict(height='1', line_style='solid', width='100'),
+    'image': dict(width='100', radius='16', filter='none', opacity='100'),
+    'countdown': dict(title='شمارش معکوس', text='تاریخ هدف را از پنل تنظیم کنید.'),
+    'slider': dict(
+        slides=[dict(img='hero.webp', title='دوره‌های آموزشی',
+                     sub='فهرست دوره‌های منتشرشده را ببینید و گزینه مناسب را انتخاب کنید.',
+                     btn_text='مشاهده دوره‌ها', btn_url='/courses', align='right')],
+        height='420', overlay='60', autoplay=True, interval='5',
+        dots=True, arrows=True, swipe=True,
+    ),
+    'video_bg': dict(title='عنوان بنر ویدیویی',
+                     sub='توضیح کوتاه این بخش را بنویسید.',
+                     btn_text='مشاهده دوره‌ها', btn_url='/courses'),
+    'hero': dict(title='دوره‌های آموزشی',
+                 sub='سرفصل، مدرس و شرایط هر دوره را پیش از ثبت‌نام ببینید.',
+                 image='hero.webp', btn_text='مشاهده دوره‌ها', btn_url='/courses',
+                 align='right', height='420', overlay='60', radius='0'),
+    'courses': dict(title='دوره‌های آموزشی', limit='6', columns='3', sort='newest',
+                    link_text='همه دوره‌ها', link_url='/courses', show_price=True),
+    'categories': dict(title='دسته‌بندی دوره‌ها', columns='4'),
+    'posts': dict(title='آخرین مقالات', limit='3', columns='3',
+                  link_text='همه مقالات', link_url='/blog'),
+    'teachers': dict(title='اساتید', limit=4, columns='4'),
+    'feature': dict(columns='3', items=[
+        dict(icon='🎬', title='جلسات دوره',
+             text='سرفصل و مدت هر دوره را پیش از خرید ببینید.'),
+        dict(icon='🏅', title='گواهی قابل استعلام',
+             text='پس از تکمیل دوره، کد رهگیری صادر می‌شود.'),
+        dict(icon='💬', title='پشتیبانی',
+             text='از داخل حساب کاربری تیکت ثبت کنید.'),
+    ]),
+    'stats': dict(columns='4', items=[
+        dict(value='{courses}', label='دوره آموزشی'),
+        dict(value='{students}', label='دانشجوی فعال'),
+        dict(value='{hours}', label='ساعت آموزش'),
+        dict(value='{lessons}', label='درس منتشرشده'),
+    ]),
+    'faq': dict(title='پرسش‌های متداول', items=[
+        dict(q='چگونه دوره بخرم؟',
+             a='دوره را به سبد اضافه کنید و یکی از روش‌های پرداخت فعال را انتخاب کنید.'),
+        dict(q='گواهی چگونه صادر می‌شود؟',
+             a='پس از تکمیل دوره، گواهی با کد رهگیری قابل استعلام صادر می‌شود.'),
+    ]),
+    'cta': dict(title='آماده شروع هستید؟',
+                text='دوره‌های منتشرشده را ببینید و مسیر یادگیری خود را انتخاب کنید.',
+                btn_text='مشاهده دوره‌ها', btn_url='/courses', cta_style='gradient'),
+    'newsletter': dict(title='عضویت در خبرنامه',
+                       text='جدیدترین دوره‌ها را از دست ندهید.'),
+    'icon_box': dict(icon='✨', title='عنوان ویژگی',
+                     text='توضیح کوتاه این ویژگی را بنویسید.', align='center'),
+    'image_box': dict(title='عنوان', text='توضیح کوتاه', align='center'),
+    'alert': dict(type='info', title='توجه',
+                  content='متن اطلاع‌رسانی را بنویسید.', dismiss=True),
+    'form': dict(button_text='ارسال', align='right',
+                 success_msg='پیام شما ثبت شد.', to='contact',
+                 fields=[
+                     dict(label='نام', type='text', required=True),
+                     dict(label='ایمیل', type='email', required=True),
+                     dict(label='پیام', type='textarea', required=True),
+                 ]),
+    'cert_verify': dict(title='استعلام گواهینامه',
+                        text='کد رهگیری درج‌شده روی گواهی را وارد کنید.'),
+    'course_search': dict(placeholder='جستجو در دوره‌ها...', show_cat=True,
+                          button='جستجو'),
+    'icon': dict(icon='⭐', size='64', align='center'),
+    'google_maps': dict(height='400', radius='12'),
+    'search': dict(placeholder='جستجو در دوره‌ها...', show_cat=True),
+    'logo': dict(text='آکادمی آنلاین', icon='🎓'),
+    'nav_menu': dict(align='right'),
+    'footer_about': dict(socials=True),
+    'amazing_offer': dict(title='پیشنهاد ویژه', item_type='course',
+                          btn_text='مشاهده پیشنهاد'),
+    'reviews': dict(title='نظرات دانشجویان', limit='6'),
+    'success_stories': dict(title='داستان‌های موفقیت', limit='3'),
+    'exam_cta': dict(title='آزمون تمرینی',
+                     text='با سوالات تصادفی از بانک سوال تمرین کنید.'),
+    'accordion': dict(first_open=True, items=[
+        dict(title='عنوان اول', content='محتوای این بخش را بنویسید.'),
+    ]),
+    'tabs': dict(orientation='horizontal', active=0, items=[
+        dict(title='تب اول', content='محتوای تب اول.'),
+        dict(title='تب دوم', content='محتوای تب دوم.'),
+    ]),
+    'add_to_cart': dict(text='افزودن به سبد', btn_style='primary', align='right'),
+    'cart_widget': dict(title='سبد خرید شما', show_total=True),
+    'product_details': dict(show_price=True, show_teacher=True,
+                            show_rating=True, show_students=True, show_meta=True),
+}
+
+# صفحات ثابت سایت که نسخه‌ساز صفحه‌ساز دارند (slug, عنوان, قالب, مسیر زنده)
+SITE_PAGES = [
+    ('about', 'درباره ما', 'about_page', '/about'),
+    ('contact', 'تماس با ما', 'contact_page', '/contact'),
+    ('faq', 'سوالات متداول', 'faq_page', '/faq'),
+    ('terms', 'قوانین و مقررات', '', '/terms'),
+    ('privacy', 'حریم خصوصی', '', '/privacy'),
+    ('learning-paths', 'مسیرهای یادگیری', '', '/learning-paths'),
+    ('become-teacher', 'مدرس شو', 'teacher_landing', '/become-teacher'),
+    ('consultation', 'درخواست مشاوره', 'consult_page', '/consultation'),
+    ('teachers', 'اساتید', 'teacher_landing', '/teachers'),
+]
+
+SINGLETON_PTYPES = ('home', 'header', 'footer', 'footer_mobile', 'mobile_menu', '404')
+
+
+def _widgets_for_client():
+    """نسخهٔ ویجت‌ها برای جاوااسکریپت ویرایشگر — با پرچم پالت و محتوای شروع."""
+    out = {}
+    for key, widget in WIDGETS.items():
+        item = dict(widget)
+        item['palette'] = key not in PALETTE_HIDDEN
+        item['ctx'] = WIDGET_CTX.get(key, '')
+        item['starter'] = WIDGET_STARTERS.get(key, {})
+        out[key] = item
+    return out
+
+
+def page_public_url(page):
+    """آدرس زندهٔ صفحه برای پیش‌نمایش و لینک فهرست."""
+    if getattr(page, 'ptype', '') in ('home', 'header', 'footer',
+                                      'footer_mobile', 'mobile_menu'):
+        return '/'
+    slug = getattr(page, 'slug', '') or ''
+    for site_slug, _title, _tpl, url in SITE_PAGES:
+        if slug == site_slug:
+            return url
+    if getattr(page, 'ptype', '') == '404':
+        return '/this-page-does-not-exist'
+    try:
+        return url_for('site.custom_page', slug=slug)
+    except Exception:
+        return '/page/' + slug
+
+
+def _set_setting(key, value):
+    from models import Setting
+    row = db.session.get(Setting, key)
+    value = '' if value is None else str(value)
+    if row:
+        row.value = value
+    else:
+        db.session.add(Setting(key=key, value=value))
+
+
+def _clear_app_cache():
+    try:
+        from flask import current_app
+        clearer = getattr(current_app, 'clear_cache', None)
+        if clearer:
+            clearer()
+    except Exception:
+        pass
+
+
+def _activate_builder_home(page=None):
+    """صفحهٔ صفحه‌ساز را به‌عنوان صفحه اصلی سایت (/) فعال کن."""
+    _set_setting('home_design', 'builder')
+    if page is not None and getattr(page, 'slug', None):
+        _set_setting('home_page_slug', page.slug)
+
+
+def ensure_home_page(seed=True):
+    """صفحهٔ ptype=home را بساز یا برگردان؛ در صورت خالی بودن قالب لندینگ بگذار."""
+    page = Page.query.filter_by(ptype='home').first()
+    created = False
+    if page is None:
+        slug = 'home'
+        n = 2
+        while Page.query.filter_by(slug=slug).first():
+            slug = f'home-{n}'
+            n += 1
+        rows = PAGE_TEMPLATES['landing']['rows'] if seed else []
+        page = Page(title='صفحه اصلی', slug=slug, ptype='home',
+                    is_published=True,
+                    content=json.dumps({'settings': {}, 'rows': rows},
+                                       ensure_ascii=False))
+        db.session.add(page)
+        created = True
+    elif seed and not page.rows():
+        parsed = page.parsed()
+        parsed['rows'] = PAGE_TEMPLATES['landing']['rows']
+        page.content = json.dumps(parsed, ensure_ascii=False)
+    _activate_builder_home(page)
+    db.session.commit()
+    _clear_app_cache()
+    return page, created
 
 
 def _norm_fields(fields):
@@ -735,7 +981,7 @@ def _norm_fields(fields):
 
 
 def defaults(wtype):
-    """مقادیر پیش‌فرض فیلدهای یک ویجت"""
+    """مقادیر پیش‌فرض فیلدهای یک ویجت + محتوای شروع قابل‌ویرایش"""
     d = {}
     w = WIDGETS.get(wtype)
     if w:
@@ -746,21 +992,9 @@ def defaults(wtype):
                 d[f['key']] = False
             else:
                 d[f['key']] = ''
-    # اسلایدر با یک محتوای خنثی و قابل ویرایش شروع می‌شود؛ هیچ آمار، ضمانت یا
-    # ادعای ساختگی در صفحهٔ تازه قرار نمی‌گیرد.
-    if wtype == 'slider':
-        d['slides'] = [
-            dict(img='', title='دوره‌های آموزشی',
-                 sub='فهرست دوره‌های منتشرشده را ببینید و گزینه مناسب را انتخاب کنید.',
-                 btn_text='مشاهده دوره‌ها', btn_url='/courses', align='right'),
-        ]
-        d['height'] = '420'
-        d['overlay'] = '60'
-        d['autoplay'] = True
-        d['interval'] = '5'
-        d['dots'] = True
-        d['arrows'] = True
-        d['swipe'] = True
+    starter = WIDGET_STARTERS.get(wtype)
+    if starter:
+        d.update(json.loads(json.dumps(starter)))
     return d
 
 
@@ -1420,13 +1654,64 @@ def index():
     pages = Page.query.order_by(Page.updated_at.desc()).all()
     section_lib = _load_library('section')
     page_lib = _load_library('page')
-    types = {'home': 'خانه', 'header': 'هدر سایت', 'footer': 'فوتر سایت',
+    types = {'home': 'صفحه اصلی', 'header': 'هدر سایت', 'footer': 'فوتر سایت',
              'footer_mobile': 'فوتر موبایل', 'mobile_menu': 'منوی موبایل',
-             'page': 'صفحه معمولی', '404': 'صفحه خطای ۴۰۴'}
-    from persian_themes import PERSIAN_THEMES
+             'page': 'صفحه معمولی', '404': 'صفحه خطای ۴۰۴',
+             'post': 'قالب مقاله', 'course': 'قالب دوره', 'teacher': 'قالب مدرس'}
+    home = next((p for p in pages if p.ptype == 'home'), None)
+    chrome = {pt: next((p for p in pages if p.ptype == pt), None)
+              for pt in ('header', 'footer', 'footer_mobile', 'mobile_menu')}
+    site_slugs = {spec[0] for spec in SITE_PAGES}
+    site_status = []
+    by_slug = {p.slug: p for p in pages}
+    for slug, title, _tpl, url in SITE_PAGES:
+        site_status.append(dict(slug=slug, title=title, url=url,
+                                page=by_slug.get(slug)))
+    custom_pages = [p for p in pages
+                    if p.ptype == 'page' and p.slug not in site_slugs]
+    other_pages = [p for p in pages
+                   if p.ptype not in SINGLETON_PTYPES
+                   and not (p.ptype == 'page' and p.slug in site_slugs)]
+    home_live = False
+    try:
+        from models import Setting
+        design_row = db.session.get(Setting, 'home_design')
+        design = (design_row.value if design_row else '1') or '1'
+        slug_row = db.session.get(Setting, 'home_page_slug')
+        hp_slug = ((slug_row.value if slug_row else '') or '').strip()
+        if home and home.is_published and home.rows() and (
+                design == 'builder' or hp_slug == home.slug):
+            home_live = True
+        if hp_slug:
+            chosen = by_slug.get(hp_slug)
+            if chosen and chosen.is_published and chosen.rows():
+                home_live = True
+    except Exception:
+        home_live = bool(home and home.is_published and home.rows())
     return render_template('builder/index.html', pages=pages, types=types,
                            section_lib=section_lib, page_lib=page_lib,
-                           persian_themes=PERSIAN_THEMES)
+                           home=home, chrome=chrome, site_status=site_status,
+                           custom_pages=custom_pages, other_pages=other_pages,
+                           home_live=home_live,
+                           page_public_url=page_public_url)
+
+
+@builder_bp.route('/builder/open-home')
+def open_home():
+    """یک کلیک: صفحه اصلی را بساز/باز کن و روی / نمایش بده.
+
+    مسیر جدا از ``/builder/<slug>`` است تا اسلاگ واقعیِ ``home``
+    به حلقهٔ ریدایرکت نیفتد.
+    """
+    r = _admin_required()
+    if r:
+        return r
+    page, created = ensure_home_page(seed=True)
+    if created:
+        flash('صفحه اصلی ساخته شد و روی نشانی / فعال است. عناصر را اضافه کنید و ذخیره کنید.', 'success')
+    else:
+        flash('صفحه اصلی باز شد. تغییرات بعد از ذخیره روی نشانی / دیده می‌شود.', 'info')
+    return redirect(url_for('builder.editor', slug=page.slug))
 
 
 @builder_bp.route('/builder/new', methods=['GET', 'POST'])
@@ -1439,11 +1724,26 @@ def new_page():
     title = request.form.get('title', '').strip()
     ptype = request.form.get('ptype', 'page')
     template = request.form.get('template', '')
+    if ptype not in ('page', 'post', '404', 'home', 'header', 'footer',
+                     'mobile_menu', 'footer_mobile', 'course', 'teacher'):
+        ptype = 'page'
+    if ptype in SINGLETON_PTYPES:
+        existing = Page.query.filter_by(ptype=ptype).first()
+        if existing:
+            if ptype == 'home':
+                _activate_builder_home(existing)
+                db.session.commit()
+                _clear_app_cache()
+            flash('این نوع صفحه از قبل وجود دارد — همان را باز کردیم.', 'info')
+            return redirect(url_for('builder.editor', slug=existing.slug))
     if not title:
         flash('عنوان صفحه را وارد کنید.', 'error')
         return redirect(url_for('builder.index'))
+    if ptype == 'home':
+        page, _created = ensure_home_page(seed=True)
+        return redirect(url_for('builder.editor', slug=page.slug))
     base = _slugify(title)
-    slug = base
+    slug = base or 'page'
     n = 2
     while Page.query.filter_by(slug=slug).first():
         slug = f'{base}-{n}'
@@ -1475,17 +1775,7 @@ def ensure_site_pages():
     r = _admin_required()
     if r:
         return r
-    _specs = [
-        ('about', 'درباره ما', 'about_page'),
-        ('contact', 'تماس با ما', 'contact_page'),
-        ('faq', 'سوالات متداول', ''),
-        ('terms', 'قوانین و مقررات', ''),
-        ('privacy', 'حریم خصوصی', ''),
-        ('learning-paths', 'مسیرهای یادگیری', ''),
-        ('become-teacher', 'مدرس شو', ''),
-        ('consultation', 'درخواست مشاوره', ''),
-        ('teachers', 'اساتید', ''),
-    ]
+    _specs = [(slug, title, template) for slug, title, template, _url in SITE_PAGES]
     made = 0
     for slug, title, template in _specs:
         if Page.query.filter_by(slug=slug).first():
@@ -1621,12 +1911,18 @@ def editor(slug):
     from models import Menu as _Menu
     menu_options = [[str(m.id), m.title] for m in
                     _Menu.query.filter_by(is_active=True).order_by(_Menu.title).all()]
-    return render_template('builder/editor.html', page=page, widgets=WIDGETS,
+    if page.ptype == 'home':
+        _activate_builder_home(page)
+        db.session.commit()
+        _clear_app_cache()
+    return render_template('builder/editor.html', page=page,
+                           widgets=_widgets_for_client(),
                            cats=WIDGET_CATS, images=IMG_OPTIONS,
                            cat_options=builder_cat_options(), other_pages=other_pages,
                            course_options=course_options, menu_options=menu_options,
                            section_templates=SECTION_TEMPLATES,
                            page_templates=PAGE_TEMPLATES,
+                           preview_url=page_public_url(page),
                            persian_designs=_persian_designs_meta())
 
 
@@ -1700,7 +1996,10 @@ def api_save():
     page.content = new_content
     if 'published' in data:
         page.is_published = _builder_bool(data['published'])
+    if page.ptype == 'home' and page.is_published:
+        _activate_builder_home(page)
     db.session.commit()
+    _clear_app_cache()
     return jsonify(ok=True, msg='ذخیره شد ✅')
 
 

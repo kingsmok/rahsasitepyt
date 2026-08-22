@@ -1309,6 +1309,42 @@
   <p class="text-3">یک دوره انتخاب کنید.</p>
   {% endif %}
 
+{% elif t == 'hero' %}
+  <div class="pb-hero" style="position:relative;min-height:{{ d.height or 420 }}px;border-radius:{{ d.radius or 0 }}px;overflow:hidden;display:flex;align-items:center;{% if d.align == 'center' %}justify-content:center;text-align:center;{% elif d.align == 'left' %}justify-content:flex-start;text-align:left;{% else %}justify-content:flex-end;text-align:right;{% endif %}{% if d.image %}background-image:url('{{ img_url(d.image) }}');background-size:cover;background-position:center;{% else %}background:var(--grad-brand);{% endif %}">
+    <div style="position:absolute;inset:0;background:rgba(8,15,35,{{ (d.overlay or 60)|int / 100 }})"></div>
+    <div style="position:relative;z-index:2;padding:48px 36px;max-width:720px;color:#fff">
+      {% if d.title %}<h1 style="color:#fff;font-size:clamp(22px,3.4vw,40px);font-weight:900;margin-bottom:12px">{{ d.title }}</h1>{% endif %}
+      {% if d.sub %}<p style="color:rgba(255,255,255,.88);font-size:15px;line-height:1.9;margin-bottom:22px">{{ nl2br(d.sub) }}</p>{% endif %}
+      {% if d.btn_text and d.btn_url %}<a class="btn btn-accent btn-lg" href="{{ d.btn_url }}">{{ d.btn_text }}</a>{% endif %}
+    </div>
+  </div>
+
+{% elif t == 'cert_verify' %}
+  <div class="card" style="padding:34px 28px;border-radius:20px;text-align:center;max-width:620px;margin:0 auto">
+    <div style="font-size:40px">🛡️</div>
+    {% if d.title %}<h2 style="font-size:20px;margin:10px 0 8px">{{ d.title }}</h2>{% endif %}
+    {% if d.text %}<p class="text-2" style="font-size:13.5px;margin-bottom:16px">{{ d.text }}</p>{% endif %}
+    <form method="post" action="{{ url_for('site.verify_certificate') }}">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+      <div class="flex gap-1" style="justify-content:center">
+        <input class="form-control" name="code" dir="ltr" placeholder="CRT-XXXXXXXXXX" required style="flex:1;max-width:280px;text-align:center">
+        <button class="btn btn-primary" type="submit">🔍 استعلام</button>
+      </div>
+    </form>
+  </div>
+
+{% elif t == 'course_search' %}
+  <form class="pb-course-search" action="{{ url_for('site.courses') }}" method="get" role="search" style="display:flex;gap:10px;flex-wrap:wrap;align-items:stretch;background:var(--card);border:1px solid var(--border);border-radius:16px;padding:12px 14px">
+    {% if d.show_cat %}
+    <select name="cat" class="form-control" aria-label="دسته" style="max-width:180px">
+      <option value="">همه دسته‌ها</option>
+      {% for c in bc_categories() %}<option value="{{ c.slug }}">{{ c.name }}</option>{% endfor %}
+    </select>
+    {% endif %}
+    <input class="form-control" type="search" name="q" placeholder="{{ d.placeholder or 'جستجو در دوره‌ها...' }}" aria-label="جستجوی دوره" style="flex:1;min-width:180px">
+    <button class="btn btn-primary" type="submit">{{ d.button or 'جستجو' }}</button>
+  </form>
+
 {% else %}
   <div class="pb-unknown">ویجت ناشناخته: {{ t }}</div>
 {% endif %}

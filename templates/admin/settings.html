@@ -144,7 +144,10 @@
         <option value="3" {{ 'selected' if (site.home_design or '1') == '3' }}>۳ — ویدیویی</option>
         <option value="4" {{ 'selected' if (site.home_design or '1') == '4' }}>۴ — فروشگاهی</option>
         <option value="5" {{ 'selected' if (site.home_design or '1') == '5' }}>۵ — آکادمیک</option>
+        <option value="6" {{ 'selected' if (site.home_design or '1') == '6' }}>۶ — فرادرس/لیموناد</option>
       </select>
+      <p class="form-hint">برای افزودن عنصر به صفحه اصلی، «صفحه صفحه‌ساز» را انتخاب کنید و از
+        <a href="{{ url_for('builder.open_home') }}">ویرایش صفحه اصلی</a> استفاده کنید.</p>
     </div>
     <div class="form-group">
       <label for="f_about_design_1">طراحی «درباره ما»</label>

@@ -5,8 +5,13 @@
   <div><h1>📄 مدیریت صفحات</h1><p>همه صفحات — ویرایش با صفحه‌ساز، کپی، پیش‌نویس/انتشار، نسخه‌ها</p></div>
   <div class="flex gap-1">
     <a class="btn btn-ghost" href="{{ url_for('admin.pages_trash') }}">🗑 سطل زباله</a>
-    <a class="btn btn-primary" href="{{ url_for('builder.index') }}">🧩 ساخت صفحه جدید</a>
+    <a class="btn btn-primary" href="{{ url_for('builder.open_home') }}">🏠 ویرایش صفحه اصلی</a>
+    <a class="btn btn-ghost" href="{{ url_for('builder.index') }}">🧩 ساخت صفحه جدید</a>
   </div>
+</div>
+
+<div class="card" style="padding:14px 18px;margin-bottom:16px;background:linear-gradient(135deg,var(--primary-soft,#eef2ff),var(--card))">
+  <p style="margin:0;font-size:13px;line-height:1.9">صفحهٔ اصلی سایت از اینجا با صفحه‌ساز ویرایش می‌شود. عناصر را اضافه کنید، ذخیره کنید و روی نشانی <a href="/" target="_blank" dir="ltr">/</a> ببینید.</p>
 </div>
 
 <div class="card" style="padding:22px">
@@ -15,8 +20,8 @@
       <thead><tr><th>عنوان</th><th>نوع</th><th>وضعیت</th><th>نسخه‌ها</th><th>آخرین ویرایش</th><th>عملیات</th></tr></thead>
       <tbody>
         {% for p in pages %}
-        <tr>
-          <td><strong>{{ p.title }}</strong><br><small class="text-3" dir="ltr">/{{ p.slug }}</small></td>
+        <tr {% if p.ptype == 'home' %}style="background:var(--primary-soft,#eef2ff)"{% endif %}>
+          <td><strong>{{ p.title }}</strong>{% if p.ptype == 'home' %} <span class="badge badge-primary">صفحه اصلی</span>{% endif %}<br><small class="text-3" dir="ltr">/{{ p.slug }}</small></td>
           <td><span class="badge badge-gray">{{ types.get(p.ptype, p.ptype) }}</span></td>
           <td>{% if p.is_published %}<span class="badge badge-success">منتشرشده</span>{% else %}<span class="badge badge-accent">پیش‌نویس</span>{% endif %}</td>
           <td>{{ fa(rev_count.get(p.id, 0)) }}</td>

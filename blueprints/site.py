@@ -63,6 +63,8 @@ def index():
             g.page_custom_footer = chosen.custom_footer
             return render_template('builder/public.html', page=chosen)
     hp = getattr(g, 'pages', {}).get('home')
+    if hp is None and (design == 'builder' or is_preview):
+        hp = _Pg.query.filter_by(ptype='home').first()
     # fallback: اگر صفحه home در builder خالی باشد → طرح پیش‌فرض (جلوگیری از صفحه خالی)
     if hp and hp.is_published and not hp.rows() and not is_preview:
         hp = None
@@ -886,6 +888,9 @@ def become_teacher():
             db.session.commit()
             flash('درخواست شما ثبت شد! کارشناسان ما برای هماهنگی با شما تماس می‌گیرند. 🎉', 'success')
             return redirect(url_for('site.become_teacher'))
+    bp = _builder_page('become-teacher')
+    if bp:
+        return _render_builder_page(bp)
     return render_template('become_teacher.html')
 
 

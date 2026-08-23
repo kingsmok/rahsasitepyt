@@ -3158,6 +3158,12 @@ def super_settings():
                 # امنیت و نگهداری
                 'maintenance', 'allow_register', 'allow_phone_login',
                 'admin_2fa_enabled', 'exam_enabled', 'spin_enabled',
+                # قابلیت‌های جانبی خاموش‌شدنی (هستهٔ فروش همیشه فعال است).
+                # خاموش‌کردن فقط مسیر و لینک را می‌بندد؛ دادهٔ ثبت‌شده دست‌نخورده
+                # می‌ماند تا با روشن‌کردن دوباره کامل برگردد.
+                'talent_enabled', 'leaderboard_enabled', 'challenge_enabled',
+                'compare_enabled', 'placement_enabled', 'study_plan_enabled',
+                'success_stories_enabled',
                 # تأیید دستی دیدگاه وبلاگ (خاموش = انتشار فوری بعد از فیلتر متن)
                 'blog_comment_moderation',
             ]

@@ -92,6 +92,19 @@ def create_app():
     # نمی‌شوند. این پرچم فقط برای تست خودکار/توسعهٔ صریح نگه داشته شده است.
     from runtime import demo_features_enabled as _demo_features_enabled
     app.config['DEMO_FEATURES_ENABLED'] = _demo_features_enabled()
+
+    def _feature_on_jinja(key, default='1'):
+        """پل قالب به گاردِ قابلیت‌های اختیاری (blueprints/features.py).
+
+        قالب‌ها با {% if feature_on('leaderboard_enabled') %} لینک قابلیت را
+        نمایش می‌دهند. اگر ماژول در دسترس نبود، پیش‌فرض «روشن» برمی‌گردد تا
+        نبودِ یک ماژول جانبی باعث پنهان‌شدن ناخواستهٔ رابط کاربری نشود.
+        """
+        try:
+            from blueprints.features import feature_on
+            return feature_on(key, default)
+        except Exception:
+            return str(default) == '1'
     # ---------- لاگ ساختاریافته: کنسول + فایل چرخشی ----------
     import logging as _logging
     from logging.handlers import RotatingFileHandler as _RFH
@@ -1916,6 +1929,9 @@ def create_app():
                     sms_ready=_sms_ready,
                     # در قالب‌ها نیز بخش‌های آزمایشی فقط در محیط تست صریح قابل مشاهده‌اند.
                     demo_features_enabled=_demo_features_enabled(),
+                    # قابلیت‌های جانبی خاموش‌شدنی: قالب‌ها با feature_on('key')
+                    # لینک را پنهان می‌کنند تا کاربر به صفحهٔ ۴۰۴ نرسد.
+                    feature_on=_feature_on_jinja,
                     license_state=getattr(g, 'license_state', None),
                     clarity_script=_clarity, crisp_script=_crisp,
                     bc_admin_menu=lambda: __import__('permissions', fromlist=['menu_for']).menu_for(_u),

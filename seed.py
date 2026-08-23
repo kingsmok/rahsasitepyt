@@ -501,7 +501,6 @@ def seed():
 
     courses = []
     for i, cd in enumerate(courses_data):
-        key = cd['title'].split('—')[0].strip()
         slug = slugify(cd['title'])
         c = Course(
             title=cd['title'], slug=slug + f'-{i+1}', subtitle=cd['subtitle'],
@@ -551,7 +550,6 @@ def seed():
                     sort=li))
 
         # نظرات
-        names = ['علی محمدی', 'فاطمه احمدی', 'رضا کاظمی', 'مینا رحیمی', 'حامد صادقی', 'پریسا موسوی']
         for ri in range(random.randint(2, 5)):
             db.session.add(Review(
                 course_id=c.id, user_id=random.choice([demo.id, None]) or demo.id,

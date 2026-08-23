@@ -2133,8 +2133,6 @@ def _success_message(result):
     """ساخت پیام موفقیت با جزئیات کامل."""
     restart = ('ری‌استارت Passenger درخواست شد.' if result.get('restart_requested')
                else 'ری‌استارت خودکار فعال نبود.')
-    method = result.get('method', 'git')
-    method_text = 'Git' if method == 'git' else 'آرشیو GitHub (ZIP)'
     removed_count = result.get('removed_count', 0)
     removed_text = (' و {} فایل منسوخ حذف شد'.format(removed_count)
                     if removed_count else '')
@@ -2493,7 +2491,7 @@ def _run_data_migrations(engine, progress_cb=None):
             if not callable(up):
                 continue
             with engine.begin() as conn:
-                result = up(conn)
+                up(conn)
                 conn.execute(
                     text('INSERT INTO schema_migrations (version, applied_at) '
                          'VALUES (:v, :at)'),

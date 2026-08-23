@@ -54,9 +54,9 @@ def drop_all_mysql(engine):
     for t in insp.get_table_names():
         try:
             with engine.begin() as conn:
-                conn.execute(text(f'SET FOREIGN_KEY_CHECKS=0'))
+                conn.execute(text('SET FOREIGN_KEY_CHECKS=0'))
                 conn.execute(text(f'DROP TABLE IF EXISTS `{t}`'))
-                conn.execute(text(f'SET FOREIGN_KEY_CHECKS=1'))
+                conn.execute(text('SET FOREIGN_KEY_CHECKS=1'))
         except Exception:
             pass
 
@@ -93,8 +93,7 @@ def table_order(engine):
         visit(t, set())
     return ordered
 
-import sqlalchemy as _sa
-insp = _sa.inspect(dst)
+insp = _sa.inspect(dst)   # _sa در بالای فایل import شده است
 mysql_tables = set(insp.get_table_names())
 tables = table_order(dst)
 metadata = db.metadata
@@ -150,4 +149,4 @@ with dst.begin() as conn:
         pass
 
 print(f'\n🎉 مهاجرت کامل شد — {total} ردیف به MySQL منتقل شد.')
-print(f'   حالا با DATABASE_URL ست‌شده، اپ روی MySQL اجرا می‌شود.')
+print('   حالا با DATABASE_URL ست‌شده، اپ روی MySQL اجرا می‌شود.')

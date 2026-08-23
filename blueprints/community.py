@@ -92,7 +92,10 @@ def topic_poll_create(tid):
     """ساخت نظرسنجی در تاپیک"""
     if not g.user:
         return redirect(url_for('auth.login'))
-    topic = db.get_or_404(ForumTopic, tid)
+    # get_or_404 عمدی است: اگر تاپیک وجود نداشته باشد باید ۴۰۴ بدهد و
+    # ادامهٔ تابع اجرا نشود. مقدار برگشتی مصرف نمی‌شود، اما حذف این خط
+    # یعنی ساخت نظرسنجی روی تاپیک ناموجود.
+    db.get_or_404(ForumTopic, tid)
     question = request.form.get('question', '').strip()
     options_raw = request.form.get('options', '').strip()
     if not question or not options_raw:

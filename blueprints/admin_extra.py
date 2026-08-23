@@ -424,7 +424,6 @@ def report_seo_health():
     """صفحات بدون عنوان/توضیحات سئو"""
     from models import SeoMeta
     missing = []
-    meta_paths = {m.path for m in SeoMeta.query.all()}
     # صفحات اصلی
     for path, name in [('/', 'خانه'), ('/courses', 'دوره‌ها'), ('/blog', 'وبلاگ'),
                        ('/faq', 'سوالات'), ('/contact', 'تماس'), ('/about', 'درباره'),
@@ -685,6 +684,14 @@ def install_manager():
     return render_template('admin/install_manager.html',
                            is_installed=is_installed(),
                            db_type=db_type,
+                           # ⚠️ local_data حتماً باید پاس شود: قالب در چند جا
+                           # به آن تکیه می‌کند (پیام «فایل SQLite آپلودشده پیدا
+                           # شد»، دکمهٔ استفاده از همان فایل و مقدار پیش‌فرض نام
+                           # دیتابیس سی‌پنل). قبلاً detect_local_data() صدا زده
+                           # می‌شد ولی نتیجه‌اش پاس نمی‌شد، بنابراین آن بخش‌ها
+                           # همیشه خالی می‌ماندند و کاربرِ در حال انتقال سایت
+                           # هرگز متوجه نمی‌شد دیتابیس آپلودشده‌اش شناسایی شده.
+                           local_data=local_data,
                            safe_db_url=safe_db_url or 'sqlite:///instance/academy.db (پیش‌فرض محلی)',
                            db_ok=ok_health,
                            db_msg=msg_health,

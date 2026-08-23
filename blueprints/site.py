@@ -252,7 +252,6 @@ def course_detail(slug):
     course.views = (course.views or 0) + 1
     db.session.commit()
     enrolled = bool(g.user and any(e.course_id == course.id for e in g.user.enrollments))
-    co_teachers = [ct for ct in course.co_teachers] if hasattr(course, 'co_teachers') else []
     # آزمون و ارسال تمرین تجربهٔ دانشجو است؛ مدیر/مدرس از پنل تخصصی خود
     # مدیریت می‌کنند و در صفحه فروش با لینک منتهی به 403 مواجه نمی‌شوند.
     can_access_coursework = enrolled
@@ -626,7 +625,8 @@ def blog_post(slug):
         if (request.form.get('website') or '').strip():
             return redirect(url_for('site.blog_post', slug=slug) + '#comments')
         client_ip = request.headers.get('X-Forwarded-For', request.remote_addr or '').split(',')[0].strip()
-        throttle_key = 'blog_cm_{}'.format(client_ip)
+        # محدودیت نرخ از روی خودِ دیتابیس محاسبه می‌شود (شمارش دیدگاه‌های
+        # همان IP در ۱۰ دقیقهٔ گذشته)؛ کلید کش درون‌حافظه‌ای لازم نیست.
         recent = BlogComment.query.filter(
             BlogComment.post_id == post.id,
             # ⚠️ حتماً از utcnow() پروژه استفاده شود، نه datetime.utcnow():

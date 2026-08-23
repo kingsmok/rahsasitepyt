@@ -40,8 +40,7 @@ def test_build_installments_persists(monkeypatch, app):
         db.session.flush()
         db.session.add(OrderItem(order_id=o.id, course_id=1, price=400000))
         db.session.commit()
-        oid = o.id
-        sched = bnpl.build_installments(o, 4)
+        bnpl.build_installments(o, 4)
         rows = Installment.query.filter_by(order_id=o.id).order_by(Installment.number).all()
         assert len(rows) == 4
         assert sum(i.amount for i in rows) == 400000

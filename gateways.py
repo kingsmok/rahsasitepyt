@@ -714,7 +714,10 @@ def test_gateway(gw_id, settings):
             return _reachable(r, 'سامان SEP')
         if gw_id == 'saderat':
             from cryptography.hazmat.primitives import serialization
-            key = serialization.load_pem_private_key(settings['sadad_key'].encode(), password=None)
+            # هدف از این فراخوانی، خودِ عملِ بارگذاری است نه مقدار خروجی:
+            # اگر کلید PEM خراب/ناقص باشد استثنا می‌دهد و پیام خطا برمی‌گردد.
+            # (متغیر عمداً نگه داشته نمی‌شود؛ نتیجه مصرف‌کننده ندارد.)
+            serialization.load_pem_private_key(settings['sadad_key'].encode(), password=None)
             return True, 'کلید RSA سداد معتبر است.'
         if gw_id == 'snapppay':
             _snapppay_token(settings)

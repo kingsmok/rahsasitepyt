@@ -162,7 +162,7 @@ def test_apply_archive_writes_manifest_backup_and_deletes_only_stale(monkeypatch
         lambda *args, **kwargs: 'وابستگی‌ها تغییری نکرده‌اند.',
     )
 
-    result1 = _apply_extracted_archive(
+    _apply_extracted_archive(
         str(release1), repo='https://github.com/o/r.git',
         old_commit='', old_requirements='flask\n', commit='1111111')
     assert (site / 'app.py').read_text(encoding='utf-8') == 'app-1'

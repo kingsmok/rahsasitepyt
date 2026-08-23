@@ -117,8 +117,9 @@ def test_installment_payment_requires_gateway_outside_sandbox(app, client):
     # تلاش برای پرداخت قسط ۲ — با توکن CSRF دستی (مکانیزم سشن)
     r = client.post('/pay/installment/TEST-INST-1/2',
                     data={'_csrf_token': 'test-csrf-token'}, follow_redirects=False)
+    # پاسخ نباید ۵۰۰ باشد؛ درخواست یا رد می‌شود یا ریدایرکت می‌گیرد.
+    assert r.status_code < 500, 'مسیر پرداخت قسط نباید خطای سرور بدهد'
     with app.app_context():
-        inst = db.session.get(Installment, oid * 100)  # placeholder
         from models import Installment as _I
         row = _I.query.filter_by(order_id=oid, number=2).first()
         assert row.status != 'paid', 'قسط نباید بدون درگاه paid شود'
@@ -257,9 +258,8 @@ def test_email_xss_escaped():
 # ---------------------------------------------------------------
 def test_checkout_blocks_out_of_stock(app, client):
     """محصول با موجودی ۰ نباید قابل خرید باشد"""
-    from models import db, Product, User
+    from models import db, Product
     with app.app_context():
-        u = User.query.filter_by(email='demo@test.ir').first()
         p = Product(title='محصول تست', slug='test-product', price=10000,
                     stock=0, is_active=True)
         db.session.add(p)

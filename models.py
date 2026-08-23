@@ -119,7 +119,6 @@ def ensure_indexes():
     try:
         from sqlalchemy import inspect as _inspect
         insp = _inspect(db.engine)
-        existing = {ix['name'] for ix in insp.get_indexes('courses')}
         for tname, indexes in _tables.items():
             try:
                 have = {ix['name'] for ix in insp.get_indexes(tname)}

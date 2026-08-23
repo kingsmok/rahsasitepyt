@@ -268,7 +268,7 @@
   {% set cc = bc_current_course() %}
   {% if cc %}
   <div class="current-course-box" style="background:var(--card);border:1px solid var(--border);border-radius:18px;overflow:hidden;box-shadow:var(--shadow-md)">
-    {% if d.get('image') %}<img src="{{ cc.image_url }}" alt="{{ cc.title }}" style="width:100%;aspect-ratio:16/9;object-fit:cover">{% endif %}
+    {% if d.get('image') %}<img src="{{ cc.image_url }}" alt="{{ cc.title }}" loading="lazy" decoding="async" style="width:100%;aspect-ratio:16/9;object-fit:cover">{% endif %}
     <div style="padding:20px">
       {% if d.get('title') %}<h2 style="font-size:18px;margin-bottom:8px">{{ cc.title }}</h2>{% endif %}
       <p class="text-2" style="font-size:13.5px;margin-bottom:12px">{{ (cc.subtitle or '')[:120] }}</p>
@@ -324,7 +324,7 @@
       {% if d.title %}<h2 style="font-size:clamp(20px,2.6vw,28px);font-weight:900">{{ d.title }}</h2>{% endif %}
       {% if d.subtitle %}<p class="text-2" style="margin-top:6px">{{ d.subtitle }}</p>{% endif %}
     </div>
-    {% if d.image %}<img src="{{ img_url(d.image) }}" alt="{{ d.title or '' }}" style="width:100%;max-width:340px;border-radius:14px;object-fit:cover;display:block">{% endif %}
+    {% if d.image %}<img src="{{ img_url(d.image) }}" alt="{{ d.title or '' }}" loading="lazy" decoding="async" style="width:100%;max-width:340px;border-radius:14px;object-fit:cover;display:block">{% endif %}
     {% if d.link_text %}<a class="btn btn-outline btn-sm" href="{{ d.link_url or url_for('site.courses') }}" style="white-space:nowrap">{{ d.link_text }} ◂</a>{% endif %}
   </div>
   {% endif %}
@@ -353,7 +353,7 @@
       {% if d.title %}<h2 style="font-size:clamp(20px,2.6vw,28px);font-weight:900">{{ d.title }}</h2>{% endif %}
       {% if d.subtitle %}<p class="text-2" style="margin-top:6px">{{ d.subtitle }}</p>{% endif %}
     </div>
-    {% if d.image %}<img src="{{ img_url(d.image) }}" alt="{{ d.title or '' }}" style="width:100%;max-width:340px;border-radius:14px;object-fit:cover;display:block">{% endif %}
+    {% if d.image %}<img src="{{ img_url(d.image) }}" alt="{{ d.title or '' }}" loading="lazy" decoding="async" style="width:100%;max-width:340px;border-radius:14px;object-fit:cover;display:block">{% endif %}
     {% if d.link_text %}<a class="btn btn-outline btn-sm" href="{{ d.link_url or url_for('site.blog') }}" style="white-space:nowrap">{{ d.link_text }} ◂</a>{% endif %}
   </div>
   {% endif %}
@@ -637,7 +637,7 @@
     {% if not _official or _c|length %}
     <a class="pb-badge" href="{{ '/faq#trust' if _t == 'digi' else '/terms' }}" title="{{ {'enamad': 'نماد اعتماد الکترونیکی', 'samandehi': 'ساماندهی', 'etehadiye': 'اتحادیه کشوری', 'digi': 'نماد سفارشی'}.get(_t, 'نماد') }}"
        style="width:{{ d.size or 80 }}px;height:{{ d.size or 80 }}px;border-radius:12px;background:#fff;border:1px solid #e2e8f0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6px;text-align:center">
-      <img src="/static/img/badges/{{ _t }}.svg" alt="{{ {'enamad': 'نماد اعتماد الکترونیکی', 'samandehi': 'نماد ساماندهی', 'etehadiye': 'نماد اتحادیه کشوری', 'digi': 'نماد اعتماد'}.get(_t, 'نماد اعتماد') }}" style="width:100%;height:auto;max-height:52px">
+      <img src="/static/img/badges/{{ _t }}.svg" alt="{{ {'enamad': 'نماد اعتماد الکترونیکی', 'samandehi': 'نماد ساماندهی', 'etehadiye': 'نماد اتحادیه کشوری', 'digi': 'نماد اعتماد'}.get(_t, 'نماد اعتماد') }}" loading="lazy" decoding="async" style="width:100%;height:auto;max-height:52px">
       <small style="font-size:9px;color:#64748b;margin-top:2px;line-height:1.3">{{ {'enamad': 'نماد اعتماد', 'samandehi': 'ساماندهی', 'etehadiye': 'اتحادیه', 'digi': 'نماد سفارشی'}.get(_t, '') }}</small>
     </a>
     {% endif %}
@@ -808,19 +808,19 @@
        لینک به اکانت ناموجود (academy_ir و ...) روی سایت واقعی، «اطلاعات جعلی»
        است و از سیگنال‌های محتوای فریب‌دهنده برای Google Safe Browsing. #}
     <div class="pb-f-socials socials-grid">
-      {% if bc_site().get('telegram') %}<a href="https://t.me/{{ bc_site().get('telegram') }}" target="_blank" rel="noopener" title="تلگرام" class="soc soc-tg"><img src="/static/img/social/telegram.svg" alt="تلگرام"></a>{% endif %}
-      {% if bc_site().get('instagram') %}<a href="https://instagram.com/{{ bc_site().get('instagram') }}" target="_blank" rel="noopener" title="اینستاگرام" class="soc soc-ig"><img src="/static/img/social/instagram.svg" alt="اینستاگرام"></a>{% endif %}
-      {% if bc_site().get('whatsapp') %}<a href="https://wa.me/{{ bc_site().get('whatsapp') }}" target="_blank" rel="noopener" title="واتساپ" class="soc soc-wa"><img src="/static/img/social/whatsapp.svg" alt="واتساپ"></a>{% endif %}
-      {% if bc_site().get('bale') %}<a href="https://ble.ir/{{ bc_site().get('bale') }}" target="_blank" rel="noopener" title="بله" class="soc soc-bale"><img src="/static/img/social/bale.svg" alt="بله"></a>{% endif %}
-      {% if bc_site().get('eitaa') %}<a href="https://eitaa.com/{{ bc_site().get('eitaa') }}" target="_blank" rel="noopener" title="ایتا" class="soc soc-eitaa"><img src="/static/img/social/eitaa.svg" alt="ایتا"></a>{% endif %}
-      {% if bc_site().get('rubika') %}<a href="https://rubika.ir/{{ bc_site().get('rubika') }}" target="_blank" rel="noopener" title="روبیکا" class="soc soc-rubika"><img src="/static/img/social/rubika.svg" alt="روبیکا"></a>{% endif %}
-      {% if bc_site().get('soroush') %}<a href="https://sapp.ir/{{ bc_site().get('soroush') }}" target="_blank" rel="noopener" title="سروش" class="soc soc-soroush"><img src="/static/img/social/soroush.svg" alt="سروش"></a>{% endif %}
-      {% if bc_site().get('shad') %}<a href="https://shad.ir/{{ bc_site().get('shad') }}" target="_blank" rel="noopener" title="شاد" class="soc soc-shad"><img src="/static/img/social/shad.svg" alt="شاد"></a>{% endif %}
-      {% if bc_site().get('aparat') %}<a href="https://aparat.com/{{ bc_site().get('aparat') }}" target="_blank" rel="noopener" title="آپارات" class="soc soc-aparat"><img src="/static/img/social/aparat.svg" alt="آپارات"></a>{% endif %}
-      {% if bc_site().get('twitter') %}<a href="https://x.com/{{ bc_site().get('twitter') }}" target="_blank" rel="noopener" title="ایکس" class="soc soc-x"><img src="/static/img/social/x.svg" alt="ایکس"></a>{% endif %}
-      {% if bc_site().get('linkedin') %}<a href="https://linkedin.com/company/{{ bc_site().get('linkedin') }}" target="_blank" rel="noopener" title="لینکدین" class="soc soc-li"><img src="/static/img/social/linkedin.svg" alt="لینکدین"></a>{% endif %}
-      {% if bc_site().get('youtube') %}<a href="https://youtube.com/@{{ bc_site().get('youtube') }}" target="_blank" rel="noopener" title="یوتیوب" class="soc soc-yt"><img src="/static/img/social/youtube.svg" alt="یوتیوب"></a>{% endif %}
-      {% if bc_site().get('github') %}<a href="https://github.com/{{ bc_site().get('github') }}" target="_blank" rel="noopener" title="گیت‌هاب" class="soc soc-gh"><img src="/static/img/social/github.svg" alt="گیت‌هاب"></a>{% endif %}
+      {% if bc_site().get('telegram') %}<a href="https://t.me/{{ bc_site().get('telegram') }}" target="_blank" rel="noopener" title="تلگرام" class="soc soc-tg"><img src="/static/img/social/telegram.svg" alt="تلگرام" loading="lazy" decoding="async"></a>{% endif %}
+      {% if bc_site().get('instagram') %}<a href="https://instagram.com/{{ bc_site().get('instagram') }}" target="_blank" rel="noopener" title="اینستاگرام" class="soc soc-ig"><img src="/static/img/social/instagram.svg" alt="اینستاگرام" loading="lazy" decoding="async"></a>{% endif %}
+      {% if bc_site().get('whatsapp') %}<a href="https://wa.me/{{ bc_site().get('whatsapp') }}" target="_blank" rel="noopener" title="واتساپ" class="soc soc-wa"><img src="/static/img/social/whatsapp.svg" alt="واتساپ" loading="lazy" decoding="async"></a>{% endif %}
+      {% if bc_site().get('bale') %}<a href="https://ble.ir/{{ bc_site().get('bale') }}" target="_blank" rel="noopener" title="بله" class="soc soc-bale"><img src="/static/img/social/bale.svg" alt="بله" loading="lazy" decoding="async"></a>{% endif %}
+      {% if bc_site().get('eitaa') %}<a href="https://eitaa.com/{{ bc_site().get('eitaa') }}" target="_blank" rel="noopener" title="ایتا" class="soc soc-eitaa"><img src="/static/img/social/eitaa.svg" alt="ایتا" loading="lazy" decoding="async"></a>{% endif %}
+      {% if bc_site().get('rubika') %}<a href="https://rubika.ir/{{ bc_site().get('rubika') }}" target="_blank" rel="noopener" title="روبیکا" class="soc soc-rubika"><img src="/static/img/social/rubika.svg" alt="روبیکا" loading="lazy" decoding="async"></a>{% endif %}
+      {% if bc_site().get('soroush') %}<a href="https://sapp.ir/{{ bc_site().get('soroush') }}" target="_blank" rel="noopener" title="سروش" class="soc soc-soroush"><img src="/static/img/social/soroush.svg" alt="سروش" loading="lazy" decoding="async"></a>{% endif %}
+      {% if bc_site().get('shad') %}<a href="https://shad.ir/{{ bc_site().get('shad') }}" target="_blank" rel="noopener" title="شاد" class="soc soc-shad"><img src="/static/img/social/shad.svg" alt="شاد" loading="lazy" decoding="async"></a>{% endif %}
+      {% if bc_site().get('aparat') %}<a href="https://aparat.com/{{ bc_site().get('aparat') }}" target="_blank" rel="noopener" title="آپارات" class="soc soc-aparat"><img src="/static/img/social/aparat.svg" alt="آپارات" loading="lazy" decoding="async"></a>{% endif %}
+      {% if bc_site().get('twitter') %}<a href="https://x.com/{{ bc_site().get('twitter') }}" target="_blank" rel="noopener" title="ایکس" class="soc soc-x"><img src="/static/img/social/x.svg" alt="ایکس" loading="lazy" decoding="async"></a>{% endif %}
+      {% if bc_site().get('linkedin') %}<a href="https://linkedin.com/company/{{ bc_site().get('linkedin') }}" target="_blank" rel="noopener" title="لینکدین" class="soc soc-li"><img src="/static/img/social/linkedin.svg" alt="لینکدین" loading="lazy" decoding="async"></a>{% endif %}
+      {% if bc_site().get('youtube') %}<a href="https://youtube.com/@{{ bc_site().get('youtube') }}" target="_blank" rel="noopener" title="یوتیوب" class="soc soc-yt"><img src="/static/img/social/youtube.svg" alt="یوتیوب" loading="lazy" decoding="async"></a>{% endif %}
+      {% if bc_site().get('github') %}<a href="https://github.com/{{ bc_site().get('github') }}" target="_blank" rel="noopener" title="گیت‌هاب" class="soc soc-gh"><img src="/static/img/social/github.svg" alt="گیت‌هاب" loading="lazy" decoding="async"></a>{% endif %}
     </div>
   </div>
 
@@ -897,7 +897,7 @@
 {% elif t == 'image_box' %}
   <div class="card card-hover pb-image-box" style="overflow:hidden;text-align:{{ d.align or 'center' }}">
     {% if d.link %}<a href="{{ d.link }}">{% endif %}
-    {% if d.image %}<div class="pb-ib-img {{ 'pb-img-hover' if d.hover }}"><img src="{{ img_url(d.image) }}" alt=""></div>{% endif %}
+    {% if d.image %}<div class="pb-ib-img {{ 'pb-img-hover' if d.hover }}"><img src="{{ img_url(d.image) }}" alt="" loading="lazy" decoding="async"></div>{% endif %}
     <div class="pb-ib-body">
       {% if d.title %}<h3 style="font-size:16.5px;margin-bottom:8px">{{ d.title }}</h3>{% endif %}
       <p class="text-2" style="font-size:13.5px">{{ nl2br(d.text) }}</p>
@@ -1067,7 +1067,7 @@
     <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax({{ {'2':'420','3':'280','4':'220'}.get(d.columns or '3','280') }}px,1fr));gap:20px">
       {% for it in d.get('items') or [] if it is mapping and it.image and it.title %}
       <div class="pb-pf-item" data-cat="{{ it.category or '' }}">
-        <img src="{{ img_url(it.image) }}" alt="{{ it.title }}">
+        <img src="{{ img_url(it.image) }}" alt="{{ it.title }}" loading="lazy" decoding="async">
         <div class="pb-pf-overlay">
           <h4>{{ it.title }}</h4>
           {% if it.desc %}<p>{{ it.desc }}</p>{% endif %}
@@ -1223,7 +1223,7 @@
       {% if d.title %}<h2 style="font-size:clamp(20px,2.6vw,28px);font-weight:900">{{ d.title }}</h2>{% endif %}
       {% if d.subtitle %}<p class="text-2" style="margin-top:6px">{{ d.subtitle }}</p>{% endif %}
     </div>
-    {% if d.image %}<img src="{{ img_url(d.image) }}" alt="{{ d.title or '' }}" style="width:100%;max-width:340px;border-radius:14px;object-fit:cover;display:block">{% endif %}
+    {% if d.image %}<img src="{{ img_url(d.image) }}" alt="{{ d.title or '' }}" loading="lazy" decoding="async" style="width:100%;max-width:340px;border-radius:14px;object-fit:cover;display:block">{% endif %}
     {% if d.link_text %}<a class="btn btn-outline btn-sm" href="{{ d.link_url or url_for('products.product_list') }}" style="white-space:nowrap">{{ d.link_text }} ◂</a>{% endif %}
   </div>
   {% endif %}
@@ -1372,7 +1372,7 @@
       {% if d.title %}<h2 style="font-size:clamp(20px,2.6vw,28px);font-weight:900">{{ d.title }}</h2>{% endif %}
       {% if d.subtitle %}<p class="text-2" style="margin-top:6px">{{ d.subtitle }}</p>{% endif %}
     </div>
-    {% if d.image %}<img src="{{ img_url(d.image) }}" alt="{{ d.title or '' }}" style="width:100%;max-width:340px;border-radius:14px;object-fit:cover;display:block">{% endif %}
+    {% if d.image %}<img src="{{ img_url(d.image) }}" alt="{{ d.title or '' }}" loading="lazy" decoding="async" style="width:100%;max-width:340px;border-radius:14px;object-fit:cover;display:block">{% endif %}
     {% if d.link_text %}<a class="btn btn-outline btn-sm" href="{{ d.link_url or url_for('products.product_list') }}" style="white-space:nowrap">{{ d.link_text }} ◂</a>{% endif %}
   </div>
   {% endif %}

@@ -528,6 +528,107 @@ def forgot_verify():
     return render_template('auth/forgot_verify.html', phone=phone)
 
 
+# ---------------------------------------------------------------- بازیابی رمز عبور با ایمیل
+@auth_bp.route('/forgot-email', methods=['GET', 'POST'])
+def forgot_email():
+    """فراموشی رمز عبور — ارسال کد به ایمیل"""
+    if g.user:
+        return redirect(url_for('site.index'))
+    if request.method == 'POST':
+        email = (request.form.get('email') or '').strip().lower()
+        if '@' not in email or '.' not in email:
+            flash('ایمیل معتبر وارد کنید.', 'error')
+            return redirect(url_for('auth.forgot_email'))
+        user = User.query.filter_by(email=email).first()
+        # ضد Enumeration: پیام یکسان چه ایمیل ثبت شده باشد چه نه
+        if not user:
+            import logging as _lg
+            _lg.getLogger('academy.auth').info('forgot_email: ایمیل ثبت‌نشده درخواست بازیابی داد')
+            flash('اگر این ایمیل در سیستم ثبت شده باشد، کد بازیابی ارسال می‌شود.', 'info')
+            return redirect(url_for('auth.forgot_email'))
+        if not user.password_hash:
+            flash('این حساب رمز عبور ندارد. می‌توانید از صفحه ورود با شماره تماس استفاده کنید.', 'info')
+            return redirect(url_for('auth.login'))
+        # محدودیت ارسال: هر ۶۰ ثانیه یک بار
+        now = time.time()
+        last = session.get('otp_last_send', 0)
+        if now - last < 60:
+            flash('لطفاً ۶۰ ثانیه صبر کنید.', 'error')
+            return redirect(url_for('auth.forgot_email'))
+        code = _numeric_code(5)
+        session['otp_email'] = email
+        session['otp_code_hash'] = _code_digest(code, 'email-reset')
+        _remember_test_code('email-reset', code)
+        session['otp_ts'] = now
+        session['otp_last_send'] = now
+        session['otp_purpose'] = 'email-reset'
+        from email_service import send_password_reset_email
+        ok, msg = send_password_reset_email(user, code, g.settings)
+        if ok and current_app.testing:
+            flash(f'🔐 کد بازیابی تست: {code}', 'info')
+        elif ok:
+            flash('📧 کد بازیابی به ایمیل شما ارسال شد.', 'success')
+        else:
+            session.pop('otp_email', None)
+            session.pop('otp_code_hash', None)
+            session.pop('otp_purpose', None)
+            flash('ارسال ایمیل انجام نشد. SMTP را در تنظیمات بررسی کنید یا با پشتیبانی تماس بگیرید.', 'error')
+            return redirect(url_for('auth.forgot_email'))
+        return redirect(url_for('auth.forgot_email_verify'))
+    return render_template('auth/forgot_email.html')
+
+
+@auth_bp.route('/forgot-email-verify', methods=['GET', 'POST'])
+def forgot_email_verify():
+    """تأیید کد بازیابی ایمیل و تنظیم رمز جدید"""
+    if g.user:
+        return redirect(url_for('site.index'))
+    email = session.get('otp_email')
+    if not email or session.get('otp_purpose') != 'email-reset':
+        return redirect(url_for('auth.forgot_email'))
+    if request.method == 'POST':
+        code = request.form.get('code', '').strip()
+        password = request.form.get('password', '')
+        confirm = request.form.get('confirm', '')
+        # محدودیت تلاش (۵ بار)
+        tries = session.get('otp_tries', 0) + 1
+        session['otp_tries'] = tries
+        if tries > 5:
+            session.pop('otp_email', None)
+            session.pop('otp_code_hash', None)
+            session.pop('otp_purpose', None)
+            session.pop('otp_tries', None)
+            flash('تلاش‌های ناموفق بیش از حد — دوباره درخواست دهید.', 'error')
+            return redirect(url_for('auth.forgot_email'))
+        if not _code_matches(code, session.get('otp_code_hash'), 'email-reset'):
+            flash(f'کد تأیید اشتباه است. ({5 - tries + 1} تلاش باقی‌مانده)', 'error')
+        elif time.time() - session.get('otp_ts', 0) > 600:
+            flash('کد منقضی شده است (۱۰ دقیقه). دوباره درخواست دهید.', 'error')
+            session.pop('otp_email', None)
+            session.pop('otp_code_hash', None)
+            session.pop('otp_purpose', None)
+            return redirect(url_for('auth.forgot_email'))
+        elif len(password) < 8:
+            flash('رمز جدید باید حداقل ۸ کاراکتر باشد.', 'error')
+        elif password != confirm:
+            flash('تکرار رمز مطابقت ندارد.', 'error')
+        else:
+            user = User.query.filter_by(email=email).first()
+            if user:
+                user.set_password(password)
+                user.new_session_token()  # باطل‌کردن همه سشن‌های قبلی
+                db.session.commit()
+                import logging as _lg
+                _lg.getLogger('academy.auth').info(f'password reset via email: {email}')
+                flash('رمز عبور شما با موفقیت تغییر کرد. حالا وارد شوید. ✅', 'success')
+            session.pop('otp_email', None)
+            session.pop('otp_code_hash', None)
+            session.pop('otp_purpose', None)
+            session.pop('otp_tries', None)
+            return redirect(url_for('auth.login'))
+    return render_template('auth/forgot_email_verify.html', email=email)
+
+
 # ---------------------------------------------------------------- تکمیل پروفایل
 @auth_bp.route('/complete-profile', methods=['GET', 'POST'])
 def complete_profile():

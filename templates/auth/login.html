@@ -33,7 +33,13 @@
           <input type="checkbox" name="remember" checked>
         </label>
         <button class="btn btn-primary btn-lg btn-block" type="submit">ورود با ایمیل</button>
-        {% if sms_ready %}<div class="text-center mt-2"><a href="{{ url_for('auth.forgot') }}" style="font-size:12.5px;color:var(--text-2)">{{ icon('key', 14) }} رمز عبور را فراموش کرده‌اید؟</a></div>{% endif %}
+        <div class="text-center mt-2" style="font-size:12.5px;color:var(--text-2)">
+          {% if sms_ready %}
+          <a href="{{ url_for('auth.forgot') }}">{{ icon('key', 14) }} فراموشی رمز (پیامک)</a>
+          &nbsp;|&nbsp;
+          {% endif %}
+          <a href="{{ url_for('auth.forgot_email') }}">{{ icon('mail', 14) }} فراموشی رمز (ایمیل)</a>
+        </div>
       </form>
     </div>
 

@@ -24,6 +24,11 @@
           <input id="fg_confirm" class="form-control" type="password" name="confirm" minlength="8" autocomplete="new-password" required>
         </div>
         <button class="btn btn-primary btn-lg btn-block" type="submit">✅ تغییر رمز عبور</button>
+        <div class="text-center mt-2">
+          <a class="text-2" style="font-size:12.5px" href="{{ url_for('auth.forgot') }}">📲 درخواست مجدد با موبایل</a>
+          &nbsp;|&nbsp;
+          <a class="text-2" style="font-size:12.5px" href="{{ url_for('auth.login') }}">← بازگشت به ورود</a>
+        </div>
       </form>
     </div>
   </div>

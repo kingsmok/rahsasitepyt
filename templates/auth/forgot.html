@@ -16,7 +16,11 @@
           <input id="fg_phone" class="form-control" type="text" name="phone" placeholder="09xxxxxxxxx" dir="ltr" pattern="09[0-9]{9}" required autofocus>
         </div>
         <button class="btn btn-primary btn-lg btn-block" type="submit">📲 دریافت کد بازیابی</button>
-        <div class="text-center mt-2"><a class="text-2" style="font-size:12.5px" href="{{ url_for('auth.login') }}">← بازگشت به ورود</a></div>
+        <div class="text-center mt-2">
+          <a class="text-2" style="font-size:12.5px" href="{{ url_for('auth.forgot_email') }}">📧 بازیابی با ایمیل</a>
+          &nbsp;|&nbsp;
+          <a class="text-2" style="font-size:12.5px" href="{{ url_for('auth.login') }}">← بازگشت به ورود</a>
+        </div>
       </form>
     </div>
   </div>

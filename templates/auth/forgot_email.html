@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block title %}{{ seo.title or "بازیابی رمز عبور با ایمیل — آکادمی آنلاین" }}{% endblock %}
+
+{% block content %}
+<section class="section">
+  <div class="container" style="max-width:460px">
+    <div class="auth-card">
+      <div class="text-center mb-3">
+        <div style="font-size:44px">📧</div>
+        <h1 style="font-size:20px;margin-top:10px">بازیابی رمز عبور</h1>
+        <p class="text-2" style="font-size:13px">ایمیل ثبت‌شده خود را وارد کنید تا کد بازیابی برایتان ارسال شود.</p>
+      </div>
+      <form method="post">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+        <div class="form-group">
+          <label for="fg_email">آدرس ایمیل</label>
+          <input id="fg_email" class="form-control" type="email" name="email" 
+                 placeholder="example@domain.com" dir="ltr" required autofocus
+                 value="{{ request.form.get('email', '') }}">
+        </div>
+        <button class="btn btn-primary btn-lg btn-block" type="submit">📧 ارسال کد بازیابی</button>
+        <div class="d-flex justify-content-between mt-3" style="font-size:12.5px">
+          <a class="text-2" href="{{ url_for('auth.forgot') }}">🔑 بازیابی با شماره موبایل</a>
+          <a class="text-2" href="{{ url_for('auth.login') }}">← بازگشت به ورود</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</section>
+{% endblock %}

@@ -113,3 +113,26 @@ def send_ticket_reply(user, ticket, reply, settings):
       </div>
     </div>"""
     return send_email(user.email, f'پاسخ تیکت: {_esc(ticket.subject)}', html, settings)
+
+
+def send_password_reset_email(user, reset_code, settings):
+    """ایمیل بازیابی رمز عبور با کد تایید"""
+    # احترام به تنظیم اعلان شخصی کاربر (خارج از ایمیل‌های امنیتی)
+    if getattr(user, 'notify_email', True) is False:
+        return False, 'skipped: user disabled email notifications'
+    name = user.name or 'کاربر'
+    base_url = settings.get('base_url') or ''
+    html = f"""<div dir="rtl" style="font-family:Tahoma;max-width:560px;margin:auto;border:1px solid #e2e8f0;border-radius:16px;overflow:hidden">
+      <div style="background:#dc2626;color:#fff;padding:22px;text-align:center;font-size:20px;font-weight:bold">🔑 بازیابی رمز عبور</div>
+      <div style="padding:26px;color:#334155;font-size:14px;line-height:2">
+        <p>سلام <b>{_esc(name)}</b> عزیز،</p>
+        <p>درخواست بازیابی رمز عبور برای حساب شما در <b>{settings.get('site_name') or 'آکادمی آنلاین'}</b> ثبت شد.</p>
+        <p>کد تأیید شما:</p>
+        <div style="background:#f1f5f9;border:2px dashed #cbd5e1;border-radius:12px;padding:16px;margin:16px 0;text-align:center;font-size:28px;font-weight:bold;letter-spacing:6px;color:#1e40af;font-family:monospace">{reset_code}</div>
+        <p style="font-size:12px;color:#64748b">⚠️ اگر شما درخواست بازیابی رمز عبور نداده‌اید، این ایمیل را نادیده بگیرید. این کد تا ۱۰ دقیقه معتبر است.</p>
+        <p style="font-size:12px;color:#64748b">🔐 هرگز این کد را با دیگران به اشتراک نگذارید.</p>
+      </div>
+      <div style="background:#f8fafc;padding:14px;text-align:center;font-size:11px;color:#94a3b8">{settings.get('site_name') or 'آکادمی آنلاین'} — این ایمیل به‌صورت خودکار ارسال شده است.</div>
+    </div>"""
+    subject = f'کد بازیابی رمز عبور — {settings.get("site_name") or "آکادمی آنلاین"}'
+    return send_email(user.email, subject, html, settings)

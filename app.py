@@ -5,6 +5,7 @@
 """
 import os
 import time
+import uuid
 try:
     from datetime import UTC
 except ImportError:  # پایتون < 3.11 (هاست‌های اشتراکی)
@@ -924,6 +925,13 @@ def create_app():
         resp.headers.setdefault('X-XSS-Protection', '0')
         resp.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
         resp.headers.setdefault('X-Powered-By', 'Academy LMS')
+        # شناسهٔ درخواست در پاسخ: مشتری می‌تواند همین کد را به پشتیبانی بدهد
+        # و تیم فنی دقیقاً همان درخواست را در لاگ پیدا کند (پشتیبانی سطح SLA).
+        try:
+            if getattr(g, 'request_id', None):
+                resp.headers.setdefault('X-Request-Id', g.request_id)
+        except Exception:
+            pass
         # محدودسازی APIهای مرورگر (دوربین/میکروفون/موقعیت) — فقط در صورت نیاز باز شوند
         resp.headers.setdefault('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()')
         # ایزوله‌سازی پنجره‌های کراس‌اورجین
@@ -1222,6 +1230,20 @@ def create_app():
     # ---------- قبل از هر درخواست ----------
     @app.before_request
     def load_globals():
+        # ── شناسهٔ یکتای درخواست (Correlation ID) ─────────────────────────
+        # چرا: وقتی مشتری گزارش خطا می‌دهد، تیم پشتیبانی باید بتواند دقیقاً
+        # همان درخواست را در لاگ پیدا کند. بدون این شناسه، ردیابی خطا در
+        # سروری که روزانه هزاران درخواست دارد عملاً ناممکن است.
+        #
+        # اگر پراکسی/لودبالانسر بالادست از قبل شناسه ست کرده باشد همان
+        # حفظ می‌شود تا زنجیرهٔ ردیابی بین سرویس‌ها نشکند؛ ورودی بیرونی
+        # پاک‌سازی می‌شود (فقط کاراکترهای امن، حداکثر ۶۴ نویسه) تا از
+        # تزریق به فایل لاگ (Log Injection / CRLF) جلوگیری شود.
+        _incoming = (request.headers.get('X-Request-Id')
+                     or request.headers.get('X-Correlation-Id') or '')
+        _clean = ''.join(ch for ch in _incoming if ch.isalnum() or ch in '-_')[:64]
+        g.request_id = _clean or uuid.uuid4().hex[:12]
+
         # پنل‌های مدیریتی مستقل از سایت — بدون هدر/فوتر فروشگاه
         g.hide_hdr = False
         g.hide_ftr = False

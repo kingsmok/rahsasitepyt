@@ -3,7 +3,6 @@
 هر طرح = پالت کامل رنگی (توکن‌های CSS سراسری) + چیدمان صفحه اصلی (JSON صفحه‌ساز)
 + کامپوننت‌های نمونه (HTML راست‌چین) برای خروجی JSON مستندات.
 """
-import json
 
 # ---------------------------------------------------------------
 # ابزار رنگ — تبدیل و تولید توکن‌ها از پالت پایه
@@ -575,7 +574,6 @@ def tokens(t):
 # ---------------------------------------------------------------
 def build_css(t):
     k = tokens(t)
-    dark = t['dark']
     # فوتر تیره‌تر برای تم روشن
     footer_bg2 = darken(k['footer_bg'], 0.12)
     return f'''/* {t['name']} — {t['category']} | تولیدشده از {t['id']} */
@@ -676,7 +674,7 @@ def _section(t, html, title):
 def component_html(t):
     c = t['colors']
     p, a, s = c['primary'], c['accent'], c['secondary']
-    bg, tx = c['background'], c['text']
+    tx = c['text']
     return dict(
         homepage=_section(t, f'''
   <div style="max-width:1100px;margin:0 auto;text-align:center">

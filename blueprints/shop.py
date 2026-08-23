@@ -262,8 +262,16 @@ def checkout_wallet():
     if balance < order.final_total:
         flash('موجودی کیف پول کافی نیست.', 'error')
         return redirect(url_for('shop.pay_start', code=code))
+    # ⚠️ گارد بالا فقط برای پیام کاربرپسند است و در برابر همزمانی کافی نیست:
+    # دو درخواست هم‌زمان هر دو همان موجودی را می‌خوانند و هر دو رد می‌شوند.
+    # داور نهایی، کسر اتمیک و مشروط داخل wallet_spend است (شرط کفایت موجودی
+    # در WHERE همان UPDATE قرار دارد). اگر False برگردد یعنی موجودی در فاصلهٔ
+    # بین چک و کسر مصرف شده است → سفارش نباید paid شود.
     from gamification import wallet_spend
-    wallet_spend(g.user, order.final_total, f'خرید سفارش {order.code}')
+    if not wallet_spend(g.user, order.final_total, f'خرید سفارش {order.code}'):
+        db.session.rollback()
+        flash('موجودی کیف پول کافی نیست.', 'error')
+        return redirect(url_for('shop.pay_start', code=code))
     _mark_paid(order, 'WALLET', 'wallet_payment')
     flash('پرداخت با کیف پول انجام شد. دوره فعال شد! 🎉', 'success')
     return redirect(url_for('shop.pay_result', code=code, status='success'))
@@ -603,7 +611,14 @@ def _mark_paid(order, ref, detail):
     order.ref_id = ref
     order.paid_at = utcnow()
     if order.coupon:
-        order.coupon.used_count += 1
+        # افزایش اتمیک شمارندهٔ مصرف کوپن. الگوی قبلی
+        # (order.coupon.used_count += 1) یک read-modify-write بود: دو سفارش
+        # هم‌زمان با یک کوپن، هر دو مقدار قدیمی را می‌خواندند و یکی از
+        # افزایش‌ها گم می‌شد. نتیجه: عبور از سقف max_uses و ضرر مالی روی
+        # کوپن‌های محدود. (بقیهٔ همین تابع از قبل الگوی اتمیک را رعایت می‌کرد.)
+        Coupon.query.filter(Coupon.id == order.coupon_id).update(
+            {Coupon.used_count: db.func.coalesce(Coupon.used_count, 0) + 1},
+            synchronize_session=False)
     db.session.add(PaymentLog(order_id=order.id, gateway=order.gateway, amount=order.final_total,
                               status='paid', ref_id=ref, detail=detail))
     if order.fulfillment_status == 'wallet_topup':

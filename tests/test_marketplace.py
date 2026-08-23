@@ -3,11 +3,10 @@
 import hashlib
 import hmac
 import json
-import re
 from xml.dom.minidom import parseString
 
 import pytest
-from models import db, Product, Setting, Course
+from models import db, Setting, Course
 from ext_models import MarketOrder
 
 

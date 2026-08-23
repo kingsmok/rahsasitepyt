@@ -2,7 +2,7 @@
 """API های JSON برای تعاملات جاوااسکریپت"""
 import json
 from flask import Blueprint, request, jsonify, session, g
-from models import db, Course, Favorite, User
+from models import db, Course, Favorite
 from validators import log_exc as _lexc
 from jdates import jdate_num
 

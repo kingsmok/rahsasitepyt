@@ -11,25 +11,77 @@ except ImportError:  # پایتون < 3.11 (هاست‌های اشتراکی)
     UTC = _tz_utc.utc
 from flask import (Blueprint, render_template, request, redirect, url_for,
                    flash, g, session, abort, jsonify)
-from models import (utcnow, db, User, Course, Quiz, QuizQuestion, QuizAttempt,
-                    Assignment, AssignmentSubmission, LessonQuestion,
-                    Enrollment, Order, OrderItem, Bundle, BundleCourse,
-                    StudyPlan, ActivityLog, ChatMessage, StudyDay)
-from gamification import (award_points, record_streak, user_badges,
-                          make_referral_code)
+from models import (utcnow, db, User, Course, Quiz, QuizAttempt, Assignment,
+                    AssignmentSubmission, LessonQuestion, Enrollment,
+                    Order, OrderItem, Bundle, StudyPlan, ChatMessage,
+                    StudyDay)
+from gamification import (award_points, make_referral_code)
 
 from jdates import jtime
-from validators import safe_int
+from validators import safe_int, log_exc as _lexc
 
 features_bp = Blueprint('features', __name__)
+
+
+# ---------------------------------------------------------------------------
+# قابلیت‌های جانبی (اختیاری) و کلید تنظیمات هرکدام
+# ---------------------------------------------------------------------------
+# چرا این لایه لازم است؟
+#     این پروژه به‌عنوان یک محصول تجاری فروش دوره عرضه می‌شود، اما در کنار
+#     هستهٔ فروش (دوره، سبد خرید، پرداخت، دانشجو) چند قابلیت جانبی هم دارد
+#     که برای بخشی از مشتری‌ها بی‌استفاده است: استعدادیابی، جدول امتیازات،
+#     چالش روزانه، مقایسهٔ دوره، تعیین سطح و برنامهٔ مطالعه.
+#
+#     این قابلیت‌ها حذف نمی‌شوند چون:
+#       ۱) بعضی مشتری‌ها از آن‌ها استفاده می‌کنند و حذف = از دست رفتن قابلیت.
+#       ۲) دادهٔ واقعی کاربران در جدول‌هایشان ذخیره شده (StudyPlan، QuizAttempt
+#          و ...) و حذف کد باعث یتیم‌شدن یا نابودی آن داده می‌شود.
+#
+#     در عوض با کلید تنظیمات خاموش/روشن می‌شوند. وقتی خاموش‌اند، مسیرشان
+#     ۴۰۴ می‌دهد (نه ۴۰۳) تا از بیرون اصلاً وجود نداشته باشند، و لینکشان هم
+#     در رابط کاربری پنهان می‌شود. این همان الگویی است که از قبل برای
+#     exam_enabled و spin_enabled در همین فایل به‌کار رفته بود؛ فقط تعمیم
+#     داده شد تا یک نقطهٔ کنترل واحد داشته باشیم (DRY).
+#
+# ⚠️ پیش‌فرض‌ها عمداً «روشن» است تا نصب‌های موجود با به‌روزرسانی رفتارشان
+#    عوض نشود (سازگاری عقب‌رو). فقط exam که از قبل پیش‌فرض خاموش داشت،
+#    خاموش می‌ماند.
+OPTIONAL_FEATURES = (
+    # (پیشوند مسیر, کلید تنظیمات, پیش‌فرض)
+    ('/exam/practice', 'exam_enabled', '0'),
+    ('/talent-test', 'talent_enabled', '1'),
+    ('/leaderboard', 'leaderboard_enabled', '1'),
+    ('/dashboard/challenge', 'challenge_enabled', '1'),
+    ('/compare', 'compare_enabled', '1'),
+    ('/placement-test', 'placement_enabled', '1'),
+    ('/placement/result', 'placement_enabled', '1'),
+    ('/dashboard/study-plan', 'study_plan_enabled', '1'),
+    ('/success-stories', 'success_stories_enabled', '1'),
+)
+
+
+def feature_on(key, default='1'):
+    """آیا قابلیت اختیاری روشن است؟
+
+    در حالت تست خودکار همیشه روشن در نظر گرفته می‌شود تا مجموعهٔ تست‌های
+    موجود (که این مسیرها را می‌زنند) با تغییر تنظیمات سایت نشکند.
+    """
+    try:
+        from runtime import automated_test_mode
+        if automated_test_mode():
+            return True
+    except Exception:
+        pass
+    settings = getattr(g, 'settings', None) or {}
+    return str(settings.get(key, default)) == '1'
 
 
 @features_bp.before_request
 def _disabled_feature_guard():
     """ویژگی‌های غیرفعال نباید با واردکردن مستقیم URL در دسترس باشند."""
-    if request.path.startswith('/exam/practice'):
-        from runtime import automated_test_mode
-        if not automated_test_mode() and g.settings.get('exam_enabled') != '1':
+    path = request.path
+    for prefix, key, default in OPTIONAL_FEATURES:
+        if path.startswith(prefix) and not feature_on(key, default):
             abort(404)
     return None
 

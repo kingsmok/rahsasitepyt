@@ -43,7 +43,7 @@ def real_gateway_settings(app):
 
 def test_real_zarinpal_full_flow(client, app, real_gateway_settings, monkeypatch):
     """جریان کامل: سبد → سفارش → انتخاب زرین‌پال → درگاه → بازگشت → تایید → paid."""
-    from models import Order, Enrollment, db
+    from models import Order, Enrollment
 
     login = __import__('conftest', fromlist=['login']).login
     login(client, 'demo@test.ir', 'demo123')

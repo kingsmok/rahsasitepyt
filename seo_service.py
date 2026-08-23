@@ -13,7 +13,6 @@
 مسیرهای SeoMeta: ``/course/<slug>`` ، ``/blog/<slug>`` ، ``/teacher/<id>``
 """
 import json
-import re
 
 from models import db, SeoMeta, Setting
 from validators import log_exc as _lexc

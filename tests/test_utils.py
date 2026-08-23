@@ -1,9 +1,7 @@
 # -*- coding: utf-8 -*-
 """تست ماژول‌های کمکی — اعتبارسنجی، تاریخ شمسی، کپچا، گیمیفیکیشن، سئو، پیامک."""
-import re
-import io
 from conftest import login
-from models import db, User
+from models import User
 
 
 # ---------------------------------------------------------------

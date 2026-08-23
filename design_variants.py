@@ -67,7 +67,6 @@ def accent_on(t):
 # ۱) هدر دسکتاپ — ۵ واریانت ساختاری
 # =====================================================================
 def desktop_header(t, idx):
-    c = t['colors']
     site = 'آکادمی آنلاین'
     logo = f'''<div class="dv-flex dv-items-center dv-gap-2">
       <div class="dv-logo-ic">{t['name'][0]}</div>
@@ -144,7 +143,6 @@ def desktop_header(t, idx):
 # ۲) منوی موبایل — ۴ واریانت
 # =====================================================================
 def mobile_header(t, idx):
-    c = t['colors']
     site = 'آکادمی آنلاین'
     v = idx % 4
     links = (('<a href="#"><span>🏠</span>خانه</a>'
@@ -294,7 +292,6 @@ def desktop_footer(t, idx):
 # =====================================================================
 def mobile_footer(t, idx):
     v = idx % 4
-    c = t['colors']
     if v == 0:      # جمع‌وجور با لینک‌های سریع
         return f'''<footer class="dv-widget" style="background:var(--footer-bg);color:var(--footer-text);padding:18px 16px;text-align:center">
   <span class="dv-logo-ic" style="margin:0 auto 8px">{t['name'][0]}</span>
@@ -444,7 +441,6 @@ def course_card(t, idx):
 # =====================================================================
 def video_section(t, idx):
     v = idx % 4
-    c = t['colors']
     playlist = ''.join(
         f'<div class="dv-pl-item {"dv-pl-active" if i == 0 else ""}"><span class="dv-pl-num">{i + 1}</span>'
         f'<div><b>قسمت {i + 1} — عنوان درس</b><small>⏱ ۱۲:۳۴</small></div></div>'

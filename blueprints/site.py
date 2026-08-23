@@ -3,7 +3,7 @@
 from flask import Blueprint, render_template, request, abort, redirect, url_for, flash, g, session
 import re
 import json
-from datetime import datetime, timedelta
+from datetime import timedelta
 from sqlalchemy import or_
 
 _FA_MAP = str.maketrans('0123456789', '۰۱۲۳۴۵۶۷۸۹')
@@ -11,7 +11,7 @@ _FA_MAP = str.maketrans('0123456789', '۰۱۲۳۴۵۶۷۸۹')
 def fa_num2(n):
     return str(n).translate(_FA_MAP)
 from sqlalchemy.orm import joinedload
-from models import db, Course, Category, User, BlogPost, Review, Favorite, ContactMessage, NewsletterEmail, Section, Enrollment
+from models import db, Course, Category, User, BlogPost, Review, Favorite, ContactMessage, NewsletterEmail, Section, Enrollment, utcnow
 from validators import log_exc as _lexc
 from validators import safe_referrer
 
@@ -252,7 +252,6 @@ def course_detail(slug):
     course.views = (course.views or 0) + 1
     db.session.commit()
     enrolled = bool(g.user and any(e.course_id == course.id for e in g.user.enrollments))
-    co_teachers = [ct for ct in course.co_teachers] if hasattr(course, 'co_teachers') else []
     # آزمون و ارسال تمرین تجربهٔ دانشجو است؛ مدیر/مدرس از پنل تخصصی خود
     # مدیریت می‌کنند و در صفحه فروش با لینک منتهی به 403 مواجه نمی‌شوند.
     can_access_coursework = enrolled
@@ -626,10 +625,15 @@ def blog_post(slug):
         if (request.form.get('website') or '').strip():
             return redirect(url_for('site.blog_post', slug=slug) + '#comments')
         client_ip = request.headers.get('X-Forwarded-For', request.remote_addr or '').split(',')[0].strip()
-        throttle_key = 'blog_cm_{}'.format(client_ip)
+        # محدودیت نرخ از روی خودِ دیتابیس محاسبه می‌شود (شمارش دیدگاه‌های
+        # همان IP در ۱۰ دقیقهٔ گذشته)؛ کلید کش درون‌حافظه‌ای لازم نیست.
         recent = BlogComment.query.filter(
             BlogComment.post_id == post.id,
-            BlogComment.created_at >= datetime.utcnow() - timedelta(minutes=10),
+            # ⚠️ حتماً از utcnow() پروژه استفاده شود، نه datetime.utcnow():
+            # created_at با همان تابع پر می‌شود و باید مبنای زمانی یکسان
+            # داشته باشند. ضمناً datetime.utcnow() در پایتون ۳.۱۲+ منسوخ
+            # شده و در نسخه‌های بعدی حذف می‌شود.
+            BlogComment.created_at >= utcnow() - timedelta(minutes=10),
             BlogComment.ip == client_ip).count()
         if recent >= 5:
             flash('تعداد دیدگاه‌ها زیاد است؛ چند دقیقه دیگر دوباره تلاش کنید.', 'error')
@@ -848,7 +852,7 @@ def verify_certificate():
     code = ''
     if request.method == 'POST':
         code = request.form.get('code', '').strip().upper()
-        from models import Enrollment, Course
+        from models import Enrollment
         if not code.startswith('CRT-'):
             code = 'CRT-' + code
         # جستجو در گواهی‌های صادرشده — هم کد جدید (MD5) و هم کد قدیمی (SHA-1)

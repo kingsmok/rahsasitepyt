@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """تست فروشگاه (سبد → سفارش → پرداخت sandbox → ثبت‌نام) و تاریخ شمسی"""
 import re
-import sqlite3
 
 from conftest import csrf_headers, login
 from models import db, Order, Enrollment

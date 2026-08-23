@@ -17,9 +17,8 @@ except ImportError:  # پایتون < 3.11 (هاست‌های اشتراکی)
 
 from flask import (Blueprint, render_template, request, redirect, url_for,
                    flash, g, jsonify, Response, abort)
-from models import db, utcnow, Course, Product, Setting, Order
+from models import db, Course, Product, Setting
 from jdates import jdate_num
-from validators import log_exc as _lexc
 from ext_models import MarketSyncLog, MarketOrder
 
 market_bp = Blueprint('market', __name__)

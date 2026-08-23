@@ -112,7 +112,6 @@ def _make_admin(app):
 
 def test_admin_selects_site_design(client, app):
     """انتخاب طرح از پنل ادمین باید site_design را ذخیره و در رندر اعمال کند."""
-    import re
     from test_admin_panel import _login_admin_2fa
     _make_admin(app)
     _login_admin_2fa(client, app, 'admind@test.ir', 'admin123')

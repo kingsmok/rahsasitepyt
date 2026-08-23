@@ -4,10 +4,9 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from sqlalchemy import func
 from datetime import datetime
 from validators import safe_referrer
-from models import (utcnow, db, User, Course, Section, Lesson, Enrollment, Order,
-                    OrderItem, Assignment, AssignmentSubmission, LessonQuestion,
-                    Quiz, QuizAttempt, ActivityLog, Notification, PayoutRequest,
-                    CourseMeeting, AttendanceRecord, CourseTeacher)
+from models import (utcnow, db, Course, Section, Lesson, Enrollment, Order, OrderItem,
+                    Assignment, AssignmentSubmission, LessonQuestion, Notification,
+                    PayoutRequest, CourseMeeting, AttendanceRecord, CourseTeacher)
 
 teacher_bp = Blueprint('teacher', __name__, url_prefix='/teacher-panel')
 

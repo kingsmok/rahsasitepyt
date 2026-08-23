@@ -390,6 +390,40 @@ SECRET_KEY=...        ← کلید امنیتی سشن
   </div>
 </div>
 
+{# ═══════════ قابلیت‌های جانبی (غیر از هستهٔ فروش) ═══════════ #}
+<div class="ss-card">
+  <h3>🧩 قابلیت‌های جانبی سایت</h3>
+  <p class="ss-hint" style="margin:-4px 0 14px">
+    هستهٔ فروش (دوره، سبد خرید، پرداخت، پنل دانشجو) همیشه فعال است.
+    موارد زیر اختیاری‌اند؛ اگر برای کسب‌وکار شما کاربردی ندارند خاموششان کنید
+    تا هم از منوی سایت حذف شوند و هم مسیرشان برای بازدیدکننده بسته شود.
+    <b>خاموش‌کردن، داده‌های ثبت‌شده را پاک نمی‌کند</b> — با روشن‌کردن دوباره همه‌چیز برمی‌گردد.
+  </p>
+  <div class="ss-grid">
+    <div class="ss-field"><label>آزمون استعدادیابی</label>
+      <select name="talent_enabled"><option value="1" {{ 'selected' if vals.get('talent_enabled','1')=='1' }}>فعال</option><option value="0" {{ 'selected' if vals.get('talent_enabled','1')=='0' }}>غیرفعال</option></select>
+      <p class="ss-hint">پیشنهاد مسیر شغلی با چند پرسش کوتاه.</p></div>
+    <div class="ss-field"><label>جدول امتیازات</label>
+      <select name="leaderboard_enabled"><option value="1" {{ 'selected' if vals.get('leaderboard_enabled','1')=='1' }}>فعال</option><option value="0" {{ 'selected' if vals.get('leaderboard_enabled','1')=='0' }}>غیرفعال</option></select>
+      <p class="ss-hint">رتبه‌بندی عمومی دانشجویان بر اساس امتیاز.</p></div>
+    <div class="ss-field"><label>چالش روزانه</label>
+      <select name="challenge_enabled"><option value="1" {{ 'selected' if vals.get('challenge_enabled','1')=='1' }}>فعال</option><option value="0" {{ 'selected' if vals.get('challenge_enabled','1')=='0' }}>غیرفعال</option></select>
+      <p class="ss-hint">تشویق به مطالعهٔ روزانه (گیمیفیکیشن).</p></div>
+    <div class="ss-field"><label>مقایسهٔ دوره‌ها</label>
+      <select name="compare_enabled"><option value="1" {{ 'selected' if vals.get('compare_enabled','1')=='1' }}>فعال</option><option value="0" {{ 'selected' if vals.get('compare_enabled','1')=='0' }}>غیرفعال</option></select>
+      <p class="ss-hint">مقایسهٔ کنار هم چند دوره برای تصمیم خرید.</p></div>
+    <div class="ss-field"><label>آزمون تعیین سطح</label>
+      <select name="placement_enabled"><option value="1" {{ 'selected' if vals.get('placement_enabled','1')=='1' }}>فعال</option><option value="0" {{ 'selected' if vals.get('placement_enabled','1')=='0' }}>غیرفعال</option></select>
+      <p class="ss-hint">پیشنهاد دورهٔ مناسب بر اساس سطح فعلی کاربر.</p></div>
+    <div class="ss-field"><label>برنامهٔ مطالعه</label>
+      <select name="study_plan_enabled"><option value="1" {{ 'selected' if vals.get('study_plan_enabled','1')=='1' }}>فعال</option><option value="0" {{ 'selected' if vals.get('study_plan_enabled','1')=='0' }}>غیرفعال</option></select>
+      <p class="ss-hint">زمان‌بندی شخصی مطالعه در پنل دانشجو.</p></div>
+    <div class="ss-field"><label>داستان موفقیت</label>
+      <select name="success_stories_enabled"><option value="1" {{ 'selected' if vals.get('success_stories_enabled','1')=='1' }}>فعال</option><option value="0" {{ 'selected' if vals.get('success_stories_enabled','1')=='0' }}>غیرفعال</option></select>
+      <p class="ss-hint">صفحهٔ تجربهٔ دانشجویان (اعتمادسازی فروش).</p></div>
+  </div>
+</div>
+
 <div class="ss-card">
   <h3>🧰 وضعیت سیستم</h3>
   <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px">

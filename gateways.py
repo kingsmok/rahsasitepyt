@@ -3,9 +3,6 @@
 تنها کافی است کلیدها/شناسه‌ها را در پنل مدیریت وارد کنید.
 هر درگاه: start_payment برای شروع و verify_payment برای تایید.
 """
-import json
-import time
-import requests
 from validators import http_request
 from datetime import datetime
 try:
@@ -716,9 +713,11 @@ def test_gateway(gw_id, settings):
             r = http_request('get', 'https://sep.shaparak.ir/onlinepg/onlinepg', timeout=10)
             return _reachable(r, 'سامان SEP')
         if gw_id == 'saderat':
-            from cryptography.hazmat.primitives import hashes, serialization
-            from cryptography.hazmat.primitives.asymmetric import padding
-            key = serialization.load_pem_private_key(settings['sadad_key'].encode(), password=None)
+            from cryptography.hazmat.primitives import serialization
+            # هدف از این فراخوانی، خودِ عملِ بارگذاری است نه مقدار خروجی:
+            # اگر کلید PEM خراب/ناقص باشد استثنا می‌دهد و پیام خطا برمی‌گردد.
+            # (متغیر عمداً نگه داشته نمی‌شود؛ نتیجه مصرف‌کننده ندارد.)
+            serialization.load_pem_private_key(settings['sadad_key'].encode(), password=None)
             return True, 'کلید RSA سداد معتبر است.'
         if gw_id == 'snapppay':
             _snapppay_token(settings)

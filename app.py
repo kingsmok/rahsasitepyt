@@ -5,7 +5,7 @@
 """
 import os
 import time
-from datetime import datetime
+import uuid
 try:
     from datetime import UTC
 except ImportError:  # پایتون < 3.11 (هاست‌های اشتراکی)
@@ -21,9 +21,8 @@ except Exception:
 
 import hmac
 from flask import Flask, g, request, session, redirect, url_for, abort, render_template
-from models import utcnow, db, User, Setting, Category, Order, NewsletterEmail, Course
-from jdates import (fa, fa_num, money, MONTHS, slugify, jdate, jdatetime, jdate_num, jtime,
-                  jalali_to_gregorian, g2j, j2g)
+from models import utcnow, db, User, Setting, Category, Order, Course
+from jdates import (fa, money, slugify, jdate, jdatetime, jdate_num, jtime)
 from validators import log_exc as _lexc
 
 
@@ -94,6 +93,19 @@ def create_app():
     # نمی‌شوند. این پرچم فقط برای تست خودکار/توسعهٔ صریح نگه داشته شده است.
     from runtime import demo_features_enabled as _demo_features_enabled
     app.config['DEMO_FEATURES_ENABLED'] = _demo_features_enabled()
+
+    def _feature_on_jinja(key, default='1'):
+        """پل قالب به گاردِ قابلیت‌های اختیاری (blueprints/features.py).
+
+        قالب‌ها با {% if feature_on('leaderboard_enabled') %} لینک قابلیت را
+        نمایش می‌دهند. اگر ماژول در دسترس نبود، پیش‌فرض «روشن» برمی‌گردد تا
+        نبودِ یک ماژول جانبی باعث پنهان‌شدن ناخواستهٔ رابط کاربری نشود.
+        """
+        try:
+            from blueprints.features import feature_on
+            return feature_on(key, default)
+        except Exception:
+            return str(default) == '1'
     # ---------- لاگ ساختاریافته: کنسول + فایل چرخشی ----------
     import logging as _logging
     from logging.handlers import RotatingFileHandler as _RFH
@@ -637,13 +649,10 @@ def create_app():
         init_admin(app)
     except Exception as e:
         app.logger.warning(f'Flask-Admin غیرفعال: {e}')
-    # روت پنل Flask-Admin به /admin-extra تا با پنل ما تداخل نکند
-    try:
-        from flask_admin import Admin as _A
-        # مسیر پیش‌فرض /admin/ است — آن را به /admin-extra تغییر می‌دهیم
-        # (این کار بعد از ساخت Admin انجام می‌شود؛ در admin_panel تنظیم شده)
-    except Exception:
-        _lexc('app.py')
+    # نکته: مسیر پنل Flask-Admin به /admin-extra تغییر داده شده تا با پنل
+    # اختصاصی ما تداخل نکند. این تنظیم داخل admin_panel.init_admin انجام
+    # می‌شود؛ بلوک try/except قبلی در این نقطه فقط flask_admin را import
+    # می‌کرد و هیچ کاری انجام نمی‌داد (کد مرده) — حذف شد.
     app.jinja_env.globals['builder_courses'] = builder_courses
     app.jinja_env.globals['builder_categories'] = builder_categories
     app.jinja_env.globals['builder_posts'] = builder_posts
@@ -916,6 +925,13 @@ def create_app():
         resp.headers.setdefault('X-XSS-Protection', '0')
         resp.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
         resp.headers.setdefault('X-Powered-By', 'Academy LMS')
+        # شناسهٔ درخواست در پاسخ: مشتری می‌تواند همین کد را به پشتیبانی بدهد
+        # و تیم فنی دقیقاً همان درخواست را در لاگ پیدا کند (پشتیبانی سطح SLA).
+        try:
+            if getattr(g, 'request_id', None):
+                resp.headers.setdefault('X-Request-Id', g.request_id)
+        except Exception:
+            pass
         # محدودسازی APIهای مرورگر (دوربین/میکروفون/موقعیت) — فقط در صورت نیاز باز شوند
         resp.headers.setdefault('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()')
         # ایزوله‌سازی پنجره‌های کراس‌اورجین
@@ -1214,6 +1230,20 @@ def create_app():
     # ---------- قبل از هر درخواست ----------
     @app.before_request
     def load_globals():
+        # ── شناسهٔ یکتای درخواست (Correlation ID) ─────────────────────────
+        # چرا: وقتی مشتری گزارش خطا می‌دهد، تیم پشتیبانی باید بتواند دقیقاً
+        # همان درخواست را در لاگ پیدا کند. بدون این شناسه، ردیابی خطا در
+        # سروری که روزانه هزاران درخواست دارد عملاً ناممکن است.
+        #
+        # اگر پراکسی/لودبالانسر بالادست از قبل شناسه ست کرده باشد همان
+        # حفظ می‌شود تا زنجیرهٔ ردیابی بین سرویس‌ها نشکند؛ ورودی بیرونی
+        # پاک‌سازی می‌شود (فقط کاراکترهای امن، حداکثر ۶۴ نویسه) تا از
+        # تزریق به فایل لاگ (Log Injection / CRLF) جلوگیری شود.
+        _incoming = (request.headers.get('X-Request-Id')
+                     or request.headers.get('X-Correlation-Id') or '')
+        _clean = ''.join(ch for ch in _incoming if ch.isalnum() or ch in '-_')[:64]
+        g.request_id = _clean or uuid.uuid4().hex[:12]
+
         # پنل‌های مدیریتی مستقل از سایت — بدون هدر/فوتر فروشگاه
         g.hide_hdr = False
         g.hide_ftr = False
@@ -1921,6 +1951,9 @@ def create_app():
                     sms_ready=_sms_ready,
                     # در قالب‌ها نیز بخش‌های آزمایشی فقط در محیط تست صریح قابل مشاهده‌اند.
                     demo_features_enabled=_demo_features_enabled(),
+                    # قابلیت‌های جانبی خاموش‌شدنی: قالب‌ها با feature_on('key')
+                    # لینک را پنهان می‌کنند تا کاربر به صفحهٔ ۴۰۴ نرسد.
+                    feature_on=_feature_on_jinja,
                     license_state=getattr(g, 'license_state', None),
                     clarity_script=_clarity, crisp_script=_crisp,
                     bc_admin_menu=lambda: __import__('permissions', fromlist=['menu_for']).menu_for(_u),
@@ -2053,8 +2086,13 @@ def create_app():
                     from models import NotFoundLog
                     log = NotFoundLog.query.filter_by(path=request.path).first()
                     if log:
-                        log.count += 1
-                        log.referrer = request.referrer or log.referrer
+                        # افزایش اتمیک: ربات‌ها معمولاً یک مسیر ۴۰۴ را
+                        # هم‌زمان از چند اتصال می‌زنند؛ read-modify-write
+                        # باعث کم‌شماری آمار می‌شد.
+                        NotFoundLog.query.filter(NotFoundLog.id == log.id).update(
+                            {NotFoundLog.count: db.func.coalesce(NotFoundLog.count, 0) + 1,
+                             NotFoundLog.referrer: (request.referrer or log.referrer)},
+                            synchronize_session=False)
                     else:
                         db.session.add(NotFoundLog(path=request.path[:300],
                                                    referrer=(request.referrer or '')[:400]))

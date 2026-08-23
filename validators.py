@@ -201,13 +201,80 @@ def file_content_is_safe(stream, ext):
     return True
 
 
-def log_exc(context=''):
-    """ثبت خطای بلعیده‌شده (جایگزین except: pass) — برای دیباگ واقعی"""
-    import logging, sys
+def request_context():
+    """زمینهٔ درخواست جاری برای لاگ — شناسهٔ درخواست، کاربر، مسیر و IP.
+
+    چرا لازم است (نظارت‌پذیری سطح تجاری):
+        بدون این اطلاعات، یک خطای ثبت‌شده در لاگ عملاً بی‌فایده است: معلوم
+        نیست کدام کاربر، از کدام IP و روی کدام مسیر آن را ایجاد کرده. وقتی
+        مشتری تماس می‌گیرد و می‌گوید «صفحه خطا داد»، تیم پشتیبانی باید
+        بتواند با یک شناسه دقیقاً همان درخواست را پیدا کند.
+
+    ⚠️ نکتهٔ امنیتی (Zero-Trust):
+        عمداً هیچ دادهٔ حساسی ثبت نمی‌شود — نه توکن نشست، نه رمز عبور، نه
+        کد ملی. فقط شناسهٔ عددی کاربر ثبت می‌شود، نه ایمیل یا شماره تماس،
+        تا فایل لاگ خودش به یک منبع نشت اطلاعات شخصی تبدیل نشود.
+
+    خروجی: رشتهٔ کوتاه و قابل جستجو، یا رشتهٔ خالی در صورت نبودِ کانتکست
+    (مثلاً هنگام اجرای اسکریپت‌های CLI یا کارهای پس‌زمینه).
+    """
+    try:
+        from flask import g, has_request_context, request
+    except Exception:          # pragma: no cover - فقط اگر Flask نصب نباشد
+        return ''
+    if not has_request_context():
+        return ''
+    parts = []
+    try:
+        rid = getattr(g, 'request_id', None)
+        if rid:
+            parts.append('rid={}'.format(rid))
+        user = getattr(g, 'user', None)
+        # فقط شناسهٔ عددی — نه ایمیل/تلفن (جلوگیری از نشت PII در لاگ)
+        parts.append('uid={}'.format(getattr(user, 'id', None) or '-'))
+        parts.append('{} {}'.format(request.method, request.path[:120]))
+        # اولین مقدار X-Forwarded-For پشت پراکسی، وگرنه remote_addr
+        client_ip = (request.headers.get('X-Forwarded-For', '')
+                     .split(',')[0].strip() or request.remote_addr or '-')
+        parts.append('ip={}'.format(client_ip[:45]))
+    except Exception:
+        # ساخت زمینهٔ لاگ هرگز نباید خودش باعث خطا شود.
+        return ' '.join(parts)
+    return ' '.join(parts)
+
+
+def log_exc(context='', level='warning'):
+    """ثبت خطای مهارشده (جایگزین ``except: pass``) همراه با زمینهٔ کامل.
+
+    این تابع در بیش از ۹۰ نقطهٔ پروژه صدا زده می‌شود، بنابراین امضای آن
+    عمداً سازگار با گذشته نگه داشته شده: ``log_exc('ماژول')`` دقیقاً مثل
+    قبل کار می‌کند و به‌صورت خودکار زمینهٔ درخواست را هم اضافه می‌کند.
+
+    پارامترها:
+        context: نام ماژول/عملیات برای ردیابی (مثلاً 'shop.mark_paid').
+        level:   'warning' (پیش‌فرض) یا 'error' برای خطاهای جدی‌تر که باید
+                 در سامانهٔ هشدار دیده شوند.
+
+    چرا traceback فقط در سطح debug ثبت می‌شود:
+        ثبت کامل traceback برای هر خطای مهارشده، فایل لاگ را در ترافیک بالا
+        پر می‌کند. متن کامل با ``LOG_LEVEL=DEBUG`` در دسترس است، اما در حالت
+        عادی فقط یک خط فشرده و قابل جستجو ثبت می‌شود.
+    """
+    import logging
+    import sys
+
     exc = sys.exc_info()[1]
-    logging.getLogger('academy').warning(
-        'swallowed error [%s]: %s: %s',
-        context, type(exc).__name__ if exc else '?', exc or '')
+    logger = logging.getLogger('academy')
+    ctx = request_context()
+    log_fn = logger.error if str(level).lower() == 'error' else logger.warning
+    log_fn('swallowed error [%s]%s: %s: %s',
+           context,
+           ' ({})'.format(ctx) if ctx else '',
+           type(exc).__name__ if exc else '?',
+           exc or '')
+    # traceback کامل فقط وقتی سطح لاگ DEBUG باشد (جلوگیری از پرشدن لاگ)
+    if exc is not None and logger.isEnabledFor(logging.DEBUG):
+        logger.debug('traceback [%s]', context, exc_info=True)
 
 
 def birth_from_national_code(nc):

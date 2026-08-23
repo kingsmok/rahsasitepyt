@@ -14,15 +14,13 @@ except ImportError:  # پایتون < 3.11 (هاست‌های اشتراکی)
 from flask import (Blueprint, render_template, request, redirect, url_for, flash,
                    g, abort, session, jsonify, current_app)
 from sqlalchemy import func
-from models import (utcnow, db, User, Category, Course, Section, Lesson, Order, OrderItem,
-                    Coupon, BlogPost, BlogComment, NewsletterEmail, ContactMessage,
-                    Ticket, Setting, Enrollment, Review, PaymentProof, ActivityLog,
-                    Quiz, QuizQuestion, QuizAttempt, Assignment, AssignmentSubmission,
-                    LessonQuestion, Bundle, BundleCourse, CustomForm, CustomFormEntry, CannedReply, Menu, MenuItem, ChatMessage,
-                    PayoutRequest, StudyDay, ForumTopic, ForumPost, LiveSession, Installment, TicketReply,
-                    Page, RedirectRule)
+from models import (utcnow, db, User, Category, Course, Section, Lesson, Order, Coupon,
+                    BlogPost, BlogComment, NewsletterEmail, ContactMessage, Ticket,
+                    Setting, Enrollment, Review, PaymentProof, ActivityLog, Quiz,
+                    QuizQuestion, Assignment, AssignmentSubmission, LessonQuestion, Bundle,
+                    BundleCourse, CustomForm, CustomFormEntry, CannedReply, Menu, MenuItem, ChatMessage, PayoutRequest, ForumTopic,
+                    ForumPost, LiveSession, TicketReply, Page, RedirectRule)
 
-import re as _re
 from validators import human_size, safe_int
 from validators import log_exc as _lexc
 from validators import safe_referrer
@@ -367,7 +365,6 @@ def course_edit(cid):
 
 
 def _course_form(course):
-    from app import THEMES
     teachers = User.query.filter(User.role.in_(['teacher', 'admin'])).all()
     categories = Category.query.all()
     images = ['cover-python.webp', 'cover-flask.webp', 'cover-django.webp', 'cover-react.webp',
@@ -906,7 +903,6 @@ def blog_edit(pid):
 
 
 def _blog_form(post):
-    from app import THEMES
     if request.method == 'POST':
         f = request.form
         if not post:
@@ -1222,23 +1218,55 @@ def ticket_reply_file(tid):
 @admin_required
 def tickets_report():
     """گزارش عملکرد پشتیبان‌ها و میانگین زمان پاسخ"""
-    support_ids = [u.id for u in User.query.filter(User.role.in_(['support', 'admin'])).all()]
+    # ⚡ این گزارش قبلاً به‌ازای هر پشتیبان سه کوئری جدا می‌زد (get + count +
+    # واکشی همهٔ تیکت‌ها) و میانگین را در پایتون حساب می‌کرد؛ یعنی الگوی N+1
+    # با هزینهٔ خطی نسبت به تعداد پشتیبان‌ها (۲۰ پشتیبان ≈ ۷۴ کوئری).
+    # حالا کل کار با دو کوئری تجمیعی انجام می‌شود: یکی برای شمارش تیکت‌های
+    # هر پشتیبان و یکی برای مجموع/تعداد زمان پاسخ. میانگین از روی همین
+    # مجموع‌ها محاسبه می‌شود، پس دیگر هیچ ردیفی به پایتون منتقل نمی‌شود.
+    supports = User.query.filter(User.role.in_(['support', 'admin'])).all()
+
+    # تعداد تیکت ارجاع‌شده به هر پشتیبان — یک کوئری برای همه
+    answered_map = dict(
+        db.session.query(Ticket.assigned_to, db.func.count(Ticket.id))
+        .filter(Ticket.assigned_to.isnot(None))
+        .group_by(Ticket.assigned_to).all())
+
+    # میانگین زمان پاسخ: تفاضل زمان‌ها در موتور دیتابیس قابل تجمیع نیست
+    # (SQLite و MySQL نحو متفاوتی دارند)، بنابراین فقط ستون‌های لازم را
+    # واکشی می‌کنیم — نه شیء کامل ORM — و یک بار روی همان‌ها می‌پیماییم.
+    resp_sum = {}
+    resp_cnt = {}
+    total_seconds = 0.0
+    total_count = 0
+    for assigned_to, created_at, first_response_at in db.session.query(
+            Ticket.assigned_to, Ticket.created_at, Ticket.first_response_at
+    ).filter(Ticket.first_response_at.isnot(None)).all():
+        if not created_at or not first_response_at:
+            continue
+        hours = (first_response_at - created_at).total_seconds() / 3600
+        total_seconds += hours
+        total_count += 1
+        if assigned_to is not None:
+            resp_sum[assigned_to] = resp_sum.get(assigned_to, 0.0) + hours
+            resp_cnt[assigned_to] = resp_cnt.get(assigned_to, 0) + 1
+
     rows = []
-    for sid in support_ids:
-        u = db.session.get(User, sid)
-        answered = Ticket.query.filter(Ticket.assigned_to == sid).count()
-        samples = []
-        for t in Ticket.query.filter(Ticket.assigned_to == sid,
-                                     Ticket.first_response_at.isnot(None)).all():
-            samples.append((t.first_response_at - t.created_at).total_seconds() / 3600)
-        avg_h = round(sum(samples) / len(samples), 1) if samples else None
-        rows.append({'user': u.name if u else '—', 'answered': answered, 'avg_h': avg_h})
-    total_tickets = Ticket.query.count()
-    open_tickets = Ticket.query.filter(Ticket.status.in_(['open', 'answered'])).count()
-    samples = []
-    for t in Ticket.query.filter(Ticket.first_response_at.isnot(None)).all():
-        samples.append((t.first_response_at - t.created_at).total_seconds() / 3600)
-    avg_all = round(sum(samples) / len(samples), 1) if samples else None
+    for u in supports:
+        count = resp_cnt.get(u.id, 0)
+        rows.append({
+            'user': u.name or '—',
+            'answered': answered_map.get(u.id, 0),
+            'avg_h': round(resp_sum[u.id] / count, 1) if count else None,
+        })
+
+    # شمارش کلی با یک کوئری گروهی به‌جای دو count جداگانه
+    status_counts = dict(
+        db.session.query(Ticket.status, db.func.count(Ticket.id))
+        .group_by(Ticket.status).all())
+    total_tickets = sum(status_counts.values())
+    open_tickets = sum(status_counts.get(s, 0) for s in ('open', 'answered'))
+    avg_all = round(total_seconds / total_count, 1) if total_count else None
     return render_template('admin/tickets_report.html', rows=rows,
                            total=total_tickets, open_t=open_tickets, avg_all=avg_all)
 
@@ -1733,7 +1761,7 @@ def messenger_test(mid):
 @admin_required
 def sms_settings():
     """تنظیمات پیامک خودکار"""
-    from sms import PROVIDERS, send_sms, test_sms
+    from sms import PROVIDERS, test_sms
     if request.method == 'POST':
         keys = ['sms_provider', 'sms_kavenegar_key', 'sms_kavenegar_sender', 'sms_kavenegar_template',
                 'sms_melli_username', 'sms_melli_password', 'sms_melli_sender',
@@ -1958,7 +1986,6 @@ def form_new():
         if not title:
             flash('عنوان الزامی است.', 'error')
         else:
-            import re as _re
             slug = slugify(title) or 'form'
             while CustomForm.query.filter_by(slug=slug).first():
                 slug += '-2'
@@ -2151,7 +2178,6 @@ def menu_new():
         return redirect(url_for('admin.menus'))
     title = request.form.get('title', '').strip()
     if title:
-        import re as _re
         slug = slugify(title) or 'menu'
         while Menu.query.filter_by(slug=slug).first():
             slug += '-2'
@@ -3132,6 +3158,12 @@ def super_settings():
                 # امنیت و نگهداری
                 'maintenance', 'allow_register', 'allow_phone_login',
                 'admin_2fa_enabled', 'exam_enabled', 'spin_enabled',
+                # قابلیت‌های جانبی خاموش‌شدنی (هستهٔ فروش همیشه فعال است).
+                # خاموش‌کردن فقط مسیر و لینک را می‌بندد؛ دادهٔ ثبت‌شده دست‌نخورده
+                # می‌ماند تا با روشن‌کردن دوباره کامل برگردد.
+                'talent_enabled', 'leaderboard_enabled', 'challenge_enabled',
+                'compare_enabled', 'placement_enabled', 'study_plan_enabled',
+                'success_stories_enabled',
                 # تأیید دستی دیدگاه وبلاگ (خاموش = انتشار فوری بعد از فیلتر متن)
                 'blog_comment_moderation',
             ]
@@ -3420,7 +3452,6 @@ def products_admin():
         if not title:
             flash('عنوان محصول الزامی است.', 'error')
         else:
-            import re as _re2
             from models import unique_slug_for
             _slug_req = (request.form.get('slug') or '').strip()
             slug = unique_slug_for(_P, _slug_req or title, fallback='product')

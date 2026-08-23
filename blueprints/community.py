@@ -8,7 +8,7 @@ _msg_lock = _thr.Lock()
 _msg_lim = {}  # user_id -> [timestamps] — ضد اسپم پیام خصوصی
 
 from models import (utcnow, db, User, Course, ForumTopic, ForumPost, LiveSession,
-                    Enrollment, ActivityLog, PrivateMessage, ForumPoll, ForumPollVote)
+                    ActivityLog, PrivateMessage, ForumPoll, ForumPollVote)
 from validators import safe_int
 
 community_bp = Blueprint('community', __name__, url_prefix='/community')
@@ -58,7 +58,7 @@ def topic_new():
     elif len(title) > 120 or len(body) > 5000:
         flash('طول عنوان یا متن بیش از حد مجاز است.', 'error')
     else:
-        from gamification import award_points
+        pass
         # ضد اسپم: حداکثر ۳ تاپیک در ساعت
         from datetime import timedelta as _td
         _recent = ForumTopic.query.filter(ForumTopic.user_id == g.user.id,
@@ -92,7 +92,10 @@ def topic_poll_create(tid):
     """ساخت نظرسنجی در تاپیک"""
     if not g.user:
         return redirect(url_for('auth.login'))
-    topic = db.get_or_404(ForumTopic, tid)
+    # get_or_404 عمدی است: اگر تاپیک وجود نداشته باشد باید ۴۰۴ بدهد و
+    # ادامهٔ تابع اجرا نشود. مقدار برگشتی مصرف نمی‌شود، اما حذف این خط
+    # یعنی ساخت نظرسنجی روی تاپیک ناموجود.
+    db.get_or_404(ForumTopic, tid)
     question = request.form.get('question', '').strip()
     options_raw = request.form.get('options', '').strip()
     if not question or not options_raw:
@@ -137,7 +140,6 @@ def topic_view(tid):
         elif len(body) > 5000:
             flash('پاسخ بیش از حد طولانی است.', 'error')
         else:
-            from gamification import award_points
             from content_filter import moderate_text
             from models import Notification
             ok_p, body, reason = moderate_text(body, 5000)

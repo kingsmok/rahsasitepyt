@@ -164,11 +164,9 @@ def register():
             err = 'شماره تماس معتبر نیست — باید با 09 شروع شود و ۱۱ رقم باشد. (مثال: 09123456789)'
         elif User.query.filter_by(phone=phone).first():
             err = 'این شماره تماس قبلاً ثبت شده است. با همان شماره وارد شوید.'
-        elif not nc:
-            err = 'کد ملی الزامی است. لطفاً کد ملی ۱۰ رقمی خود را وارد کنید.'
-        elif not is_valid_national_code(nc):
+        elif nc and not is_valid_national_code(nc):
             err = 'کد ملی معتبر نیست. لطفاً کد ملی ۱۰ رقمی صحیح خود را وارد کنید.'
-        elif User.query.filter_by(national_code=nc).first():
+        elif nc and User.query.filter_by(national_code=nc).first():
             err = 'این کد ملی قبلاً در سیستم ثبت شده است.'
         elif '@' not in email:
             err = 'ایمیل معتبر وارد کنید.'

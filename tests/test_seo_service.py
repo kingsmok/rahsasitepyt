@@ -3,10 +3,10 @@
 import json
 import re
 
-from models import (BlogPost, Course, SeoMeta, Setting, User, db)
+from models import (BlogPost, Course, SeoMeta, User, db)
 
-from seo_service import (apply_overrides, auto_sync, blog_seo, course_seo,
-                         ensure_meta, get_meta, teacher_seo)
+from seo_service import (auto_sync, blog_seo, course_seo, ensure_meta,
+                         get_meta, teacher_seo)
 
 BASE = 'https://example.ir'
 

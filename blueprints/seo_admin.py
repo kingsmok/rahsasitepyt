@@ -2,9 +2,9 @@
 """پنل سئو پیشرفته — شبیه Rank Math Pro"""
 import re
 from flask import (Blueprint, render_template, request, redirect, url_for,
-                   flash, g, jsonify, abort)
+                   flash, g, abort)
 from models import (db, SeoMeta, RedirectRule, NotFoundLog, Setting,
-                    Course, BlogPost, Page, User, Category)
+                    Course, BlogPost, Page, User)
 from validators import safe_referrer, safe_int
 
 seo_bp = Blueprint('seo_admin', __name__, url_prefix='/admin/seo')
@@ -286,7 +286,6 @@ def auto_generate():
     r = _admin_required()
     if r:
         return r
-    from seo_analyzer import fa_words
     site_name = db.session.get(Setting, 'site_name')
     sn = site_name.value if site_name else 'آکادمی آنلاین'
     created = updated = 0

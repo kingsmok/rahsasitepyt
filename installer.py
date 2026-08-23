@@ -10,7 +10,6 @@ import json
 import os
 import re
 import secrets
-import shutil
 import time
 import urllib.parse
 from datetime import datetime
@@ -585,7 +584,6 @@ def check_db_health(engine=None):
     """
     try:
         from sqlalchemy import create_engine, inspect
-        from models import Setting
         if engine is not None:
             eng = engine
         else:

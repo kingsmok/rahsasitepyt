@@ -83,6 +83,26 @@ SITE_SECTIONS = {
         '404', 'صفحه خطای ۴۰۴', 'theme-404', '/this-page-does-not-exist',
         'error_404', 'theme', '404', '🚫', True,
         'این صفحه وقتی آدرس پیدا نشود نمایش داده می‌شود.'),
+    'login': _sec(
+        'login', 'صفحه ورود', 'login', '/auth/login', 'login_page',
+        'site', 'page', '🔑', True,
+        'طراحی و چیدمان صفحه ورود کاربران.'),
+    'register': _sec(
+        'register', 'صفحه ثبت‌نام', 'register', '/auth/register', 'register_page',
+        'site', 'page', '📝', True,
+        'طراحی و چیدمان صفحه ثبت‌نام کاربران.'),
+    'cart': _sec(
+        'cart', 'صفحه سبد خرید', 'cart', '/cart', 'cart_page',
+        'site', 'page', '🛒', True,
+        'طراحی و چیدمان صفحه سبد خرید دوره‌ها و کالاها.'),
+    'checkout': _sec(
+        'checkout', 'صفحه تسویه حساب', 'checkout', '/checkout', 'checkout_page',
+        'site', 'page', '💳', True,
+        'طراحی و چیدمان صفحه تسویه حساب و درگاه‌ها.'),
+    'dashboard': _sec(
+        'dashboard', 'داشبورد دانشجو', 'dashboard', '/dashboard', 'dashboard_page',
+        'site', 'page', '📊', True,
+        'طراحی و چیدمان صفحه داشبورد و آمار دانشجو.'),
 }
 
 
@@ -454,4 +474,67 @@ EXTRA_PAGE_TEMPLATES = {
                 'text': 'بازگشت به خانه', 'url': '/', 'btn_style': 'primary',
                 'size': 'lg', 'align': 'center'}),
         ], {'gap': 0, 'py': 80})]),
+    'login_page': dict(
+        name='صفحه ورود', icon='🔑', desc='فرم ورود و ثبت‌نام با دسترسی آسان',
+        rows=[
+            _row('log_h', [
+                _w('log_head', 'heading', {'text': 'ورود به حساب کاربری', 'tag': 'h1', 'align': 'center', 'mb': '10'}),
+                _w('log_sub', 'text', {'content': 'اطلاعات حساب کاربری خود را وارد کنید تا به دوره‌ها و کلاس‌های خود دسترسی پیدا کنید.', 'align': 'center', 'size': '15'}),
+            ], {'py': 20}),
+            _row('log_b', [
+                _w('log_acc', 'my_account', {'title': 'پنل ورود'}),
+            ], {'max_width': '520', 'py': 10}),
+        ]),
+    'register_page': dict(
+        name='صفحه ثبت‌نام', icon='📝', desc='فرم ثبت‌نام دانشجو و پیوستن به آکادمی',
+        rows=[
+            _row('reg_h', [
+                _w('reg_head', 'heading', {'text': 'عضویت در آکادمی آنلاین', 'tag': 'h1', 'align': 'center', 'mb': '10'}),
+                _w('reg_sub', 'text', {'content': 'با ثبت‌نام رایگان، به هزاران ساعت آموزش تخصصی، آزمون‌ها و پروژه‌های عملی دسترسی پیدا کنید.', 'align': 'center', 'size': '15'}),
+            ], {'py': 20}),
+            _row('reg_b', [
+                _w('reg_acc', 'my_account', {'title': 'ساخت حساب کاربری'}),
+            ], {'max_width': '560', 'py': 10}),
+        ]),
+    'cart_page': dict(
+        name='صفحه سبد خرید', icon='🛒', desc='سبد خرید و دوره‌های انتخابی',
+        rows=[
+            _row('crt_h', [
+                _w('crt_head', 'heading', {'text': 'سبد خرید شما', 'tag': 'h1', 'align': 'right', 'mb': '10'}),
+            ]),
+            _row('crt_b', [
+                _w('crt_w', 'cart_widget', {'title': 'دوره‌ها و محصولات سبد خرید', 'show_total': True}),
+            ]),
+            _row('crt_rec', [
+                _w('crt_rec_h', 'heading', {'text': 'دوره‌های پیشنهادی برای شما', 'tag': 'h2', 'align': 'right', 'mb': '16'}),
+                _w('crt_rec_g', 'courses', {'title': '', 'limit': '4', 'columns': '4', 'sort': 'popular', 'show_price': True}),
+            ], {'py': 30}),
+        ]),
+    'checkout_page': dict(
+        name='صفحه تسویه حساب', icon='💳', desc='انتخاب درگاه پرداخت، کوپن و تکمیل سفارش',
+        rows=[
+            _row('chk_h', [
+                _w('chk_head', 'heading', {'text': 'تسویه حساب و پرداخت امن', 'tag': 'h1', 'align': 'center', 'mb': '10'}),
+                _w('chk_sub', 'text', {'content': 'سفارش شما با ضمانت بازگشت وجه و دسترسی دائمی به فایل‌ها ثبت می‌شود.', 'align': 'center', 'size': '14'}),
+            ]),
+            _row('chk_b', [
+                _w('chk_w', 'checkout_widget', {'title': 'پرداخت آنلاین', 'text': 'انتخاب درگاه بانکی شتابی یا پرداخت اقساطی'}),
+            ], {'max_width': '640'}),
+            _row('chk_tb', [
+                _w('chk_trust', 'trust_badges', {}),
+            ], {'py': 20}),
+        ]),
+    'dashboard_page': dict(
+        name='داشبورد دانشجو', icon='📊', desc='میز کار، دوره‌های فعال و پیشرفت یادگیری',
+        rows=[
+            _row('dsh_h', [
+                _w('dsh_head', 'heading', {'text': 'میز کار و یادگیری دانشجو', 'tag': 'h1', 'align': 'right', 'mb': '10'}),
+            ]),
+            _row('dsh_stat', [
+                _w('dsh_s', 'stats', {}),
+            ]),
+            _row('dsh_b', [
+                _w('dsh_u', 'user_dashboard', {'courses': True, 'wallet': True, 'tickets': True, 'orders': True}),
+            ], {'py': 20}),
+        ]),
 }

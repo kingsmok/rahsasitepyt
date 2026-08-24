@@ -5,6 +5,7 @@
     {% set ep = request.endpoint or '' %}
     <a class="btn btn-ghost btn-sm" href="{{ url_for('student.dashboard') }}" style="{{ 'background:var(--primary);color:#fff' if ep == 'student.dashboard' }}">🏠 داشبورد</a>
     <a class="btn btn-ghost btn-sm" href="{{ url_for('student.my_courses') }}" style="{{ 'background:var(--primary);color:#fff' if ep in ['student.my_courses','student.learn'] }}">📚 دوره‌های من</a>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('student.licenses') }}" style="{{ 'background:var(--primary);color:#fff' if ep == 'student.licenses' }}">🔑 لایسنس‌ها</a>
     <a class="btn btn-ghost btn-sm" href="{{ url_for('student.favorites') }}" style="{{ 'background:var(--primary);color:#fff' if ep == 'student.favorites' }}">❤️ علاقه‌مندی‌ها</a>
     <a class="btn btn-ghost btn-sm" href="{{ url_for('student.orders') }}" style="{{ 'background:var(--primary);color:#fff' if ep in ['student.orders','student.invoice'] }}">🧾 سفارش‌ها</a>
     <a class="btn btn-ghost btn-sm" href="{{ url_for('student.tickets') }}" style="{{ 'background:var(--primary);color:#fff' if ep in ['student.tickets','student.ticket_new','student.ticket_view'] }}">🎫 تیکت‌ها</a>

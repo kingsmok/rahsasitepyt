@@ -423,3 +423,47 @@ def payout_request():
         db.session.commit()
         flash('درخواست تسویه ثبت شد و برای بررسی ارسال گردید. 💰', 'success')
     return redirect(url_for('teacher.revenue'))
+
+
+@teacher_bp.route('/meetings', methods=['GET', 'POST'])
+def meetings():
+    """مدیریت وقت‌های مشاوره و جلسات آنلاین مدرس"""
+    r = _teacher_required()
+    if r:
+        return r
+    from models import MeetingBooking
+    if request.method == 'POST':
+        title = request.form.get('title', 'جلسه مشاوره آنلاین').strip()
+        meeting_date = request.form.get('meeting_date', '').strip()
+        start_time = request.form.get('start_time', '16:00').strip()
+        duration_min = request.form.get('duration_min', 45, type=int)
+        price = request.form.get('price', 0, type=int)
+        meeting_link = request.form.get('meeting_link', '').strip()
+        notes = request.form.get('notes', '').strip()
+
+        if not meeting_date or not start_time:
+            flash('تاریخ و ساعت جلسه الزامی است.', 'error')
+        else:
+            mb = MeetingBooking(teacher_id=g.user.id, title=title, meeting_date=meeting_date,
+                                start_time=start_time, duration_min=duration_min, price=price,
+                                meeting_link=meeting_link, notes=notes, status='available')
+            db.session.add(mb)
+            db.session.commit()
+            flash('زمان مشاوره جدید با موفقیت ایجاد شد. 📅', 'success')
+            return redirect(url_for('teacher.meetings'))
+
+    my_meetings = MeetingBooking.query.filter_by(teacher_id=g.user.id).order_by(MeetingBooking.created_at.desc()).all()
+    return render_template('teacher/meetings.html', meetings=my_meetings)
+
+
+@teacher_bp.route('/meetings/<int:mid>/delete', methods=['POST'])
+def meeting_delete(mid):
+    r = _teacher_required()
+    if r:
+        return r
+    from models import MeetingBooking
+    mb = MeetingBooking.query.filter_by(id=mid, teacher_id=g.user.id).first_or_404()
+    db.session.delete(mb)
+    db.session.commit()
+    flash('زمان مشاوره حذف شد.', 'info')
+    return redirect(url_for('teacher.meetings'))

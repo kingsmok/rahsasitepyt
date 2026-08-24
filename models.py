@@ -350,9 +350,11 @@ class Course(db.Model):
     audience = db.Column(db.String(300), default='')      # مناسب برای چه افرادی
     revenue_percent = db.Column(db.Integer, nullable=True)  # درصد درآمد مدرس از فروش دوره (None = پیش‌فرض سایت)
     unlock_per_installment = db.Column(db.Integer, default=0)  # تعداد جلسات بازشونده به ازای هر قسط (۰ = همه باز)
+    prerequisite_id = db.Column(db.Integer, db.ForeignKey('courses.id'), nullable=True)  # دوره پیش‌نیاز
     created_at = db.Column(db.DateTime, default=utcnow)
 
-    teacher = db.relationship('User', backref='courses_taught')
+    teacher = db.relationship('User', foreign_keys=[teacher_id], backref='courses_taught')
+    prerequisite = db.relationship('Course', remote_side=[id], foreign_keys=[prerequisite_id])
     co_teacher_links = db.relationship('CourseTeacher', backref='course', cascade='all, delete-orphan')
     @property
     def co_teachers(self):
@@ -467,13 +469,20 @@ class Course(db.Model):
         """سهم تومانی یک مدرس از مبلغ فروش قطعی دوره.
 
         * مدرس اصلی: باقی‌ماندهٔ استخر بعد از کسر سهم مدرس‌های کمکی.
-        * مدرس کمکی: share_percent خودش از استخر درصدی دوره.
+        * مدرس کمکی: share_percent خودش از استخر درصدی دوره (با سقف حداکثر ۱۰۰٪ استخر).
         """
         sold = int(sold or 0)
         pool = round(sold * self.teacher_percent() / 100)
+        if pool <= 0:
+            return 0
         co_shares = {link.teacher_id: max(0, min(100, int(link.share_percent or 0)))
                      for link in self.co_teacher_links
                      if link.share_percent is not None}
+        total_co_pct = sum(co_shares.values())
+        # گارد: اگر مجموع درصدهای مدرسین همکار از ۱۰۰٪ بیشتر بود، نرمال‌سازی با سقف ۱۰۰٪
+        if total_co_pct > 100:
+            scale = 100.0 / total_co_pct
+            co_shares = {tid: pct * scale for tid, pct in co_shares.items()}
         if teacher_id == self.teacher_id:
             used = sum(round(pool * pct / 100) for pct in co_shares.values())
             return max(0, pool - used)
@@ -676,6 +685,7 @@ class Enrollment(db.Model):
     order_id = db.Column(db.Integer, db.ForeignKey('orders.id'))
     progress = db.Column(db.Text, default='[]')  # لیست شناسه جلسات تکمیل‌شده
     completed_at = db.Column(db.DateTime)
+    revoked_at = db.Column(db.DateTime, nullable=True)  # تاریخ ابطال گواهی توسط مدیریت
     created_at = db.Column(db.DateTime, default=utcnow)
     updated_at = db.Column(db.DateTime, default=utcnow, onupdate=utcnow)  # آخرین فعالیت (یادآور ادامه یادگیری)
     user = db.relationship('User', backref='enrollments')
@@ -709,6 +719,13 @@ class Enrollment(db.Model):
     @property
     def is_completed(self):
         return bool(self.completed_at) or self.percent >= 100
+
+    @property
+    def license_key(self):
+        """کلید اختصاصی لایسنس و اسپات پلیر برای دوره"""
+        import hashlib
+        h = hashlib.sha256(f"license-{self.id}-{self.course_id}-{self.user_id}".encode()).hexdigest()[:24].upper()
+        return f"SP-{h[:4]}-{h[4:8]}-{h[8:12]}-{h[12:16]}"
 
     # ── قفل اقساطی (دسته ۴): فقط N جلسه به ازای هر قسط پرداخت‌شده ──
     def installment_paid_count(self):
@@ -1277,7 +1294,7 @@ class QuizAttempt(db.Model):
     answers = db.Column(db.Text, default='[]')      # JSON
     started_at = db.Column(db.DateTime, default=utcnow)
     finished_at = db.Column(db.DateTime)
-    quiz = db.relationship('Quiz')
+    quiz = db.relationship('Quiz', backref=db.backref('attempts', cascade='all, delete-orphan', lazy=True))
     user = db.relationship('User')
 
 
@@ -1322,7 +1339,22 @@ class LessonQuestion(db.Model):
     created_at = db.Column(db.DateTime, default=utcnow)
     answered_at = db.Column(db.DateTime)
     user = db.relationship('User')
-    lesson = db.relationship('Lesson', backref='questions')
+    lesson = db.relationship('Lesson', backref=db.backref('questions', cascade='all, delete-orphan', lazy=True))
+
+
+class LessonNote(db.Model):
+    """یادداشت‌های شخصی دانشجو برای هر جلسه به همراه موقعیت پخش ویدیو"""
+    __tablename__ = 'lesson_notes'
+    __table_args__ = (db.Index('idx_notes_user_lesson', 'user_id', 'lesson_id'),)
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    lesson_id = db.Column(db.Integer, db.ForeignKey('lessons.id'), nullable=False)
+    content = db.Column(db.Text, default='')
+    playback_time = db.Column(db.Integer, default=0)  # آخرین ثانیه تماشا شده
+    created_at = db.Column(db.DateTime, default=utcnow)
+    updated_at = db.Column(db.DateTime, default=utcnow, onupdate=utcnow)
+    user = db.relationship('User', backref=db.backref('lesson_notes', lazy='dynamic'))
+    lesson = db.relationship('Lesson', backref=db.backref('notes', cascade='all, delete-orphan', lazy='dynamic'))
 
 
 # ================================================================
@@ -1401,7 +1433,7 @@ class PageRevision(db.Model):
     note = db.Column(db.String(200))
     author_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     created_at = db.Column(db.DateTime, default=utcnow)
-    page = db.relationship('Page')
+    page = db.relationship('Page', backref=db.backref('revisions', cascade='all, delete-orphan', lazy=True))
     author = db.relationship('User')
 
 
@@ -1523,7 +1555,7 @@ class CustomFormEntry(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     data = db.Column(db.Text, default='{}')     # JSON: {label: value}
     created_at = db.Column(db.DateTime, default=utcnow)
-    form = db.relationship('CustomForm')
+    form = db.relationship('CustomForm', backref=db.backref('entries', cascade='all, delete-orphan', lazy=True))
 
 
 # ================================================================
@@ -1670,6 +1702,28 @@ class LiveSession(db.Model):
 
 
 # ================================================================
+# جلسات آنلاین و رزرو وقت مشاوره با اساتید (Meeting Booking System)
+# ================================================================
+class MeetingBooking(db.Model):
+    __tablename__ = 'meeting_bookings'
+    id = db.Column(db.Integer, primary_key=True)
+    teacher_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    student_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    title = db.Column(db.String(200), default='جلسه مشاوره آنلاین')
+    meeting_date = db.Column(db.String(20))
+    start_time = db.Column(db.String(10))
+    duration_min = db.Column(db.Integer, default=45)
+    price = db.Column(db.Integer, default=0)
+    status = db.Column(db.String(20), default='available')  # available | booked | completed | canceled
+    meeting_link = db.Column(db.String(400))
+    notes = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=utcnow)
+
+    teacher = db.relationship('User', foreign_keys=[teacher_id], backref='hosted_meetings')
+    student = db.relationship('User', foreign_keys=[student_id], backref='booked_meetings')
+
+
+# ================================================================
 # پرداخت اقساطی — قسط‌های یک سفارش
 # ================================================================
 class Installment(db.Model):
@@ -1728,7 +1782,7 @@ class TicketReply(db.Model):
     is_admin = db.Column(db.Boolean, default=False)
     attachment = db.Column(db.String(300))
     created_at = db.Column(db.DateTime, default=utcnow)
-    ticket = db.relationship('Ticket', backref='replies')
+    ticket = db.relationship('Ticket', backref=db.backref('replies', cascade='all, delete-orphan', lazy=True))
     user = db.relationship('User')
 
 
@@ -1761,7 +1815,7 @@ class ForumPoll(db.Model):
     question = db.Column(db.String(300), nullable=False)
     options = db.Column(db.Text, default='[]')   # JSON list
     created_at = db.Column(db.DateTime, default=utcnow)
-    topic = db.relationship('ForumTopic', backref='polls')
+    topic = db.relationship('ForumTopic', backref=db.backref('polls', cascade='all, delete-orphan', lazy=True))
     votes = db.relationship('ForumPollVote', backref='poll', cascade='all, delete-orphan')
 
     def options_list(self):

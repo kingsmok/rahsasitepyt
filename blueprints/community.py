@@ -273,15 +273,27 @@ def my_classes():
 def live():
     """کلاس‌های آنلاین آتی + ضبط جلسات برگزارشده"""
     sessions = LiveSession.query.order_by(LiveSession.starts_at.desc()).all()
-    # برای هر جلسه: منبع ویدیوی ضبط (محلی/ریموت)، HD، وضعیت قفل زمان‌بازشدن
+    # برای هر جلسه: منبع ویدیوی ضبط (محلی/ریموت)، HD، وضعیت قفل زمان‌بازشدن و وضعیت لایو
     from datetime import timedelta as _td
-    _now = utcnow()
+    _now = utcnow().replace(tzinfo=None)
     from blueprints.student import _local_video_filename as _lv
     for s in sessions:
         s._rec_src = ''
         s._rec_hd = ''
         s._rec_open = False
         s._rec_locked_days = 0
+        st = s.starts_at.replace(tzinfo=None) if s.starts_at else _now
+        dur = s.duration_min or 90
+        et = st + _td(minutes=dur)
+        if st <= _now <= et:
+            s._live_status = 'live_now'
+        elif _now < st:
+            s._live_status = 'upcoming'
+            s._seconds_to_start = max(0, int((st - _now).total_seconds()))
+        else:
+            s._live_status = 'ended'
+            s._seconds_to_start = 0
+
         if s.is_recorded and s.video_url:
             _fn = _lv(s.video_url)
             s._rec_src = ('/static/video/' + _fn) if _fn else s.video_url
@@ -289,11 +301,11 @@ def live():
                 _hd = _lv(s.video_url_hd)
                 s._rec_hd = ('/static/video/' + _hd) if _hd else s.video_url_hd
             if s.release_days and s.release_days > 0:
-                _unlock = (s.starts_at + _td(days=s.release_days)).replace(tzinfo=None)
-                if _now.replace(tzinfo=None) >= _unlock:
+                _unlock = (st + _td(days=s.release_days))
+                if _now >= _unlock:
                     s._rec_open = True
                 else:
-                    s._rec_locked_days = max(1, (_unlock - _now.replace(tzinfo=None)).days + 1)
+                    s._rec_locked_days = max(1, (_unlock - _now).days + 1)
             else:
                 s._rec_open = True
     g.seo['title'] = 'کلاس‌های آنلاین و وبینارها — آکادمی آنلاین'

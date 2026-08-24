@@ -1,7 +1,20 @@
 {% extends 'admin/base.html' %}
 {% block atitle %}گزارش تخفیف‌ها{% endblock %}
 {% block acontent %}
-<div class="dash-head"><div><h1>🎟 گزارش مصرف کدهای تخفیف</h1><p>کدام کوپن‌ها واقعاً استفاده شده‌اند و چقدر فروش ساخته‌اند</p></div></div>
+<div class="dash-head">
+  <div><h1>🎟 گزارش مصرف کدهای تخفیف</h1><p>کدام کوپن‌ها واقعاً استفاده شده‌اند و چقدر فروش ساخته‌اند</p></div>
+</div>
+
+<form method="get" class="card mb-3" style="padding:16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+  <div style="font-size:13px;font-weight:700">📅 فیلتر بازه زمانی (شمسی یا میلادی):</div>
+  <input type="text" name="from_date" class="form-control" style="width:140px;padding:8px" placeholder="از: ۱۴۰۳/۰۱/۰۱" value="{{ from_date }}">
+  <input type="text" name="to_date" class="form-control" style="width:140px;padding:8px" placeholder="تا: ۱۴۰۳/۱۲/۲۹" value="{{ to_date }}">
+  <button class="btn btn-primary btn-sm" type="submit">اعمال فیلتر</button>
+  {% if from_date or to_date %}
+  <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.report_coupons') }}">حذف فیلتر</a>
+  {% endif %}
+</form>
+
 <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:18px">
   <div class="card" style="padding:18px;text-align:center"><div style="font-size:26px">🎟</div><strong>{{ fa(rows|length) }}</strong><small class="text-3" style="display:block">کوپن</small></div>
   <div class="card" style="padding:18px;text-align:center"><div style="font-size:26px">🛒</div><strong>{{ fa(rows|sum(attribute='used')) }}</strong><small class="text-3" style="display:block">مصرف کل</small></div>

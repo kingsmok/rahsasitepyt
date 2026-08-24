@@ -1,29 +1,69 @@
 {% extends 'admin/base.html' %}
-{% block atitle %}پیام‌های تماس{% endblock %}
+{% block atitle %}پیام‌ها و درخواست‌ها{% endblock %}
 {% block acontent %}
-<div class="dash-head"><div><h1>✉️ پیام‌های تماس</h1><p>پیام‌های ارسالی از فرم تماس</p></div></div>
+<div class="dash-head">
+  <div>
+    <h1>✉️ پیام‌های تماس، مشاوره و جذب مدرس</h1>
+    <p>پیام‌های ارسالی از فرم تماس، مشاوره پروژه‌ها و درخواست‌های همکاری مدرسین</p>
+  </div>
+</div>
+
+<div class="filter-bar mb-3" style="display:flex;gap:8px;flex-wrap:wrap">
+  <button type="button" class="btn btn-sm btn-primary filter-btn active" onclick="filterMsgs('all', this)">همه پیام‌ها</button>
+  <button type="button" class="btn btn-sm btn-outline filter-btn" onclick="filterMsgs('consultation', this)">📞 درخواست‌های مشاوره</button>
+  <button type="button" class="btn btn-sm btn-outline filter-btn" onclick="filterMsgs('teacher', this)">👨‍🏫 درخواست‌های جذب مدرس</button>
+  <button type="button" class="btn btn-sm btn-outline filter-btn" onclick="filterMsgs('contact', this)">💬 پیام‌های عمومی</button>
+</div>
+
 {% if msgs %}
-<div class="grid" style="gap:14px">
+<div class="grid" style="gap:14px" id="msgs-grid">
   {% for m in msgs %}
-  <div class="card" style="padding:20px;{{ 'opacity:.7' if m.is_read }}">
+  {% set is_teacher = 'مدرس' in (m.subject or '') or 'تدریس' in (m.subject or '') %}
+  {% set is_consult = 'مشاوره' in (m.subject or '') or 'پروژه' in (m.subject or '') %}
+  {% set msg_type = 'teacher' if is_teacher else ('consultation' if is_consult else 'contact') %}
+  <div class="card msg-item" data-type="{{ msg_type }}" style="padding:20px;{{ 'opacity:.75' if m.is_read }}">
     <div class="flex between wrap gap-2">
       <div>
         <strong>{{ m.name }}</strong>
         {% if m.phone %}<a class="text-3" style="font-size:12.5px;margin-right:10px" dir="ltr" href="tel:{{ m.phone }}">📱 {{ m.phone }}</a>{% endif %}
         {% if m.email %}<a class="text-3" style="font-size:12.5px;margin-right:10px" dir="ltr" href="mailto:{{ m.email }}">{{ m.email }}</a>{% endif %}
-        {% if m.subject %}<span class="badge badge-primary" style="margin-right:10px">{{ m.subject }}</span>{% endif %}
+        {% if m.subject %}
+        <span class="badge {{ 'badge-success' if is_teacher else ('badge-accent' if is_consult else 'badge-primary') }}" style="margin-right:10px">
+          {{ m.subject }}
+        </span>
+        {% endif %}
       </div>
-      <div class="flex gap-1">
+      <div class="flex gap-1 align-center">
         <span class="text-3" style="font-size:12px">{{ m.created_at|jdatetime }}</span>
         {% if not m.is_read %}
         <button class="btn btn-ghost btn-sm" onclick="fetch('/api/contact/read/{{ m.id }}',{method:'POST',headers:{'X-CSRF-Token':(window.csrfToken?window.csrfToken():'')}});this.remove()">✓ خوانده شد</button>
         {% endif %}
       </div>
     </div>
-    <p class="mt-2" style="background:var(--bg-2);border-radius:10px;padding:12px 16px;font-size:13.5px;color:var(--text-2)">{{ m.message }}</p>
+    <p class="mt-2" style="background:var(--bg-2);border-radius:10px;padding:12px 16px;font-size:13.5px;color:var(--text-2);white-space:pre-line">{{ m.message }}</p>
+    {% if is_teacher %}
+    <div class="flex gap-2 mt-2">
+      <a class="btn btn-xs btn-primary" href="{{ url_for('admin.users') }}?q={{ m.email or m.phone or m.name }}">🔍 جستجوی کاربر و اعطای نقش مدرس</a>
+    </div>
+    {% endif %}
   </div>
   {% endfor %}
 </div>
+
+<script>
+function filterMsgs(type, btn){
+  document.querySelectorAll('.filter-btn').forEach(function(b){ b.classList.remove('btn-primary','active'); b.classList.add('btn-outline'); });
+  btn.classList.add('btn-primary','active');
+  btn.classList.remove('btn-outline');
+  document.querySelectorAll('.msg-item').forEach(function(item){
+    if(type === 'all' || item.dataset.type === type){
+      item.style.display = 'block';
+    } else {
+      item.style.display = 'none';
+    }
+  });
+}
+</script>
 {% else %}
 <div class="card text-center" style="padding:60px"><h3>پیامی وجود ندارد</h3></div>
 {% endif %}

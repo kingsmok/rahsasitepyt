@@ -11,13 +11,28 @@
     </div>
     {% endfor %}
   </div>
+  {% if canned %}
+  <div style="margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+    <span style="font-size:12px;font-weight:700;color:var(--text-3)">⚡ پاسخ‌های آماده:</span>
+    {% for cr in canned %}
+    <button type="button" class="btn btn-ghost btn-sm" style="font-size:11.5px;padding:4px 10px" onclick="insertCanned({{ cr.body|tojson }})">{{ cr.title }}</button>
+    {% endfor %}
+  </div>
+  {% endif %}
   <form method="post" action="{{ url_for('admin.chat_send', uid=u.id) }}" class="flex gap-1">
     <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
-    <input class="form-control" name="body" placeholder="پاسخ شما..." style="flex:1" required autofocus>
+    <input class="form-control" id="chat-input" name="body" placeholder="پاسخ شما..." style="flex:1" required autofocus>
     <button class="btn btn-primary">📤 ارسال</button>
   </form>
 </div>
 <script>
+  function insertCanned(text) {
+    var inp = document.getElementById('chat-input');
+    if (inp) {
+      inp.value = text;
+      inp.focus();
+    }
+  }
   var box = document.getElementById('chat-box');
   if (box) box.scrollTop = box.scrollHeight;
   setInterval(function () {

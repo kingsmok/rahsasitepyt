@@ -113,3 +113,50 @@ def test_teacher_sidebar_active_state(client, app):
     body = r.get_data(as_text=True)
     # لینک درآمد من فعال است
     assert 'درآمد من' in body
+
+
+def test_learn_page_notes_and_search_and_celebration_modal(client, app):
+    with app.app_context():
+        u = User.query.filter_by(email='s@test.ir').first()
+        if not u:
+            u = User(name='دانشجوی تست', email='s@test.ir', role='student', is_active=True)
+            u.set_password('student123')
+            db.session.add(u)
+            db.session.commit()
+        from models import Course, Section, Lesson, Enrollment
+        c = Course.query.filter_by(slug='learn-ux-test').first()
+        if not c:
+            c = Course(title='دوره تست پلیر و یادداشت', slug='learn-ux-test', price=0, status='published')
+            db.session.add(c)
+            db.session.flush()
+            sec = Section(course_id=c.id, title='فصل اول', sort=1)
+            db.session.add(sec)
+            db.session.flush()
+            l1 = Lesson(section_id=sec.id, title='جلسه اول تست', duration='10:00', sort=1, is_free=True)
+            db.session.add(l1)
+            db.session.flush()
+        else:
+            l1 = c.lessons[0]
+
+        en = Enrollment.query.filter_by(user_id=u.id, course_id=c.id).first()
+        if not en:
+            en = Enrollment(user_id=u.id, course_id=c.id)
+            db.session.add(en)
+        en.save_progress([l1.id])
+        db.session.commit()
+        cid = c.id
+        lid = l1.id
+
+    r = client.get('/auth/login')
+    tok = re.search(r'name="_csrf_token" value="([^"]+)"', r.text).group(1)
+    client.post('/auth/login', data={'_csrf_token': tok,
+                                     'email': 's@test.ir', 'password': 'student123'})
+    r = client.get(f'/learn/{cid}?lesson={lid}')
+    assert r.status_code == 200
+    html = r.get_data(as_text=True)
+    assert 'pp-insert-time-btn' in html
+    assert 'درج زمان ویدیو' in html
+    assert 'lesson-search-input' in html
+    assert 'celebration-modal-overlay' in html
+    assert 'تبریک! دوره با موفقیت تمام شد' in html
+

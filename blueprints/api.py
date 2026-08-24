@@ -322,3 +322,90 @@ def media_delete():
     db.session.delete(m)
     db.session.commit()
     return jsonify(ok=True)
+
+
+# ================================================================
+# یادداشت‌های شخصی دانشجو و ذخیره موقعیت پخش ویدیو
+# ================================================================
+@api_bp.route('/lesson/<int:lid>/note', methods=['GET', 'POST'])
+def lesson_note(lid):
+    if not g.user:
+        return jsonify(ok=False, msg='ابتدا وارد حساب شوید'), 401
+    from models import Lesson, LessonNote, Enrollment, Course
+    lesson = db.session.get(Lesson, lid)
+    if not lesson:
+        return jsonify(ok=False, msg='جلسه یافت نشد'), 404
+    # بررسی دسترسی به دوره
+    course_id = lesson.section.course_id if lesson.section else None
+    course = db.session.get(Course, course_id) if course_id else None
+    if not course:
+        return jsonify(ok=False, msg='دوره یافت نشد'), 404
+    allowed = (g.user.is_admin or course.is_free() or lesson.is_free or
+               Enrollment.query.filter_by(user_id=g.user.id, course_id=course_id).first() is not None)
+    if not allowed:
+        return jsonify(ok=False, msg='دسترسی به این دوره ثبت نشده است'), 403
+
+    note = LessonNote.query.filter_by(user_id=g.user.id, lesson_id=lid).first()
+    if request.method == 'GET':
+        c_val = note.content if note else ''
+        p_val = note.playback_time if note else 0
+        return jsonify(ok=True, content=c_val, note=c_val,
+                       playback_time=p_val, time=p_val,
+                       updated_at=jdate_num(note.updated_at) if note and note.updated_at else '')
+
+    if not _media_api_csrf_ok():
+        return jsonify(ok=False, msg='توکن امنیتی نامعتبر است'), 400
+    data = request.get_json(silent=True) or {}
+    content = (data.get('content') or data.get('note') or request.form.get('content') or request.form.get('note') or '').strip()
+    if len(content) > 10000:
+        return jsonify(ok=False, msg='طول یادداشت بیش از حد مجاز است'), 400
+
+    playback_time = data.get('playback_time') or data.get('time') or request.form.get('playback_time') or request.form.get('time')
+    try:
+        playback_time = float(playback_time or 0) if playback_time is not None else None
+    except (TypeError, ValueError):
+        playback_time = None
+
+    if not note:
+        note = LessonNote(user_id=g.user.id, lesson_id=lid, content=content, playback_time=playback_time or 0)
+        db.session.add(note)
+    else:
+        note.content = content
+        if playback_time is not None:
+            note.playback_time = playback_time
+    db.session.commit()
+    return jsonify(ok=True, msg='یادداشت ذخیره شد ✅',
+                   content=note.content, note=note.content,
+                   playback_time=note.playback_time,
+                   updated_at=jdate_num(note.updated_at))
+
+
+@api_bp.route('/lesson/<int:lid>/playback', methods=['GET', 'POST'])
+def lesson_playback(lid):
+    if not g.user:
+        return jsonify(ok=False, msg='ابتدا وارد حساب شوید'), 401
+    from models import Lesson, LessonNote, Enrollment, Course
+    lesson = db.session.get(Lesson, lid)
+    if not lesson:
+        return jsonify(ok=False), 404
+    note = LessonNote.query.filter_by(user_id=g.user.id, lesson_id=lid).first()
+    if request.method == 'GET':
+        t_val = note.playback_time if note else 0
+        return jsonify(ok=True, time=t_val, playback_time=t_val)
+
+    if not _media_api_csrf_ok():
+        return jsonify(ok=False), 400
+    data = request.get_json(silent=True) or {}
+    try:
+        t = float(data.get('playback_time') or data.get('time') or request.form.get('playback_time') or request.form.get('time') or 0)
+        t = max(0.0, min(86400.0, t))
+    except (TypeError, ValueError):
+        t = 0.0
+    if not note:
+        note = LessonNote(user_id=g.user.id, lesson_id=lid, content='', playback_time=t)
+        db.session.add(note)
+    else:
+        note.playback_time = t
+    db.session.commit()
+    return jsonify(ok=True, time=note.playback_time, playback_time=note.playback_time)
+

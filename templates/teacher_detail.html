@@ -12,22 +12,33 @@
     </nav>
 
     <div class="card" style="padding:34px;margin-bottom:34px">
-      <div class="flex gap-3 wrap">
+      <div class="flex gap-3 wrap align-center">
         <span class="avatar avatar-lg" style="background:{{ teacher.avatar_color }};width:96px;height:96px;font-size:32px;border-radius:26px">{{ teacher.initials() }}</span>
         <div style="flex:1;min-width:260px">
-          <h1 style="font-size:24px">{{ teacher.name }}</h1>
-          <span class="badge badge-primary mb-2">مدرس آکادمی</span>
-          <p class="text-2" style="font-size:14px;margin-top:8px">{{ teacher.bio or '' }}</p>
+          <h1 style="font-size:24px;margin-bottom:4px">{{ teacher.name }}</h1>
+          <span class="badge badge-primary mb-2">مدرس رسمی آکادمی</span>
+          <p class="text-2" style="font-size:14px;margin-top:8px">{{ teacher.bio or 'مدرس باسابقه و متخصص در حوزهٔ آموزش آنلاین و تخصصی.' }}</p>
         </div>
-        <div class="flex gap-2">
+        <div class="flex gap-2 wrap">
           <div class="card stat-card" style="border:none;box-shadow:none;background:var(--bg-2);padding:16px 22px">
-            <div class="num">{{ fa(courses|length) }}</div><div class="lbl">دوره</div>
+            <div class="num">{{ fa(courses|length) }}</div><div class="lbl">دوره فعال</div>
           </div>
           <div class="card stat-card" style="border:none;box-shadow:none;background:var(--bg-2);padding:16px 22px">
             <div class="num">{{ fa(courses|sum(attribute='students_count')) }}</div><div class="lbl">دانشجو</div>
           </div>
         </div>
       </div>
+      {% if available_meetings %}
+      <div style="margin-top:24px;padding-top:20px;border-top:1px dashed var(--border);display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap">
+        <div>
+          <strong style="font-size:14px;color:var(--text)">💬 جلسات مشاوره آنلاین اختصاصی</strong>
+          <small class="text-3" style="display:block;font-size:12px">{{ fa(available_meetings|length) }} نوبت مشاوره باز برای این استاد</small>
+        </div>
+        <a class="btn btn-primary btn-sm" href="{{ url_for('student.student_meetings') }}">
+          📅 رزرو وقت مشاوره آنلاین
+        </a>
+      </div>
+      {% endif %}
     </div>
 
     <h2 class="mb-3" style="font-size:20px">📚 دوره‌های {{ teacher.name.split()[0] }}</h2>

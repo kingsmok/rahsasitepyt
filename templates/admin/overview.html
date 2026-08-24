@@ -30,7 +30,20 @@
     <h1>📊 داشبورد مدیریت</h1>
     <p>نمای کلی فعالیت سایت — {{ now|jdate }}</p>
   </div>
-  <a class="btn btn-primary" href="{{ url_for('admin.course_new') }}">+ دوره جدید</a>
+  <div class="flex gap-2">
+    <button type="button" class="btn btn-outline btn-sm" onclick="openCmdPalette()">⚡ دسترسی سریع (Ctrl+K)</button>
+    <a class="btn btn-primary" href="{{ url_for('admin.course_new') }}">+ دوره جدید</a>
+  </div>
+</div>
+
+<div class="admin-quick-strip">
+  <strong>⚡ میانبرهای پرتکرار:</strong>
+  <a class="btn btn-xs btn-outline" href="{{ url_for('admin.course_new') }}">➕ ایجاد دوره</a>
+  <a class="btn btn-xs btn-outline" href="{{ url_for('admin.coupons') }}">🏷️ کدهای تخفیف</a>
+  <a class="btn btn-xs btn-outline" href="{{ url_for('admin.quizzes') }}">📝 آزمون‌ها</a>
+  <a class="btn btn-xs btn-outline" href="{{ url_for('admin.chat') }}">💬 چت آنلاین</a>
+  <a class="btn btn-xs btn-outline" href="{{ url_for('admin.tickets') }}">🎫 تیکت‌ها</a>
+  <a class="btn btn-xs btn-outline" href="{{ url_for('admin.orders') }}">🛒 سفارش‌ها</a>
 </div>
 
 <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:16px;margin-bottom:24px">

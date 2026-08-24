@@ -20,7 +20,7 @@
       {% set q = quiz.questions|selectattr('id','equalto',a.q)|list|first %}
       <div class="card" style="padding:16px 20px;margin-bottom:10px;border-right:4px solid {{ 'var(--success)' if a.correct else 'var(--danger)' }}">
         <div style="font-size:13.5px;font-weight:700;margin-bottom:6px">{{ q.text if q else 'سوال' }}</div>
-        <div style="font-size:12.5px;color:var(--text-2)">{{ '✅ پاسخ شما درست بود' if a.correct else '❌ پاسخ درست: گزینه ' ~ (a.right + 1) }}</div>
+        <div style="font-size:12.5px;color:var(--text-2)">{{ '✅ پاسخ شما درست بود' if a.correct else '❌ پاسخ درست: گزینه ' ~ fa(a.right + 1) }}</div>
         {% if a.explain %}<div style="font-size:12.5px;color:var(--text-2);margin-top:4px">💡 {{ a.explain }}</div>{% endif %}
       </div>
       {% endfor %}

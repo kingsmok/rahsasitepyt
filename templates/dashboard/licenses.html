@@ -1,0 +1,56 @@
+{% extends 'dashboard/base.html' %}
+{% block dtitle %}کلیدهای لایسنس و اسپات پلیر{% endblock %}
+{% block dcontent %}
+<div class="dash-head">
+  <div>
+    <h1>🔑 کلیدهای لایسنس و اسپات پلیر (SpotPlayer)</h1>
+    <p>لایسنس فعال دوره‌ها و پکیج‌های آموزشی شما جهت پخش در نرم‌افزار اسپات پلیر یا وب‌پلیر</p>
+  </div>
+  <a class="btn btn-outline" href="https://spotplayer.net" target="_blank" rel="noopener">⬇ دانلود نرم‌افزار پلیر</a>
+</div>
+
+{% if enrollments %}
+<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:20px">
+  {% for e in enrollments %}
+  <div class="card" style="padding:22px;border:1px solid var(--border);position:relative;overflow:hidden">
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
+      <img src="{{ e.course.image_url }}" alt="" style="width:60px;height:45px;border-radius:8px;object-fit:cover">
+      <div style="flex:1;min-width:0">
+        <strong style="font-size:14px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ e.course.title }}</strong>
+        <small class="text-3">{{ e.created_at|jdate }} — وضعیت: <b class="text-success">فعال ✓</b></small>
+      </div>
+    </div>
+
+    <div style="background:var(--bg-2);border:1.5px dashed var(--border-2);border-radius:12px;padding:12px 14px;margin-bottom:16px">
+      <small style="display:block;font-size:11px;color:var(--text-3);margin-bottom:6px">کلید لایسنس اختصاصی شما:</small>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+        <code style="font-size:14px;font-weight:900;color:var(--primary);letter-spacing:1px" dir="ltr">{{ e.license_key }}</code>
+        <button type="button" class="btn btn-xs btn-primary" data-copy="{{ e.license_key }}" title="کپی لایسنس">📋 کپی</button>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;align-items:center">
+      <a class="btn btn-primary btn-sm" style="flex:1" href="{{ url_for('student.learn', course_id=e.course_id) }}">▶ مشاهده آنلاین درس</a>
+      <a class="btn btn-ghost btn-sm" href="{{ url_for('student.invoice', code=e.order.code) if e.order else '#' }}">فاکتور</a>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="card mt-4" style="padding:22px;background:var(--primary-soft);border:none">
+  <h3 style="font-size:15px;margin-bottom:10px">💡 راهنمای استفاده از لایسنس در نرم‌افزار اسپات پلیر</h3>
+  <ol style="font-size:13px;color:var(--text-2);padding-right:18px;line-height:2">
+    <li>نرم‌افزار اسپات پلیر را برای دستگاه خود (ویندوز، اندروید، مک یا آیفون) نصب کنید.</li>
+    <li>کلید لایسنس دوره مورد نظر را کپی کرده و در کادر لایسنس نرم‌افزار Paste کنید.</li>
+    <li>دوره‌ها بلافاصله بارگذاری شده و بدون نیاز به اینترنت در نرم‌افزار قابل مشاهده هستند.</li>
+  </ol>
+</div>
+{% else %}
+<div class="card text-center" style="padding:60px 20px">
+  <div style="font-size:50px">🔑</div>
+  <h2 style="margin:14px 0 6px">هنوز لایسنسی ثبت نشده است</h2>
+  <p class="text-2 mb-3">با ثبت‌نام در دوره‌های آموزشی، لایسنس اختصاصی شما در این بخش ایجاد می‌شود.</p>
+  <a class="btn btn-primary" href="{{ url_for('site.courses') }}">مشاهده دوره‌ها</a>
+</div>
+{% endif %}
+{% endblock %}

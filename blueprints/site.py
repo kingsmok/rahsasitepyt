@@ -300,11 +300,23 @@ def course_detail(slug):
         intro_kind, intro_id = detect_video(course.intro_video or '')
     except Exception:
         _lexc('blueprints/site.py')
+    # محاسبه توزیع امتیازهای ستاره‌ای
+    total_reviews = len(reviews)
+    star_counts = {5: 0, 4: 0, 3: 0, 2: 0, 1: 0}
+    for r in reviews:
+        if r.rating and 1 <= r.rating <= 5:
+            star_counts[r.rating] += 1
+    star_pcts = {
+        s: round(star_counts[s] * 100 / total_reviews) if total_reviews > 0 else (100 if s == 5 else 0)
+        for s in range(1, 6)
+    }
+
     return render_template('course_detail.html', course=course, related=related,
                            reviews=reviews, enrolled=enrolled, is_fav=is_fav,
                            can_access_coursework=can_access_coursework,
                            done_ids=done_ids, blog_posts=blog_posts,
-                           intro_kind=intro_kind, intro_id=intro_id)
+                           intro_kind=intro_kind, intro_id=intro_id,
+                           star_counts=star_counts, star_pcts=star_pcts)
 
 
 @site_bp.route('/course/<slug>/review', methods=['POST'])
@@ -575,13 +587,14 @@ def teacher_detail(uid):
     _ensure_teacher_meta('/teacher/' + str(uid))
     g.seo.update(teacher_seo(teacher, request.host_url.rstrip('/')))
     # قالب داینامیک: اگر «قالب صفحه مدرس» ساخته شده باشد
-    from models import Page
+    from models import Page, MeetingBooking
+    available_meetings = MeetingBooking.query.filter_by(teacher_id=uid, status='available').all()
     tp = Page.query.filter_by(ptype='teacher').first()
     if tp and tp.is_published and tp.rows():
         g.current_teacher = teacher
         g.page_settings = tp.settings()
         return render_template('builder/public.html', page=tp)
-    return render_template('teacher_detail.html', teacher=teacher, courses=courses)
+    return render_template('teacher_detail.html', teacher=teacher, courses=courses, available_meetings=available_meetings)
 
 
 # ---------------------------------------------------------------- وبلاگ
@@ -858,8 +871,11 @@ def verify_certificate():
         # جستجو در گواهی‌های صادرشده — هم کد جدید (MD5) و هم کد قدیمی (SHA-1)
         from models import (certificate_code, certificate_code_legacy_md5,
                             certificate_code_legacy_sha1)
+        # ابتدا بررسی گواهی‌های معتبر فعال
         for e in Enrollment.query.filter(Enrollment.completed_at.isnot(None)).all():
             c = e.course
+            if not c or not e.user:
+                continue
             cert_code = certificate_code(c.slug, e.user.email, e.id)
             accepted = {
                 cert_code,
@@ -868,10 +884,26 @@ def verify_certificate():
             }
             if code in accepted:
                 result = {'code': cert_code, 'user': e.user.name, 'course': c.title,
-                          'date': e.completed_at, 'valid': True}
+                          'date': e.completed_at, 'valid': True, 'revoked': False}
                 break
+        # اگر در گواهی‌های فعال نبود، بررسی گواهی‌های باطل‌شده
         if not result:
-            result = {'code': code, 'valid': False}
+            for e in Enrollment.query.filter(Enrollment.revoked_at.isnot(None)).all():
+                c = e.course
+                if not c or not e.user:
+                    continue
+                cert_code = certificate_code(c.slug, e.user.email, e.id)
+                accepted = {
+                    cert_code,
+                    certificate_code_legacy_md5(c.slug, e.user.email, e.id),
+                    certificate_code_legacy_sha1(c.slug, e.user.email, e.id),
+                }
+                if code in accepted:
+                    result = {'code': cert_code, 'user': e.user.name, 'course': c.title,
+                              'date': e.revoked_at, 'valid': False, 'revoked': True}
+                    break
+        if not result:
+            result = {'code': code, 'valid': False, 'revoked': False}
     g.seo['title'] = 'استعلام گواهینامه — آکادمی آنلاین'
     g.seo['description'] = 'با وارد کردن کد رهگیری گواهینامه، از صحت آن مطمئن شوید.'
     g.verify_result = result

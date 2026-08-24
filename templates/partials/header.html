@@ -43,6 +43,10 @@
       </form>
 
       <div class="dk-actions">
+        <button type="button" class="theme-toggle-btn" title="تغییر حالت شب/روز" aria-label="حالت شب و روز">🌙</button>
+        <button type="button" class="dk-icon-link" onclick="openCmdPalette()" title="جستجوی هوشمند (Ctrl+K)" style="background:none;border:none;cursor:pointer">
+          <span class="dk-icon">{{ icon('search', 19) }}</span><small>دستورات ⚡</small>
+        </button>
         <a class="dk-icon-link" href="{{ url_for('student.favorites') }}" title="علاقه‌مندی‌ها">
           <span class="dk-icon">{{ icon('heart', 21) }}</span><small>علاقه‌مندی</small>
         </a>

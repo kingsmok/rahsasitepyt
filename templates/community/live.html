@@ -13,9 +13,18 @@
     <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:18px">
       {% for s in sessions %}
       <div class="card card-hover" style="overflow:hidden;display:flex;flex-direction:column">
-        <div style="background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;padding:14px 16px;display:flex;align-items:center;gap:10px">
-          <span style="font-size:24px">{{ '🎬' if s._rec_src else '🎥' }}</span>
-          <div><strong style="font-size:13.5px">{{ s.title }}</strong></div>
+        <div style="background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:24px">{{ '🎬' if s._rec_src else '🎥' }}</span>
+            <strong style="font-size:13.5px">{{ s.title }}</strong>
+          </div>
+          {% if s._live_status == 'live_now' %}
+          <span class="live-pulse-badge">🔴 زنده</span>
+          {% elif s._live_status == 'upcoming' %}
+          <span class="live-badge-upcoming">⏳ به‌زودی</span>
+          {% else %}
+          <span class="live-badge-ended" style="color:#fff;background:rgba(255,255,255,.2)">✓ برگزارشده</span>
+          {% endif %}
         </div>
         {% if s._rec_src %}
         <div style="background:#000">
@@ -48,11 +57,17 @@
           {% if s.course %}<span class="badge badge-primary" style="margin-bottom:8px;align-self:flex-start">📚 {{ s.course.title[:30] }}</span>{% endif %}
           <div class="flex gap-1" style="margin-top:auto;padding-top:10px">
             {% if cur_user %}
-            <form method="post" action="{{ url_for('community.live_book', sid=s.id) }}" style="flex:1">
-              <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
-              <button class="btn btn-primary btn-sm btn-block">📝 رزرو کلاس</button>
-            </form>
-            {% if s.link %}<a class="btn btn-ghost btn-sm" href="{{ s.link }}" target="_blank" rel="noopener">🔗 ورود به جلسه</a>{% endif %}
+              {% if s._live_status == 'live_now' and s.link %}
+              <a class="btn btn-danger btn-sm btn-block" href="{{ s.link }}" target="_blank" rel="noopener" style="font-weight:800">
+                🔴 هم‌اکنون وارد جلسه شوید
+              </a>
+              {% else %}
+              <form method="post" action="{{ url_for('community.live_book', sid=s.id) }}" style="flex:1">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                <button class="btn btn-primary btn-sm btn-block">📝 رزرو کلاس</button>
+              </form>
+              {% if s.link %}<a class="btn btn-ghost btn-sm" href="{{ s.link }}" target="_blank" rel="noopener">🔗 لینک ورود</a>{% endif %}
+              {% endif %}
             {% else %}
             <a class="btn btn-primary btn-sm btn-block" href="{{ url_for('auth.login', next=request.path) }}">برای رزرو وارد شوید</a>
             {% endif %}

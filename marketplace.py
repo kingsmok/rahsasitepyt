@@ -295,10 +295,46 @@ def admin_order_status(oid):
         flash('سفارش پیدا نشد', 'error')
         return redirect(url_for('market.admin_marketplace'))
     st = request.form.get('status', '')
+    old_st = mo.status
     if st in ('accepted', 'shipped', 'done', 'canceled', 'new'):
+        # همگام‌سازی موجودی انبار برای سفارش‌های تاییدشده یا لغو‌شده
+        if st in ('accepted', 'shipped') and old_st not in ('accepted', 'shipped', 'done'):
+            try:
+                items_data = json.loads(mo.items or '[]')
+                if isinstance(items_data, list):
+                    for it in items_data:
+                        pid = it.get('product_id') or it.get('id')
+                        qty = max(1, int(it.get('quantity') or it.get('count') or 1))
+                        p = None
+                        if pid and str(pid).isdigit():
+                            p = db.session.get(Product, int(pid))
+                        if not p and it.get('title'):
+                            p = Product.query.filter_by(title=str(it['title']).strip()).first()
+                        if p and p.stock is not None:
+                            p.stock = max(0, p.stock - qty)
+            except Exception:
+                _lexc('marketplace.stock_deduct')
+        elif st == 'canceled' and old_st in ('accepted', 'shipped', 'done'):
+            try:
+                items_data = json.loads(mo.items or '[]')
+                if isinstance(items_data, list):
+                    for it in items_data:
+                        pid = it.get('product_id') or it.get('id')
+                        qty = max(1, int(it.get('quantity') or it.get('count') or 1))
+                        p = None
+                        if pid and str(pid).isdigit():
+                            p = db.session.get(Product, int(pid))
+                        if not p and it.get('title'):
+                            p = Product.query.filter_by(title=str(it['title']).strip()).first()
+                        if p and p.stock is not None:
+                            p.stock = (p.stock or 0) + qty
+            except Exception:
+                _lexc('marketplace.stock_restore')
+
         mo.status = st
         db.session.commit()
-        flash(f'وضعیت سفارش به «{st}» تغییر کرد', 'success')
+        st_labels = {'accepted': 'تایید شده', 'shipped': 'ارسال شده', 'done': 'تکمیل شده', 'canceled': 'لغو شده', 'new': 'جدید'}
+        flash(f'وضعیت سفارش به «{st_labels.get(st, st)}» تغییر کرد.', 'success')
     return redirect(url_for('market.admin_marketplace'))
 
 

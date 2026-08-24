@@ -9,12 +9,22 @@
     {% endfor %}
   </div>
 </div>
+
+<div class="bulk-bar" data-bulk-bar>
+  <span class="bulk-count" data-bulk-count>۰ مورد انتخاب شده</span>
+  <div class="bulk-actions">
+    <button class="btn btn-success btn-sm" type="button" data-bulk-action="mark_paid" data-bulk-url="{{ url_for('admin.orders_bulk') }}" data-confirm="آیا از تغییر وضعیت سفارش‌های انتخاب‌شده به 'پرداخت‌شده' اطمینان دارید؟">✓ تایید و پرداخت سفارش‌ها</button>
+    <button class="btn btn-danger btn-sm" type="button" data-bulk-action="cancel" data-bulk-url="{{ url_for('admin.orders_bulk') }}" data-confirm="آیا از لغو سفارش‌های انتخاب‌شده اطمینان دارید؟">✕ لغو سفارش‌ها</button>
+  </div>
+</div>
+
 <div class="table-wrap">
   <table class="table">
-    <thead><tr><th>کد</th><th>کاربر</th><th>دوره‌ها</th><th>مبلغ</th><th>درگاه</th><th>تاریخ</th><th>وضعیت</th><th></th></tr></thead>
+    <thead><tr><th style="width:40px"><input type="checkbox" data-bulk-select-all class="table-checkbox" aria-label="انتخاب همه"></th><th>کد</th><th>کاربر</th><th>دوره‌ها</th><th>مبلغ</th><th>درگاه</th><th>تاریخ</th><th>وضعیت</th><th></th></tr></thead>
     <tbody>
       {% for o in orders %}
       <tr>
+        <td><input type="checkbox" data-bulk-checkbox value="{{ o.id }}" class="table-checkbox" aria-label="انتخاب سفارش {{ o.code }}"></td>
         <td dir="ltr" style="font-weight:700">{{ o.code }}</td>
         <td>{{ o.user.name }}</td>
         <td>{{ fa(o.items|length) }} دوره</td>

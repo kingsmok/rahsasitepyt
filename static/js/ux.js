@@ -209,4 +209,158 @@
   /* فوکوس اولین خطای سرور که با aria-invalid برگشته است */
   var invalid = qs('[aria-invalid="true"]');
   if (invalid) window.setTimeout(function () { invalid.focus(); }, 100);
+
+  /* ---------- اعلان‌های شناور سراسری (Global Toast Notifications) ---------- */
+  window.showToast = function (message, type, duration) {
+    type = type || 'info';
+    duration = duration || 3500;
+    var container = document.getElementById('global-toast-container');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'global-toast-container';
+      container.className = 'toast-container';
+      document.body.appendChild(container);
+    }
+
+    var icons = {
+      success: '✓',
+      danger: '✕',
+      warning: '⚠',
+      info: 'ℹ'
+    };
+
+    var toast = document.createElement('div');
+    toast.className = 'toast-msg toast-' + type;
+    var iconSpan = document.createElement('span');
+    iconSpan.style.fontSize = '17px';
+    iconSpan.textContent = icons[type] || 'ℹ';
+    var textSpan = document.createElement('span');
+    textSpan.style.flex = '1';
+    textSpan.textContent = message;
+
+    var closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.textContent = '✕';
+    closeBtn.style.cssText = 'background:none;border:none;cursor:pointer;opacity:.6;font-size:14px;padding:2px 6px';
+    closeBtn.addEventListener('click', function () {
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateY(-10px)';
+      setTimeout(function () { toast.remove(); }, 300);
+    });
+
+    toast.appendChild(iconSpan);
+    toast.appendChild(textSpan);
+    toast.appendChild(closeBtn);
+    container.appendChild(toast);
+
+    setTimeout(function () {
+      if (toast.parentNode) {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(-10px)';
+        setTimeout(function () { toast.remove(); }, 300);
+      }
+    }, duration);
+  };
+
+  /* ---------- مدیریت عملیات گروهی جدول‌های پنل (Bulk Actions) ---------- */
+  var selectAllBoxes = qsa('input[data-bulk-select-all]');
+  selectAllBoxes.forEach(function (selectAll) {
+    var table = selectAll.closest('table') || document;
+    var bulkBar = qs('[data-bulk-bar]');
+    var countEl = qs('[data-bulk-count]');
+    
+    function updateBulkBar() {
+      var itemBoxes = qsa('input[data-bulk-checkbox]', table);
+      var checkedBoxes = qsa('input[data-bulk-checkbox]:checked', table);
+      var checkedCount = checkedBoxes.length;
+
+      if (bulkBar) {
+        bulkBar.classList.toggle('is-active', checkedCount > 0);
+      }
+      if (countEl) {
+        countEl.textContent = checkedCount + ' مورد انتخاب شده';
+      }
+      if (selectAll) {
+        selectAll.checked = (checkedCount > 0 && checkedCount === itemBoxes.length);
+        selectAll.indeterminate = (checkedCount > 0 && checkedCount < itemBoxes.length);
+      }
+    }
+
+    selectAll.addEventListener('change', function () {
+      var itemBoxes = qsa('input[data-bulk-checkbox]', table);
+      itemBoxes.forEach(function (box) {
+        box.checked = selectAll.checked;
+      });
+      updateBulkBar();
+    });
+
+    table.addEventListener('change', function (e) {
+      if (e.target && e.target.hasAttribute('data-bulk-checkbox')) {
+        updateBulkBar();
+      }
+    });
+
+    // Handle bulk action buttons
+    qsa('[data-bulk-action]').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        var action = btn.getAttribute('data-bulk-action');
+        var formAction = btn.getAttribute('data-bulk-url');
+        var checkedBoxes = qsa('input[data-bulk-checkbox]:checked', table);
+        if (!checkedBoxes.length) {
+          window.showToast('هیچ موردی انتخاب نشده است', 'warning');
+          return;
+        }
+
+        var confirmMsg = btn.getAttribute('data-confirm') || 'آیا از اجرای این عملیات گروهی اطمینان دارید؟';
+        if (!window.confirm(confirmMsg)) return;
+
+        var ids = checkedBoxes.map(function (b) { return b.value; });
+        var csrfToken = (qs('meta[name="csrf-token"]') || {}).content || (qs('input[name="_csrf_token"]') || {}).value || '';
+
+        var form = document.createElement('form');
+        form.method = 'POST';
+        form.action = formAction;
+        
+        var csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = '_csrf_token';
+        csrfInput.value = csrfToken;
+        form.appendChild(csrfInput);
+
+        var actionInput = document.createElement('input');
+        actionInput.type = 'hidden';
+        actionInput.name = 'bulk_action';
+        actionInput.value = action;
+        form.appendChild(actionInput);
+
+        ids.forEach(function (id) {
+          var idInput = document.createElement('input');
+          idInput.type = 'hidden';
+          idInput.name = 'item_ids[]';
+          idInput.value = id;
+          form.appendChild(idInput);
+        });
+
+        document.body.appendChild(form);
+        form.submit();
+      });
+    });
+  });
+
+  /* ---------- وضعیت لودینگ دکمه‌های فرم‌ها ---------- */
+  qsa('form:not([data-no-loading])').forEach(function (form) {
+    form.addEventListener('submit', function (e) {
+      if (form.checkValidity && !form.checkValidity()) return;
+      var submitBtn = qs('button[type="submit"], input[type="submit"]', form);
+      if (submitBtn && !submitBtn.classList.contains('is-loading')) {
+        submitBtn.classList.add('is-loading');
+        // Fallback safety timeout in case page navigation is slow
+        setTimeout(function () {
+          submitBtn.classList.remove('is-loading');
+        }, 12000);
+      }
+    });
+  });
+
 })();

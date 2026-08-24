@@ -108,6 +108,19 @@
 
         <!-- معرفی -->
         <div class="tab-pane" id="tab-overview">
+          {% if course.prerequisite %}
+          <div class="card mb-3" style="padding:16px 20px;background:var(--accent-soft);border:1.5px solid var(--accent);display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+            <span style="font-size:28px">📌</span>
+            <div style="flex:1;min-width:220px">
+              <strong style="font-size:14px">پیش‌نیاز پیشنهادی این دوره:</strong>
+              <div style="font-size:12.5px;color:var(--text-2);margin-top:2px">
+                برای درک بهتر مطالب این دوره، توصیه می‌شود ابتدا دوره <b>«{{ course.prerequisite.title }}»</b> را بگذرانید.
+              </div>
+            </div>
+            <a class="btn btn-sm btn-accent" href="{{ url_for('site.course_detail', slug=course.prerequisite.slug) }}">مشاهده پیش‌نیاز ←</a>
+          </div>
+          {% endif %}
+
           {% if course.intro_video %}
           <div class="panel">
             <h3><span class="ic">🎬</span> ویدئوی معرفی دوره</h3>
@@ -124,6 +137,27 @@
             </div>
           </div>
           {% endif %}
+
+          <!-- جعبه ویژگی‌های شاخص دوره (Rocket LMS Highlight Badges) -->
+          <div class="course-highlights-grid">
+            <div class="course-highlight-item">
+              <span class="hl-ic">⏱️</span>
+              <div class="hl-text"><strong>{{ fa(course.duration_hours) }} ساعت</strong><small>آموزش ویدیویی کاربردی</small></div>
+            </div>
+            <div class="course-highlight-item">
+              <span class="hl-ic">📚</span>
+              <div class="hl-text"><strong>{{ fa(course.lesson_count) }} جلسه کامل</strong><small>سرفصل‌بندی گام‌به‌گام</small></div>
+            </div>
+            <div class="course-highlight-item">
+              <span class="hl-ic">🏅</span>
+              <div class="hl-text"><strong>گواهینامه پایان دوره</strong><small>دارای کد رهگیری آنلاین</small></div>
+            </div>
+            <div class="course-highlight-item">
+              <span class="hl-ic">💬</span>
+              <div class="hl-text"><strong>پشتیبانی مستقیم مدرس</strong><small>پرسش و پاسخ اختصاصی</small></div>
+            </div>
+          </div>
+
           <div class="panel">
             <h3><span class="ic">📝</span> توضیحات دوره</h3>
             <p class="text-2" style="white-space:pre-line">{{ course.description }}</p>
@@ -184,6 +218,16 @@
 
         <!-- سرفصل‌ها -->
         <div class="tab-pane" id="tab-curriculum" style="display:none" data-acc-group>
+          <div class="curriculum-header-controls">
+            <div class="curriculum-meta-info">
+              <span>📖 مجموع: {{ fa(course.sections|length) }} فصل و {{ fa(course.lesson_count) }} جلسه</span>
+            </div>
+            <div class="curriculum-toggle-btns">
+              <button type="button" class="curriculum-btn-toggle" onclick="document.querySelectorAll('#tab-curriculum .accordion').forEach(function(a){a.classList.add('open');})">باز کردن همه ＋</button>
+              <button type="button" class="curriculum-btn-toggle" onclick="document.querySelectorAll('#tab-curriculum .accordion').forEach(function(a){a.classList.remove('open');})">بستن همه －</button>
+            </div>
+          </div>
+
           {% for sec in course.sections %}
           <div class="accordion {{ 'open' if loop.first }}">
             <button class="acc-head">
@@ -198,7 +242,7 @@
                 <span class="l-ic">{{ '✔' if enrolled and lesson.id in done_ids else ('▶' if lesson.video_url else '📄') }}</span>
                 <span class="l-title">
                   {{ lesson.title }}
-                  {% if lesson.is_free %}<span class="badge badge-accent l-badge">رایگان</span>{% endif %}
+                  {% if lesson.is_free %}<span class="badge badge-accent l-badge">پیش‌نمایش رایگان</span>{% endif %}
                 </span>
                 <span class="l-dur">⏱ {{ fa(lesson.duration) }}</span>
               </div>
@@ -208,10 +252,30 @@
           {% endfor %}
         </div>
 
-        <!-- نظرات -->
+        <!-- نظرات و امتیازدهی تفکیکی -->
         <div class="tab-pane" id="tab-reviews" style="display:none">
           <div class="panel" id="reviews">
-            <h3><span class="ic">💬</span> نظرات دانشجویان <span class="badge badge-primary">⭐ {{ fa(course.rating) if course.rating else '—' }} از ۵</span></h3>
+            <h3><span class="ic">💬</span> امتیاز و بازخورد دانشجویان</h3>
+
+            <!-- نمودار تفکیک امتیازها (Rating Breakdown) -->
+            <div class="rating-breakdown-box">
+              <div class="rating-big-score">
+                <div class="score-num">{{ fa(course.rating) if course.rating else '۵.۰' }}</div>
+                <div class="stars">★★★★★</div>
+                <small class="text-3">بر اساس {{ fa(course.review_count or reviews|length or 1) }} نظر ثبت‌شده</small>
+              </div>
+              <div class="rating-bars-list">
+                {% for star in [5, 4, 3, 2, 1] %}
+                {% set pct = star_pcts.get(star, 0) if star_pcts else 0 %}
+                <div class="rating-bar-row">
+                  <span class="bar-lbl">{{ fa(star) }} ستاره</span>
+                  <div class="bar-track"><div class="bar-fill" style="width:{{ pct }}%"></div></div>
+                  <span class="bar-pct">{{ fa(pct) }}٪</span>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+
             {% if reviews %}
               {% for r in reviews %}
               <div class="review-item">
@@ -265,9 +329,11 @@
               <span class="avatar avatar-lg" style="background:{{ course.teacher.avatar_color }}" role="img" aria-label="عکس مدرس {{ course.teacher.name }}">{{ course.teacher.initials() }}</span>
               <div>
                 <h3 style="margin-bottom:2px">{{ course.teacher.name }}</h3>
-                <span class="badge badge-primary">مدرس آکادمی</span>
+                <span class="badge badge-primary">مدرس ارشد آکادمی</span>
                 <p class="text-2 mt-2" style="font-size:13.5px">{{ course.teacher.bio or '' }}</p>
-                <a class="btn btn-outline btn-sm mt-2" href="{{ url_for('site.teacher_detail', uid=course.teacher.id) }}">مشاهده پروفایل مدرس</a>
+                <div class="flex gap-2 mt-3">
+                  <a class="btn btn-outline btn-sm" href="{{ url_for('site.teacher_detail', uid=course.teacher.id) }}">مشاهده پروفایل و دوره‌ها</a>
+                </div>
               </div>
             </div>
           </div>

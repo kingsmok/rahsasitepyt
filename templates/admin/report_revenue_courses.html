@@ -1,7 +1,21 @@
 {% extends 'admin/base.html' %}
 {% block atitle %}درآمد هر دوره{% endblock %}
 {% block acontent %}
-<div class="dash-head"><div><h1>💰 گزارش درآمد هر دوره</h1><p>فروش کل و تعداد دانشجوی هر دوره</p></div><a class="btn btn-ghost" href="{{ url_for('admin.overview') }}">← داشبورد</a></div>
+<div class="dash-head">
+  <div><h1>💰 گزارش درآمد هر دوره</h1><p>فروش کل و تعداد دانشجوی هر دوره</p></div>
+  <a class="btn btn-ghost" href="{{ url_for('admin.overview') }}">← داشبورد</a>
+</div>
+
+<form method="get" class="card mb-3" style="padding:16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+  <div style="font-size:13px;font-weight:700">📅 فیلتر بازه زمانی (شمسی یا میلادی):</div>
+  <input type="text" name="from_date" class="form-control" style="width:140px;padding:8px" placeholder="از: ۱۴۰۳/۰۱/۰۱" value="{{ from_date }}">
+  <input type="text" name="to_date" class="form-control" style="width:140px;padding:8px" placeholder="تا: ۱۴۰۳/۱۲/۲۹" value="{{ to_date }}">
+  <button class="btn btn-primary btn-sm" type="submit">اعمال فیلتر</button>
+  {% if from_date or to_date %}
+  <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.report_revenue_courses') }}">حذف فیلتر</a>
+  {% endif %}
+</form>
+
 <div class="card" style="padding:20px">
   <div class="table-wrap"><table class="table">
     <thead><tr><th>#</th><th>دوره</th><th>فروش کل (تومان)</th><th>دانشجو</th></tr></thead>

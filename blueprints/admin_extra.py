@@ -275,22 +275,68 @@ def reports_export():
 
 
 
+def _parse_report_date(date_str, is_end=False):
+    if not date_str:
+        return None
+    from jdates import jalali_to_gregorian
+    from datetime import datetime as _dt
+    import re
+    s = str(date_str).strip()
+    # Normalize Persian and Arabic digits
+    fa_digits = '۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩'
+    en_digits = '01234567890123456789'
+    for f, e in zip(fa_digits, en_digits):
+        s = s.replace(f, e)
+    s = s.replace('/', '-')
+    try:
+        if re.match(r'^\d{4}-\d{1,2}-\d{1,2}$', s):
+            parts = s.split('-')
+            s = f"{int(parts[0]):04d}-{int(parts[1]):02d}-{int(parts[2]):02d}"
+            if int(parts[0]) < 1900:
+                iso = jalali_to_gregorian(s)
+                if iso:
+                    dt = _dt.fromisoformat(iso)
+                    return dt.replace(hour=23, minute=59, second=59) if is_end else dt.replace(hour=0, minute=0, second=0)
+            else:
+                dt = _dt.fromisoformat(s)
+                return dt.replace(hour=23, minute=59, second=59) if is_end else dt.replace(hour=0, minute=0, second=0)
+    except Exception:
+        pass
+    return None
+
+
 @admin_bp.route('/reports/revenue-courses')
 @admin_required
 def report_revenue_courses():
-    """گزارش درآمد هر دوره"""
+    """گزارش درآمد هر دوره با فیلتر بازه زمانی"""
     from sqlalchemy import func as _func
+    from_raw = request.args.get('from_date', '').strip()
+    to_raw = request.args.get('to_date', '').strip()
+    dt_from = _parse_report_date(from_raw, is_end=False)
+    dt_to = _parse_report_date(to_raw, is_end=True)
+
+    order_query = Order.query.filter(Order.status == 'paid')
+    if dt_from:
+        order_query = order_query.filter(Order.paid_at >= dt_from)
+    if dt_to:
+        order_query = order_query.filter(Order.paid_at <= dt_to)
+    paid_order_ids = [r[0] for r in db.session.query(Order.id).filter(Order.status == 'paid').all()]
+    if dt_from or dt_to:
+        paid_order_ids = [r[0] for r in order_query.with_entities(Order.id).all()]
+
     rows = []
     for c in Course.query.all():
-        sold = db.session.query(_func.coalesce(_func.sum(OrderItem.price), 0)) \
-            .filter(OrderItem.course_id == c.id,
-                    OrderItem.order_id.in_(
-                        db.session.query(Order.id).filter(Order.status == 'paid')
-                    )).scalar() or 0
+        if paid_order_ids:
+            sold = db.session.query(_func.coalesce(_func.sum(OrderItem.price), 0)) \
+                .filter(OrderItem.course_id == c.id,
+                        OrderItem.order_id.in_(paid_order_ids)).scalar() or 0
+        else:
+            sold = 0
         cnt = Enrollment.query.filter_by(course_id=c.id).count()
         rows.append({'course': c.title, 'sold': sold, 'count': cnt})
     rows.sort(key=lambda r: -r['sold'])
-    return render_template('admin/report_revenue_courses.html', rows=rows)
+    return render_template('admin/report_revenue_courses.html', rows=rows,
+                           from_date=from_raw, to_date=to_raw)
 
 
 
@@ -298,18 +344,29 @@ def report_revenue_courses():
 @admin_bp.route('/reports/coupons')
 @admin_required
 def report_coupons():
-    """گزارش مصرف کدهای تخفیف"""
+    """گزارش مصرف کدهای تخفیف با فیلتر بازه زمانی"""
+    from_raw = request.args.get('from_date', '').strip()
+    to_raw = request.args.get('to_date', '').strip()
+    dt_from = _parse_report_date(from_raw, is_end=False)
+    dt_to = _parse_report_date(to_raw, is_end=True)
+
     rows = []
     total_saved = 0
     for c in Coupon.query.all():
-        orders = Order.query.filter(Order.coupon_id == c.id, Order.status == 'paid').all()
+        oq = Order.query.filter(Order.coupon_id == c.id, Order.status == 'paid')
+        if dt_from:
+            oq = oq.filter(Order.paid_at >= dt_from)
+        if dt_to:
+            oq = oq.filter(Order.paid_at <= dt_to)
+        orders = oq.all()
         used = len(orders)
         saved = sum(o.discount or 0 for o in orders)
         total_saved += saved
         rows.append({'coupon': c, 'used': used, 'saved': saved,
                      'revenue': sum(o.final_total for o in orders)})
     rows.sort(key=lambda r: -r['used'])
-    return render_template('admin/report_coupons.html', rows=rows, total_saved=total_saved)
+    return render_template('admin/report_coupons.html', rows=rows, total_saved=total_saved,
+                           from_date=from_raw, to_date=to_raw)
 
 
 

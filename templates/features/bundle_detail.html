@@ -15,21 +15,26 @@
         <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:20px">
           <div style="display:flex;align-items:baseline;gap:8px">
             {% if b.discount_price and b.discount_price < b.price %}
-            <span class="price-old" style="font-size:15px">{{ fa('{:,.0f}'.format(b.price)) }}</span>
+            <span class="price-old" style="font-size:16px">{{ fa('{:,.0f}'.format(b.price)) }}</span>
             {% endif %}
-            <span class="price" style="font-size:26px">{{ fa('{:,.0f}'.format(b.discount_price if b.discount_price and b.discount_price < b.price else b.price)) }}</span>
+            <span class="price" style="font-size:28px;font-weight:900">{{ fa('{:,.0f}'.format(b.discount_price if b.discount_price and b.discount_price < b.price else b.price)) }}</span>
             <small class="text-3">تومان</small>
           </div>
+          {% if b.discount_price and b.discount_price < b.price %}
+          <span class="timer-flash-pill">
+            🔥 سود شما: {{ fa('{:,.0f}'.format(b.price - b.discount_price)) }} تومان ({{ fa(((b.price - b.discount_price) * 100 // b.price)) }}٪ تخفیف)
+          </span>
+          {% endif %}
           {% if b.courses %}
-          <span class="badge badge-primary">{{ fa(b.courses|length) }} دوره — ارزش کل {{ fa('{:,.0f}'.format(b.courses|sum(attribute='final_price'))) }} تومان</span>
+          <span class="badge badge-primary">{{ fa(b.courses|length) }} دوره جامع — ارزش واقعی: {{ fa('{:,.0f}'.format(b.courses|sum(attribute='final_price'))) }} تومان</span>
           {% endif %}
         </div>
         <form method="post" action="{{ url_for('features.bundle_buy', slug=b.slug) }}">
           <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
           {% if cur_user %}
-          <button class="btn btn-primary btn-lg" type="submit">🛒 خرید بسته</button>
+          <button class="btn btn-primary btn-lg" type="submit" style="font-weight:800;padding:12px 28px">🚀 خرید آنی و دسترسی به تمام دوره‌های این پکیج</button>
           {% else %}
-          <a class="btn btn-primary btn-lg" href="{{ url_for('auth.login', next=url_for('features.bundle_detail', slug=b.slug)) }}">برای خرید وارد شوید</a>
+          <a class="btn btn-primary btn-lg" href="{{ url_for('auth.login', next=url_for('features.bundle_detail', slug=b.slug)) }}">برای خرید این پکیج وارد شوید</a>
           {% endif %}
         </form>
       </div>

@@ -5,11 +5,16 @@
 {% block content %}
 <section class="section" style="padding-top:26px">
   <div class="container" style="max-width:1200px">
-    <nav class="breadcrumb" aria-label="مسیر صفحه">
-      <a href="{{ url_for('student.dashboard') }}">داشبورد</a><span class="sep">/</span>
-      <a href="{{ url_for('student.my_courses') }}">دوره‌های من</a><span class="sep">/</span>
-      <span>{{ course.title }}</span>
-    </nav>
+    <div class="flex between align-center mb-3 wrap gap-2">
+      <nav class="breadcrumb" aria-label="مسیر صفحه" style="margin:0">
+        <a href="{{ url_for('student.dashboard') }}">داشبورد</a><span class="sep">/</span>
+        <a href="{{ url_for('student.my_courses') }}">دوره‌های من</a><span class="sep">/</span>
+        <span>{{ course.title }}</span>
+      </nav>
+      <button type="button" class="btn btn-sm btn-outline" data-action="cinema-mode" title="حالت تمرکز و سینمایی (Esc برای خروج)">
+        🎬 حالت تمرکز و سینمایی
+      </button>
+    </div>
 
     <div class="grid" style="grid-template-columns:1fr 340px;gap:26px;align-items:start">
       <!-- پخش‌کننده -->
@@ -62,9 +67,12 @@
         </div>
 
         <div class="card mt-2" style="padding:20px">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-            <span style="font-size:13px;font-weight:800;color:var(--text-2)">📝 یادداشت شخصی این جلسه <small style="font-weight:500;color:var(--text-3)">(فقط روی این دستگاه ذخیره می‌شود)</small></span>
-            <span id="pp-notes-hint" style="font-size:11px;color:var(--success);opacity:0;transition:opacity .3s">✓ ذخیره شد</span>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:8px">
+            <span style="font-size:13px;font-weight:800;color:var(--text-2)">📝 یادداشت و نکته‌برداری این جلسه <small style="font-weight:500;color:var(--text-3)">(ذخیره خودکار و همگام با حساب کاربری)</small></span>
+            <div style="display:flex;align-items:center;gap:10px">
+              <button type="button" class="timestamp-btn" id="pp-insert-time-btn" title="درج برچسب زمانی موقعیت ویدیو در یادداشت">⏱ درج زمان ویدیو</button>
+              <span id="pp-notes-hint" style="font-size:11px;color:var(--success);opacity:0;transition:opacity .3s">✓ ذخیره شد</span>
+            </div>
           </div>
           <textarea id="pp-notes" rows="3" class="form-control" placeholder="نکته‌های این جلسه را اینجا بنویسید... به‌صورت خودکار ذخیره می‌شود." style="margin-bottom:14px"></textarea>
           <div class="flex between wrap gap-2">
@@ -128,6 +136,7 @@
       <!-- فهرست جلسات -->
       <aside>
         <div class="lesson-list-side">
+          <input type="text" id="lesson-search-input" class="lesson-search-input" placeholder="🔍 جستجوی سرفصل یا جلسه...">
           {% for sec in course.sections %}
           <div style="font-size:13px;font-weight:800;color:var(--text-2);padding:12px 10px 6px">{{ sec.title }}</div>
           {% for l in sec.lessons %}
@@ -229,6 +238,29 @@
       </form>
     </div>
   </div>
+
+  {% if enrollment.is_completed %}
+  <!-- مدال تبریک پایان دوره -->
+  <div class="celebration-overlay" id="celebration-modal-overlay">
+    <div class="celebration-card">
+      <button type="button" class="celebration-close-btn" id="close-celebration-modal" title="بستن">✕</button>
+      <div class="celebration-badge-icon">🏆</div>
+      <h2 style="font-size:20px;margin-bottom:8px;color:var(--text)">تبریک! دوره با موفقیت تمام شد 🎉</h2>
+      <p class="text-2" style="font-size:13.5px;line-height:1.8;margin-bottom:22px">
+        شما تمام جلسات دوره «<strong>{{ course.title }}</strong>» را با موفقیت پشت سر گذاشتید. به این تلاش مستمر افتخار کنید!
+      </p>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <a class="btn btn-accent btn-lg" href="{{ url_for('student.certificate', course_id=course.id) }}" style="font-weight:800">
+          🏅 دریافت و دانلود گواهینامه معتبر
+        </a>
+        <div style="display:flex;gap:10px;justify-content:center">
+          <a class="btn btn-ghost btn-sm" href="{{ url_for('features.course_feedback', course_id=course.id) }}">⭐ ثبت نظر و امتیاز به دوره</a>
+          <a class="btn btn-ghost btn-sm" href="{{ url_for('student.my_courses') }}">📚 سایر دوره‌های من</a>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
 </section>
 <script src="{{ asset('js/player.js') }}"></script>
 {% endblock %}

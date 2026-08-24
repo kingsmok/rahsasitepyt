@@ -441,13 +441,17 @@ def _course_form(course):
                         selected_ids.append(int(piece))
             if course.teacher_id in selected_ids:
                 selected_ids.remove(course.teacher_id)
+            total_co_share = 0
             for tid in selected_ids:
                 share_raw = f.get('co_share_{}'.format(tid), '').strip()
                 share = None
                 if share_raw.isdigit():
                     share = max(0, min(100, int(share_raw)))
+                    total_co_share += share
                 db.session.add(_CT(course_id=course.id, teacher_id=tid,
                                    share_percent=share))
+            if total_co_share > 100:
+                flash('هشدار: مجموع درصد مدرسین همکار بیش از ۱۰۰٪ است و سهم آن‌ها در سقف ۱۰۰٪ متعادل محاسبه خواهد شد.', 'warning')
         except Exception:
             _lexc('blueprints/admin_bp.py')
         if not course.title:
@@ -986,6 +990,105 @@ def reviews():
     blog_comments = BlogComment.query.order_by(BlogComment.created_at.desc()).limit(80).all()
     return render_template('admin/reviews.html', reviews=all_reviews,
                            blog_comments=blog_comments)
+
+
+@admin_bp.route('/reviews/bulk', methods=['POST'])
+@admin_required
+def reviews_bulk():
+    """عملیات گروهی روی نظرات دوره یا وبلاگ"""
+    action = request.form.get('action') or request.form.get('bulk_action')
+    review_type = request.form.get('type', 'course')
+    ids = request.form.getlist('ids') or request.form.getlist('item_ids[]')
+    id_list = [safe_int(x) for x in ids if safe_int(x)]
+    if not id_list:
+        flash('هیچ موردی انتخاب نشده است.', 'error')
+        return redirect(url_for('admin.reviews'))
+
+    if review_type == 'blog':
+        if action == 'approve':
+            BlogComment.query.filter(BlogComment.id.in_(id_list)).update({BlogComment.is_approved: True}, synchronize_session=False)
+            db.session.commit()
+            flash(f'{len(id_list)} دیدگاه وبلاگ تایید شدند. ✅', 'success')
+        elif action == 'delete':
+            BlogComment.query.filter(BlogComment.id.in_(id_list)).delete(synchronize_session=False)
+            db.session.commit()
+            flash(f'{len(id_list)} دیدگاه وبلاگ حذف شدند.', 'info')
+    else:
+        if action == 'approve':
+            Review.query.filter(Review.id.in_(id_list)).update({Review.is_approved: True}, synchronize_session=False)
+            db.session.commit()
+            flash(f'{len(id_list)} نظر دوره تایید شدند. ✅', 'success')
+        elif action == 'delete':
+            Review.query.filter(Review.id.in_(id_list)).delete(synchronize_session=False)
+            db.session.commit()
+            flash(f'{len(id_list)} نظر دوره حذف شدند.', 'info')
+
+    return redirect(url_for('admin.reviews'))
+
+
+@admin_bp.route('/users/bulk', methods=['POST'])
+@admin_required
+def users_bulk():
+    """عملیات گروهی روی کاربران (فعال/غیرفعال‌سازی)"""
+    if g.user.role not in ('admin', 'super_admin'):
+        abort(403)
+    action = request.form.get('action') or request.form.get('bulk_action')
+    ids = request.form.getlist('ids') or request.form.getlist('item_ids[]')
+    id_list = [safe_int(x) for x in ids if safe_int(x) and safe_int(x) != g.user.id]
+    if not id_list:
+        flash('هیچ کاربری انتخاب نشده است.', 'error')
+        return redirect(url_for('admin.users'))
+
+    query = User.query.filter(User.id.in_(id_list))
+    if g.user.role != 'super_admin':
+        query = query.filter(~User.role.in_(['admin', 'super_admin']))
+
+    users = query.all()
+    count = len(users)
+    if action == 'activate':
+        for u in users:
+            u.is_active = True
+        db.session.commit()
+        flash(f'{count} کاربر با موفقیت فعال شدند. ✅', 'success')
+    elif action == 'deactivate':
+        for u in users:
+            u.is_active = False
+            u.new_session_token()
+        db.session.commit()
+        flash(f'{count} کاربر غیرفعال شدند.', 'info')
+
+    return redirect(url_for('admin.users'))
+
+
+@admin_bp.route('/orders/bulk', methods=['POST'])
+@admin_required
+def orders_bulk():
+    """عملیات گروهی روی سفارش‌ها"""
+    action = request.form.get('action') or request.form.get('bulk_action')
+    ids = request.form.getlist('ids') or request.form.getlist('item_ids[]')
+    id_list = [safe_int(x) for x in ids if safe_int(x)]
+    if not id_list:
+        flash('هیچ سفارشی انتخاب نشده است.', 'error')
+        return redirect(url_for('admin.orders'))
+
+    orders = Order.query.filter(Order.id.in_(id_list)).all()
+    if action in ('shipped', 'delivered', 'processing', 'canceled'):
+        for o in orders:
+            if o.fulfillment_status != 'not_required':
+                o.fulfillment_status = action
+            if action == 'canceled':
+                o.status = 'canceled'
+        db.session.commit()
+        flash(f'وضعیت {len(orders)} سفارش به‌روزرسانی شد.', 'success')
+    elif action == 'mark_paid':
+        from blueprints.shop import _mark_paid
+        for o in orders:
+            if o.status != 'paid':
+                _mark_paid(o, 'BULK-ADMIN-' + o.code, 'admin_bulk')
+        db.session.commit()
+        flash(f'{len(orders)} سفارش با موفقیت تایید و پرداخت شدند. ✅', 'success')
+
+    return redirect(url_for('admin.orders'))
 
 
 # ---------------------------------------------------------------- گالری طراحی‌ها (پیش‌نمایش + انتخاب اصلی)
@@ -2383,13 +2486,19 @@ def user_wallet(uid):
     if amount <= 0:
         flash('مبلغ نامعتبر است.', 'error')
     elif action == 'charge':
-        wallet_charge(u, amount, 'شارژ توسط مدیریت — ' + note)
-        db.session.commit()
-        flash(f'{amount:,} تومان به کیف پول {u.name} اضافه شد. ✅', 'success')
+        if wallet_charge(u, amount, 'شارژ توسط مدیریت — ' + note):
+            db.session.commit()
+            flash(f'{amount:,} تومان به کیف پول {u.name} اضافه شد. ✅', 'success')
+        else:
+            db.session.rollback()
+            flash('خطا در افزایش موجودی کیف پول.', 'error')
     elif action == 'deduct':
-        wallet_spend(u, amount, 'کسر توسط مدیریت — ' + note)
-        db.session.commit()
-        flash(f'{amount:,} تومان از کیف پول {u.name} کسر شد.', 'info')
+        if wallet_spend(u, amount, 'کسر توسط مدیریت — ' + note):
+            db.session.commit()
+            flash(f'{amount:,} تومان از کیف پول {u.name} کسر شد.', 'info')
+        else:
+            db.session.rollback()
+            flash(f'موجودی کیف پول کاربر ({u.wallet_balance or 0:,} تومان) کمتر از مبلغ درخواستی برای کسر است.', 'error')
     return redirect(url_for('admin.user_profile', uid=uid))
 
 
@@ -2503,12 +2612,13 @@ def chat():
 def chat_user(uid):
     u = db.get_or_404(User, uid)
     msgs = ChatMessage.query.filter_by(user_id=uid).order_by(ChatMessage.created_at.asc()).all()
+    canned = CannedReply.query.all()
     # خواندن پیام‌های کاربر
     for m in msgs:
         if not m.is_admin and not m.is_read:
             m.is_read = True
     db.session.commit()
-    return render_template('admin/chat_user.html', u=u, msgs=msgs)
+    return render_template('admin/chat_user.html', u=u, msgs=msgs, canned=canned)
 
 
 @admin_bp.route('/chat/<int:uid>/poll')
@@ -2711,15 +2821,21 @@ def certificates():
 @admin_bp.route('/certificates/<int:eid>/revoke', methods=['POST'])
 @admin_required
 def certificate_revoke(eid):
-    """لغو گواهی — حذف completed_at"""
-    from models import Enrollment
+    """لغو گواهی — ثبت تاریخ ابطال، حذف completed_at و ریست پیشرفت کامل"""
+    from models import Enrollment, utcnow
     e = db.get_or_404(Enrollment, eid)
     e.completed_at = None
+    e.revoked_at = utcnow()
+    if e.progress:
+        prog = e.progress_list()
+        if prog:
+            prog.pop()
+            e.save_progress(prog)
     from models import Notification
     Notification.notify(e.user_id, 'گواهی شما لغو شد ⚠️',
-                        'در صورت اعتراض با پشتیبانی تماس بگیرید.', '⚠️')
+                        'گواهینامه دوره توسط مدیریت باطل گردید. در صورت اعتراض با پشتیبانی تماس بگیرید.', '⚠️')
     db.session.commit()
-    flash('گواهی لغو شد.', 'warning')
+    flash('گواهی با موفقیت باطل شد.', 'warning')
     return redirect(url_for('admin.certificates'))
 
 

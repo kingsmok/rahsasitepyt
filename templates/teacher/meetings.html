@@ -1,0 +1,95 @@
+{% extends 'teacher/base.html' %}
+{% block title %}جلسات و مشاوره‌های آنلاین{% endblock %}
+{% block teacher_content %}
+<div class="dash-head">
+  <div>
+    <h1>📅 جلسات و مشاوره‌های آنلاین</h1>
+    <p>تعریف تایم‌اسلات‌های آزاد و مدیریت جلسات رزرو شده توسط دانشجویان</p>
+  </div>
+</div>
+
+<div class="grid" style="grid-template-columns:1fr 1.6fr;gap:24px;align-items:start">
+  <div class="card" style="padding:22px">
+    <h3 style="font-size:16px;margin-bottom:14px">➕ ایجاد تایم مشاوره جدید</h3>
+    <form method="post" action="{{ url_for('teacher.meetings') }}">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+      <div class="form-group mb-2">
+        <label for="m_title">عنوان جلسه / موضوع:</label>
+        <input type="text" id="m_title" name="title" class="form-control" value="جلسه مشاوره و رفع اشکال" required>
+      </div>
+      <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px">
+        <div class="form-group mb-2">
+          <label for="m_date">تاریخ (شمسی):</label>
+          <input type="text" id="m_date" name="meeting_date" class="form-control" placeholder="۱۴۰۵/۰۶/۱۵" required>
+        </div>
+        <div class="form-group mb-2">
+          <label for="m_time">ساعت شروع:</label>
+          <input type="text" id="m_time" name="start_time" class="form-control" placeholder="۱۶:۰۰" required>
+        </div>
+      </div>
+      <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px">
+        <div class="form-group mb-2">
+          <label for="m_dur">مدت (دقیقه):</label>
+          <input type="number" id="m_dur" name="duration_min" class="form-control" value="45" min="15" max="180">
+        </div>
+        <div class="form-group mb-2">
+          <label for="m_price">مبلغ (تومان - ۰ رایگان):</label>
+          <input type="number" id="m_price" name="price" class="form-control" value="0">
+        </div>
+      </div>
+      <div class="form-group mb-2">
+        <label for="m_link">لینک اتاق آنلاین (Google Meet / Skyroom / Jitsi):</label>
+        <input type="url" id="m_link" name="meeting_link" class="form-control" placeholder="https://meet.google.com/..." dir="ltr">
+      </div>
+      <div class="form-group mb-3">
+        <label for="m_notes">توضیحات یا نکات:</label>
+        <textarea id="m_notes" name="notes" rows="2" class="form-control" placeholder="نکات قبل از جلسه..."></textarea>
+      </div>
+      <button class="btn btn-primary btn-block" type="submit">ثبت زمان مشاوره</button>
+    </form>
+  </div>
+
+  <div class="card" style="padding:22px">
+    <h3 style="font-size:16px;margin-bottom:14px">📋 لیست زمان‌های مشاوره شما</h3>
+    {% if meetings %}
+    <div style="display:flex;flex-direction:column;gap:12px">
+      {% for m in meetings %}
+      <div style="border:1px solid var(--border);border-radius:14px;padding:16px;background:var(--bg-2)">
+        <div class="flex between wrap gap-2">
+          <div>
+            <strong style="font-size:14px">{{ m.title }}</strong>
+            <div class="text-3 mt-1" style="font-size:12px">
+              📅 {{ m.meeting_date }} — ⏱ ساعت: {{ m.start_time }} ({{ fa(m.duration_min) }} دقیقه)
+            </div>
+          </div>
+          <div>
+            {% if m.status == 'booked' %}
+            <span class="badge badge-success">رزرو شده توسط: {{ m.student.name if m.student else 'دانشجو' }}</span>
+            {% else %}
+            <span class="badge badge-primary">آماده رزرو (خالی)</span>
+            {% endif %}
+          </div>
+        </div>
+
+        {% if m.meeting_link %}
+        <div class="mt-2" style="font-size:12.5px">
+          🔗 لینک جلسه: <a href="{{ m.meeting_link }}" target="_blank" rel="noopener" dir="ltr" class="text-primary">{{ m.meeting_link }}</a>
+        </div>
+        {% endif %}
+
+        <div class="flex between align-center mt-2 pt-2" style="border-top:1px dashed var(--border)">
+          <small class="text-2">{{ 'رایگان' if not m.price else fa('{:,.0f}'.format(m.price)) ~ ' تومان' }}</small>
+          <form method="post" action="{{ url_for('teacher.meeting_delete', mid=m.id) }}" onsubmit="return confirm('آیا از حذف این تایم مطمئنید؟')">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="btn btn-xs btn-ghost" style="color:var(--danger)">🗑 حذف</button>
+          </form>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-3 text-center" style="padding:30px">هنوز تایم مشاوره‌ای ثبت نکرده‌اید.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

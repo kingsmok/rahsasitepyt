@@ -2,25 +2,91 @@
 {% block title %}{{ seo.title or "جدول برترین‌ها" }}{% endblock %}
 {% block content %}
 <section class="section" style="padding-top:36px">
-  <div class="container" style="max-width:720px">
-    <div class="section-head">
-      <span class="tag">🏆 رقابت سالم</span>
+  <div class="container" style="max-width:760px">
+    <div class="section-head text-center">
+      <span class="tag">🏆 تالار افتخارات</span>
       <h1 style="font-size:clamp(24px,3vw,32px)">جدول برترین‌های یادگیری</h1>
-      <p>با تکمیل جلسات، قبولی در آزمون‌ها و فعالیت، امتیاز بگیر و در صدر جدول باش!</p>
+      <p>با تکمیل منظم جلسات، قبولی در آزمون‌ها و استریک روزانه، امتیاز جمع کن و به صدر برس!</p>
     </div>
+
+    {% if cur_user and user_rank %}
+    <div class="my-rank-banner">
+      <div style="display:flex;align-items:center;gap:12px">
+        <span style="font-size:28px">🎯</span>
+        <div>
+          <strong style="font-size:14px">جایگاه شما در رتبه‌بندی: رتبه {{ fa(user_rank) }}</strong>
+          <small class="text-2" style="display:block;font-size:12px">امتیاز شما: {{ fa(cur_user.points or 0) }} — استریک: {{ fa(cur_user.streak or 0) }} روز</small>
+        </div>
+      </div>
+      <a class="btn btn-primary btn-sm" href="{{ url_for('student.my_courses') }}">ادامه یادگیری 🚀</a>
+    </div>
+    {% endif %}
+
+    {% if users|length >= 3 %}
+    <!-- سکوی سه نفر برتر (Podium) -->
+    <div class="leaderboard-podium">
+      <!-- نفر دوم: نقره -->
+      {% set u2 = users[1] %}
+      <div class="podium-item">
+        <div class="podium-avatar-wrap">
+          {% if u2.avatar %}<img class="avatar" src="{{ u2.avatar_url }}" alt="" style="width:52px;height:52px">
+          {% else %}<span class="avatar" style="width:52px;height:52px;font-size:18px;background:{{ u2.avatar_color }}">{{ u2.initials() }}</span>{% endif %}
+        </div>
+        <strong style="font-size:12.5px;display:block;margin-bottom:2px">{{ u2.name }}</strong>
+        <small class="text-3" style="font-size:11px;margin-bottom:8px">{{ fa(u2.points) }} امتیاز</small>
+        <div class="podium-box podium-box-2">
+          <span style="font-size:22px;font-weight:900">۲</span>
+          <span style="font-size:11px;opacity:.9">مدال نقره</span>
+        </div>
+      </div>
+
+      <!-- نفر اول: طلا -->
+      {% set u1 = users[0] %}
+      <div class="podium-item">
+        <div class="podium-avatar-wrap">
+          <span class="podium-crown">👑</span>
+          {% if u1.avatar %}<img class="avatar" src="{{ u1.avatar_url }}" alt="" style="width:64px;height:64px;border:3px solid #f59e0b">
+          {% else %}<span class="avatar" style="width:64px;height:64px;font-size:22px;background:{{ u1.avatar_color }};border:3px solid #f59e0b">{{ u1.initials() }}</span>{% endif %}
+        </div>
+        <strong style="font-size:13.5px;display:block;margin-bottom:2px">{{ u1.name }}</strong>
+        <small class="text-3" style="font-size:11.5px;margin-bottom:8px;font-weight:700;color:var(--primary)">{{ fa(u1.points) }} امتیاز</small>
+        <div class="podium-box podium-box-1">
+          <span style="font-size:26px;font-weight:900">۱</span>
+          <span style="font-size:11.5px;font-weight:700">قهرمان دوره</span>
+        </div>
+      </div>
+
+      <!-- نفر سوم: برنز -->
+      {% set u3 = users[2] %}
+      <div class="podium-item">
+        <div class="podium-avatar-wrap">
+          {% if u3.avatar %}<img class="avatar" src="{{ u3.avatar_url }}" alt="" style="width:48px;height:48px">
+          {% else %}<span class="avatar" style="width:48px;height:48px;font-size:16px;background:{{ u3.avatar_color }}">{{ u3.initials() }}</span>{% endif %}
+        </div>
+        <strong style="font-size:12.5px;display:block;margin-bottom:2px">{{ u3.name }}</strong>
+        <small class="text-3" style="font-size:11px;margin-bottom:8px">{{ fa(u3.points) }} امتیاز</small>
+        <div class="podium-box podium-box-3">
+          <span style="font-size:20px;font-weight:900">۳</span>
+          <span style="font-size:10.5px;opacity:.9">مدال برنز</span>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
     <div class="card" style="padding:22px">
+      <h3 style="font-size:15px;margin-bottom:14px">📋 رده‌بندی کامل شرکت‌کنندگان</h3>
       {% for u in users %}
-      <div style="display:flex;align-items:center;gap:12px;padding:11px 6px;border-bottom:1px solid var(--border)">
-        <span style="width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;background:{{ ['#f59e0b','#94a3b8','#b45309'][loop.index0] if loop.index <= 3 else 'var(--bg-2)' }};color:{{ '#fff' if loop.index <= 3 else 'var(--text-2)' }}">{{ fa(loop.index) }}</span>
+      <div style="display:flex;align-items:center;gap:12px;padding:12px 6px;border-bottom:1px solid var(--border)">
+        <span style="width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;background:{{ ['#f59e0b','#94a3b8','#b45309'][loop.index0] if loop.index <= 3 else 'var(--bg-2)' }};color:{{ '#fff' if loop.index <= 3 else 'var(--text-2)' }}">{{ fa(loop.index) }}</span>
         {% if u.avatar %}<img class="avatar" src="{{ u.avatar_url }}" alt="">{% else %}<span class="avatar" style="background:{{ u.avatar_color }}">{{ u.initials() }}</span>{% endif %}
         <div style="flex:1">
           <strong style="font-size:13.5px">{{ u.name }}</strong>
-          <small class="text-3" style="display:block;font-size:11px">🔥 استریک: {{ fa(u.streak or 0) }} روز</small>
+          <small class="text-3" style="display:block;font-size:11px">🔥 استریک: {{ fa(u.streak or 0) }} روز فعالیت مستمر</small>
         </div>
-        <span class="badge badge-primary">{{ fa(u.points or 0) }} امتیاز</span>
+        <span class="badge badge-primary" style="font-weight:800">{{ fa(u.points or 0) }} امتیاز</span>
       </div>
       {% else %}
-      <p class="text-3 text-center" style="padding:30px">هنوز رقابتی شروع نشده! اولین نفری باش که امتیاز می‌گیرد. 🚀</p>
+      <p class="text-3 text-center" style="padding:30px">هنوز رقابتی شروع نشده! اولین نفری باش که با یادگیری امتیاز می‌گیرد. 🚀</p>
       {% endfor %}
     </div>
   </div>

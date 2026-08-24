@@ -39,6 +39,9 @@
           <a class="tch-link {{ 'active' if request.endpoint == 'teacher.revenue' }}" href="{{ url_for('teacher.revenue') }}">
             <span class="tch-link-ic">💰</span><span>درآمد من</span>
           </a>
+          <a class="tch-link {{ 'active' if request.endpoint == 'teacher.meetings' }}" href="{{ url_for('teacher.meetings') }}">
+            <span class="tch-link-ic">📅</span><span>مشاوره و جلسات</span>
+          </a>
         </nav>
         <div class="tch-side-foot">
           <a class="tch-link" href="{{ url_for('student.dashboard') }}"><span class="tch-link-ic">🎓</span><span>پنل دانشجو</span></a>

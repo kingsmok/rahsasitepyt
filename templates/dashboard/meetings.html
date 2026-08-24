@@ -1,0 +1,63 @@
+{% extends 'dashboard/base.html' %}
+{% block dtitle %}جلسات و مشاوره‌های آنلاین{% endblock %}
+{% block dcontent %}
+<div class="dash-head">
+  <div>
+    <h1>📅 جلسات و مشاوره‌های آنلاین</h1>
+    <p>لیست جلسات اختصاصی رزروشده با اساتید و تایم‌های مشاوره در دسترس</p>
+  </div>
+</div>
+
+{% if booked %}
+<div class="mb-4">
+  <h2 style="font-size:16px;margin-bottom:14px">🎯 جلسات رزروشده شما</h2>
+  <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px">
+    {% for b in booked %}
+    <div class="card" style="padding:20px;border:1px solid var(--border);background:var(--card)">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+        <span class="avatar" style="background:{{ b.teacher.avatar_color if b.teacher else 'var(--primary)' }}">{{ b.teacher.initials() if b.teacher else '👨‍🏫' }}</span>
+        <div>
+          <strong style="font-size:14px;display:block">{{ b.title }}</strong>
+          <small class="text-3">مدرس: {{ b.teacher.name if b.teacher else 'مدرس آکادمی' }}</small>
+        </div>
+      </div>
+      <div style="background:var(--bg-2);border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:14px">
+        📅 تاریخ: <b>{{ b.meeting_date }}</b> — ⏱ ساعت: <b>{{ b.start_time }}</b> ({{ fa(b.duration_min) }} دقیقه)
+      </div>
+      {% if b.meeting_link %}
+      <a class="btn btn-primary btn-block" href="{{ b.meeting_link }}" target="_blank" rel="noopener">🎥 ورود به اتاق جلسه آنلاین</a>
+      {% else %}
+      <span class="badge badge-accent btn-block text-center" style="display:block;padding:8px">⏳ لینک جلسه به زودی قبل از شروع فعال می‌شود</span>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<div>
+  <h2 style="font-size:16px;margin-bottom:14px">✨ تایم‌های مشاوره باز برای رزرو</h2>
+  {% if available %}
+  <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px">
+    {% for a in available %}
+    <div class="card" style="padding:18px;border:1px solid var(--border)">
+      <strong style="font-size:14px;display:block;margin-bottom:6px">{{ a.title }}</strong>
+      <div class="text-2" style="font-size:12.5px;margin-bottom:10px">
+        👨‍🏫 مدرس: <b>{{ a.teacher.name if a.teacher else 'مدرس آکادمی' }}</b><br>
+        📅 تاریخ: <b>{{ a.meeting_date }}</b> — ساعت: <b>{{ a.start_time }}</b><br>
+        💰 هزینه: <b>{{ 'رایگان' if not a.price else fa('{:,.0f}'.format(a.price)) ~ ' تومان' }}</b>
+      </div>
+      <form method="post" action="{{ url_for('student.meeting_book', mid=a.id) }}">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+        <button type="submit" class="btn btn-primary btn-sm btn-block">رزرو این تایم 📅</button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="card text-center" style="padding:40px 20px">
+    <p class="text-3">در حال حاضر تایم مشاوره بازی وجود ندارد. به زودی زمان‌های جدید اضافه خواهند شد.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

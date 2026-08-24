@@ -158,6 +158,14 @@ def checkout():
         return redirect(url_for('shop.checkout'))
 
     if request.method == 'POST' and request.form.get('action') == 'create_order':
+        # اعتبارسنجی نهایی کوپن تخفیف قبل از ثبت نهایی سفارش
+        if coupon and (not coupon.is_valid or subtotal < (coupon.min_amount or 0)):
+            flash('کد تخفیف دیگر معتبر نیست و از سفارش حذف شد.', 'warning')
+            coupon = None
+            discount = 0
+            session.pop('coupon_code', None)
+            final = max(0, subtotal - loyalty_discount) + shipping_cost
+
         shipping = {}
         if has_physical:
             shipping = {

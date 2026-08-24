@@ -12,6 +12,14 @@
   </div>
 </div>
 
+<div class="bulk-bar" data-bulk-bar>
+  <span class="bulk-count" data-bulk-count>۰ مورد انتخاب شده</span>
+  <div class="bulk-actions">
+    <button class="btn btn-success btn-sm" type="button" data-bulk-action="activate" data-bulk-url="{{ url_for('admin.users_bulk') }}">🔓 فعال‌سازی گروهی</button>
+    <button class="btn btn-danger btn-sm" type="button" data-bulk-action="deactivate" data-bulk-url="{{ url_for('admin.users_bulk') }}" data-confirm="آیا از غیرفعال‌سازی کاربران انتخاب‌شده اطمینان دارید؟">🔒 غیرفعال‌سازی گروهی</button>
+  </div>
+</div>
+
 {% if has_perm(cur_user, 'manage_sms') or has_perm(cur_user, 'send_sms') %}
 <form method="post" action="{{ url_for('admin.users_send_sms') }}" class="flex gap-1 wrap" style="background:var(--bg-2);padding:12px 14px;border-radius:14px;margin-bottom:14px">
   <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
@@ -26,11 +34,16 @@
 
 <div class="table-wrap">
   <table class="table">
-    <thead><tr><th>کاربر</th><th>ایمیل</th><th>نقش</th><th>عضویت</th><th>وضعیت</th><th>عملیات</th></tr></thead>
+    <thead><tr><th style="width:40px"><input type="checkbox" data-bulk-select-all class="table-checkbox" aria-label="انتخاب همه"></th><th>کاربر</th><th>ایمیل</th><th>نقش</th><th>عضویت</th><th>وضعیت</th><th>عملیات</th></tr></thead>
     <tbody>
       {% for u in users %}
       {% set protected_user = u.role in ('admin', 'super_admin') and cur_user.role != 'super_admin' %}
       <tr>
+        <td>
+          {% if u.id != cur_user.id and not protected_user %}
+          <input type="checkbox" data-bulk-checkbox value="{{ u.id }}" class="table-checkbox" aria-label="انتخاب {{ u.name }}">
+          {% endif %}
+        </td>
         <td><div class="flex gap-1"><span class="avatar" style="background:{{ u.avatar_color }}">{{ u.initials() }}</span><strong>{{ u.name }}</strong></div></td>
         <td dir="ltr">{{ u.email or '—' }}</td>
         <td>

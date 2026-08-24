@@ -11,6 +11,7 @@
       {% if course.is_free() %}<span class="badge badge-success">رایگان</span>{% endif %}
       <span class="badge badge-gray">{{ course.delivery_icon }} {{ course.delivery_label }}</span>
       {% if course.featured %}<span class="badge badge-accent">ویژه</span>{% endif %}
+      {% if course.level %}<span class="badge badge-white" style="font-size:10px">{{ course.level }}</span>{% endif %}
     </div>
     <button class="fav-btn {{ 'active' if cu and (cu.id, course.id) in fids }}" data-fav="{{ course.id }}" title="علاقه‌مندی">
       {{ '❤️' if cu and (cu.id, course.id) in fids else '🤍' }}

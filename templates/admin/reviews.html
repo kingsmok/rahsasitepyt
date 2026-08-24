@@ -4,12 +4,28 @@
 <div class="dash-head">
   <div><h1>⭐ نظرات دوره‌ها</h1><p>{{ fa(reviews|length) }} نظر ثبت‌شده</p></div>
 </div>
+
+<div class="bulk-bar" data-bulk-bar>
+  <span class="bulk-count" data-bulk-count>۰ مورد انتخاب شده</span>
+  <div class="bulk-actions">
+    <button class="btn btn-success btn-sm" type="button" data-bulk-action="approve" data-bulk-url="{{ url_for('admin.reviews_bulk') }}">✓ تایید گروهی</button>
+    <button class="btn btn-danger btn-sm" type="button" data-bulk-action="delete" data-bulk-url="{{ url_for('admin.reviews_bulk') }}" data-confirm="آیا از حذف گروهی نظرات انتخاب‌شده اطمینان دارید؟">🗑 حذف گروهی</button>
+  </div>
+</div>
+
 {% if reviews %}
+<div style="margin-bottom:10px;display:flex;align-items:center;gap:8px">
+  <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
+    <input type="checkbox" data-bulk-select-all class="table-checkbox">
+    <strong>انتخاب همه نظرات</strong>
+  </label>
+</div>
 <div class="grid" style="gap:12px">
   {% for r in reviews %}
   <div class="card" style="padding:18px;{{ 'opacity:.7' if not r.is_approved }}">
     <div class="flex between wrap gap-2">
-      <div class="flex gap-1">
+      <div class="flex gap-1" style="align-items:center">
+        <input type="checkbox" data-bulk-checkbox value="{{ r.id }}" class="table-checkbox" style="margin-left:8px">
         <span class="avatar" style="background:{{ r.user.avatar_color if r.user else '#64748b' }}">{{ r.user.initials() if r.user else '؟' }}</span>
         <div>
           <strong style="font-size:13.5px">{{ r.user.name if r.user else 'کاربر' }}</strong>

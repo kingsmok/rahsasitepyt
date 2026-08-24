@@ -53,6 +53,210 @@ document.addEventListener('submit', function(e){
     }
   }, 8000);
 });
+
+/* ============================================================
+   🌙 سیستم تم شب / روز با ماندگاری (Dark Mode System)
+   ============================================================ */
+function initTheme(){
+  var saved = localStorage.getItem('app_theme');
+  var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  var theme = saved || (prefersDark ? 'dark' : 'light');
+  document.documentElement.setAttribute('data-theme', theme);
+  updateThemeIcons(theme);
+}
+function updateThemeIcons(theme){
+  document.querySelectorAll('.theme-toggle-btn').forEach(function(btn){
+    btn.innerHTML = theme === 'dark' ? '☀️' : '🌙';
+    btn.setAttribute('title', theme === 'dark' ? 'حالت روشن' : 'حالت تاریک');
+    btn.setAttribute('aria-label', theme === 'dark' ? 'تغییر به حالت روشن' : 'تغییر به حالت تاریک');
+  });
+}
+function toggleTheme(){
+  var cur = document.documentElement.getAttribute('data-theme') || 'light';
+  var next = cur === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('app_theme', next);
+  updateThemeIcons(next);
+  toast(next === 'dark' ? 'حالت تاریک فعال شد 🌙' : 'حالت روشن فعال شد ☀️', 'info');
+}
+window.toggleTheme = toggleTheme;
+initTheme();
+document.addEventListener('click', function(e){
+  var btn = e.target.closest('.theme-toggle-btn, [data-toggle-theme]');
+  if(btn){
+    e.preventDefault();
+    toggleTheme();
+  }
+});
+
+/* ============================================================
+   🎬 حالت تمرکز و سینمایی ویدیو پلیر (Focus / Cinema Mode)
+   ============================================================ */
+function toggleCinemaMode(){
+  var isFocus = document.body.classList.toggle('learn-focus-mode');
+  var exitBtn = document.getElementById('focus-exit-btn');
+  if(isFocus){
+    if(!exitBtn){
+      exitBtn = document.createElement('button');
+      exitBtn.id = 'focus-exit-btn';
+      exitBtn.className = 'focus-exit-btn';
+      exitBtn.innerHTML = '✕ خروج از حالت تمرکز';
+      exitBtn.onclick = toggleCinemaMode;
+      document.body.appendChild(exitBtn);
+    }
+    toast('حالت تمرکز و سینمایی فعال شد 🎬 (برای خروج Esc را بزنید)', 'info');
+  } else {
+    toast('از حالت تمرکز خارج شدید', 'info');
+  }
+}
+window.toggleCinemaMode = toggleCinemaMode;
+document.addEventListener('click', function(e){
+  var btn = e.target.closest('[data-action="cinema-mode"]');
+  if(btn){
+    e.preventDefault();
+    toggleCinemaMode();
+  }
+});
+
+/* ============================================================
+   🔍 پالت هوشمند دستورات سریع (Command Palette - Ctrl+K)
+   ============================================================ */
+var cmdItems = [
+  { title: 'صفحه اصلی', url: '/', icon: '🏠', group: 'صفحات اصلی', badge: 'خانه' },
+  { title: 'کاتالوگ و لیست دوره‌ها', url: '/courses', icon: '📚', group: 'صفحات اصلی', badge: 'کاوش' },
+  { title: 'سبد خرید و تسویه‌حساب', url: '/cart', icon: '🛒', group: 'فروشگاه', badge: 'سبد' },
+  { title: 'داشبورد یادگیری دانشجو', url: '/dashboard', icon: '👤', group: 'حساب کاربری', badge: 'ناحیه کاربری' },
+  { title: 'دوره‌های ثبت‌نام شده من', url: '/dashboard/courses', icon: '🎓', group: 'حساب کاربری', badge: 'آموزش' },
+  { title: 'تیکت‌ها و پشتیبانی آنلاین', url: '/dashboard/tickets', icon: '💬', group: 'پشتیبانی', badge: 'تیکت' },
+  { title: 'مرکز آزمون‌ها و ارزیابی', url: '/quizzes', icon: '📝', group: 'آموزش', badge: 'کوییز' },
+  { title: 'استعلام اصالت گواهینامه', url: '/verify-certificate', icon: '🎖️', group: 'ابزارها', badge: 'گواهی' },
+  { title: 'پنل مدیریت سایت', url: '/admin', icon: '⚙️', group: 'مدیریت', badge: 'ادمین' },
+  { title: 'تغییر تم (حالت شب / روز)', action: 'theme', icon: '🌓', group: 'تنظیمات', badge: 'تم' },
+  { title: 'حالت تمرکز و سینمایی ویدیو پلیر', action: 'cinema', icon: '🎬', group: 'تنظیمات', badge: 'پلیر' }
+];
+
+function openCmdPalette(){
+  var overlay = document.getElementById('cmd-palette-modal');
+  if(!overlay){
+    overlay = document.createElement('div');
+    overlay.id = 'cmd-palette-modal';
+    overlay.className = 'cmd-palette-overlay';
+    overlay.innerHTML = ''
+      + '<div class="cmd-palette" role="dialog" aria-modal="true" aria-label="پالت جستجوی سریع">'
+      + '  <div class="cmd-palette-head">'
+      + '    <span style="font-size:18px;">⚡</span>'
+      + '    <input type="text" id="cmd-palette-input" placeholder="جستجوی سریع، صفحه یا دستوری تایپ کنید..." autocomplete="off">'
+      + '    <kbd>Esc</kbd>'
+      + '  </div>'
+      + '  <div class="cmd-palette-body" id="cmd-palette-results"></div>'
+      + '</div>';
+    document.body.appendChild(overlay);
+
+    overlay.addEventListener('click', function(e){
+      if(e.target === overlay) closeCmdPalette();
+    });
+
+    var input = document.getElementById('cmd-palette-input');
+    input.addEventListener('input', function(){
+      renderCmdResults(input.value.trim());
+    });
+    input.addEventListener('keydown', function(e){
+      var items = overlay.querySelectorAll('.cmd-item');
+      var selected = overlay.querySelector('.cmd-item.is-selected');
+      var idx = Array.from(items).indexOf(selected);
+      if(e.key === 'ArrowDown'){
+        e.preventDefault();
+        var nextIdx = (idx + 1) % items.length;
+        items.forEach(function(it, i){ it.classList.toggle('is-selected', i === nextIdx); });
+        if(items[nextIdx]) items[nextIdx].scrollIntoView({ block: 'nearest' });
+      } else if(e.key === 'ArrowUp'){
+        e.preventDefault();
+        var prevIdx = (idx - 1 + items.length) % items.length;
+        items.forEach(function(it, i){ it.classList.toggle('is-selected', i === prevIdx); });
+        if(items[prevIdx]) items[prevIdx].scrollIntoView({ block: 'nearest' });
+      } else if(e.key === 'Enter'){
+        e.preventDefault();
+        if(selected) selected.click();
+      }
+    });
+  }
+
+  renderCmdResults('');
+  overlay.classList.add('is-open');
+  setTimeout(function(){
+    var inp = document.getElementById('cmd-palette-input');
+    if(inp){ inp.value = ''; inp.focus(); }
+  }, 50);
+}
+
+function closeCmdPalette(){
+  var overlay = document.getElementById('cmd-palette-modal');
+  if(overlay) overlay.classList.remove('is-open');
+}
+
+function renderCmdResults(query){
+  var resBox = document.getElementById('cmd-palette-results');
+  if(!resBox) return;
+  var q = (query || '').toLowerCase();
+  var filtered = cmdItems.filter(function(item){
+    return !q || item.title.toLowerCase().indexOf(q) !== -1 || (item.badge && item.badge.toLowerCase().indexOf(q) !== -1) || item.group.toLowerCase().indexOf(q) !== -1;
+  });
+
+  if(!filtered.length){
+    resBox.innerHTML = '<div style="text-align:center;padding:24px 10px;color:var(--text-3);font-size:13px;">نتیجه‌ای یافت نشد. عبارت دیگری را جستجو کنید.</div>';
+    return;
+  }
+
+  var html = '';
+  var curGroup = '';
+  filtered.forEach(function(item, idx){
+    if(item.group !== curGroup){
+      curGroup = item.group;
+      html += '<div class="cmd-group-title">' + curGroup + '</div>';
+    }
+    var isSel = idx === 0 ? ' is-selected' : '';
+    html += '<div class="cmd-item' + isSel + '" data-cmd-idx="' + idx + '" role="button" tabindex="0">'
+          + '  <span class="cmd-item-icon">' + item.icon + '</span>'
+          + '  <span>' + item.title + '</span>'
+          + '  <span class="cmd-item-badge">' + (item.badge || '') + '</span>'
+          + '</div>';
+  });
+  resBox.innerHTML = html;
+
+  resBox.querySelectorAll('.cmd-item').forEach(function(el, i){
+    el.addEventListener('click', function(){
+      var item = filtered[i];
+      closeCmdPalette();
+      if(item.action === 'theme'){
+        toggleTheme();
+      } else if(item.action === 'cinema'){
+        toggleCinemaMode();
+      } else if(item.url){
+        window.location.href = item.url;
+      }
+    });
+  });
+}
+
+window.openCmdPalette = openCmdPalette;
+window.closeCmdPalette = closeCmdPalette;
+
+document.addEventListener('keydown', function(e){
+  if((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')){
+    e.preventDefault();
+    var overlay = document.getElementById('cmd-palette-modal');
+    if(overlay && overlay.classList.contains('is-open')){
+      closeCmdPalette();
+    } else {
+      openCmdPalette();
+    }
+  } else if(e.key === 'Escape'){
+    closeCmdPalette();
+    if(document.body.classList.contains('learn-focus-mode')){
+      toggleCinemaMode();
+    }
+  }
+});
 function faNum(s){return String(s).replace(/[0-9]/g,function(d){return'۰۱۲۳۴۵۶۷۸۹'[d];});}
 if('IntersectionObserver'in window){var cObs=new IntersectionObserver(function(entries){entries.forEach(function(en){if(!en.isIntersecting)return;var el=en.target;cObs.unobserve(el);var target=parseFloat(el.dataset.counter||0);var prefix=el.dataset.prefix||'';var suffix=el.dataset.suffix||'';var t0=null;function step(ts){if(!t0)t0=ts;var p=Math.min(1,(ts-t0)/1500);var val=Math.floor(target*(1-Math.pow(1-p,3)));el.textContent=prefix+faNum(val.toLocaleString('en-US'))+suffix;if(p<1)requestAnimationFrame(step);else el.textContent=prefix+faNum(target.toLocaleString('en-US'))+suffix;}
 requestAnimationFrame(step);});},{threshold:0.3});document.querySelectorAll('[data-counter]').forEach(function(el){cObs.observe(el);});}

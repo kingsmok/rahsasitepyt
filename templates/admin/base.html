@@ -64,6 +64,10 @@
         <strong>{{ self.atitle() }}</strong>
       </div>
       <div class="admin-toolbar-actions">
+        <button type="button" class="theme-toggle-btn" title="تغییر حالت شب/روز" aria-label="حالت شب و روز">🌙</button>
+        <button type="button" class="btn btn-sm btn-ghost" onclick="openCmdPalette()" title="جستجوی سریع و دستورات (Ctrl+K)" style="display:inline-flex;align-items:center;gap:4px">
+          ⚡ <span>دستورات</span> <kbd style="font-size:10px;padding:2px 5px;background:var(--bg-2);border-radius:4px;border:1px solid var(--border)">Ctrl+K</kbd>
+        </button>
         {% if license_state and license_state.enforced and not license_state.valid %}<a href="{{ url_for('license.activate') }}" style="color:var(--danger)" title="لایسنس تجاری نیاز به بررسی دارد">⚠ <span>لایسنس</span></a>{% endif %}
         {% if site.get('site_active', '1') != '1' and has_perm(cur_user, 'manage_settings') %}<a href="{{ url_for('admin.go_live') }}" style="color:var(--warning)" title="سایت هنوز عمومی نشده است">🔒 <span>منتشر نشده</span></a>{% endif %}
         <div class="admin-alarm" data-admin-alarm hidden>

@@ -575,13 +575,14 @@ def teacher_detail(uid):
     _ensure_teacher_meta('/teacher/' + str(uid))
     g.seo.update(teacher_seo(teacher, request.host_url.rstrip('/')))
     # قالب داینامیک: اگر «قالب صفحه مدرس» ساخته شده باشد
-    from models import Page
+    from models import Page, MeetingBooking
+    available_meetings = MeetingBooking.query.filter_by(teacher_id=uid, status='available').all()
     tp = Page.query.filter_by(ptype='teacher').first()
     if tp and tp.is_published and tp.rows():
         g.current_teacher = teacher
         g.page_settings = tp.settings()
         return render_template('builder/public.html', page=tp)
-    return render_template('teacher_detail.html', teacher=teacher, courses=courses)
+    return render_template('teacher_detail.html', teacher=teacher, courses=courses, available_meetings=available_meetings)
 
 
 # ---------------------------------------------------------------- وبلاگ
@@ -858,8 +859,11 @@ def verify_certificate():
         # جستجو در گواهی‌های صادرشده — هم کد جدید (MD5) و هم کد قدیمی (SHA-1)
         from models import (certificate_code, certificate_code_legacy_md5,
                             certificate_code_legacy_sha1)
+        # ابتدا بررسی گواهی‌های معتبر فعال
         for e in Enrollment.query.filter(Enrollment.completed_at.isnot(None)).all():
             c = e.course
+            if not c or not e.user:
+                continue
             cert_code = certificate_code(c.slug, e.user.email, e.id)
             accepted = {
                 cert_code,
@@ -868,10 +872,26 @@ def verify_certificate():
             }
             if code in accepted:
                 result = {'code': cert_code, 'user': e.user.name, 'course': c.title,
-                          'date': e.completed_at, 'valid': True}
+                          'date': e.completed_at, 'valid': True, 'revoked': False}
                 break
+        # اگر در گواهی‌های فعال نبود، بررسی گواهی‌های باطل‌شده
         if not result:
-            result = {'code': code, 'valid': False}
+            for e in Enrollment.query.filter(Enrollment.revoked_at.isnot(None)).all():
+                c = e.course
+                if not c or not e.user:
+                    continue
+                cert_code = certificate_code(c.slug, e.user.email, e.id)
+                accepted = {
+                    cert_code,
+                    certificate_code_legacy_md5(c.slug, e.user.email, e.id),
+                    certificate_code_legacy_sha1(c.slug, e.user.email, e.id),
+                }
+                if code in accepted:
+                    result = {'code': cert_code, 'user': e.user.name, 'course': c.title,
+                              'date': e.revoked_at, 'valid': False, 'revoked': True}
+                    break
+        if not result:
+            result = {'code': code, 'valid': False, 'revoked': False}
     g.seo['title'] = 'استعلام گواهینامه — آکادمی آنلاین'
     g.seo['description'] = 'با وارد کردن کد رهگیری گواهینامه، از صحت آن مطمئن شوید.'
     g.verify_result = result

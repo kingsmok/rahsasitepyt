@@ -529,8 +529,11 @@ def challenge():
 @features_bp.route('/leaderboard')
 def leaderboard():
     users = User.query.filter(User.points > 0).order_by(User.points.desc()).limit(50).all()
+    user_rank = None
+    if g.user and (g.user.points or 0) > 0:
+        user_rank = User.query.filter(User.points > (g.user.points or 0)).count() + 1
     g.seo['title'] = "جدول برترین‌های یادگیری — آکادمی آنلاین"
-    return render_template('features/leaderboard.html', users=users)
+    return render_template('features/leaderboard.html', users=users, user_rank=user_rank)
 
 
 # ================================================================

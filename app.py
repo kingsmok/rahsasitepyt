@@ -294,10 +294,14 @@ def create_app():
             _add_columns('order_items', {
                 'quantity': 'INTEGER DEFAULT 1',
             })
-            # جدول‌های جدید حضور و غیاب روی نصب‌های قدیمی نیز ساخته شوند.
-            from models import CourseMeeting, AttendanceRecord
+            _add_columns('enrollments', {
+                'revoked_at': 'DATETIME NULL',
+            })
+            # جدول‌های جدید حضور و غیاب و یادداشت جلسات روی نصب‌های قدیمی نیز ساخته شوند.
+            from models import CourseMeeting, AttendanceRecord, LessonNote
             CourseMeeting.__table__.create(db.engine, checkfirst=True)
             AttendanceRecord.__table__.create(db.engine, checkfirst=True)
+            LessonNote.__table__.create(db.engine, checkfirst=True)
             _add_columns('orders', {
                 'shipping_name': "VARCHAR(120) DEFAULT ''",
                 'shipping_phone': "VARCHAR(20) DEFAULT ''",

@@ -153,6 +153,59 @@ def my_courses():
     return render_template('dashboard/my_courses.html', enrollments=enrollments)
 
 
+@student_bp.route('/dashboard/licenses')
+def licenses():
+    """نمایش کلیدهای لایسنس و دسترسی SpotPlayer برای دانشجویان"""
+    r = _login_required()
+    if r:
+        return r
+    from sqlalchemy.orm import joinedload
+    enrollments = (Enrollment.query
+                   .options(joinedload(Enrollment.course), joinedload(Enrollment.order))
+                   .filter_by(user_id=g.user.id)
+                   .order_by(Enrollment.created_at.desc()).all())
+    return render_template('dashboard/licenses.html', enrollments=enrollments)
+
+
+@student_bp.route('/dashboard/meetings')
+def meetings():
+    """مشاهده جلسات مشاوره رزرو شده و تایم‌های باز برای رزرو"""
+    r = _login_required()
+    if r:
+        return r
+    from models import MeetingBooking
+    booked = MeetingBooking.query.filter_by(student_id=g.user.id).order_by(MeetingBooking.created_at.desc()).all()
+    available = MeetingBooking.query.filter_by(status='available').order_by(MeetingBooking.created_at.desc()).limit(10).all()
+    return render_template('dashboard/meetings.html', booked=booked, available=available)
+
+
+@student_bp.route('/meeting/book/<int:mid>', methods=['POST'])
+def meeting_book(mid):
+    """رزرو یک تایم مشاوره با استاد"""
+    r = _login_required()
+    if r:
+        return r
+    from models import MeetingBooking, Notification
+    mb = MeetingBooking.query.filter_by(id=mid, status='available').first_or_404()
+    notes = request.form.get('notes', '').strip()
+
+    mb.student_id = g.user.id
+    mb.status = 'booked'
+    mb.notes = notes or mb.notes
+    db.session.commit()
+
+    try:
+        Notification.notify(mb.teacher_id, 'جلسه مشاوره رزرو شد 📅',
+                            f'دانشجو {g.user.name} جلسه «{mb.title}» در تاریخ {mb.meeting_date} را رزرو کرد.',
+                            '📅', url_for('teacher.meetings'))
+        db.session.commit()
+    except Exception:
+        pass
+
+    flash('جلسه مشاوره با موفقیت برای شما رزرو شد. 📅', 'success')
+    return redirect(url_for('student.meetings'))
+
+
 @student_bp.route('/learn/<int:course_id>')
 def learn(course_id):
     r = _login_required()

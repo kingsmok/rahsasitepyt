@@ -17,6 +17,8 @@ SITE_DESIGNS = {
               theme='theme-08', container='1240', radius='12'),
     '5': dict(name='مینیمال', desc='طوسی روشن و ساده، بدون شلوغی',
               theme='theme-10', container='1280', radius='8'),
+    'amoozino': dict(name='آموزینو (Amoozino)', desc='سبز زمردی و جنگلی مدرن — پلتفرم فروش دوره‌های ویدیویی و فایل‌های آموزشی',
+                     theme='pd-19', container='1240', radius='16'),
 }
 for _t in _PT:
     SITE_DESIGNS[_t['id']] = dict(name=_t['name'], desc=_t['desc'],
@@ -287,6 +289,62 @@ HOME_DESIGNS = {
             },
             {'id': 'd6_news', 'settings': {'gap': 0, 'py': 56, 'bg': '#ffffff', 'radius': 0}, 'cols': [[
                 {'id': 'd6_w7', 'type': 'newsletter', 'data': {'title': 'از تخفیف‌ها و دوره‌های جدید زودتر باخبر شو', 'text': 'عضویت در خبرنامه — بدون اسپم، انصراف یک‌کلیکی', 'btn_text': 'عضویت خبرنامه'}}]],
+            },
+        ]),
+
+    'amoozino': dict(
+        title='صفحه اصلی — آموزینو (Amoozino)',
+        desc='هیرو آموزینو با دکمه مشاوره + خدمات تخصصی + دوره‌های ویدیویی + درباره آموزینو و سفارش پروژه + محصولات دانلودی + صدای هنرجویان + مقالات دانش روز',
+        settings={'seo_title': 'آموزینو — پلتفرم آموزش آنلاین و فروش دوره و فایل آموزشی'},
+        rows=[
+            {'id': 'amz_hero', 'settings': {'gap': 0, 'py': 0}, 'cols': [[
+                {'id': 'amz_w1', 'type': 'slider', 'data': {
+                    'height': '460', 'autoplay': True, 'interval': '6', 'dots': True, 'arrows': True, 'swipe': True,
+                    'slides': [
+                        {'img': 'hero.webp', 'title': 'آموزش تخصصی و دوره‌های جامع آنلاین',
+                         'sub': 'با شرکت در دوره‌های آموزینو به راحتی مهارت دلخواهت رو یاد بگیر و وارد بازار کار شو! قدم به قدم کنارتیم.',
+                         'btn_text': 'مشاهده دوره‌ها', 'btn_url': '/courses', 'align': 'right'},
+                        {'img': 'cover-flask.webp', 'title': 'فروش فایل‌ها، پکیج‌ها و محصولات دانلودی',
+                         'sub': 'کتاب‌های الکترونیکی، جزوات تخصصی، سورس کدهای پروژه‌محور با دریافت آنی لینک دانلود.',
+                         'btn_text': 'فروشگاه فایل و محصولات', 'btn_url': '/products', 'align': 'center'},
+                    ]}}]],
+            },
+            {'id': 'amz_cats', 'settings': {'gap': 16, 'py': 50, 'bg': '#ffffff', 'radius': 24}, 'cols': [[
+                {'id': 'amz_w2', 'type': 'categories', 'data': {'title': '✨ خدمات و دسته‌بندی‌های تخصصی', 'limit': '8', 'columns': '4'}}]],
+            },
+            {'id': 'amz_courses', 'settings': {'gap': 24, 'py': 60}, 'cols': [[
+                {'id': 'amz_w3', 'type': 'courses', 'data': {'title': '🎓 دوره‌های آموزشی آنلاین', 'subtitle': 'دوره‌های ویدیویی با سرفصل‌بندی دقیق و پشتیبانی مدرس', 'limit': '8', 'columns': '4', 'sort': 'newest'}}]],
+            },
+            {'id': 'amz_feat', 'settings': {'gap': 22, 'py': 60, 'bg': '#ffffff', 'radius': 24}, 'cols': [[
+                {'id': 'amz_w4', 'type': 'feature', 'data': {'columns': '4', 'items': [
+                    {'icon': '🎬', 'title': 'ویدیو پلیر محافظت‌شده', 'text': 'پخش روان آنلاین بدون امکان دانلود غیرمجاز با واترمارک امنیتی'},
+                    {'icon': '📦', 'title': 'فروش فایل و پکیج', 'text': 'امکان دانلود مستقیم فایل‌ها، جزوات PDF و سورس کدها پس از خرید'},
+                    {'icon': '💳', 'title': 'پرداخت آنلاین و اقساطی', 'text': 'اتصال به درگاه‌های بانکی عضو شتاب و سرویس‌های پرداخت اقساطی'},
+                    {'icon': '👨‍🏫', 'title': 'پنل اختصاصی اساتید', 'text': 'امکان جذب و مدیریت مدرسین با تسویه‌حساب و پنل مجزا'}
+                ]}}]],
+            },
+            {'id': 'amz_prods', 'settings': {'gap': 24, 'py': 60}, 'cols': [[
+                {'id': 'amz_w5', 'type': 'products', 'data': {'title': '📦 محصولات، پکیج‌ها و فایل‌های دانلودی', 'filter': 'all', 'limit': '4', 'columns': '4'}}]],
+            },
+            {'id': 'amz_stats', 'settings': {'gap': 0, 'py': 50}, 'cols': [[
+                {'id': 'amz_w6', 'type': 'stats', 'data': {'columns': '4', 'items': [
+                    {'value': '{courses}', 'label': 'دوره آموزشی'},
+                    {'value': '{students}', 'label': 'هنرجوی موفق'},
+                    {'value': '{hours}', 'label': 'ساعت آموزش'},
+                    {'value': '{lessons}', 'label': 'جلسه تدوین‌شده'},
+                ]}}]],
+            },
+            {'id': 'amz_testi', 'settings': {'gap': 22, 'py': 60, 'bg': '#ffffff', 'radius': 24}, 'cols': [[
+                {'id': 'amz_w7', 'type': 'testimonials', 'data': {'columns': '3', 'items': []}}]],
+            },
+            {'id': 'amz_posts', 'settings': {'gap': 24, 'py': 60}, 'cols': [[
+                {'id': 'amz_w8', 'type': 'posts', 'data': {'title': '📰 دانش روز — آخرین مقالات و آموزش‌ها', 'limit': '3', 'columns': '3'}}]],
+            },
+            {'id': 'amz_cta', 'settings': {'gap': 0, 'py': 30}, 'cols': [[
+                {'id': 'amz_w9', 'type': 'cta', 'data': {
+                    'title': 'آماده شروع یادگیری با آموزینو هستید؟ 🚀',
+                    'text': 'همین الان حساب کاربری خود را بسازید و به هزاران هنرجوی موفق بپیوندید.',
+                    'btn_text': 'ثبت‌نام و شروع یادگیری', 'btn_url': '/auth/register'}}]],
             },
         ]),
 }

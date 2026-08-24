@@ -19,7 +19,7 @@
         </div>
       </form>
       {% if result %}
-      <div class="card mt-3" style="padding:20px;{{ 'background:var(--success-soft);border-color:var(--success)' if result.valid else 'background:var(--danger-soft);border-color:var(--danger)' }}">
+      <div class="card mt-3" style="padding:20px;{{ 'background:var(--success-soft);border-color:var(--success)' if result.valid else ('background:var(--warning-soft, #fffbeb);border-color:var(--warning, #f59e0b)' if result.revoked else 'background:var(--danger-soft);border-color:var(--danger)') }}">
         {% if result.valid %}
         <div style="font-size:34px">✅</div>
         <h2 style="font-size:17px;color:var(--success);margin:6px 0">کد این گواهی در سامانه تایید شد</h2>
@@ -29,6 +29,16 @@
           <div><b>تاریخ صدور:</b> {{ result.date|jdate if result.date else '—' }}</div>
           <div><b>کد رهگیری:</b> <span dir="ltr">{{ result.code }}</span></div>
         </div>
+        {% elif result.revoked %}
+        <div style="font-size:34px">⚠️</div>
+        <h2 style="font-size:17px;color:var(--warning, #b45309);margin:6px 0">این گواهینامه توسط مدیریت باطل شده است</h2>
+        <div style="font-size:13.5px;margin-top:10px">
+          <div><b>دارنده:</b> {{ result.user }}</div>
+          <div><b>دوره:</b> {{ result.course }}</div>
+          <div><b>تاریخ ابطال:</b> {{ result.date|jdate if result.date else '—' }}</div>
+          <div><b>کد رهگیری:</b> <span dir="ltr">{{ result.code }}</span></div>
+        </div>
+        <p class="text-2" style="font-size:12.5px;margin-top:10px;color:var(--text-muted)">این گواهینامه فاقد اعتبار قانونی و آموزشی است.</p>
         {% else %}
         <div style="font-size:34px">❌</div>
         <h2 style="font-size:17px;color:var(--danger);margin:6px 0">گواهینامه‌ای با این کد یافت نشد</h2>

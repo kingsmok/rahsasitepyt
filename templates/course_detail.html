@@ -262,34 +262,17 @@
               <div class="rating-big-score">
                 <div class="score-num">{{ fa(course.rating) if course.rating else '۵.۰' }}</div>
                 <div class="stars">★★★★★</div>
-                <small class="text-3">بر اساس {{ fa(course.review_count or 1) }} نظر ثبت‌شده</small>
+                <small class="text-3">بر اساس {{ fa(course.review_count or reviews|length or 1) }} نظر ثبت‌شده</small>
               </div>
               <div class="rating-bars-list">
+                {% for star in [5, 4, 3, 2, 1] %}
+                {% set pct = star_pcts.get(star, 0) if star_pcts else 0 %}
                 <div class="rating-bar-row">
-                  <span class="bar-lbl">۵ ستاره</span>
-                  <div class="bar-track"><div class="bar-fill" style="width:85%"></div></div>
-                  <span class="bar-pct">۸۵٪</span>
+                  <span class="bar-lbl">{{ fa(star) }} ستاره</span>
+                  <div class="bar-track"><div class="bar-fill" style="width:{{ pct }}%"></div></div>
+                  <span class="bar-pct">{{ fa(pct) }}٪</span>
                 </div>
-                <div class="rating-bar-row">
-                  <span class="bar-lbl">۴ ستاره</span>
-                  <div class="bar-track"><div class="bar-fill" style="width:12%"></div></div>
-                  <span class="bar-pct">۱۲٪</span>
-                </div>
-                <div class="rating-bar-row">
-                  <span class="bar-lbl">۳ ستاره</span>
-                  <div class="bar-track"><div class="bar-fill" style="width:۳%"></div></div>
-                  <span class="bar-pct">۳٪</span>
-                </div>
-                <div class="rating-bar-row">
-                  <span class="bar-lbl">۲ ستاره</span>
-                  <div class="bar-track"><div class="bar-fill" style="width:۰%"></div></div>
-                  <span class="bar-pct">۰٪</span>
-                </div>
-                <div class="rating-bar-row">
-                  <span class="bar-lbl">۱ ستاره</span>
-                  <div class="bar-track"><div class="bar-fill" style="width:۰%"></div></div>
-                  <span class="bar-pct">۰٪</span>
-                </div>
+                {% endfor %}
               </div>
             </div>
 

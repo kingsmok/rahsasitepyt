@@ -300,11 +300,23 @@ def course_detail(slug):
         intro_kind, intro_id = detect_video(course.intro_video or '')
     except Exception:
         _lexc('blueprints/site.py')
+    # محاسبه توزیع امتیازهای ستاره‌ای
+    total_reviews = len(reviews)
+    star_counts = {5: 0, 4: 0, 3: 0, 2: 0, 1: 0}
+    for r in reviews:
+        if r.rating and 1 <= r.rating <= 5:
+            star_counts[r.rating] += 1
+    star_pcts = {
+        s: round(star_counts[s] * 100 / total_reviews) if total_reviews > 0 else (100 if s == 5 else 0)
+        for s in range(1, 6)
+    }
+
     return render_template('course_detail.html', course=course, related=related,
                            reviews=reviews, enrolled=enrolled, is_fav=is_fav,
                            can_access_coursework=can_access_coursework,
                            done_ids=done_ids, blog_posts=blog_posts,
-                           intro_kind=intro_kind, intro_id=intro_id)
+                           intro_kind=intro_kind, intro_id=intro_id,
+                           star_counts=star_counts, star_pcts=star_pcts)
 
 
 @site_bp.route('/course/<slug>/review', methods=['POST'])

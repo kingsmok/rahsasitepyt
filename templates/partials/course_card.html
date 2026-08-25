@@ -1,37 +1,44 @@
+{# ============================================================
+   کارت دوره — دیزاین سیستم v2 (مدرن، مینیمال، اعتمادساز)
+   تمام کلاس‌ها و رفتارها (data-fav / data-add-cart) حفظ شده‌اند.
+   ============================================================ #}
 {% macro course_card(course) %}
 {% set cu = bc_cur_user() %}
 {% set fids = bc_fav_ids() %}
+{% set enrolled = cu and course.id in bc_enrolled_ids() %}
 <article class="card course-card card-hover">
   <div class="thumb">
-    <a href="{{ url_for('site.course_detail', slug=course.slug) }}">
+    <a href="{{ url_for('site.course_detail', slug=course.slug) }}" aria-label="{{ course.title }}">
       <img src="{{ course.image_url }}" alt="دوره {{ course.title }} — {{ bc_site().get('site_name') or 'آکادمی آنلاین' }}" loading="lazy" decoding="async" width="640" height="360">
     </a>
     <div class="badges">
       {% if course.has_discount %}<span class="discount-flag">٪{{ fa(course.discount_percent) }} تخفیف</span>{% endif %}
-      {% if course.is_free() %}<span class="badge badge-success">رایگان</span>{% endif %}
-      <span class="badge badge-gray">{{ course.delivery_icon }} {{ course.delivery_label }}</span>
+      {% if course.is_free() %}<span class="badge badge-success">{{ icon('circle-check', 13) }} رایگان</span>{% endif %}
       {% if course.featured %}<span class="badge badge-accent">ویژه</span>{% endif %}
-      {% if course.level %}<span class="badge badge-white" style="font-size:10px">{{ course.level }}</span>{% endif %}
     </div>
-    <button class="fav-btn {{ 'active' if cu and (cu.id, course.id) in fids }}" data-fav="{{ course.id }}" title="علاقه‌مندی">
-      {{ '❤️' if cu and (cu.id, course.id) in fids else '🤍' }}
+    {% if course.level %}<span class="badge badge-white level-chip">{{ course.level }}</span>{% endif %}
+    <button class="fav-btn {{ 'active' if cu and (cu.id, course.id) in fids }}" data-fav="{{ course.id }}" title="افزودن به علاقه‌مندی" aria-label="علاقه‌مندی">
+      {{ icon('heart-filled', 17, 'fav-on') }}{{ icon('heart', 17, 'fav-off') }}
     </button>
   </div>
   <div class="body">
-    <span class="cat">{{ course.category.name if course.category else 'دوره' }}</span>
+    <div class="top-row">
+      <span class="cat">{{ course.category.name if course.category else 'دوره' }}</span>
+      <span class="delivery">{{ course.delivery_icon }} {{ course.delivery_label }}</span>
+    </div>
     <h3><a href="{{ url_for('site.course_detail', slug=course.slug) }}">{{ course.title }}</a></h3>
     <div class="meta">
-      <span>⭐ {{ fa(course.rating) if course.rating else '—' }} ({{ fa(course.review_count) }})</span>
-      <span>👥 {{ fa(course.students_count) }} دانشجو</span>
-      <span>⏱ {{ fa(course.duration_hours) }} ساعت</span>
+      {% if course.rating %}<span class="m-rate" title="امتیاز">{{ icon('star', 13) }} {{ fa(course.rating) }} <small>({{ fa(course.review_count) }})</small></span>{% endif %}
+      <span class="m-ic" title="دانشجو">{{ icon('users', 14) }} {{ fa(course.students_count) }}</span>
+      <span class="m-ic" title="مدت دوره">{{ icon('clock', 14) }} {{ fa(course.duration_hours) }} ساعت</span>
     </div>
+    {% if course.teacher %}
     <div class="teacher">
-      {% if course.teacher %}
       <span class="avatar" style="background:{{ course.teacher.avatar_color }}">{{ course.teacher.initials() }}</span>
-      <small>{{ course.teacher.name }}</small>
-      {% endif %}
+      <small>مدرس: {{ course.teacher.name }}</small>
     </div>
-      <div class="foot">
+    {% endif %}
+    <div class="foot">
       <div>
         {% if course.has_discount %}
         <span class="price-old">{{ fa('{:,.0f}'.format(course.price)) }}</span>
@@ -43,8 +50,10 @@
         {% endif %}
       </div>
       <div class="flex gap-1">
-        {% if not (cu and course.id in bc_enrolled_ids()) %}
-        <button type="button" class="btn btn-outline-primary btn-sm card-add-btn" data-add-cart="{{ course.id }}" title="افزودن به سبد خرید">🛒</button>
+        {% if not enrolled %}
+        <button type="button" class="btn btn-icon btn-soft card-add-btn" data-add-cart="{{ course.id }}" title="افزودن به سبد خرید" aria-label="افزودن به سبد خرید">{{ icon('shopping-cart', 17) }}</button>
+        {% else %}
+        <a class="btn btn-soft btn-sm" href="{{ url_for('student.learn', course_id=course.id) }}">{{ icon('play', 14) }} ادامهٔ یادگیری</a>
         {% endif %}
         <a class="btn btn-primary btn-sm" href="{{ url_for('site.course_detail', slug=course.slug) }}">مشاهده دوره</a>
       </div>

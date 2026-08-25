@@ -1,0 +1,100 @@
+[
+  {"id": "demo_head", "settings": {"gap": 10, "py": 50},
+   "cols": [[{"id": "dh1", "type": "heading", "data": {"text": "نمایش زندهٔ بلوک‌های جدید دیزاین سیستم v2", "tag": "h1", "align": "center", "mb": "8"}},
+             {"id": "dh2", "type": "text", "data": {"content": "همهٔ این بخش‌ها از صفحه‌ساز قابل ویرایش‌اند: متن، تصویر، رنگ، دکمه، فاصله، چیدمان و نمایش در موبایل/تبلت/دسکتاپ.", "align": "center"}}]]},
+
+  {"id": "demo_brand", "settings": {"gap": 24, "py": 50},
+   "cols": [[{"id": "db1", "type": "brand_intro", "data": {
+     "eyebrow": "بلوک معرفی برند", "title": "آکادمی‌ای که مسیر می‌سازد",
+     "subtitle": "این متن کاملاً از صفحه‌ساز قابل ویرایش است — همین الان امتحان کنید.",
+     "media": "hero.webp", "media_badge_value": "+۹۸", "media_badge_label": "دانشجوی فعال",
+     "points": "امتیاز اول با تیک سبز\nامتیاز دوم با تیک سبز\nامتیاز سوم با تیک سبز",
+     "btn_text": "دکمه اصلی", "btn_url": "#", "btn2_text": "دکمه دوم", "btn2_url": "#",
+     "layout": "image-left",
+     "stats": [{"icon": "🎓", "value": "{courses}", "label": "دوره"},
+               {"icon": "⏱", "value": "{hours}", "label": "ساعت آموزش"},
+               {"icon": "📚", "value": "{lessons}", "label": "جلسه"}]}}]]},
+
+  {"id": "demo_offer", "settings": {"gap": 24, "py": 30},
+   "cols": [[{"id": "do1", "type": "discount_banner", "data": {
+     "badge": "٪۴۰ تخفیف جشنواره", "title": "بلوک بنر تخفیف",
+     "text": "شمارش معکوس واقعی + کد تخفیف با یک کلیک کپی می‌شود.",
+     "coupon": "SALAM40", "btn_text": "مشاهدهٔ تخفیف‌ها", "btn_url": "/courses?sort=cheap",
+     "target": "2027-01-01", "show_countdown": true}}]]},
+
+  {"id": "demo_path", "settings": {"gap": 24, "py": 50, "bg": "#ffffff", "radius": 24},
+   "cols": [[{"id": "dp1", "type": "learning_path", "data": {
+     "eyebrow": "بلوک مسیر یادگیری", "title": "گام‌به‌گام تا تخصص", "subtitle": "وضعیت هر گام: عادی / فعال / تکمیل‌شده", "columns": "4",
+     "steps": [{"title": "شروع", "text": "مبانی با زبان ساده", "chip": "۲ دوره", "state": "done"},
+               {"title": "تثبیت", "text": "تمرین و پروژهٔ کوچک", "chip": "پروژه‌محور", "state": "now"},
+               {"title": "پروژهٔ واقعی", "text": "نمونه‌کار قابل ارائه", "chip": "مربی‌دار", "state": ""},
+               {"title": "بازار کار", "text": "رزومه و مصاحبه", "chip": "همراهی", "state": ""}]}}]]},
+
+  {"id": "demo_curric", "settings": {"gap": 24, "py": 50},
+   "cols": [[{"id": "dc1", "type": "curriculum", "data": {
+     "title": "بلوک سرفصل دوره", "subtitle": "دستی یا داینامیک از دورهٔ واقعی", "source": "manual", "open_first": true,
+     "chapters": [{"title": "فصل اول — شروع کار", "lessons": "معرفی و نقشهٔ راه | ۱۲ دقیقه\nنصب ابزارها | ۲۵ دقیقه\nاولین برنامه | ۱۸ دقیقه"},
+                  {"title": "فصل دوم — تخصص", "lessons": "مفاهیم پیشرفته | ۳۰ دقیقه\nپروژهٔ عملی | ۴۵ دقیقه"}],
+     "btn_text": "ثبت‌نام در دوره", "btn_url": "/courses"}}]]},
+
+  {"id": "demo_teacher", "settings": {"gap": 24, "py": 50},
+   "cols": [[{"id": "dt1", "type": "instructor", "data": {
+     "title": "بلوک معرفی مدرس", "name": "استاد نمونه", "role": "مهندس نرم‌افزار و مدرس",
+     "bio": "بیوگرافی مدرس از تب محتوا قابل ویرایش است. سوابق، تخصص و دوره‌های تدریسی اینجا معرفی می‌شود تا اعتماد خریدار جلب شود.",
+     "cv": "۱۵ سال تجربهٔ صنعتی\nمدرس بیش از ۱۰ دوره\nمشاور فنی استارتاپ‌ها",
+     "stats": [{"value": "۱۲", "label": "دوره"}, {"value": "۹.۶", "label": "امتیاز"}, {"value": "۹۸٪", "label": "رضایت"}],
+     "btn_text": "دوره‌های این مدرس", "btn_url": "/teachers",
+     "socials": [{"icon": "✈️", "url": "#"}, {"icon": "📷", "url": "#"}, {"icon": "💼", "url": "#"}]}}]]},
+
+  {"id": "demo_compare", "settings": {"gap": 24, "py": 50},
+   "cols": [[{"id": "dcmp1", "type": "plans_compare", "data": {
+     "title": "بلوک مقایسهٔ پلن‌ها", "subtitle": "ستون ویژه با هدر گرادیانی",
+     "plans": [{"name": "پایه", "price": "رایگان", "btn_text": "شروع", "btn_url": "/auth/register"},
+               {"name": "حرفه‌ای", "price": "۴۹۰٬۰۰۰ تومان", "btn_text": "انتخاب", "btn_url": "/auth/register", "best": true}],
+     "rows": "دسترسی به دوره‌ها | 1 | 1\nگواهی پایان دوره | 0 | 1\nپشتیبانی اختصاصی | no | yes\nباشگاه دانشجویی | 0 | 1"}}]]},
+
+  {"id": "demo_membership", "settings": {"gap": 24, "py": 50},
+   "cols": [[{"id": "dm1", "type": "membership", "data": {
+     "eyebrow": "بلوک عضویت ویژه", "title": "اشتراک آکادمی", "subtitle": "پلن پیشنهادی با روبان و قیمت قبلی خط‌خورده", "columns": "3",
+     "plans": [{"name": "ماهانه", "desc": "برای شروع", "price": "۲۹۰٬۰۰۰", "period": "تومان / ماه", "features": "دسترسی به همهٔ دوره‌ها\nلغو هر زمان", "btn_text": "انتخاب", "btn_url": "#"},
+               {"name": "شش‌ماهه", "desc": "محبوب‌ترین", "price": "۱٬۳۹۰٬۰۰۰", "period": "تومان / ۶ ماه", "old_price": "۱٬۷۴۰٬۰۰۰", "features": "دسترسی به همهٔ دوره‌ها\nگواهی پایان دوره\nپشتیبانی اولویت‌دار", "btn_text": "انتخاب", "btn_url": "#", "best": true, "ribbon": "پیشنهاد ما"},
+               {"name": "سالانه", "desc": "اقتصادی‌ترین", "price": "۲٬۴۹۰٬۰۰۰", "period": "تومان / سال", "old_price": "۳٬۴۸۰٬۰۰۰", "features": "دسترسی به همهٔ دوره‌ها\nگواهی پایان دوره\nمشاورهٔ شغلی", "btn_text": "انتخاب", "btn_url": "#"}]}}]]},
+
+  {"id": "demo_offers", "settings": {"gap": 24, "py": 50},
+   "cols": [[{"id": "dso1", "type": "special_offers", "data": {
+     "title": "بلوک پیشنهادهای ویژه (داینامیک)", "subtitle": "دوره‌های تخفیف‌دار واقعی از دیتابیس — بیشترین تخفیف اول",
+     "limit": "4", "columns": "4", "btn_text": "همهٔ تخفیف‌ها", "btn_url": "/courses?sort=cheap"}}]]},
+
+  {"id": "demo_certs_files", "settings": {"gap": 24, "py": 50},
+   "cols": [[{"id": "dce1", "type": "certificates", "data": {
+     "eyebrow": "بلوک مدارک", "title": "گواهی قابل استعلام", "subtitle": "با کد رهگیری رسمی", "columns": "3",
+     "items": [{"icon": "🏅", "title": "گواهی پایان دوره", "text": "نام دانشجو، عنوان دوره و ساعت آموزش"},
+               {"icon": "🛡", "title": "کد استعلام", "text": "بررسی اصالت توسط کارفرما"},
+               {"icon": "📈", "title": "کارنامهٔ یادگیری", "text": "درصد پیشرفت و نمرهٔ آزمون‌ها"}],
+     "verify_text": "استعلام گواهینامه", "verify_url": "/verify-certificate"}},
+             {"id": "df1", "type": "file_download", "data": {
+     "title": "بلوک دانلود فایل", "columns": "2",
+     "items": [{"icon": "📄", "title": "جزوهٔ دوره (رایگان)", "desc": "نمونهٔ محتوا قبل از خرید", "ext": "PDF", "size": "۲٫۴ مگابایت", "url": "#"},
+               {"icon": "🗂", "title": "سورس‌کدهای تمرین", "desc": "برای دانلودکننده‌های خبرنامه", "ext": "ZIP", "size": "۸ مگابایت", "url": "#"}]}}]]},
+
+  {"id": "demo_timeline_trust", "settings": {"gap": 24, "py": 50},
+   "cols": [[{"id": "dtl1", "type": "timeline", "data": {
+     "eyebrow": "بلوک تایم‌لاین", "title": "مسیر رشد آکادمی", "align": "start",
+     "items": [{"date": "۱۴۰۰", "title": "تولد آکادمی", "text": "شروع با ۳ دوره و یک اتاق کوچک"},
+               {"date": "۱۴۰۲", "title": "رهیافت آنلاین", "text": "پلتفرم اختصاصی و پخش امن ویدیو"},
+               {"date": "۱۴۰۴", "title": "جامعهٔ دانشجویی", "text": "باشگاه، رویداد و پیوند با بازار کار"}]}},
+             {"id": "dtr1", "type": "trust_box", "data": {"columns": "4", "items": [
+               {"icon": "↩️", "title": "ضمانت بازگشت", "text": "تا ۷ روز، بی‌قید و شرط"},
+               {"icon": "💳", "title": "پرداخت امن", "text": "درگاه رسمی + رمز پویا"},
+               {"icon": "🎧", "title": "پشتیبانی", "text": "پاسخ زیر ۲۴ ساعت کاری"},
+               {"icon": "♾️", "title": "دسترسی دائمی", "text": "برای همیشه در پنل شما"}]}}]]},
+
+  {"id": "demo_related", "settings": {"gap": 24, "py": 50},
+   "cols": [[{"id": "drel1", "type": "related_products", "data": {
+     "title": "بلوک محصولات مرتبط (داینامیک)", "subtitle": "از فروشگاه واقعی سایت", "limit": "4", "columns": "4"}}]]},
+
+  {"id": "demo_dark", "settings": {"gap": 14, "py": 40, "bg": "#0b1220", "radius": 24},
+   "cols": [[{"id": "dd1", "type": "heading", "data": {"text": "حالت تیره فعال است 🌙", "tag": "h3", "align": "center", "color": "#e8edf7"}},
+             {"id": "dd2", "type": "text", "data": {"content": "این سکشن با پس‌زمینهٔ تیرهٔ دستی ساخته شده — سوییچ حالت تیرهٔ سراسری هم با هر دکمه‌ای که ویژگی data-theme-toggle داشته باشد فعال می‌شود.", "align": "center", "color": "#aebbd2"}},
+             {"id": "dd3", "type": "html", "data": {"code": "<div style=\"text-align:center\"><span class=\"ds-theme-toggle\" role=\"button\" tabindex=\"0\">🌓</span></div>"}}]]}
+]

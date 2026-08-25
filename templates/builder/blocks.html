@@ -45,8 +45,12 @@
 {%- if s.get('bg') %}background:{{ s.bg }};{% endif -%}
 {%- if s.get('width') %}width:{{ s.width }};max-width:100%;{% endif -%}
 {%- if s.get('radius') %}border-radius:{{ s.radius }}px;{% endif -%}
+{%- if s.get('shadow') %}box-shadow:{{ {'sm': 'var(--ds-shadow-sm)', 'md': 'var(--ds-shadow-md)', 'lg': 'var(--ds-shadow-lg)', 'brand': 'var(--ds-shadow-brand)'} .get(s.shadow, 'var(--ds-shadow-md)') }};{% endif -%}
+{%- if s.get('border') %}border:1.5px solid {{ s.border }};{% endif -%}
 {%- if s.get('pt') %}padding-top:{{ s.pt }}px;{% endif -%}
 {%- if s.get('pb') %}padding-bottom:{{ s.pb }}px;{% endif -%}
+{%- if s.get('pl') %}padding-left:{{ s.pl }}px;{% endif -%}
+{%- if s.get('pr') %}padding-right:{{ s.pr }}px;{% endif -%}
 {%- if s.get('mt') %}margin-top:{{ s.mt }}px;{% endif -%}
 {%- if s.get('mb') %}margin-bottom:{{ s.mb }}px;{% endif -%}
 {% endmacro %}
@@ -56,7 +60,7 @@
 {% set rs = row.settings if row.settings is mapping else {} %}
 {% set ncols = row.cols|length %}
 {% set widths = (rs.get('widths') or '').strip() %}
-<div class="pb-row {{ 'pb-hidden-m' if rs.get('hide_mobile') }} {{ 'pb-hidden-d' if rs.get('hide_desktop') }} {{ 'pb-row-edit' if edit }} {{ 'pb-row-locked' if rs.get('locked') }} {{ rs.get('css_class') or '' }}"
+<div class="pb-row {{ 'pb-hidden-m' if rs.get('hide_mobile') }} {{ 'pb-hidden-t' if rs.get('hide_tablet') }} {{ 'pb-hidden-d' if rs.get('hide_desktop') }} {{ 'pb-row-edit' if edit }} {{ 'pb-row-locked' if rs.get('locked') }} {{ rs.get('css_class') or '' }}"
      data-row="{{ row.id }}" {{ 'data-edit' if edit }}{% if rs.get('css_id') %} id="{{ rs['css_id'] }}"{% endif %}
      style="{% if rs.get('bg') %}background:{{ rs.bg }};{% endif %}{% if rs.get('bg_image') %}background-image:url('{{ img_url(rs.bg_image) }}');background-size:cover;background-position:center;{% endif %}{% if rs.get('radius') %}border-radius:{{ rs.radius }}px;{% endif %}{% if rs.get('py') %}padding-top:{{ rs.py }}px;padding-bottom:{{ rs.py }}px;{% endif %}{% if rs.get('pt') %}padding-top:{{ rs.pt }}px;{% endif %}{% if rs.get('pb') %}padding-bottom:{{ rs.pb }}px;{% endif %}{% if rs.get('mt') %}margin-top:{{ rs.mt }}px;{% endif %}{% if rs.get('mb') %}margin-bottom:{{ rs.mb }}px;{% endif %}">
   {% if edit %}
@@ -71,6 +75,7 @@
     <span class="pb-row-label">ردیف — {{ ncols }} ستون</span>
     {% if rs.get('locked') %}<span class="pb-hidden-badge">🔒 قفل</span>{% endif %}
     {% if rs.get('hide_mobile') %}<span class="pb-hidden-badge">📱 مخفی در موبایل</span>{% endif %}
+    {% if rs.get('hide_tablet') %}<span class="pb-hidden-badge">📲 مخفی در تبلت</span>{% endif %}
     {% if rs.get('hide_desktop') %}<span class="pb-hidden-badge">🖥 مخفی در دسکتاپ</span>{% endif %}
   </div>
   {% endif %}
@@ -106,7 +111,7 @@
   <div class="pb-widget-body">{{ _block_inner(b, d, edit) }}</div>
 </div>
 {% else %}
-  <div class="pb-widget-out {{ 'pb-hidden-m' if d.get('hide_mobile') }} {{ 'pb-hidden-d' if d.get('hide_desktop') }} {{ wcls }}" {% if wid %}id="{{ wid }}"{% endif %} style="{{ widget_style(d) }}">
+  <div class="pb-widget-out {{ 'pb-hidden-m' if d.get('hide_mobile') }} {{ 'pb-hidden-t' if d.get('hide_tablet') }} {{ 'pb-hidden-d' if d.get('hide_desktop') }} {{ wcls }}" {% if wid %}id="{{ wid }}"{% endif %} style="{{ widget_style(d) }}">
   {{ _block_inner(b, d, edit) }}
   </div>
 {% endif %}
@@ -500,6 +505,381 @@
     </div>
     {% endfor %}
   </div>
+
+{% elif t == 'brand_intro' %}
+  {% set rev = d.layout == 'image-right' %}
+  {% set stt = site_stats() %}
+  <div class="ds-split {{ 'reverse' if rev }}">
+    <div class="ds-split-copy">
+      {% if d.eyebrow %}<span class="ds-eyebrow">{{ d.eyebrow }}</span>{% endif %}
+      {% if d.title %}<h2 class="ds-h2" style="margin-bottom:12px">{{ d.title }}</h2>{% endif %}
+      {% if d.subtitle %}<p class="ds-lead" style="margin-bottom:18px">{{ d.subtitle }}</p>{% endif %}
+      {% if d.points %}
+      <ul class="ds-points" style="margin-bottom:22px">
+        {% for pt in d.points.split('\n') if pt.strip() %}
+        <li><span class="tick">✓</span><span>{{ pt.strip() }}</span></li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+      {% if d.btn_text and d.btn_url or d.btn2_text and d.btn2_url %}
+      <div class="ds-btn-group" style="margin-bottom:22px">
+        {% if d.btn_text and d.btn_url %}<a class="btn btn-{{ d.btn_style or 'primary' }} btn-lg" href="{{ d.btn_url }}">{{ d.btn_text }}</a>{% endif %}
+        {% if d.btn2_text and d.btn2_url %}<a class="btn btn-outline-primary btn-lg" href="{{ d.btn2_url }}">{{ d.btn2_text }}</a>{% endif %}
+      </div>
+      {% endif %}
+      {% if d.get('stats') %}
+      <div class="ds-mini-stats">
+        {% for st in d.get('stats') if st is mapping %}
+        {% set v = (st.value or '')|string %}
+        {% if '{' in v %}{% set v = v.replace('{students}', fa(stt.students or 0)).replace('{courses}', fa(stt.courses or 0)).replace('{lessons}', fa(stt.lessons or 0)).replace('{hours}', fa(stt.hours or 0)).replace('{teachers}', fa(stt.teachers or 0)) %}{% endif %}
+        <div class="ds-mini-stat">{% if st.icon %}<span class="ic">{{ st.icon }}</span>{% endif %}<div><b>{{ v }}</b><small>{{ st.label }}</small></div></div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+    <div class="ds-split-media ds-brand-media">
+      {% if d.video %}
+        <video src="{{ safe_embed_url(d.video) }}" controls preload="metadata" playsinline style="width:100%;aspect-ratio:4/3;object-fit:cover;display:block"></video>
+      {% elif d.media %}
+        <img src="{{ img_url(d.media) }}" alt="{{ d.title or '' }}" loading="lazy" decoding="async">
+        {% if d.media_badge_value %}
+        <span class="ds-brand-float"><span class="n">{{ d.media_badge_value }}</span><small>{{ d.media_badge_label }}</small></span>
+        {% endif %}
+      {% elif edit %}<div class="pb-empty-widget">تصویر یا ویدیوی بخش را از تب محتوا انتخاب کنید</div>{% endif %}
+    </div>
+  </div>
+
+{% elif t == 'instructor' %}
+  <div class="ds-teacher">
+    <div class="ds-teacher-side">
+      <div class="ds-card ds-teacher-card">
+        {% if d.avatar %}
+          <img src="{{ img_url(d.avatar) }}" alt="{{ d.name or 'مدرس' }}" style="width:96px;height:96px;border-radius:50%;object-fit:cover;box-shadow:var(--ds-shadow-md)">
+        {% else %}
+          <span class="avatar avatar-lg" style="background:var(--grad-brand);width:96px;height:96px;font-size:32px">{{ (d.name or 'م')[:1] }}</span>
+        {% endif %}
+        <h3>{{ d.name or 'نام مدرس' }}</h3>
+        {% if d.role %}<span class="role">{{ d.role }}</span>{% endif %}
+        {% if d.get('stats') %}
+        <div class="ds-teacher-rows">
+          {% for st in d.get('stats') if st is mapping %}
+          <div><b>{{ st.value }}</b><small>{{ st.label }}</small></div>
+          {% endfor %}
+        </div>
+        {% endif %}
+        {% if d.get('socials') %}
+        <div class="ds-row ds-center" style="gap:8px">
+          {% for so in d.get('socials') if so is mapping %}{% if so.url %}<a class="btn btn-icon btn-soft" href="{{ so.url }}" title="{{ so.icon or '' }}">{{ so.icon or '🔗' }}</a>{% endif %}{% endfor %}
+        </div>
+        {% endif %}
+        {% if d.btn_text and d.btn_url %}<a class="btn btn-primary btn-block" href="{{ d.btn_url }}">{{ d.btn_text }}</a>{% endif %}
+      </div>
+    </div>
+    <div>
+      {% if d.title %}<span class="ds-eyebrow">{{ d.title }}</span>{% endif %}
+      <h2 class="ds-h3" style="margin-bottom:14px">{{ d.name or 'معرفی مدرس' }}</h2>
+      {% if d.bio %}<p class="ds-teacher-bio">{{ nl2br(d.bio) }}</p>{% endif %}
+      {% if d.cv %}
+      <ul class="ds-points" style="margin-top:18px">
+        {% for li in d.cv.split('\n') if li.strip() %}
+        <li><span class="tick">★</span><span>{{ li.strip() }}</span></li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+    </div>
+  </div>
+
+{% elif t == 'curriculum' %}
+  {% set cur_course = bc_current_course() if d.source == 'current' else none %}
+  {% set chapters = d.get('chapters') or [] %}
+  <div class="ds-section-head ds-start" style="margin-bottom:22px">
+    {% if d.title %}<h2 style="font-size:var(--ds-fs-3xl);font-weight:800">{{ d.title }}</h2>{% endif %}
+    {% if d.subtitle %}<p>{{ d.subtitle }}</p>{% endif %}
+  </div>
+  <div class="ds-curric">
+    {% if cur_course and cur_course.sections %}
+      {% for sec in cur_course.sections %}
+      <details class="ds-curric-item" {{ 'open' if loop.first }}>
+        <summary class="ds-curric-head"><span class="ch-ic">▸</span><span>{{ sec.title }}</span>
+          <span class="ch-meta"><span>{{ fa(sec.lessons|length) }} جلسه</span></span>
+        </summary>
+        <div>
+          {% for ls in sec.lessons %}
+          {% set dur = (ls.duration or '')[:5] if (ls.duration or '').startswith('00:') else (ls.duration or '') %}
+          <div class="ds-lesson"><span class="l-ic">▶</span><span>{{ ls.title }}</span>
+            {% if ls.is_free %}<span class="l-free">پیش‌نمایش رایگان</span>{% endif %}
+            {% if dur %}<span class="l-len">{{ dur }}</span>{% endif %}
+          </div>
+          {% endfor %}
+        </div>
+      </details>
+      {% endfor %}
+    {% elif chapters %}
+      {% for ch in chapters if ch is mapping %}
+      <details class="ds-curric-item" {{ 'open' if (d.open_first and loop.first) }}>
+        <summary class="ds-curric-head"><span class="ch-ic">▸</span><span>{{ ch.title }}</span></summary>
+        <div>
+          {% for ln in (ch.lessons or '').split('\n') if ln.strip() %}
+          {% set parts = ln.strip().split('|') %}
+          <div class="ds-lesson"><span class="l-ic">▶</span><span>{{ parts[0].strip() }}</span>{% if parts|length > 1 and parts[1].strip() %}<span class="l-len">{{ parts[1].strip() }}</span>{% endif %}</div>
+          {% endfor %}
+        </div>
+      </details>
+      {% endfor %}
+    {% else %}
+      <div class="pb-empty-widget">📋 فصل‌ها را از تب محتوا اضافه کنید یا منبع را روی «دورهٔ فعلی» بگذارید</div>
+    {% endif %}
+  </div>
+  {% if d.btn_text and d.btn_url %}<div class="text-center mt-3"><a class="btn btn-primary btn-lg" href="{{ d.btn_url }}">{{ d.btn_text }}</a></div>{% endif %}
+
+{% elif t == 'learning_path' %}
+  {% set cols = d.columns or '4' %}
+  {% if d.eyebrow or d.title %}
+  <div class="ds-section-head">
+    {% if d.eyebrow %}<span class="ds-eyebrow">{{ d.eyebrow }}</span>{% endif %}
+    {% if d.title %}<h2 style="font-size:var(--ds-fs-4xl);font-weight:800">{{ d.title }}</h2>{% endif %}
+    {% if d.subtitle %}<p>{{ d.subtitle }}</p>{% endif %}
+  </div>
+  {% endif %}
+  <div class="ds-path" style="--path-cols:{{ cols }}">
+    {% for st in d.get('steps') or [] if st is mapping %}
+    <div class="ds-path-step {{ st.state or '' }}">
+      <span class="dot">{% if st.state == 'done' %}✓{% else %}{{ fa(loop.index) }}{% endif %}</span>
+      <div class="ds-path-body">
+        <h4>{{ st.title }}</h4>
+        <p>{{ st.text }}</p>
+        {% if st.chip %}<span class="ds-chip">{{ st.chip }}</span>{% endif %}
+      </div>
+    </div>
+    {% endfor %}
+    {% if not d.get('steps') %}<div class="pb-empty-widget">🗺 گام‌های مسیر یادگیری را از تب محتوا اضافه کنید</div>{% endif %}
+  </div>
+
+{% elif t == 'timeline' %}
+  {% if d.title %}
+  <div class="ds-section-head">
+    {% if d.eyebrow %}<span class="ds-eyebrow">{{ d.eyebrow }}</span>{% endif %}
+    <h2 style="font-size:var(--ds-fs-4xl);font-weight:800">{{ d.title }}</h2>
+  </div>
+  {% endif %}
+  <div class="ds-timeline {{ 'center' if d.align == 'center' }}">
+    {% for it in d.get('items') or [] if it is mapping %}
+    <div class="ds-tl-item">
+      {% if it.date %}<span class="tl-date">{{ it.date }}</span>{% endif %}
+      <h4>{{ it.title }}</h4>
+      <p>{{ it.text }}</p>
+    </div>
+    {% endfor %}
+    {% if not d.get('items') %}<div class="pb-empty-widget">🕐 رویدادهای تایم‌لاین را اضافه کنید</div>{% endif %}
+  </div>
+
+{% elif t == 'plans_compare' %}
+  {% set plans = d.get('plans') or [] %}
+  {% set rows = d.get('rows') or '' %}
+  {% if d.title %}
+  <div class="ds-section-head">
+    <h2 style="font-size:var(--ds-fs-4xl);font-weight:800">{{ d.title }}</h2>
+    {% if d.subtitle %}<p>{{ d.subtitle }}</p>{% endif %}
+  </div>
+  {% endif %}
+  {% if plans %}
+  <div class="ds-compare-wrap">
+    <table class="ds-compare">
+      <thead>
+        <tr>
+          <th>ویژگی‌ها</th>
+          {% for pl in plans if pl is mapping %}
+          <th class="{{ 'best' if pl.best }}">
+            {% if pl.best %}<span class="ds-tag">⭐ پیشنهاد ما</span>{% endif %}
+            <div style="font-weight:800;font-size:16px;margin-top:4px">{{ pl.name }}</div>
+            <div style="font-weight:900;color:var(--primary);margin-top:3px">{{ pl.price }}</div>
+          </th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for line in rows.split('\n') if line.strip() %}
+        {% set cells = line.strip().split('|') %}
+        <tr>
+          <td>{{ cells[0].strip() }}</td>
+          {% for pl in plans if pl is mapping %}
+          {% set val = cells[loop.index].strip() if cells|length > loop.index else '' %}
+          <td>{% if val == '1' or val == 'yes' or val == '✓' %}<span class="yes">✓</span>{% elif val == '0' or val == 'no' or val == '✗' %}<span class="no">—</span>{% else %}{{ val }}{% endif %}</td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td></td>
+          {% for pl in plans if pl is mapping %}
+          <td>{% if pl.btn_url %}<a class="btn {{ 'btn-primary' if pl.best else 'btn-outline-primary' }} btn-block" href="{{ pl.btn_url }}">{{ pl.btn_text or 'انتخاب' }}</a>{% endif %}</td>
+          {% endfor %}
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+  {% else %}<div class="pb-empty-widget">⚖️ پلن‌ها را از تب محتوا اضافه کنید</div>{% endif %}
+
+{% elif t == 'membership' %}
+  {% set cols = d.columns or '3' %}
+  <div class="ds-section-head">
+    {% if d.eyebrow %}<span class="ds-eyebrow">{{ d.eyebrow }}</span>{% endif %}
+    {% if d.title %}<h2 style="font-size:var(--ds-fs-4xl);font-weight:800">{{ d.title }}</h2>{% endif %}
+    {% if d.subtitle %}<p>{{ d.subtitle }}</p>{% endif %}
+  </div>
+  <div class="ds-grid cols-{{ cols }}">
+    {% for pl in d.get('plans') or [] if pl is mapping %}
+    <div class="ds-plan {{ 'best' if pl.best }}">
+      {% if pl.ribbon %}<span class="ribbon">{{ pl.ribbon }}</span>{% endif %}
+      <div class="p-name">{{ pl.name }}</div>
+      {% if pl.desc %}<div class="p-desc">{{ pl.desc }}</div>{% endif %}
+      <div class="p-price"><b>{{ pl.price }}</b><span>{{ pl.period }}</span></div>
+      {% if pl.old_price %}<span class="p-old">{{ pl.old_price }}</span>{% endif %}
+      <ul>
+        {% for f in (pl.features or '').split('\n') if f.strip() %}<li>{{ f.strip() }}</li>{% endfor %}
+      </ul>
+      {% if pl.btn_url %}<a class="btn {{ 'btn-primary' if pl.best else 'btn-outline-primary' }} btn-block btn-lg" href="{{ pl.btn_url }}">{{ pl.btn_text or 'انتخاب پلن' }}</a>{% endif %}
+    </div>
+    {% endfor %}
+    {% if not d.get('plans') %}<div class="pb-empty-widget">💎 پلن‌های عضویت را اضافه کنید</div>{% endif %}
+  </div>
+
+{% elif t == 'discount_banner' %}
+  <div class="ds-offer-banner" style="{{ ('background:' ~ d.bg) if d.bg }}">
+    <div class="ds-offer-main">
+      {% if d.badge %}<span class="ds-offer-badge">🔥 {{ d.badge }}</span>{% endif %}
+      {% if d.title %}<h2>{{ d.title }}</h2>{% endif %}
+      {% if d.text %}<p>{{ d.text }}</p>{% endif %}
+    </div>
+    <div class="ds-offer-side">
+      {% if d.get('show_countdown') and d.target %}
+      {% set secs = countdown_secs(d.target) %}
+      <div class="ds-count" data-countdown="{{ secs }}">
+        <div class="cd"><b class="cd-h">00</b><small>ساعت</small></div>
+        <div class="cd"><b class="cd-m">00</b><small>دقیقه</small></div>
+        <div class="cd"><b class="cd-s">00</b><small>ثانیه</small></div>
+      </div>
+      {% endif %}
+      {% if d.coupon %}<button type="button" class="ds-coupon" data-copy="{{ d.coupon }}" title="کپی کد تخفیف">{{ d.coupon }}<small>برای کپی کلیک کنید</small></button>{% endif %}
+      {% if d.btn_text and d.btn_url %}<a class="btn btn-white btn-xl" href="{{ d.btn_url }}">{{ d.btn_text }}</a>{% endif %}
+    </div>
+  </div>
+
+{% elif t == 'file_download' %}
+  {% set cols = d.columns or '2' %}
+  {% if d.title %}<div class="ds-section-head"><h2 style="font-size:var(--ds-fs-3xl);font-weight:800">{{ d.title }}</h2></div>{% endif %}
+  <div class="ds-grid cols-{{ cols }}">
+    {% for fl in d.get('items') or [] if fl is mapping %}
+    <a class="ds-file" href="{{ fl.url or '#' }}" {{ 'download' if fl.url }}>
+      <span class="f-ic">{{ fl.icon or '📄' }}</span>
+      <div class="f-info">
+        <h4>{{ fl.title }}</h4>
+        <div class="f-meta">
+          {% if fl.ext %}<span class="ds-tag">{{ fl.ext }}</span>{% endif %}
+          {% if fl.size %}<span class="ds-tag">{{ fl.size }}</span>{% endif %}
+          {% if fl.desc %}<small class="text-3">{{ fl.desc }}</small>{% endif %}
+        </div>
+      </div>
+      <span class="btn btn-icon btn-soft">⬇</span>
+    </a>
+    {% endfor %}
+    {% if not d.get('items') %}<div class="pb-empty-widget">📥 فایل‌ها را از تب محتوا اضافه کنید</div>{% endif %}
+  </div>
+
+{% elif t == 'certificates' %}
+  {% set cols = d.columns or '3' %}
+  <div class="ds-section-head">
+    {% if d.eyebrow %}<span class="ds-eyebrow">{{ d.eyebrow }}</span>{% endif %}
+    {% if d.title %}<h2 style="font-size:var(--ds-fs-4xl);font-weight:800">{{ d.title }}</h2>{% endif %}
+    {% if d.subtitle %}<p>{{ d.subtitle }}</p>{% endif %}
+  </div>
+  <div class="ds-grid cols-{{ cols }}">
+    {% for ct in d.get('items') or [] if ct is mapping %}
+    <div class="ds-cert">
+      <div class="c-img">{% if ct.image %}<img src="{{ img_url(ct.image) }}" alt="{{ ct.title or '' }}" loading="lazy" style="width:100%;height:100%;object-fit:cover">{% else %}{{ ct.icon or '🏅' }}{% endif %}</div>
+      <div class="c-body">
+        <h4>{{ ct.title }}</h4>
+        <p>{{ ct.text }}</p>
+      </div>
+    </div>
+    {% endfor %}
+    {% if not d.get('items') %}<div class="pb-empty-widget">🏅 گواهی‌ها را اضافه کنید</div>{% endif %}
+  </div>
+  {% if d.verify_text %}<div class="text-center mt-3"><a class="btn btn-outline-primary btn-lg" href="{{ d.verify_url or url_for('site.verify_certificate') }}">🛡 {{ d.verify_text }}</a></div>{% endif %}
+
+{% elif t == 'trust_box' %}
+  <div class="ds-trustbox" style="grid-template-columns:repeat(auto-fit,minmax({{ {'2':'420','3':'280','4':'210'}.get(d.columns or '3','280') }}px,1fr))">
+    {% for it in d.get('items') or [] if it is mapping %}
+    <div class="ds-trust-item">
+      <span class="ic">{{ it.icon or '🛡️' }}</span>
+      <div><b>{{ it.title }}</b><p>{{ it.text }}</p></div>
+    </div>
+    {% endfor %}
+    {% if not d.get('items') %}<div class="pb-empty-widget">🛡️ آیتم‌های اعتمادسازی را اضافه کنید</div>{% endif %}
+  </div>
+
+{% elif t == 'special_offers' %}
+  {% set offs = builder_special_offers(d) %}
+  <div class="ds-section-head">
+    {% if d.title %}<h2 style="font-size:var(--ds-fs-4xl);font-weight:800">🔥 {{ d.title }}</h2>{% endif %}
+    {% if d.subtitle %}<p>{{ d.subtitle }}</p>{% endif %}
+  </div>
+  {% if offs %}
+  <div class="ds-grid cols-{{ d.columns or '4' }}">
+    {% for c in offs %}
+    <article class="card course-card card-hover">
+      <div class="thumb">
+        <a href="{{ url_for('site.course_detail', slug=c.slug) }}"><img src="{{ c.image_url }}" alt="{{ c.title }}" loading="lazy"></a>
+        <div class="badges"><span class="discount-flag">٪{{ fa(c.discount_percent) }} تخفیف</span></div>
+      </div>
+      <div class="body">
+        <span class="cat">{{ c.category.name if c.category else 'دوره' }}</span>
+        <h3><a href="{{ url_for('site.course_detail', slug=c.slug) }}">{{ c.title }}</a></h3>
+        <div class="foot">
+          <div class="ds-price off">
+            <span class="old">{{ fa('{:,.0f}'.format(c.price)) }}</span>
+            <span class="now">{{ fa('{:,.0f}'.format(c.final_price)) }} <small>تومان</small></span>
+          </div>
+          <a class="btn btn-primary btn-sm" href="{{ url_for('site.course_detail', slug=c.slug) }}">مشاهده</a>
+        </div>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+  {% if d.btn_text and d.btn_url %}<div class="text-center mt-3"><a class="btn btn-outline-primary btn-lg" href="{{ d.btn_url }}">{{ d.btn_text }}</a></div>{% endif %}
+  {% else %}<div class="pb-empty-widget">🔥 هنوز دورهٔ تخفیف‌داری منتشر نشده است — با فعال‌کردن تخفیف دوره‌ها این بخش پر می‌شود</div>{% endif %}
+
+{% elif t == 'related_products' %}
+  {% set prods = builder_related_products(d) %}
+  <div class="ds-section-head">
+    {% if d.title %}<h2 style="font-size:var(--ds-fs-4xl);font-weight:800">{{ d.title }}</h2>{% endif %}
+    {% if d.subtitle %}<p>{{ d.subtitle }}</p>{% endif %}
+  </div>
+  {% if prods %}
+  <div class="ds-grid cols-{{ d.columns or '4' }}">
+    {% for p in prods %}
+    {% set poff = (((p.price - p.final_price) * 100 / p.price)|round|int) if p.has_discount and p.price else 0 %}
+    <article class="card course-card card-hover">
+      <div class="thumb">
+        <a href="{{ url_for('products.product_detail', slug=p.slug) }}">{% if p.image_url %}<img src="{{ p.image_url }}" alt="{{ p.title }}" loading="lazy">{% endif %}</a>
+        {% if poff %}<div class="badges"><span class="discount-flag">٪{{ fa(poff) }} تخفیف</span></div>{% endif %}
+      </div>
+      <div class="body">
+        <span class="cat">{{ p.category or 'محصول' }}</span>
+        <h3><a href="{{ url_for('products.product_detail', slug=p.slug) }}">{{ p.title }}</a></h3>
+        <div class="foot">
+          <div class="ds-price {{ 'off' if poff }}">
+            {% if poff %}<span class="old">{{ fa('{:,.0f}'.format(p.price)) }}</span>{% endif %}
+            <span class="now">{{ fa('{:,.0f}'.format(p.final_price)) }} <small>تومان</small></span>
+          </div>
+          <a class="btn btn-primary btn-sm" href="{{ url_for('products.product_detail', slug=p.slug) }}">مشاهده</a>
+        </div>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}<div class="pb-empty-widget">🧩 محصول مرتبطی برای نمایش نیست — از پنل مدیریت محصول اضافه کنید</div>{% endif %}
 
 {% elif t == 'pricing' %}
   <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:22px">

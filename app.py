@@ -546,6 +546,7 @@ def create_app():
     from blueprints.builder import (builder_bp, builder_courses, builder_categories,
                                     builder_posts, builder_teachers, builder_products,
                                     builder_shop_products, builder_bundles,
+                                    builder_special_offers, builder_related_products,
                                     bc_verify_result,
                                     render_dynamic, render_shortcodes, uniq_cats)
     from models import Course as _CourseModel
@@ -669,6 +670,10 @@ def create_app():
     app.jinja_env.globals['builder_products'] = builder_products
     app.jinja_env.globals['builder_shop_products'] = builder_shop_products
     app.jinja_env.globals['builder_bundles'] = builder_bundles
+    app.jinja_env.globals['builder_special_offers'] = builder_special_offers
+    app.jinja_env.globals['builder_related_products'] = builder_related_products
+    from blueprints.builder import countdown_secs as _cd_secs
+    app.jinja_env.globals['countdown_secs'] = _cd_secs
     app.jinja_env.globals['rd'] = render_dynamic
     app.jinja_env.globals['rshort'] = render_shortcodes
     from blueprints.builder import bc_menu

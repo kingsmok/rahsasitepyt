@@ -2,6 +2,18 @@
 <html lang="fa" dir="rtl">
 <head>
   <meta charset="UTF-8">
+  <!-- اعمال زودهنگام حالت روشن/تیره — قبل از لود CSS تا فلاش سفید (FOUC) نداشته باشیم -->
+  <script>
+  (function () {
+    try {
+      var t = null;
+      try { t = localStorage.getItem('ds-theme'); } catch (e) { /* noop */ }
+      if (t !== 'dark' && t !== 'light' && window.matchMedia &&
+          window.matchMedia('(prefers-color-scheme: dark)').matches) t = 'dark';
+      if (t === 'dark' || t === 'light') document.documentElement.dataset.theme = t;
+    } catch (e) { /* noop */ }
+  })();
+  </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}{{ seo.title or (site.site_name ~ ' — ' ~ site.site_desc if site.site_desc else site.site_name) }}{% endblock %}</title>
   <meta name="description" content="{% block description %}{{ seo.description or site.site_desc or '' }}{% endblock %}">
@@ -56,6 +68,7 @@
   {% endif %}
   <link rel="stylesheet" href="{{ asset('css/builder.css') }}">
   <link id="theme-css" rel="stylesheet" href="/static/css/themes/{{ theme }}.css?v={{ asset_v() }}">
+  <link rel="stylesheet" href="{{ asset('css/design-system.css') }}">
   {% set _brand1 = site.brand_color|css_color %}{% set _brand2 = site.brand_color2|css_color %}
   {% if _brand1 %}<style>:root{--primary:{{ _brand1 }};--primary-2:{{ _brand2 or _brand1 }};--primary-soft:{{ _brand1 }}24;--grad-brand:linear-gradient(135deg,{{ _brand1 }},{{ _brand2 or _brand1 }});--theme-color:{{ _brand1 }}}@supports (color:color-mix(in srgb, red, white)){:root{--primary-soft:color-mix(in srgb, {{ _brand1 }} 14%, #ffffff)}}</style>{% endif %}
   {% set _font = site.get('custom_font_url') or '' %}

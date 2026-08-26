@@ -64,15 +64,17 @@
 <div class="panel">
   <h3><span class="ic">▶️</span> ادامه یادگیری</h3>
   {% for e in in_progress[:3] %}
-  <a class="cart-row" href="{{ url_for('student.learn', course_id=e.course_id) }}" style="border:1px solid var(--border);border-radius:14px;margin-bottom:12px;display:flex">
-    <img class="c-thumb" src="{{ e.course.image_url }}" alt="">
+  <a class="cart-row ds-continue-row" href="{{ url_for('student.learn', course_id=e.course_id) }}" style="border:1px solid var(--border);border-radius:var(--ds-radius-md);margin-bottom:12px;display:flex;transition:all var(--ds-t)">
+    <img class="c-thumb" src="{{ e.course.image_url if e.course else '/static/img/course-placeholder.webp' }}" alt="">
     <div class="c-info">
-      <h4>{{ e.course.title }}</h4>
-      <div class="progress" style="margin-top:6px;max-width:400px"><div class="bar" style="width:{{ e.percent }}%"></div></div>
+      <h4>{{ e.course.title if e.course else 'دوره (حذفشده)' }}</h4>
+      {% if e.course %}
+      <div class="ds-progress-label"><span>{{ fa(e.progress_list()|length) }} از {{ fa(e.course.lesson_count) }} جلسه</span><span>{{ fa(e.percent) }}٪</span></div>
+      <div class="ds-progress" style="max-width:420px"><i style="width:{{ e.percent }}%"></i></div>
+      {% endif %}
     </div>
-    <div style="text-align:left">
-      <span class="badge badge-primary">{{ fa(e.percent) }}٪</span>
-      <div class="text-3 mt-1" style="font-size:12px">ادامه ←</div>
+    <div style="text-align:left;align-self:center">
+      <span class="btn btn-primary btn-sm">{{ icon('play', 14) }} ادامه</span>
     </div>
   </a>
   {% endfor %}

@@ -1031,9 +1031,14 @@ function buildWidgetStyle(f) {
     + groupHead('رنگ‌ها', null, true)
     + '<div class="pb-control"><label>رنگ متن</label><div class="pb-color-row"><input type="color" data-style="color" value="' + (s.color || '#0f172a') + '"><input type="text" data-style="color" value="' + esc(s.color || '') + '" placeholder="#0f172a"></div></div>'
     + '<div class="pb-control"><label>رنگ پس‌زمینه</label><div class="pb-color-row"><input type="color" data-style="bg" value="' + (s.bg || '#ffffff') + '"><input type="text" data-style="bg" value="' + esc(s.bg || '') + '" placeholder="—"></div></div>'
+    + '<div class="pb-control"><label>رنگ حاشیه (Border)</label><div class="pb-color-row"><input type="color" data-style="border" value="' + (s.border || '#e2e8f0') + '"><input type="text" data-style="border" value="' + esc(s.border || '') + '" placeholder="—"></div></div>'
     + '</div></div>'
-    + groupHead('فاصله‌گذاری', null, true)
+    + groupHead('فاصله‌گذاری و گوشه‌ها', null, true)
     + '<div class="pb-control"><label>گردی گوشه (px)</label><input type="number" data-style="radius" value="' + esc(s.radius || '') + '" placeholder="0"></div>'
+    + '<div class="pb-control"><label>سایه (Shadow)</label><select data-style="shadow">'
+    + [['', 'بدون سایه'], ['sm', 'ملایم'], ['md', 'متوسط'], ['lg', 'برجسته'], ['brand', 'رنگی برند']].map(function (o) {
+      return '<option value="' + o[0] + '" ' + ((s.shadow || '') === o[0] ? 'selected' : '') + '>' + o[1] + '</option>';
+    }).join('') + '</select></div>'
     + num4('m', 'حاشیه بیرونی (Margin — px)')
     + num4('p', 'حاشیه داخلی (Padding — px)')
     + '</div></div>';
@@ -1049,6 +1054,7 @@ function buildWidgetAdvanced(f) {
   var html = '<div class="pb-tabs-inner">'
     + groupHead('نمایش در دستگاه‌ها', null, true)
     + '<div class="pb-control"><label class="pb-check"><input type="checkbox" data-field="hide_mobile" ' + (d.hide_mobile ? 'checked' : '') + '><span class="pb-checkbox">✓</span> مخفی کردن در موبایل</label></div>'
+    + '<div class="pb-control"><label class="pb-check"><input type="checkbox" data-field="hide_tablet" ' + (d.hide_tablet ? 'checked' : '') + '><span class="pb-checkbox">✓</span> مخفی کردن در تبلت</label></div>'
     + '<div class="pb-control"><label class="pb-check"><input type="checkbox" data-field="hide_desktop" ' + (d.hide_desktop ? 'checked' : '') + '><span class="pb-checkbox">✓</span> مخفی کردن در دسکتاپ</label></div>'
     + '</div></div>'
     + groupHead('افکت‌ها و شناسه‌ها', null, true)
@@ -1088,10 +1094,11 @@ function buildRowPanel(f) {
       + '</div></div></div></div>';
   } else if (panelTab === 'advanced') {
     html += '<div class="pb-tabs-inner">'
-      + groupHead('نمایش در دستگاه‌ها', null, true)
-      + '<div class="pb-control"><label class="pb-check"><input type="checkbox" data-rs="hide_mobile" ' + (rs.hide_mobile ? 'checked' : '') + '><span class="pb-checkbox">✓</span> مخفی کردن در موبایل</label></div>'
-      + '<div class="pb-control"><label class="pb-check"><input type="checkbox" data-rs="hide_desktop" ' + (rs.hide_desktop ? 'checked' : '') + '><span class="pb-checkbox">✓</span> مخفی کردن در دسکتاپ</label></div>'
-      + '</div></div>'
+    + groupHead('نمایش در دستگاه‌ها', null, true)
+    + '<div class="pb-control"><label class="pb-check"><input type="checkbox" data-rs="hide_mobile" ' + (rs.hide_mobile ? 'checked' : '') + '><span class="pb-checkbox">✓</span> مخفی کردن در موبایل</label></div>'
+    + '<div class="pb-control"><label class="pb-check"><input type="checkbox" data-rs="hide_tablet" ' + (rs.hide_tablet ? 'checked' : '') + '><span class="pb-checkbox">✓</span> مخفی کردن در تبلت</label></div>'
+    + '<div class="pb-control"><label class="pb-check"><input type="checkbox" data-rs="hide_desktop" ' + (rs.hide_desktop ? 'checked' : '') + '><span class="pb-checkbox">✓</span> مخفی کردن در دسکتاپ</label></div>'
+    + '</div></div>'
       + groupHead('شناسه‌ها', null, true)
       + '<div class="pb-control"><label>کلاس CSS سفارشی</label><input type="text" data-rs="css_class" value="' + esc(rs.css_class || '') + '" placeholder="my-row"></div>'
       + '<div class="pb-control"><label>آیدی (ID)</label><input type="text" data-rs="css_id" value="' + esc(rs.css_id || '') + '" placeholder="section-1"></div>'

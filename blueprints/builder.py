@@ -227,6 +227,178 @@ WIDGETS = {
             dict(key='a', label='پاسخ', type='textarea'),
         ]),
     ]),
+    # ============================================================
+    # بلوک‌های دیزاین سیستم v2 — همگی کاملاً قابل ویرایش از صفحه‌ساز
+    # (متن/تیتر/تصویر/رنگ/دکمه/آیکون/چیدمان + استایل و ریسپانسیو از تب استایل)
+    # ============================================================
+    'brand_intro': dict(name='معرفی برند / آکادمی', icon='🏛', cat='adv', desc='تصویر یا ویدیو + متن + امتیازها + آمار کوچک', fields=[
+        dict(key='eyebrow', label='برچسب بالای تیتر', type='text'),
+        dict(key='title', label='تیتر اصلی', type='text'),
+        dict(key='subtitle', label='زیرتیتر', type='textarea'),
+        dict(key='media', label='تصویر', type='image'),
+        dict(key='video', label='ویدیو (به‌جای تصویر)', type='text'),
+        dict(key='media_badge_value', label='مقدار نشان روی تصویر', type='text'),
+        dict(key='media_badge_label', label='برچسب نشان روی تصویر', type='text'),
+        dict(key='points', label='امتیازها (هر خط یکی)', type='textarea'),
+        dict(key='btn_text', label='متن دکمه', type='text'),
+        dict(key='btn_url', label='لینک دکمه', type='text'),
+        dict(key='btn_style', label='استایل دکمه', type='select', options=[('primary', 'اصلی'), ('accent', 'تاکیدی'), ('outline-primary', 'خطی'), ('soft', 'نرم')]),
+        dict(key='btn2_text', label='متن دکمه دوم', type='text'),
+        dict(key='btn2_url', label='لینک دکمه دوم', type='text'),
+        dict(key='layout', label='چیدمان', type='select', options=[('image-left', 'تصویر سمت چپ'), ('image-right', 'تصویر سمت راست')]),
+        dict(key='stats', label='آمار کوچک', type='repeater', item_fields=[
+            dict(key='icon', label='آیکون', type='text'),
+            dict(key='value', label='عدد (پویا: {courses})', type='text'),
+            dict(key='label', label='برچسب', type='text'),
+        ]),
+    ]),
+    'instructor': dict(name='معرفی مدرس', icon='👤', cat='adv', desc='آواتار، بیو، دستاوردها و شبکه‌های اجتماعی', fields=[
+        dict(key='title', label='تیتر بخش', type='text'),
+        dict(key='name', label='نام مدرس', type='text'),
+        dict(key='role', label='عنوان شغلی', type='text'),
+        dict(key='avatar', label='تصویر مدرس', type='image'),
+        dict(key='bio', label='بیوگرافی', type='textarea'),
+        dict(key='cv', label='دستاوردها (هر خط یکی)', type='textarea'),
+        dict(key='stats', label='آمار مدرس', type='repeater', item_fields=[
+            dict(key='value', label='عدد', type='text'),
+            dict(key='label', label='برچسب', type='text'),
+        ]),
+        dict(key='btn_text', label='متن دکمه (دوره‌های مدرس)', type='text'),
+        dict(key='btn_url', label='لینک دکمه', type='text'),
+        dict(key='socials', label='شبکه‌های اجتماعی', type='repeater', item_fields=[
+            dict(key='icon', label='آیکون', type='text'),
+            dict(key='url', label='لینک', type='text'),
+        ]),
+    ]),
+    'curriculum': dict(name='سرفصل دوره / محصول', icon='📋', cat='adv', desc='آکاردئون فصل‌ها و جلسات', fields=[
+        dict(key='title', label='تیتر بخش', type='text'),
+        dict(key='subtitle', label='زیرتیتر', type='text'),
+        dict(key='source', label='منبع سرفصل', type='select', options=[('manual', 'دستی (خودم وارد می‌کنم)'), ('current', 'دورهٔ فعلی (در قالب دوره)')]),
+        dict(key='chapters', label='فصل‌ها', type='repeater', item_fields=[
+            dict(key='title', label='نام فصل', type='text'),
+            dict(key='lessons', label='جلسات (هر خط: عنوان | مدت)', type='textarea'),
+        ]),
+        dict(key='open_first', label='فصل اول باز باشد', type='checkbox'),
+        dict(key='btn_text', label='متن دکمه پایین', type='text'),
+        dict(key='btn_url', label='لینک دکمه', type='text'),
+    ]),
+    'learning_path': dict(name='مسیر یادگیری', icon='🗺', cat='adv', desc='گام‌های متصل یادگیری با دوره‌ها', fields=[
+        dict(key='eyebrow', label='برچسب بالای تیتر', type='text'),
+        dict(key='title', label='تیتر بخش', type='text'),
+        dict(key='subtitle', label='زیرتیتر', type='text'),
+        dict(key='columns', label='تعداد گام در ردیف', type='select', options=[('3', '۳'), ('4', '۴'), ('5', '۵')]),
+        dict(key='steps', label='گام‌ها', type='repeater', item_fields=[
+            dict(key='title', label='عنوان گام', type='text'),
+            dict(key='text', label='توضیح', type='textarea'),
+            dict(key='chip', label='برچسب (مثلا: ۳ دوره)', type='text'),
+            dict(key='state', label='وضعیت', type='select', options=[('', 'عادی'), ('done', 'تکمیل‌شده (سبز)'), ('now', 'فعلی (رنگ اصلی)')]),
+        ]),
+    ]),
+    'timeline': dict(name='تایم‌لاین', icon='🕐', cat='adv', desc='رویدادها به‌صورت خط زمانی عمودی', fields=[
+        dict(key='eyebrow', label='برچسب بالای تیتر', type='text'),
+        dict(key='title', label='تیتر بخش', type='text'),
+        dict(key='align', label='چیدمان', type='select', options=[('start', 'راست‌چین'), ('center', 'وسط‌چین')]),
+        dict(key='items', label='رویدادها', type='repeater', item_fields=[
+            dict(key='date', label='تاریخ / دوره', type='text'),
+            dict(key='title', label='عنوان', type='text'),
+            dict(key='text', label='توضیح', type='textarea'),
+        ]),
+    ]),
+    'plans_compare': dict(name='مقایسهٔ پلن‌ها', icon='⚖️', cat='adv', desc='جدول مقایسهٔ ویژگی‌ها با ستون ویژه', fields=[
+        dict(key='title', label='تیتر بخش', type='text'),
+        dict(key='subtitle', label='زیرتیتر', type='text'),
+        dict(key='plans', label='پلن‌ها', type='repeater', item_fields=[
+            dict(key='name', label='نام پلن', type='text'),
+            dict(key='price', label='قیمت', type='text'),
+            dict(key='btn_text', label='متن دکمه', type='text'),
+            dict(key='btn_url', label='لینک', type='text'),
+            dict(key='best', label='ستون ویژه', type='checkbox'),
+        ]),
+        dict(key='rows', label='ویژگی‌ها (هر خط: عنوان | مقدار۱ | مقدار۲ | ...)', type='textarea'),
+    ]),
+    'membership': dict(name='عضویت ویژه', icon='💎', cat='adv', desc='کارت‌های اشتراک با پلن پیشنهادی', fields=[
+        dict(key='eyebrow', label='برچسب بالای تیتر', type='text'),
+        dict(key='title', label='تیتر بخش', type='text'),
+        dict(key='subtitle', label='زیرتیتر', type='textarea'),
+        dict(key='columns', label='ستون‌ها', type='select', options=[('2', '۲'), ('3', '۳'), ('4', '۴')]),
+        dict(key='plans', label='پلن‌ها', type='repeater', item_fields=[
+            dict(key='name', label='نام پلن', type='text'),
+            dict(key='desc', label='توضیح کوتاه', type='text'),
+            dict(key='price', label='قیمت', type='text'),
+            dict(key='period', label='واحد (ماهانه/سالانه)', type='text'),
+            dict(key='old_price', label='قیمت قبلی (خط‌خورده)', type='text'),
+            dict(key='features', label='ویژگی‌ها (هر خط یکی)', type='textarea'),
+            dict(key='btn_text', label='متن دکمه', type='text'),
+            dict(key='btn_url', label='لینک دکمه', type='text'),
+            dict(key='best', label='پلن پیشنهادی', type='checkbox'),
+            dict(key='ribbon', label='متن روبان', type='text'),
+        ]),
+    ]),
+    'discount_banner': dict(name='بنر تخفیف', icon='🏷️', cat='adv', desc='بنر کمپین با شمارش معکوس و کد تخفیف', fields=[
+        dict(key='badge', label='برچسب (مثلا: ٪۴۰ تخفیف)', type='text'),
+        dict(key='title', label='تیتر', type='text'),
+        dict(key='text', label='توضیح', type='textarea'),
+        dict(key='coupon', label='کد تخفیف', type='text'),
+        dict(key='btn_text', label='متن دکمه', type='text'),
+        dict(key='btn_url', label='لینک دکمه', type='text'),
+        dict(key='target', label='تاریخ پایان (میلادی، مثلا 2026-09-01)', type='text'),
+        dict(key='show_countdown', label='نمایش شمارش معکوس', type='checkbox'),
+        dict(key='bg', label='رنگ پس‌زمینه (خالی = گرادیان برند)', type='color'),
+    ]),
+    'file_download': dict(name='دانلود فایل', icon='📥', cat='adv', desc='کارت فایل قابل دانلود با حجم و فرمت', fields=[
+        dict(key='title', label='تیتر بخش', type='text'),
+        dict(key='items', label='فایل‌ها', type='repeater', item_fields=[
+            dict(key='icon', label='آیکون', type='text'),
+            dict(key='title', label='نام فایل', type='text'),
+            dict(key='desc', label='توضیح', type='text'),
+            dict(key='ext', label='فرمت (PDF)', type='text'),
+            dict(key='size', label='حجم (۲ مگابایت)', type='text'),
+            dict(key='url', label='لینک دانلود', type='text'),
+        ]),
+        dict(key='columns', label='ستون‌ها', type='select', options=[('1', '۱'), ('2', '۲'), ('3', '۳')]),
+    ]),
+    'certificates': dict(name='مدارک و گواهی‌ها', icon='🏅', cat='adv', desc='کارت گواهی‌ها + دکمه استعلام', fields=[
+        dict(key='eyebrow', label='برچسب بالای تیتر', type='text'),
+        dict(key='title', label='تیتر بخش', type='text'),
+        dict(key='subtitle', label='زیرتیتر', type='text'),
+        dict(key='items', label='گواهی‌ها', type='repeater', item_fields=[
+            dict(key='icon', label='آیکون', type='text'),
+            dict(key='title', label='عنوان گواهی', type='text'),
+            dict(key='text', label='توضیح', type='textarea'),
+            dict(key='image', label='تصویر گواهی', type='image'),
+        ]),
+        dict(key='verify_text', label='متن دکمه استعلام', type='text'),
+        dict(key='verify_url', label='لینک استعلام', type='text'),
+        dict(key='columns', label='ستون‌ها', type='select', options=[('2', '۲'), ('3', '۳'), ('4', '۴')]),
+    ]),
+    'trust_box': dict(name='باکس اعتمادسازی', icon='🛡️', cat='adv', desc='تضمین بازگشت وجه، پشتیبانی، پرداخت امن…', fields=[
+        dict(key='columns', label='ستون‌ها', type='select', options=[('2', '۲'), ('3', '۳'), ('4', '۴')]),
+        dict(key='items', label='آیتم‌های اعتماد', type='repeater', item_fields=[
+            dict(key='icon', label='آیکون', type='text'),
+            dict(key='title', label='عنوان', type='text'),
+            dict(key='text', label='توضیح', type='textarea'),
+        ]),
+    ]),
+    'special_offers': dict(name='پیشنهادهای ویژه (داینامیک)', icon='🔥', cat='adv', desc='دوره‌های تخفیف‌دار واقعی از دیتابیس', fields=[
+        dict(key='title', label='تیتر بخش', type='text'),
+        dict(key='subtitle', label='زیرتیتر', type='text'),
+        dict(key='limit', label='تعداد', type='select', options=[('2', '۲'), ('4', '۴'), ('6', '۶'), ('8', '۸')]),
+        dict(key='columns', label='ستون‌ها', type='select', options=[('2', '۲'), ('3', '۳'), ('4', '۴')]),
+        dict(key='btn_text', label='متن دکمه (همه تخفیف‌ها)', type='text'),
+        dict(key='btn_url', label='لینک دکمه', type='text'),
+    ]),
+    'related_products': dict(name='محصولات مرتبط (داینامیک)', icon='🧩', cat='woo', desc='کالاهای فروشگاه مرتبط با دسته', fields=[
+        dict(key='title', label='تیتر بخش', type='text'),
+        dict(key='subtitle', label='زیرتیتر', type='text'),
+        dict(key='category', label='دستهٔ محصول', type='category'),
+        dict(key='limit', label='تعداد', type='select', options=[('3', '۳'), ('4', '۴'), ('8', '۸')]),
+        dict(key='columns', label='ستون‌ها', type='select', options=[('3', '۳'), ('4', '۴')]),
+    ]),
+    'theme_toggle': dict(name='سوییچ حالت تیره', icon='🌓', cat='header', desc='کلید تغییر حالت روشن/تیره — انتخاب کاربر ذخیره و در بازدید بعدی هم اعمال می‌شود', fields=[
+        dict(key='icon_light', label='آیکون در حالت روشن', type='text'),
+        dict(key='icon_dark', label='آیکون در حالت تیره', type='text'),
+        dict(key='label', label='برچسب کنار کلید (اختیاری)', type='text'),
+    ]),
     'pricing': dict(name='قیمت‌گذاری', icon='₿', cat='adv', fields=[
         dict(key='items', label='پلن‌ها', type='repeater', item_fields=[
             dict(key='name', label='نام پلن', type='text'),
@@ -1613,6 +1785,58 @@ def builder_bundles(d):
                 .order_by(Bundle.created_at.desc()).limit(_lim).all())
         return [bundle_lite(b) for b in rows]
     return _b_cache(f'bundles:{_lim}', 60, _q)
+
+
+def builder_special_offers(d):
+    """پیشنهادهای ویژه — دوره‌های منتشرشدهٔ تخفیف‌دار واقعی (بیشترین تخفیف)."""
+    _lim = max(1, min(12, int((d or {}).get('limit') or 4)))
+    def _q():
+        from cache_safe import course_lite
+        from sqlalchemy import case as _case, and_ as _and
+        _final = _case(
+            (_and(Course.discount_price > 0, Course.discount_price < Course.price),
+             Course.discount_price),
+            else_=Course.price)
+        _off = (Course.price - _final) * 100 / Course.price
+        q = (Course.query
+             .options(db.joinedload(Course.category), db.joinedload(Course.teacher))
+             .filter_by(status='published')
+             .filter(Course.discount_price > 0, Course.discount_price < Course.price))
+        rows = _attach_course_aggs(q.order_by(_off.desc()).limit(_lim).all())
+        return [course_lite(c) for c in rows]
+    return _b_cache(f'special_offers:{_lim}', 60, _q)
+
+
+def builder_related_products(d):
+    """محصولات مرتبط فروشگاه — بر اساس دسته (یا جدیدترین‌ها)."""
+    cat = (d or {}).get('category') or ''
+    _lim = max(1, min(16, int((d or {}).get('limit') or 4)))
+    def _q():
+        from models import Product
+        from cache_safe import product_lite
+        q = Product.query.filter_by(is_active=True)
+        if str(cat).isdigit():
+            q = q.filter_by(category_id=int(cat))
+        rows = q.order_by(Product.created_at.desc()).limit(_lim).all()
+        return [product_lite(p) for p in rows]
+    return _b_cache(f'related_products:{cat}:{_lim}', 60, _q)
+
+
+def countdown_secs(target):
+    """ثانیهٔ باقی‌مانده تا تاریخ هدف میلادی — برای بنر تخفیف و شمارش معکوس مطلق."""
+    s = str(target or '').strip()
+    if not s:
+        return 0
+    from datetime import datetime
+    for fmt in ('%Y-%m-%d %H:%M', '%Y-%m-%dT%H:%M', '%Y-%m-%d %H:%M:%S', '%Y-%m-%d'):
+        try:
+            dt = datetime.strptime(s, fmt)
+            if fmt == '%Y-%m-%d':
+                dt = dt.replace(hour=23, minute=59, second=0)
+            return max(0, int((dt - datetime.now()).total_seconds()))
+        except ValueError:
+            continue
+    return 0
 
 
 def bc_verify_result():

@@ -363,4 +363,33 @@
     });
   });
 
+  /* ---------- حالت تیره (Dark Mode) — دیزاین سیستم v2 ----------
+     سوییچ: هر دکمه با data-theme-toggle. اولویت: انتخاب کاربر (localStorage)
+     سپس ترجیح سیستم. فقط روی صفحات سایت (نه پنل مدیریت). */
+  function applyTheme(mode) {
+    var dark = mode === 'dark';
+    document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+    try { localStorage.setItem('ds-theme', dark ? 'dark' : 'light'); } catch (err) { /* noop */ }
+    /* هم‌رنگ‌شدن نوار آدرس مرورگر موبایل با حالت نمایش */
+    var meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', dark ? '#0b1220' : (meta.dataset.light || meta.getAttribute('content')));
+    if (meta && !meta.dataset.light) meta.dataset.light = meta.getAttribute('content') || '';
+    qsa('[data-theme-toggle], .ds-theme-toggle').forEach(function (btn) {
+      btn.setAttribute('aria-pressed', dark ? 'true' : 'false');
+      btn.title = dark ? 'روشن کردن' : 'تیره کردن';
+    });
+  }
+  try {
+    var saved = localStorage.getItem('ds-theme');
+    var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    if (saved === 'dark' || saved === 'light') applyTheme(saved);
+    else if (prefersDark) applyTheme('dark');
+  } catch (err) { /* noop */ }
+  document.addEventListener('click', function (e) {
+    var t = e.target;
+    var btn = t.closest ? (t.closest('[data-theme-toggle]') || t.closest('.ds-theme-toggle')) : null;
+    if (!btn) return;
+    applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
+  });
+
 })();

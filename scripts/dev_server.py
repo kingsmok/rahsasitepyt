@@ -4,6 +4,7 @@
 دیتابیس نمایشی جدا در /tmp می‌سازد، طرح صفحه اصلی «مدرن ۲۰۲۶» را اعمال
 می‌کند و سرور را روی 0.0.0.0:5000 بالا می‌آورد.
 """
+import json
 import os
 import sys
 
@@ -54,5 +55,21 @@ with app.app_context():
         print('home design 6 applied')
     except Exception as exc:  # noqa: BLE001
         print('home design apply skipped:', exc)
+
+    # صفحهٔ نمایش بلوک‌های جدید (برای پیش‌نمایش زنده)
+    try:
+        demo_rows = json.load(open(os.path.join(os.path.dirname(__file__), 'dev_demo_rows.json'), encoding='utf-8'))
+        demo = Page.query.filter_by(slug='blocks-demo').first()
+        if not demo:
+            demo = Page(title='نمایش بلوک‌های دیزاین سیستم', slug='blocks-demo', ptype='page')
+            db.session.add(demo)
+        demo.content = json.dumps({'settings': {}, 'rows': demo_rows}, ensure_ascii=False)
+        demo.is_published = True
+        db.session.commit()
+        from blueprints.builder import _clear_app_cache as _cac
+        _cac()
+        print('blocks-demo page ready at /page/blocks-demo')
+    except Exception as exc:  # noqa: BLE001
+        print('blocks-demo skipped:', exc)
 
 app.run(host='0.0.0.0', port=5000, debug=False)

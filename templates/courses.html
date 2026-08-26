@@ -65,6 +65,17 @@
 
       <!-- لیست دوره‌ها -->
       <div>
+        {% if q or cat or level or price or (sort and sort != 'newest') %}
+        <div class="ds-active-filters" role="group" aria-label="فیلترهای فعال">
+          <span class="text-3" style="font-size:12px;font-weight:800">{{ icon('filter', 15) }} فیلترهای فعال:</span>
+          {% if q %}<a class="ds-chip" href="{{ url_for('site.courses', cat=cat, level=level, price=price, sort=sort) }}" title="حذف">جستجو: {{ q }} ✕</a>{% endif %}
+          {% if cat %}{% for c in categories if c.slug == cat %}<a class="ds-chip" href="{{ url_for('site.courses', q=q, level=level, price=price, sort=sort) }}" title="حذف">دسته: {{ c.name }} ✕</a>{% endfor %}{% endif %}
+          {% if level %}<a class="ds-chip" href="{{ url_for('site.courses', q=q, cat=cat, price=price, sort=sort) }}" title="حذف">سطح: {{ level }} ✕</a>{% endif %}
+          {% if price %}<a class="ds-chip" href="{{ url_for('site.courses', q=q, cat=cat, level=level, sort=sort) }}" title="حذف">قیمت: {{ 'رایگان' if price == 'free' else 'پولی' }} ✕</a>{% endif %}
+          {% if sort and sort != 'newest' %}<a class="ds-chip" href="{{ url_for('site.courses', q=q, cat=cat, level=level, price=price) }}" title="حذف">مرتب‌سازی: {{ {'popular': 'پربازدیدترین', 'cheap': 'ارزان‌ترین', 'expensive': 'گران‌ترین', 'oldest': 'قدیمی‌ترین'}.get(sort, sort) }} ✕</a>{% endif %}
+          <a class="ds-chip" href="{{ url_for('site.courses') }}" style="background:var(--danger-soft);color:var(--danger)">{{ icon('refresh', 13) }} حذف همه</a>
+        </div>
+        {% endif %}
         <div class="sort-bar">
           <span class="result-count">نمایش <b>{{ fa(courses|length) }}</b> دوره</span>
           <form method="get" action="{{ url_for('site.courses') }}">

@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% from 'partials/product_card.html' import product_card %}
 {% block title %}{{ seo.title or 'فروشگاه محصولات' }}{% endblock %}
 {% block content %}
 <section class="section" style="padding-top:30px">
@@ -40,41 +41,15 @@
     </form>
 
     {% if items %}
-    <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:20px">
-      {% for p in items %}
-      <a class="card card-hover" href="{{ url_for('products.product_detail', slug=p.slug) }}" style="overflow:hidden;border-radius:16px;text-decoration:none;color:inherit;display:flex;flex-direction:column">
-        <div style="position:relative;aspect-ratio:16/9;background:var(--bg-2);overflow:hidden">
-          {% if p.image %}
-          <img src="{{ p.image_url }}" alt="{{ p.title }}" style="width:100%;height:100%;object-fit:cover" loading="lazy">
-          {% else %}
-          <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:44px">🛍</div>
-          {% endif %}
-          {% if p.has_discount %}<span style="position:absolute;top:10px;right:10px;background:#dc2626;color:#fff;font-size:11px;font-weight:800;border-radius:99px;padding:4px 12px">{{ fa((p.price - p.final_price) * 100 // p.price) }}٪ تخفیف</span>{% endif %}
-          {% if p.stock is not none and p.stock <= 0 %}<span style="position:absolute;bottom:10px;left:10px;background:rgba(0,0,0,.65);color:#fff;font-size:11px;border-radius:99px;padding:4px 12px">ناموجود</span>{% endif %}
-        </div>
-        <div style="padding:14px 16px 16px;display:flex;flex-direction:column;gap:6px;flex:1">
-          <div style="font-size:11px;color:var(--text-3)">{{ p.category or '' }}{% if p.sku %} · کد: {{ p.sku }}{% endif %}</div>
-          <strong style="font-size:14.5px;line-height:1.6">{{ p.title }}</strong>
-          <div class="flex between" style="align-items:center;margin-top:auto;gap:8px">
-            <div>
-              {% if p.has_discount %}<span style="text-decoration:line-through;color:#9ca3af;font-size:12px">{{ fa('{:,.0f}'.format(p.price)) }}</span>{% endif %}
-              <div style="color:var(--primary);font-weight:900;font-size:16px">{{ fa('{:,.0f}'.format(p.final_price)) }} <small style="font-size:10.5px">تومان</small></div>
-            </div>
-            {% if p.stock is not none and p.stock <= 0 %}
-            <span class="badge" style="background:#fee2e2;color:#b91c1c;font-size:11px">ناموجود</span>
-            {% else %}
-            <button type="button" class="btn btn-primary btn-sm" data-add-product="{{ p.id }}" title="افزودن به سبد" style="border-radius:10px">🛒</button>
-            {% endif %}
-          </div>
-        </div>
-      </a>
-      {% endfor %}
+    <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:20px">
+      {% for p in items %}{{ product_card(p) }}{% endfor %}
     </div>
     {% else %}
-    <div class="card" style="padding:50px;text-align:center">
-      <div style="font-size:40px">🛍</div>
-      <h3 style="margin:10px 0 6px">محصولی پیدا نشد</h3>
-      <p class="text-2">عبارت دیگری جستجو کنید یا همه محصولات را ببینید.</p>
+    <div class="card ds-empty">
+      <div class="ic">🛍</div>
+      <h3>محصولی پیدا نشد</h3>
+      <p>عبارت دیگری جستجو کنید یا همه محصولات را ببینید.</p>
+      <a class="btn btn-primary" href="{{ url_for('products.product_list') }}">مشاهده همهٔ محصولات</a>
     </div>
     {% endif %}
   </div>
@@ -98,14 +73,14 @@ document.querySelectorAll('[data-add-product]').forEach(function (btn) {
     }).then(function (r) { return r.json(); }).then(function (d) {
       btn.disabled = false;
       if (d && d.ok) {
-        btn.textContent = '✓';
+        btn.innerHTML = '✓';
         if (window.updateCartBadge) window.updateCartBadge();
-        setTimeout(function () { btn.innerHTML = '🛒'; }, 1200);
+        setTimeout(function () { btn.innerHTML = orig; }, 1200);
       } else {
-        btn.innerHTML = '🛒';
+        btn.innerHTML = orig;
         alert((d && d.msg) || 'خطا در افزودن به سبد');
       }
-    }).catch(function () { btn.disabled = false; btn.innerHTML = '🛒'; });
+    }).catch(function () { btn.disabled = false; btn.innerHTML = orig; });
   });
 });
 </script>

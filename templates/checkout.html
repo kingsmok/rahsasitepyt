@@ -16,6 +16,13 @@
       </div>
     </div>
 
+    <!-- مراحل خرید -->
+    <div class="ds-steps" style="margin:18px 0 26px">
+      <div class="ds-step done"><small>سبد خرید</small></div>
+      <div class="ds-step active"><small>اطلاعات و پرداخت</small></div>
+      <div class="ds-step"><small>تایید و شروع</small></div>
+    </div>
+
     <div class="grid" style="grid-template-columns:1fr 340px;gap:24px;align-items:start">
       <div>
         <!-- آیتم‌ها -->
@@ -130,6 +137,11 @@
           <button class="btn btn-primary btn-lg btn-block" type="submit">ثبت سفارش و ادامه پرداخت</button>
         </form>
         <p class="text-center mt-2" style="font-size:11.5px;color:var(--text-3)">با ادامه، <a href="{{ url_for('site.terms') }}" style="color:var(--primary);font-weight:700">قوانین استفاده</a> و <a href="{{ url_for('site.privacy') }}" style="color:var(--primary);font-weight:700">حریم خصوصی</a> را می‌پذیرید.</p>
+        <div class="ds-trust-mini">
+          <span>{{ icon('shield-check', 15) }} اتصال امن و رمزنگاری‌شده</span>
+          <span>{{ icon('refresh', 15) }} امکان پیگیری سفارش از پنل کاربری</span>
+          <span>{{ icon('headset', 15) }} پشتیبانی در تمام مراحل خرید</span>
+        </div>
         {% if real_gateway_on %}<div class="secure">🛡️ پرداخت امن با رمزنگاری SSL</div>{% endif %}
       </div>
     </div>

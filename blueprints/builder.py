@@ -394,6 +394,11 @@ WIDGETS = {
         dict(key='limit', label='تعداد', type='select', options=[('3', '۳'), ('4', '۴'), ('8', '۸')]),
         dict(key='columns', label='ستون‌ها', type='select', options=[('3', '۳'), ('4', '۴')]),
     ]),
+    'theme_toggle': dict(name='سوییچ حالت تیره', icon='🌓', cat='header', desc='کلید تغییر حالت روشن/تیره — انتخاب کاربر ذخیره و در بازدید بعدی هم اعمال می‌شود', fields=[
+        dict(key='icon_light', label='آیکون در حالت روشن', type='text'),
+        dict(key='icon_dark', label='آیکون در حالت تیره', type='text'),
+        dict(key='label', label='برچسب کنار کلید (اختیاری)', type='text'),
+    ]),
     'pricing': dict(name='قیمت‌گذاری', icon='₿', cat='adv', fields=[
         dict(key='items', label='پلن‌ها', type='repeater', item_fields=[
             dict(key='name', label='نام پلن', type='text'),

@@ -2,60 +2,93 @@
 {% block title %}سبد خرید — {{ site.site_name or 'آکادمی آنلاین' }}{% endblock %}
 {% block content %}
 <section class="section" style="padding-top:36px">
-  <div class="container" style="max-width:900px">
+  <div class="container" style="max-width:1080px">
     <nav class="breadcrumb" aria-label="مسیر صفحه">
       <a href="{{ url_for('site.index') }}">خانه</a><span class="sep">/</span>
       <span>سبد خرید</span>
     </nav>
+
     <div class="dash-head">
       <div>
-        <h1>🛒 سبد خرید</h1>
+        <h1>سبد خرید</h1>
         <p>{{ fa(items|length) }} آیتم در سبد شما</p>
       </div>
     </div>
 
     {% if items %}
-    <div class="card" style="padding:8px 22px">
-      {% for kind, obj in items %}
-      <div class="cart-row" style="display:flex;gap:14px;align-items:center;padding:14px 0;border-bottom:1px solid var(--border)">
-        {% if kind == 'course' %}
-        <img class="c-thumb" src="{{ obj.image_url }}" alt="{{ obj.title }}" style="width:84px;height:56px;border-radius:10px;object-fit:cover">
-        <div style="flex:1">
-          <h4 style="font-size:14.5px"><a href="{{ url_for('site.course_detail', slug=obj.slug) }}">{{ obj.title }}</a></h4>
-          <small class="text-3">🎓 دوره — {{ obj.level }} — {{ fa(obj.duration_hours) }} ساعت</small>
-        </div>
-        {% else %}
-        <img class="c-thumb" src="{{ obj.image_url }}" alt="{{ obj.title }}" style="width:84px;height:56px;border-radius:10px;object-fit:cover">
-        <div style="flex:1">
-          <h4 style="font-size:14.5px"><a href="{{ url_for('products.product_detail', slug=obj.slug) }}">{{ obj.title }}</a></h4>
-          <small class="text-3">🛍 محصول — {{ obj.category or '' }}{% if obj.sku %} · {{ obj.sku }}{% endif %}</small>
-        </div>
-        {% endif %}
-        {% set qty = quantities.get((kind, obj.id), 1) %}
-        {% if kind == 'product' %}
-        <label class="cart-quantity">تعداد <input type="number" min="1" max="{{ obj.stock }}" value="{{ qty }}" data-product-qty="{{ obj.id }}" aria-label="تعداد {{ obj.title }}"></label>
-        {% endif %}
-        <span class="price" style="font-weight:800">{{ fa('{:,.0f}'.format(obj.final_price * qty)) }} <small class="text-3">تومان</small></span>
-        <button type="button" class="btn btn-sm btn-danger" data-remove-item="{{ kind }}" data-id="{{ obj.id }}" aria-label="حذف {{ obj.title }}">🗑</button>
-      </div>
-      {% endfor %}
-      <div style="padding:16px 0;display:flex;justify-content:space-between;align-items:center">
-        <div class="s-row total"><span>جمع کل</span><span class="price" style="font-size:20px;font-weight:900;color:var(--primary)">{{ fa('{:,.0f}'.format(total)) }} <small class="text-3" style="font-size:12px">تومان</small></span></div>
-        <a class="btn btn-primary btn-lg" href="{{ url_for('shop.checkout') }}">تسویه حساب ←</a>
-      </div>
+    {% set has_product = [] %}
+    {% for kind, obj in items %}{% if kind == 'product' %}{% set _ = has_product.append(1) %}{% endif %}{% endfor %}
+    <!-- مراحل خرید -->
+    <div class="ds-steps mb-3" style="margin:18px 0 26px">
+      <div class="ds-step active"><small>سبد خرید</small></div>
+      <div class="ds-step"><small>اطلاعات و پرداخت</small></div>
+      <div class="ds-step"><small>تایید و شروع</small></div>
     </div>
-    <div class="flex" style="justify-content:center;gap:10px;margin-top:14px">
-      <a class="btn btn-ghost" href="{{ url_for('site.courses') }}">ادامه خرید دوره‌ها</a>
-      <a class="btn btn-ghost" href="{{ url_for('products.product_list') }}">ادامه خرید از فروشگاه</a>
+
+    <div class="grid cart-grid" style="grid-template-columns:1fr 330px;gap:22px;align-items:start">
+      <div>
+        <div class="ds-card pad" style="padding:6px 20px">
+          {% for kind, obj in items %}
+          <div class="cart-row" style="display:flex;gap:14px;align-items:center;padding:15px 0;border-bottom:1px solid var(--border)">
+            {% if kind == 'course' %}
+            <img class="c-thumb" src="{{ obj.image_url }}" alt="{{ obj.title }}" style="width:92px;height:60px;border-radius:12px;object-fit:cover">
+            <div style="flex:1;min-width:0">
+              <h4 style="font-size:14.5px"><a href="{{ url_for('site.course_detail', slug=obj.slug) }}">{{ obj.title }}</a></h4>
+              <small class="text-3">{{ icon('clock', 13) }} {{ fa(obj.duration_hours) }} ساعت · {{ obj.delivery_icon }} {{ obj.delivery_label }}{% if obj.level %} · {{ obj.level }}{% endif %}</small>
+            </div>
+            {% else %}
+            <img class="c-thumb" src="{{ obj.image_url }}" alt="{{ obj.title }}" style="width:92px;height:60px;border-radius:12px;object-fit:cover">
+            <div style="flex:1;min-width:0">
+              <h4 style="font-size:14.5px"><a href="{{ url_for('products.product_detail', slug=obj.slug) }}">{{ obj.title }}</a></h4>
+              <small class="text-3">{{ icon('package', 13) }} محصول{% if obj.category %} · {{ obj.category }}{% endif %}{% if obj.sku %} · کد {{ obj.sku }}{% endif %}</small>
+            </div>
+            {% endif %}
+            {% set qty = quantities.get((kind, obj.id), 1) %}
+            {% if kind == 'product' %}
+            <label class="cart-quantity ds-chip" style="gap:8px">تعداد
+              <input type="number" min="1" max="{{ obj.stock }}" value="{{ qty }}" data-product-qty="{{ obj.id }}" aria-label="تعداد {{ obj.title }}"
+                     style="width:58px;border:1px solid var(--border);border-radius:8px;padding:5px 8px;text-align:center;font-weight:800">
+            </label>
+            {% endif %}
+            <div class="ds-price{% if obj.has_discount %} off{% endif %}" style="min-width:110px;align-items:flex-end;text-align:end">
+              {% if obj.has_discount %}<span class="old">{{ fa('{:,.0f}'.format(obj.price * qty)) }}</span>{% endif %}
+              <span class="now">{{ fa('{:,.0f}'.format(obj.final_price * qty)) }} <small>تومان</small></span>
+            </div>
+            <button type="button" class="btn btn-icon btn-ghost" data-remove-item="{{ kind }}" data-id="{{ obj.id }}" aria-label="حذف {{ obj.title }}" title="حذف">{{ icon('trash', 16) }}</button>
+          </div>
+          {% endfor %}
+        </div>
+        <div class="flex wrap" style="justify-content:flex-start;gap:10px;margin-top:14px">
+          <a class="btn btn-soft" href="{{ url_for('site.courses') }}">{{ icon('book', 16) }} ادامه خرید دوره‌ها</a>
+          <a class="btn btn-soft" href="{{ url_for('products.product_list') }}">{{ icon('shopping-cart', 16) }} ادامه خرید از فروشگاه</a>
+        </div>
+      </div>
+
+      <!-- خلاصهٔ سفارش (چسبان) -->
+      <aside class="ds-card pad cart-summary-aside" style="position:sticky;top:96px;display:flex;flex-direction:column;gap:14px">
+        <h3 style="font-size:15px;font-weight:800">خلاصهٔ سفارش</h3>
+        <div class="s-row"><span>جمع اقلام ({{ fa(items|length) }})</span><span>{{ fa('{:,.0f}'.format(total)) }} <small class="text-3">تومان</small></span></div>
+        <div class="s-row"><span>هزینه ارسال</span><span class="text-3">{% if has_product %}در مرحلهٔ تسویه‌حساب{% else %}ندارد (کالای دیجیتال){% endif %}</span></div>
+        <div class="s-row total" style="border-top:1px dashed var(--border);padding-top:12px;display:flex;justify-content:space-between;align-items:center">
+          <span style="font-weight:800">جمع کل</span>
+          <span class="ds-price" style="text-align:end"><span class="now" style="font-size:20px;color:var(--primary)">{{ fa('{:,.0f}'.format(total)) }} <small>تومان</small></span></span>
+        </div>
+        <a class="btn btn-primary btn-xl btn-block" href="{{ url_for('shop.checkout') }}">ادامه و پرداخت {{ icon('arrow-left', 18) }}</a>
+        <div class="ds-trust-mini">
+          <span>{{ icon('shield-check', 15) }} پرداخت امن درگاه بانکی</span>
+          <span>{{ icon('refresh', 15) }} ضمانت بازگشت ۷ روزهٔ دوره‌ها</span>
+          <span>{{ icon('headset', 15) }} پشتیبانی پاسخ‌گو</span>
+        </div>
+      </aside>
     </div>
     {% else %}
-    <div class="card" style="padding:60px;text-align:center">
-      <div style="font-size:46px">🛒</div>
-      <h3 style="margin:12px 0 6px">سبد خرید شما خالی است</h3>
-      <p class="text-2" style="margin-bottom:18px">دوره‌ها یا محصولات مورد علاقه‌تان را اضافه کنید.</p>
-      <div class="flex" style="justify-content:center;gap:10px">
+    <div class="card ds-empty">
+      <div class="ic">🛒</div>
+      <h3>سبد خرید شما خالی است</h3>
+      <p>دوره‌ها یا محصولات مورد علاقه‌تان را اضافه کنید؛ هر زمان خواستید اینجا منتظر شماست.</p>
+      <div class="ds-btn-group ds-center">
         <a class="btn btn-primary" href="{{ url_for('site.courses') }}">مشاهده دوره‌ها</a>
-        <a class="btn btn-ghost" href="{{ url_for('products.product_list') }}">مشاهده فروشگاه</a>
+        <a class="btn btn-soft" href="{{ url_for('products.product_list') }}">مشاهده فروشگاه</a>
       </div>
     </div>
     {% endif %}

@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% from 'partials/product_card.html' import product_card %}
 {% block title %}{{ seo.title or p.title }}{% endblock %}
 {% block content %}
 <section class="section" style="padding-top:30px">
@@ -85,18 +86,8 @@
     {% if related %}
     <div style="margin-top:44px">
       <h2 style="font-size:18px;font-weight:900;margin-bottom:16px">🛍 محصولات مرتبط</h2>
-      <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px">
-        {% for r in related %}
-        <a class="card card-hover" href="{{ url_for('products.product_detail', slug=r.slug) }}" style="overflow:hidden;border-radius:14px;text-decoration:none;color:inherit">
-          <div style="aspect-ratio:16/9;background:var(--bg-2);overflow:hidden">
-            {% if r.image %}<img src="{{ r.image if r.image.startswith('http') else '/static/img/' + r.image }}" alt="{{ r.title }}" style="width:100%;height:100%;object-fit:cover" loading="lazy">{% endif %}
-          </div>
-          <div style="padding:12px">
-            <div style="font-size:13px;font-weight:700;line-height:1.5">{{ r.title }}</div>
-            <div style="color:var(--primary);font-weight:800;font-size:14px;margin-top:6px">{{ fa('{:,.0f}'.format(r.final_price)) }} <small style="font-size:10px">تومان</small></div>
-          </div>
-        </a>
-        {% endfor %}
+      <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:18px">
+        {% for r in related %}{{ product_card(r) }}{% endfor %}
       </div>
     </div>
     {% endif %}

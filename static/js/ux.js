@@ -370,7 +370,11 @@
     var dark = mode === 'dark';
     document.documentElement.dataset.theme = dark ? 'dark' : 'light';
     try { localStorage.setItem('ds-theme', dark ? 'dark' : 'light'); } catch (err) { /* noop */ }
-    qsa('[data-theme-toggle]').forEach(function (btn) {
+    /* هم‌رنگ‌شدن نوار آدرس مرورگر موبایل با حالت نمایش */
+    var meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', dark ? '#0b1220' : (meta.dataset.light || meta.getAttribute('content')));
+    if (meta && !meta.dataset.light) meta.dataset.light = meta.getAttribute('content') || '';
+    qsa('[data-theme-toggle], .ds-theme-toggle').forEach(function (btn) {
       btn.setAttribute('aria-pressed', dark ? 'true' : 'false');
       btn.title = dark ? 'روشن کردن' : 'تیره کردن';
     });

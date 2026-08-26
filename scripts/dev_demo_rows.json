@@ -95,6 +95,6 @@
 
   {"id": "demo_dark", "settings": {"gap": 14, "py": 40, "bg": "#0b1220", "radius": 24},
    "cols": [[{"id": "dd1", "type": "heading", "data": {"text": "حالت تیره فعال است 🌙", "tag": "h3", "align": "center", "color": "#e8edf7"}},
-             {"id": "dd2", "type": "text", "data": {"content": "این سکشن با پس‌زمینهٔ تیرهٔ دستی ساخته شده — سوییچ حالت تیرهٔ سراسری هم با هر دکمه‌ای که ویژگی data-theme-toggle داشته باشد فعال می‌شود.", "align": "center", "color": "#aebbd2"}},
-             {"id": "dd3", "type": "html", "data": {"code": "<div style=\"text-align:center\"><span class=\"ds-theme-toggle\" role=\"button\" tabindex=\"0\">🌓</span></div>"}}]]}
+             {"id": "dd2", "type": "text", "data": {"content": "کلید زیر حالت روشن/تیرهٔ کل سایت را عوض می‌کند؛ انتخاب شما ذخیره می‌شود و دفعهٔ بعد خودکار اعمال می‌گردد (بدون فلاش سفید).", "align": "center", "color": "#aebbd2"}},
+             {"id": "dd3", "type": "theme_toggle", "data": {"icon_light": "🌙", "icon_dark": "☀️", "label": "تغییر حالت نمایش"}}]]}
 ]

@@ -1,0 +1,43 @@
+{# ============================================================
+   کارت محصول — دیزاین سیستم v2 (هماهنگ با کارت دوره)
+   p: مدل Product یا ProductLite
+   ============================================================ #}
+{% macro product_card(p, show_price=True) %}
+{% set poff = (((p.price - p.final_price) * 100 / p.price)|round|int) if p.has_discount and p.price else 0 %}
+{% set out_of_stock = p.stock is not none and p.stock <= 0 %}
+<article class="card product-card card-hover">
+  <div class="thumb">
+    <a href="{{ url_for('products.product_detail', slug=p.slug) }}" aria-label="{{ p.title }}">
+      {% if p.image %}
+      <img src="{{ p.image_url }}" alt="{{ p.title }}" loading="lazy" decoding="async" width="480" height="270">
+      {% else %}
+      <span class="ph-ic">🛍</span>
+      {% endif %}
+    </a>
+    <div class="badges">
+      {% if poff %}<span class="discount-flag">٪{{ fa(poff) }} تخفیف</span>{% endif %}
+      {% if out_of_stock %}<span class="badge badge-danger">ناموجود</span>{% endif %}
+    </div>
+  </div>
+  <div class="body">
+    <div class="top-row">
+      <span class="cat">{{ p.category or 'محصول' }}</span>
+      {% if p.sku %}<span class="delivery">کد: {{ p.sku }}</span>{% endif %}
+    </div>
+    <h3><a href="{{ url_for('products.product_detail', slug=p.slug) }}">{{ p.title }}</a></h3>
+    <div class="foot">
+      {% if show_price %}
+      <div class="ds-price {{ 'off' if poff }}">
+        {% if poff %}<span class="old">{{ fa('{:,.0f}'.format(p.price)) }}</span>{% endif %}
+        <span class="now">{{ fa('{:,.0f}'.format(p.final_price)) }} <small>تومان</small></span>
+      </div>
+      {% else %}<span></span>{% endif %}
+      {% if out_of_stock %}
+      <span class="btn btn-ghost btn-sm" aria-disabled="true">ناموجود</span>
+      {% else %}
+      <button type="button" class="btn btn-icon btn-soft card-add-btn" data-add-product="{{ p.id }}" title="افزودن به سبد خرید" aria-label="افزودن {{ p.title }} به سبد">{{ icon('shopping-cart', 17) }}</button>
+      {% endif %}
+    </div>
+  </div>
+</article>
+{% endmacro %}

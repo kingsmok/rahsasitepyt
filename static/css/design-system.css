@@ -60,8 +60,11 @@
   --ds-shadow-md: 0 8px 24px rgba(15, 23, 42, .09);
   --ds-shadow-lg: 0 18px 44px rgba(15, 23, 42, .13);
   --ds-shadow-xl: 0 32px 72px rgba(15, 23, 42, .17);
+  --ds-shadow-brand: 0 10px 26px rgba(37, 99, 235, .3); /* فالبک مرورگرهای بدون color-mix */
   --ds-shadow-brand: 0 10px 26px color-mix(in srgb, var(--primary, #2563eb) 30%, transparent);
+  --ds-shadow-accent: 0 10px 26px rgba(245, 158, 11, .34); /* فالبک */
   --ds-shadow-accent: 0 10px 26px color-mix(in srgb, var(--accent, #f59e0b) 34%, transparent);
+  --ds-ring: 0 0 0 4px rgba(37, 99, 235, .16); /* فالبک */
   --ds-ring: 0 0 0 4px color-mix(in srgb, var(--primary, #2563eb) 16%, transparent);
   /* — حاشیه‌ها — */
   --ds-border: 1px solid var(--border, #e2e8f0);
@@ -255,10 +258,10 @@ a.ds-chip:hover { border-color: var(--primary); color: var(--primary); backgroun
 }
 .ds-alert > .ic { flex-shrink: 0; display: flex; margin-top: 2px; }
 .ds-alert strong { display: block; margin-bottom: 2px; }
-.ds-alert-info { background: color-mix(in srgb, #0891b2 8%, var(--card)); color: #0e7490; border-color: color-mix(in srgb, #0891b2 22%, transparent); }
-.ds-alert-success { background: var(--success-soft, #dcfce7); color: var(--success, #16a34a); border-color: color-mix(in srgb, var(--success) 24%, transparent); }
-.ds-alert-warn { background: var(--accent-soft, #fef3c7); color: var(--warning, #d97706); border-color: color-mix(in srgb, var(--warning) 26%, transparent); }
-.ds-alert-danger { background: var(--danger-soft, #fee2e2); color: var(--danger, #dc2626); border-color: color-mix(in srgb, var(--danger) 24%, transparent); }
+.ds-alert-info { background: #f0fafa; background: color-mix(in srgb, #0891b2 8%, var(--card)); color: #0e7490; border-color: #bae6fd; border-color: color-mix(in srgb, #0891b2 22%, transparent); }
+.ds-alert-success { background: var(--success-soft, #dcfce7); color: var(--success, #16a34a); border-color: #bbf7d0; border-color: color-mix(in srgb, var(--success) 24%, transparent); }
+.ds-alert-warn { background: var(--accent-soft, #fef3c7); color: var(--warning, #d97706); border-color: #fde68a; border-color: color-mix(in srgb, var(--warning) 26%, transparent); }
+.ds-alert-danger { background: var(--danger-soft, #fee2e2); color: var(--danger, #dc2626); border-color: #fecaca; border-color: color-mix(in srgb, var(--danger) 24%, transparent); }
 
 /* ============================================================
    ۹) تب‌ها، آکاردئون، بردکرامب، مراحل، پیشرفت
@@ -459,7 +462,9 @@ details[open] > .ds-curric-head::after { transform: rotate(180deg); }
 .ds-compare thead th { background: var(--bg-2); font-size: var(--ds-fs-base); padding: 18px; }
 .ds-compare thead th.best { background: var(--grad-brand); color: #fff; border-radius: var(--ds-radius-md) var(--ds-radius-md) 0 0; position: relative; }
 .ds-compare thead th.best .ds-tag { background: rgba(255,255,255,.2); color: #fff; }
-.ds-compare td:first-child, .ds-compare th:first-child { text-align: start; font-weight: var(--ds-fw-semibold); color: var(--text); position: sticky; inset-inline-end: 0; background: inherit; }
+.ds-compare td:first-child, .ds-compare th:first-child { text-align: start; font-weight: var(--ds-fw-semibold); color: var(--text); position: sticky; inset-inline-end: 0; background: var(--card); }
+.ds-compare thead th:first-child { background: var(--bg-2); }
+.ds-compare tbody tr:hover td:first-child { background: color-mix(in srgb, var(--primary) 5%, var(--card)); }
 .ds-compare tbody tr:hover { background: color-mix(in srgb, var(--primary) 4%, transparent); }
 .ds-compare .yes { color: var(--success, #16a34a); font-weight: var(--ds-fw-black); }
 .ds-compare .no { color: var(--border-2); }
@@ -568,7 +573,7 @@ details[open] > .ds-curric-head::after { transform: rotate(180deg); }
 .course-card .top-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .course-card .top-row .cat { font-size: var(--ds-fs-sm); font-weight: var(--ds-fw-bold); color: var(--primary); }
 .course-card .top-row .delivery { font-size: 11.5px; color: var(--text-3); font-weight: var(--ds-fw-semibold); white-space: nowrap; }
-.course-card .level-chip { position: absolute; bottom: 12px; inset-inline-start: 12px; }
+.course-card .level-chip { position: absolute; bottom: 12px; inset-inline-start: 12px; background: rgba(15, 23, 42, .62); color: #fff; border: 1px solid rgba(255,255,255,.25); backdrop-filter: blur(6px); }
 /* — متا با آیکون — */
 .course-card .meta { display: flex; align-items: center; gap: 12px; color: var(--text-3); font-size: var(--ds-fs-sm); flex-wrap: wrap; }
 .course-card .meta span { display: inline-flex; align-items: center; gap: 4px; }
@@ -583,10 +588,50 @@ details[open] > .ds-curric-head::after { transform: rotate(180deg); }
 .course-card .fav-btn.active .fav-on { display: flex; }
 .course-card .fav-btn.active .fav-off { display: none; }
 .course-card .fav-btn.active { color: var(--ds-sale); border-color: color-mix(in srgb, var(--ds-sale) 40%, transparent); }
+/* — نوار کوچک اعتماد زیر دکمهٔ پرداخت (سبد/تسویه) — */
+.ds-trust-mini { display: flex; flex-direction: column; gap: 9px; padding-top: 12px; border-top: 1px dashed var(--border); }
+.ds-trust-mini span { display: flex; align-items: center; gap: 8px; font-size: var(--ds-fs-sm); color: var(--text-3); font-weight: var(--ds-fw-semibold); }
+.ds-trust-mini svg { color: var(--success); flex-shrink: 0; }
+/* — سبد خرید: خلاصه در موبایل غیرچسبان و زیر اقلام — */
+@media (max-width: 900px) {
+  .cart-grid { grid-template-columns: 1fr !important; }
+  .cart-summary-aside { position: static !important; }
+}
+
+/* — ردیف فیلترهای فعال (لیست دوره‌ها/محصولات) — */
+.ds-active-filters { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+.ds-active-filters .ds-chip { background: var(--primary-soft); color: var(--primary); font-size: var(--ds-fs-xs); padding: 6px 13px; }
+.ds-active-filters .ds-chip:hover { background: color-mix(in srgb, var(--primary) 18%, var(--primary-soft)); }
+.ds-active-filters .ds-chip svg { margin-inline-start: 2px; }
+
+/* — کارت «ادامه یادگیری» داشبورد (v2) — */
+.ds-continue-row:hover { border-color: var(--primary) !important; box-shadow: var(--ds-shadow-md); transform: translateY(-2px); }
+.ds-continue-row .c-info { flex: 1; min-width: 0; }
+.ds-continue-row .ds-progress { height: 8px; }
+
 /* — مدرس — */
 .course-card .teacher { display: flex; align-items: center; gap: 8px; }
 .course-card .teacher .avatar { width: 28px; height: 28px; font-size: 11px; }
 .course-card .teacher small { color: var(--text-3); font-size: var(--ds-fs-sm); }
+
+/* ============================================================
+   ۱۳-ب) کارت محصول v2 — هماهنگ با کارت دوره
+   ============================================================ */
+.product-card { border-radius: var(--ds-radius-lg); overflow: hidden; display: flex; flex-direction: column; }
+.product-card .thumb { position: relative; aspect-ratio: 16/9; background: var(--bg-2); overflow: hidden; }
+.product-card .thumb img { width: 100%; height: 100%; object-fit: cover; transition: transform .5s var(--ds-ease-out); }
+.product-card:hover .thumb img { transform: scale(1.06); }
+.product-card .thumb .ph-ic { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 44px; opacity: .6; }
+.product-card .thumb .badges { position: absolute; top: 12px; right: 12px; display: flex; gap: 6px; z-index: 2; }
+.product-card .thumb .badge-danger { background: rgba(15,23,42,.72); color: #fff; backdrop-filter: blur(6px); }
+.product-card .body { padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 9px; flex: 1; }
+.product-card .top-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.product-card .top-row .cat { font-size: var(--ds-fs-sm); font-weight: var(--ds-fw-bold); color: var(--primary); }
+.product-card .top-row .delivery { font-size: 11.5px; color: var(--text-3); font-weight: var(--ds-fw-semibold); white-space: nowrap; }
+.product-card h3 { font-size: 15px; font-weight: var(--ds-fw-bold); line-height: 1.75; }
+.product-card h3 a:hover { color: var(--primary); }
+.product-card .foot { border-top: 1px solid var(--border); padding-top: 12px; margin-top: auto; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+html[data-theme="dark"] .product-card .thumb { background: var(--card-2); }
 
 /* ============================================================
    ۱۴) ابزارهای ریسپانسیو — نمایش در موبایل / تبلت / دسکتاپ
@@ -601,6 +646,11 @@ details[open] > .ds-curric-head::after { transform: rotate(180deg); }
   .ds-count .cd { min-width: 52px; }
   .ds-offer-banner { text-align: center; }
   .ds-offer-side { width: 100%; }
+  /* مراحل خرید در موبایل: جمع‌وجور و بدون به‌هم‌ریختگی */
+  .ds-steps { gap: 4px; }
+  .ds-step::before { width: 32px; height: 32px; font-size: 13px; }
+  .ds-step:not(:last-child)::after { top: 16px; inset-inline-start: calc(-50% + 16px); width: calc(100% - 32px); }
+  .ds-step small { font-size: 10.5px; max-width: 84px; line-height: 1.5; }
 }
 
 /* ============================================================
@@ -613,22 +663,55 @@ details[open] > .ds-curric-head::after { transform: rotate(180deg); }
   transition: all var(--ds-t); font-size: 17px;
 }
 .ds-theme-toggle:hover { color: var(--primary); background: var(--primary-soft); border-color: var(--primary); transform: rotate(-15deg); }
+/* نسخهٔ برچسب‌دار (ویجت صفحه‌ساز) */
+.ds-theme-toggle.pb-theme-toggle { width: auto; padding: 8px 16px; gap: 8px; font-size: var(--ds-fs-md); font-weight: var(--ds-fw-bold); }
+.ds-theme-toggle .pt-ic { display: flex; font-size: 17px; }
+/* آیکون دوحالته: در حالت روشن آیکونِ «تیره‌کن» و برعکس نشان داده می‌شود */
+.ds-theme-toggle .pt-ic-dark { display: none; }
+html[data-theme="dark"] .ds-theme-toggle .pt-ic-dark { display: flex; }
+html[data-theme="dark"] .ds-theme-toggle .pt-ic-light { display: none; }
 html[data-theme="dark"] {
   --bg: #0b1220; --bg-2: #101a2e; --card: #131c30; --card-2: #182338;
   --border: #24304a; --border-2: #33405e;
   --text: #e8edf7; --text-2: #aebbd2; --text-3: #7d8ca8;
-  --primary-soft: color-mix(in srgb, var(--primary) 20%, #0b1220);
-  --success-soft: color-mix(in srgb, var(--success) 18%, #0b1220);
-  --danger-soft: color-mix(in srgb, var(--danger) 18%, #0b1220);
-  --accent-soft: color-mix(in srgb, var(--accent) 18%, #0b1220);
+  /* فالبک ساده برای مرورگرهای بدون color-mix (خط بعدی بازنویسی می‌کند) */
+  --primary-soft: #16223a;
+  --success-soft: #10241a;
+  --danger-soft: #2a1418;
+  --accent-soft: #2a2114;
   --header-bg: rgba(11, 18, 32, .92); --header-border: #1d2942; --header-text: #e8edf7; --header-text-2: #aebbd2;
   --ds-shadow-sm: 0 2px 8px rgba(0,0,0,.35);
   --ds-shadow-md: 0 8px 24px rgba(0,0,0,.4);
   --ds-shadow-lg: 0 18px 44px rgba(0,0,0,.5);
 }
-html[data-theme="dark"] .ds-alert-info { background: color-mix(in srgb, #0891b2 16%, var(--card)); }
-html[data-theme="dark"] .ds-plan ul li::before { background: color-mix(in srgb, var(--success) 25%, transparent); }
-html[data-theme="dark"] img { filter: brightness(.92); }
+@supports (color: color-mix(in srgb, red, black)) {
+  html[data-theme="dark"] {
+    --primary-soft: color-mix(in srgb, var(--primary) 20%, #0b1220);
+    --success-soft: color-mix(in srgb, var(--success) 18%, #0b1220);
+    --danger-soft: color-mix(in srgb, var(--danger) 18%, #0b1220);
+    --accent-soft: color-mix(in srgb, var(--accent) 18%, #0b1220);
+  }
+}
+/* — سازگاری دارک: سکشن‌ها و ویجت‌هایی که پس‌زمینهٔ سفید دستی دارند — */
+html[data-theme="dark"] .pb-row[style*="background:#ffffff"],
+html[data-theme="dark"] .pb-row[style*="background:#fff"],
+html[data-theme="dark"] .pb-row[style*="background: #ffffff"],
+html[data-theme="dark"] .pb-row[style*="background: #fff"],
+html[data-theme="dark"] .pb-widget-out[style*="background:#ffffff"],
+html[data-theme="dark"] .pb-widget-out[style*="background:#fff"] { background: var(--card) !important; }
+/* جعبهٔ جستجوی هدر (سفید سخت‌کدشده در builder.css) */
+html[data-theme="dark"] .dk-search { background: var(--card); }
+html[data-theme="dark"] .dk-search input { color: var(--text); }
+html[data-theme="dark"] .dk-search input::placeholder { color: var(--text-3); }
+/* اسکلتون: درخشش ملایم‌تر در دارک */
+html[data-theme="dark"] .sk::after { background: linear-gradient(90deg, transparent, rgba(255,255,255,.08), transparent); }
+/* لوگوی روشن (مثلاً PNG سفید) در دارک نباید کاملاً بلعیده شود */
+html[data-theme="dark"] img { filter: brightness(.94); }
+/* توئولتیپ/فرم‌های ثابت قدیمی که رنگ روشن سخت‌کد دارند */
+html[data-theme="dark"] .ds-alert-info { background: #0f2830; background: color-mix(in srgb, #0891b2 16%, var(--card)); }
+html[data-theme="dark"] .ds-plan ul li::before { background: #143324; background: color-mix(in srgb, var(--success) 25%, transparent); }
 html[data-theme="dark"] .course-card .thumb::after { display: none; }
+/* فوتر و بنرها روی دارک: خط جداکنندهٔ روشن حذف */
+html[data-theme="dark"] .builder-site-footer::before { opacity: .5; }
 
 /* پایان دیزاین سیستم v2 */

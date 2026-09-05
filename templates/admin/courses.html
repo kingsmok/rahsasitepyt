@@ -4,7 +4,7 @@
 <div class="dash-head">
   <div>
     <h1>📚 مدیریت دوره‌ها</h1>
-    <p>{{ fa(courses|length) }} دوره</p>
+    <p>{{ fa(total) }} دوره</p>
   </div>
   <div class="flex gap-2">
     <form class="search-box">
@@ -57,4 +57,7 @@
     </tbody>
   </table>
 </div>
+{% with endpoint='admin.courses', args={'q': q} %}
+  {% include 'admin/_pager.html' %}
+{% endwith %}
 {% endblock %}

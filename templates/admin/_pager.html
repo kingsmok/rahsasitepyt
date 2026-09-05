@@ -1,0 +1,50 @@
+{#-
+  صفحه‌بندی مشترک پنل مدیریت — نسخهٔ پنجره‌ای.
+
+  ورودی‌ها:
+    page     — شمارهٔ صفحهٔ فعلی
+    pages    — تعداد کل صفحات
+    endpoint — نام endpoint مقصد (مثل 'admin.courses')
+    args     — dict پارامترهای فیلتر/جستجو که باید بین صفحات حفظ شوند
+
+  چرا پنجره‌ای؟ نسخهٔ نخست هر شمارهٔ صفحه را رندر می‌کرد. با ۵۰ ردیف در صفحه و
+  ۵۰٬۰۰۰ کاربر، یعنی ۱۰۰۰ anchor در هر بارگذاری — هم هزینهٔ رندر، هم یک نوار
+  ناوبری که از عرض صفحه بیرون می‌زند. اینجا همیشه حداکثر ۷ لینک عددی نمایش
+  داده می‌شود: نخست، دو همسایهٔ هر طرف، و آخر.
+-#}
+{% if pages and pages > 1 %}
+{% set window = 2 %}
+{% set lo = [page - window, 1] | max %}
+{% set hi = [page + window, pages] | min %}
+<nav class="pagination" role="navigation" aria-label="صفحه‌بندی"
+     style="display:flex;gap:.4rem;flex-wrap:wrap;justify-content:center;align-items:center;margin:1.25rem 0">
+  {% if page > 1 %}
+    <a class="btn btn-sm btn-ghost" href="{{ url_for(endpoint, page=page-1, **args) }}" rel="prev">→ قبلی</a>
+  {% endif %}
+
+  {% if lo > 1 %}
+    <a class="btn btn-sm btn-ghost" href="{{ url_for(endpoint, page=1, **args) }}">{{ fa(1) }}</a>
+    {% if lo > 2 %}<span aria-hidden="true" style="padding:0 .3rem">…</span>{% endif %}
+  {% endif %}
+
+  {% for p in range(lo, hi + 1) %}
+    {% if p == page %}
+      <span class="btn btn-sm btn-primary" aria-current="page">{{ fa(p) }}</span>
+    {% else %}
+      <a class="btn btn-sm btn-ghost" href="{{ url_for(endpoint, page=p, **args) }}">{{ fa(p) }}</a>
+    {% endif %}
+  {% endfor %}
+
+  {% if hi < pages %}
+    {% if hi < pages - 1 %}<span aria-hidden="true" style="padding:0 .3rem">…</span>{% endif %}
+    <a class="btn btn-sm btn-ghost" href="{{ url_for(endpoint, page=pages, **args) }}">{{ fa(pages) }}</a>
+  {% endif %}
+
+  {% if page < pages %}
+    <a class="btn btn-sm btn-ghost" href="{{ url_for(endpoint, page=page+1, **args) }}" rel="next">بعدی ←</a>
+  {% endif %}
+  <span style="opacity:.7;font-size:.85rem;padding-inline-start:.5rem">
+    {{ fa(page) }} / {{ fa(pages) }}
+  </span>
+</nav>
+{% endif %}

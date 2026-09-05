@@ -659,6 +659,10 @@ class Coupon(db.Model):
     min_amount = db.Column(db.Integer, default=0)
     expires_at = db.Column(db.DateTime)
     is_active = db.Column(db.Boolean, default=True)
+    # پیشینهٔ کوپن: بدون این دو ستون، «این تخفیف را کی و چه کسی ساخت» در دیتابیس
+    # قابل پاسخ نیست — یک شکاف ممیزی روی موجودیتی مستقیماً مالی.
+    created_at = db.Column(db.DateTime, default=utcnow, index=True)
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
 
     @property
     def is_valid(self):

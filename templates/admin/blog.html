@@ -2,7 +2,7 @@
 {% block atitle %}وبلاگ{% endblock %}
 {% block acontent %}
 <div class="dash-head">
-  <div><h1>📝 مدیریت وبلاگ</h1><p>{{ fa(posts|length) }} مطلب</p></div>
+  <div><h1>📝 مدیریت وبلاگ</h1><p>{{ fa(total) }} مطلب</p></div>
   <a class="btn btn-primary" href="{{ url_for('admin.blog_new') }}">+ مطلب جدید</a>
 </div>
 {% set section_key = 'blog' %}
@@ -38,4 +38,7 @@
     </tbody>
   </table>
 </div>
+{% with endpoint='admin.blog', args={} %}
+  {% include 'admin/_pager.html' %}
+{% endwith %}
 {% endblock %}

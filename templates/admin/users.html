@@ -2,7 +2,7 @@
 {% block atitle %}کاربران{% endblock %}
 {% block acontent %}
 <div class="dash-head">
-  <div><h1>👥 کاربران</h1><p>{{ fa(users|length) }} کاربر ثبت‌شده</p></div>
+  <div><h1>👥 کاربران</h1><p>{{ fa(total) }} کاربر ثبت‌شده</p></div>
   <div class="flex gap-1 wrap">
     {% if has_perm(cur_user, 'register_students') or has_perm(cur_user, 'edit_users') %}<a class="btn btn-primary btn-sm" href="{{ url_for('admin.user_add') }}">➕ افزودن کاربر</a>{% endif %}
     <form class="search-box">
@@ -86,4 +86,7 @@
     </tbody>
   </table>
 </div>
+{% with endpoint='admin.users', args={'q': q} %}
+  {% include 'admin/_pager.html' %}
+{% endwith %}
 {% endblock %}
